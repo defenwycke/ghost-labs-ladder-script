@@ -1,0 +1,542 @@
+diff --git a/ghost-core/src/CMakeLists.txt b/ghost-core/src/CMakeLists.txt
+index de53561..65da757 100644
+--- a/ghost-core/src/CMakeLists.txt
++++ b/ghost-core/src/CMakeLists.txt
+@@ -92,6 +92,9 @@ endif()
+ # Ghost Haze: stripped block format, exorcism (strip-before-write), exorcist (archive conversion)
+ add_subdirectory(haze)
+ 
++# Ghost Ladder Script: typed transaction format (v3 RUNG_TX)
++add_subdirectory(rung)
++
+ # Ghost Tor mode: embedded Tor subprocess management
+ add_subdirectory(tor)
+ 
+@@ -183,6 +186,7 @@ if(ENABLE_WALLET)
+       core_interface
+       bitcoin_wallet
+       bitcoin_common
++      bitcoin_rung
+       bitcoin_util
+       Boost::headers
+     )
+@@ -297,6 +301,7 @@ target_link_libraries(bitcoin_node
+     $<TARGET_NAME_IF_EXISTS:bitcoin_zmq>
+     $<TARGET_NAME_IF_EXISTS:bitcoin_gsp>
+     bitcoin_haze
++    bitcoin_rung
+     bitcoin_tor
+     leveldb
+     minisketch
+diff --git a/ghost-core/src/addresstype.cpp b/ghost-core/src/addresstype.cpp
+index 949b841..ca02708 100644
+--- a/ghost-core/src/addresstype.cpp
++++ b/ghost-core/src/addresstype.cpp
+@@ -95,6 +95,10 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
+         addressRet = WitnessUnknown{vSolutions[0][0], vSolutions[1]};
+         return true;
+     }
++    case TxoutType::RUNG_CONDITIONS: {
++        addressRet = LadderDestination(vSolutions[0]);
++        return true;
++    }
+     case TxoutType::MULTISIG:
+     case TxoutType::NULL_DATA:
+     case TxoutType::NONSTANDARD:
+@@ -155,6 +159,15 @@ public:
+         // Return empty script - callers should derive the actual output address.
+         return CScript();
+     }
++
++    CScript operator()(const LadderDestination& ld) const
++    {
++        // Reconstruct scriptPubKey: 0xc1 prefix + conditions bytes
++        CScript script;
++        script.push_back(0xc1);
++        script.insert(script.end(), ld.GetConditions().begin(), ld.GetConditions().end());
++        return script;
++    }
+ };
+ 
+ class ValidDestinationVisitor
+@@ -169,6 +182,7 @@ public:
+     bool operator()(const WitnessV1Taproot& dest) const { return true; }
+     bool operator()(const WitnessUnknown& dest) const { return true; }
+     bool operator()(const SilentPaymentDestination& dest) const { return true; }
++    bool operator()(const LadderDestination& dest) const { return true; }
+ };
+ } // namespace
+ 
+diff --git a/ghost-core/src/addresstype.h b/ghost-core/src/addresstype.h
+index 735e7d3..e9ee4c5 100644
+--- a/ghost-core/src/addresstype.h
++++ b/ghost-core/src/addresstype.h
+@@ -189,6 +189,28 @@ public:
+     }
+ };
+ 
++/**
++ * Ladder Script destination (rung1... address)
++ *
++ * Contains the serialized rung conditions (the scriptPubKey minus the 0xc1 prefix).
++ * Encoded as Bech32m with "rung" HRP: rung1<conditions bytes>
++ */
++struct LadderDestination
++{
++private:
++    std::vector<unsigned char> m_conditions;
++
++public:
++    LadderDestination() = default;
++    explicit LadderDestination(const std::vector<unsigned char>& conditions) : m_conditions(conditions) {}
++    explicit LadderDestination(std::vector<unsigned char>&& conditions) : m_conditions(std::move(conditions)) {}
++
++    const std::vector<unsigned char>& GetConditions() const LIFETIMEBOUND { return m_conditions; }
++
++    friend bool operator==(const LadderDestination& a, const LadderDestination& b) { return a.m_conditions == b.m_conditions; }
++    friend bool operator<(const LadderDestination& a, const LadderDestination& b) { return a.m_conditions < b.m_conditions; }
++};
++
+ /**
+  * A txout script categorized into standard templates.
+  *  * CNoDestination: Optionally a script, no corresponding address.
+@@ -203,7 +225,7 @@ public:
+  *  * SilentPaymentDestination: Ghost ID for Silent Payments (ghost1... address)
+  *  A CTxDestination is the internal data type encoded in a bitcoin address
+  */
+-using CTxDestination = std::variant<CNoDestination, PubKeyDestination, PKHash, ScriptHash, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessV1Taproot, PayToAnchor, WitnessUnknown, SilentPaymentDestination>;
++using CTxDestination = std::variant<CNoDestination, PubKeyDestination, PKHash, ScriptHash, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessV1Taproot, PayToAnchor, WitnessUnknown, SilentPaymentDestination, LadderDestination>;
+ 
+ /** Check whether a CTxDestination corresponds to one with an address. */
+ bool IsValidDestination(const CTxDestination& dest);
+diff --git a/ghost-core/src/bech32.h b/ghost-core/src/bech32.h
+index b4db9ba..5874616 100644
+--- a/ghost-core/src/bech32.h
++++ b/ghost-core/src/bech32.h
+@@ -38,6 +38,7 @@ enum class Encoding {
+ enum CharLimit : size_t {
+     BECH32 = 90,            //!< BIP173/350 imposed character limit for Bech32(m) encoded addresses. This guarantees finding up to 4 errors.
+     SILENT_PAYMENT = 120,   //!< BIP352 Silent Payment addresses are longer (66 bytes payload = ~118 chars)
++    RUNG_ADDRESS = 500,     //!< Ladder Script rung addresses encode full conditions (variable length)
+ };
+ 
+ /** Encode a Bech32 or Bech32m string. If hrp contains uppercase characters, this will cause an
+diff --git a/ghost-core/src/key_io.cpp b/ghost-core/src/key_io.cpp
+index 849680d..c8ed937 100644
+--- a/ghost-core/src/key_io.cpp
++++ b/ghost-core/src/key_io.cpp
+@@ -94,6 +94,16 @@ public:
+         ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, bytes.begin(), bytes.end());
+         return bech32::Encode(bech32::Encoding::BECH32M, "ghost", data);
+     }
++
++    std::string operator()(const LadderDestination& ld) const
++    {
++        // Rung address format: rung1<bech32m encoded conditions>
++        const auto& conditions = ld.GetConditions();
++        std::vector<unsigned char> data;
++        data.reserve((conditions.size() * 8 + 4) / 5);
++        ConvertBits<8, 5, true>([&](unsigned char c) { data.push_back(c); }, conditions.begin(), conditions.end());
++        return bech32::Encode(bech32::Encoding::BECH32M, "rung", data);
++    }
+ };
+ 
+ CTxDestination DecodeDestination(const std::string& str, const CChainParams& params, std::string& error_str, std::vector<int>* error_locations)
+@@ -106,8 +116,10 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
+     bool is_bech32 = (ToLower(str.substr(0, params.Bech32HRP().size())) == params.Bech32HRP());
+     // Ghost ID (Silent Payment) addresses use "ghost" prefix regardless of network
+     bool is_ghost_id = (str.size() > 6 && str.substr(0, 6) == "ghost1");
++    // Rung (Ladder Script) addresses use "rung" prefix regardless of network
++    bool is_rung = (str.size() > 5 && str.substr(0, 5) == "rung1");
+ 
+-    if (!is_bech32 && !is_ghost_id && DecodeBase58Check(str, data, 21)) {
++    if (!is_bech32 && !is_ghost_id && !is_rung && DecodeBase58Check(str, data, 21)) {
+         // base58-encoded Bitcoin addresses.
+         // Public-key-hash-addresses have version 0 (or 111 testnet).
+         // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
+@@ -134,7 +146,7 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
+             error_str = "Invalid or unsupported Base58-encoded address.";
+         }
+         return CNoDestination();
+-    } else if (!is_bech32 && !is_ghost_id) {
++    } else if (!is_bech32 && !is_ghost_id && !is_rung) {
+         // Try Base58 decoding without the checksum, using a much larger max length
+         if (!DecodeBase58(str, data, 100)) {
+             error_str = "Invalid or unsupported Segwit (Bech32) or Base58 encoding.";
+@@ -146,6 +158,25 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
+ 
+     data.clear();
+ 
++    // Try Rung address (Ladder Script conditions)
++    if (is_rung) {
++        const auto rung_dec = bech32::Decode(str, bech32::CharLimit::RUNG_ADDRESS);
++        if (rung_dec.encoding == bech32::Encoding::BECH32M && rung_dec.hrp == "rung") {
++            data.reserve((rung_dec.data.size() * 5) / 8);
++            if (ConvertBits<5, 8, false>([&](unsigned char c) { data.push_back(c); }, rung_dec.data.begin(), rung_dec.data.end())) {
++                if (data.size() >= 1) {
++                    return LadderDestination(std::move(data));
++                }
++                error_str = "Empty Rung address conditions";
++                return CNoDestination();
++            }
++            error_str = "Invalid padding in Rung address data section";
++            return CNoDestination();
++        }
++        error_str = "Invalid Rung address encoding";
++        return CNoDestination();
++    }
++
+     // Try Ghost ID first (Silent Payment addresses are longer than 90 chars)
+     if (str.size() > 6 && str.substr(0, 6) == "ghost1") {
+         const auto sp_dec = bech32::Decode(str, bech32::CharLimit::SILENT_PAYMENT);
+diff --git a/ghost-core/src/policy/policy.cpp b/ghost-core/src/policy/policy.cpp
+index 3da6cb7..f785bbd 100644
+--- a/ghost-core/src/policy/policy.cpp
++++ b/ghost-core/src/policy/policy.cpp
+@@ -8,6 +8,8 @@
+ #include <policy/policy.h>
+ 
+ #include <coins.h>
++#include <rung/conditions.h>  // LADDER SCRIPT
++#include <rung/policy.h>  // LADDER SCRIPT
+ #include <consensus/amount.h>
+ #include <consensus/consensus.h>
+ #include <consensus/validation.h>
+@@ -103,6 +105,11 @@ bool IsStandardTx(const CTransaction& tx, const std::optional<unsigned>& max_dat
+         return false;
+     }
+ 
++    // LADDER SCRIPT: v3 transactions must pass rung policy validation
++    if (tx.version == CTransaction::RUNG_TX_VERSION) {
++        return rung::IsStandardRungTx(tx, reason);
++    }
++
+     // Extremely large transactions with lots of inputs can cost the network
+     // almost as much to process as they cost the sender in fees, because
+     // computing signature hashes is O(ninputs*txsize). Limiting transactions
+@@ -223,6 +230,11 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
+     for (unsigned int i = 0; i < tx.vin.size(); i++) {
+         const CTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
+ 
++        // Rung conditions outputs are validated by the ladder script evaluator, not standard script policy
++        if (rung::IsRungConditionsScript(prev.scriptPubKey)) {
++            continue;
++        }
++
+         std::vector<std::vector<unsigned char> > vSolutions;
+         TxoutType whichType = Solver(prev.scriptPubKey, vSolutions);
+         if (whichType == TxoutType::NONSTANDARD || whichType == TxoutType::WITNESS_UNKNOWN) {
+@@ -262,6 +274,11 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
+ 
+         const CTxOut &prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
+ 
++        // Rung conditions outputs have ladder witness validated by the rung evaluator
++        if (rung::IsRungConditionsScript(prev.scriptPubKey)) {
++            continue;
++        }
++
+         // get the scriptPubKey corresponding to this input:
+         CScript prevScript = prev.scriptPubKey;
+ 
+diff --git a/ghost-core/src/primitives/transaction.h b/ghost-core/src/primitives/transaction.h
+index 295bce6..cfa5798 100644
+--- a/ghost-core/src/primitives/transaction.h
++++ b/ghost-core/src/primitives/transaction.h
+@@ -298,6 +298,10 @@ public:
+     // Default transaction version.
+     static const uint32_t CURRENT_VERSION{2};
+ 
++    // LADDER SCRIPT: Version 3 transactions use typed ladder witnesses
++    // instead of raw script. Every witness byte must conform to a typed field.
++    static const uint32_t RUNG_TX_VERSION{3};
++
+     // The local variables are made const to prevent unintended modification
+     // without updating the cached hash value. However, CTransaction is not
+     // actually immutable; deserialization and assignment are implemented,
+diff --git a/ghost-core/src/rpc/mempool.cpp b/ghost-core/src/rpc/mempool.cpp
+index 286ac5e..3103fa8 100644
+--- a/ghost-core/src/rpc/mempool.cpp
++++ b/ghost-core/src/rpc/mempool.cpp
+@@ -8,6 +8,7 @@
+ #include <node/mempool_persist.h>
+ 
+ #include <chainparams.h>
++#include <rung/conditions.h>
+ #include <consensus/validation.h>
+ #include <core_io.h>
+ #include <kernel/mempool_entry.h>
+@@ -82,6 +83,8 @@ static RPCHelpMan sendrawtransaction()
+             }
+ 
+             for (const auto& out : mtx.vout) {
++                // LADDER SCRIPT: rung conditions outputs use non-standard opcodes but are spendable
++                if (rung::IsRungConditionsScript(out.scriptPubKey)) continue;
+                 if((out.scriptPubKey.IsUnspendable() || !out.scriptPubKey.HasValidOps()) && out.nValue > max_burn_amount) {
+                     throw JSONRPCTransactionError(TransactionError::MAX_BURN_EXCEEDED);
+                 }
+@@ -1011,6 +1014,8 @@ static RPCHelpMan submitpackage()
+                 }
+ 
+                 for (const auto& out : mtx.vout) {
++                    // LADDER SCRIPT: rung conditions outputs use non-standard opcodes but are spendable
++                    if (rung::IsRungConditionsScript(out.scriptPubKey)) continue;
+                     if((out.scriptPubKey.IsUnspendable() || !out.scriptPubKey.HasValidOps()) && out.nValue > max_burn_amount) {
+                         throw JSONRPCTransactionError(TransactionError::MAX_BURN_EXCEEDED);
+                     }
+diff --git a/ghost-core/src/rpc/register.h b/ghost-core/src/rpc/register.h
+index fdc3336..6ed2c6d 100644
+--- a/ghost-core/src/rpc/register.h
++++ b/ghost-core/src/rpc/register.h
+@@ -23,6 +23,7 @@ void RegisterSignMessageRPCCommands(CRPCTable&);
+ void RegisterSignerRPCCommands(CRPCTable &tableRPC);
+ void RegisterTxoutProofRPCCommands(CRPCTable&);
+ void RegisterHazeRPCCommands(CRPCTable&);
++void RegisterRungRPCCommands(CRPCTable&);  // LADDER SCRIPT
+ 
+ static inline void RegisterAllCoreRPCCommands(CRPCTable &t)
+ {
+@@ -40,6 +41,7 @@ static inline void RegisterAllCoreRPCCommands(CRPCTable &t)
+ #endif // ENABLE_EXTERNAL_SIGNER
+     RegisterTxoutProofRPCCommands(t);
+     RegisterHazeRPCCommands(t);
++    RegisterRungRPCCommands(t);  // LADDER SCRIPT
+ }
+ 
+ #endif // BITCOIN_RPC_REGISTER_H
+diff --git a/ghost-core/src/rpc/util.cpp b/ghost-core/src/rpc/util.cpp
+index d2a2949..ce49d09 100644
+--- a/ghost-core/src/rpc/util.cpp
++++ b/ghost-core/src/rpc/util.cpp
+@@ -354,6 +354,14 @@ public:
+         obj.pushKV("spend_pubkey", HexStr(sp.GetSpendPubKey()));
+         return obj;
+     }
++
++    UniValue operator()(const LadderDestination& ld) const
++    {
++        UniValue obj(UniValue::VOBJ);
++        obj.pushKV("isladder", true);
++        obj.pushKV("conditions", HexStr(ld.GetConditions()));
++        return obj;
++    }
+ };
+ 
+ UniValue DescribeAddress(const CTxDestination& dest)
+diff --git a/ghost-core/src/script/interpreter.cpp b/ghost-core/src/script/interpreter.cpp
+index 07fda48..b5f864a 100644
+--- a/ghost-core/src/script/interpreter.cpp
++++ b/ghost-core/src/script/interpreter.cpp
+@@ -8,6 +8,7 @@
+ #include <crypto/ripemd160.h>
+ #include <crypto/sha1.h>
+ #include <crypto/sha256.h>
++#include <primitives/transaction.h>
+ #include <pubkey.h>
+ #include <script/script.h>
+ #include <uint256.h>
+@@ -1405,6 +1406,18 @@ void PrecomputedTransactionData::Init(const T& txTo, std::vector<CTxOut>&& spent
+         m_spent_outputs_ready = true;
+     }
+ 
++    // LADDER SCRIPT: v3 RUNG_TX transactions use ladder sighash caches.
++    // They reuse the same precomputed hashes (prevouts, sequences, outputs, spent amounts)
++    // but with a different tagged hash (LadderSighash instead of TapSighash).
++    if (txTo.version == CTransaction::RUNG_TX_VERSION && m_spent_outputs_ready) {
++        m_prevouts_single_hash = GetPrevoutsSHA256(txTo);
++        m_sequences_single_hash = GetSequencesSHA256(txTo);
++        m_outputs_single_hash = GetOutputsSHA256(txTo);
++        m_spent_amounts_single_hash = GetSpentAmountsSHA256(m_spent_outputs);
++        m_ladder_ready = true;
++        return; // Ladder txs don't need BIP143/BIP341 caches
++    }
++
+     // Determine which precomputation-impacting features this transaction uses.
+     bool uses_bip143_segwit = force;
+     bool uses_bip341_taproot = force;
+diff --git a/ghost-core/src/script/interpreter.h b/ghost-core/src/script/interpreter.h
+index 2108e39..74a448e 100644
+--- a/ghost-core/src/script/interpreter.h
++++ b/ghost-core/src/script/interpreter.h
+@@ -167,6 +167,10 @@ struct PrecomputedTransactionData
+     //! Whether the 3 fields above are initialized.
+     bool m_bip143_segwit_ready = false;
+ 
++    // Ladder (v3 RUNG_TX) precomputed data.
++    //! Whether the ladder-specific hashes are initialized.
++    bool m_ladder_ready = false;
++
+     std::vector<CTxOut> m_spent_outputs;
+     //! Whether m_spent_outputs is initialized.
+     bool m_spent_outputs_ready = false;
+@@ -193,6 +197,7 @@ enum class SigVersion
+     WITNESS_V0 = 1,  //!< Witness v0 (P2WPKH and P2WSH); see BIP 141
+     TAPROOT = 2,     //!< Witness v1 with 32-byte program, not BIP16 P2SH-wrapped, key path spending; see BIP 341
+     TAPSCRIPT = 3,   //!< Witness v1 with 32-byte program, not BIP16 P2SH-wrapped, script path spending, leaf version 0xc0; see BIP 342
++    LADDER = 4,      //!< LADDER SCRIPT: Version 3 RUNG_TX typed ladder witness
+ };
+ 
+ struct ScriptExecutionData
+diff --git a/ghost-core/src/script/script_error.cpp b/ghost-core/src/script/script_error.cpp
+index fadc042..1fd91b8 100644
+--- a/ghost-core/src/script/script_error.cpp
++++ b/ghost-core/src/script/script_error.cpp
+@@ -115,6 +115,10 @@ std::string ScriptErrorString(const ScriptError serror)
+             return "Using OP_CODESEPARATOR in non-witness script";
+         case SCRIPT_ERR_SIG_FINDANDDELETE:
+             return "Signature is found in scriptCode";
++        case SCRIPT_ERR_LADDER_INVALID_WITNESS:
++            return "Invalid ladder witness in RUNG_TX";
++        case SCRIPT_ERR_LADDER_EVAL_FALSE:
++            return "No rung satisfied in ladder witness";
+         case SCRIPT_ERR_UNKNOWN_ERROR:
+         case SCRIPT_ERR_ERROR_COUNT:
+         default: break;
+diff --git a/ghost-core/src/script/script_error.h b/ghost-core/src/script/script_error.h
+index 44e68fe..36cafa7 100644
+--- a/ghost-core/src/script/script_error.h
++++ b/ghost-core/src/script/script_error.h
+@@ -82,6 +82,10 @@ typedef enum ScriptError_t
+     SCRIPT_ERR_OP_CODESEPARATOR,
+     SCRIPT_ERR_SIG_FINDANDDELETE,
+ 
++    /* Ladder Script */
++    SCRIPT_ERR_LADDER_INVALID_WITNESS,
++    SCRIPT_ERR_LADDER_EVAL_FALSE,
++
+     SCRIPT_ERR_ERROR_COUNT
+ } ScriptError;
+ 
+diff --git a/ghost-core/src/script/solver.cpp b/ghost-core/src/script/solver.cpp
+index 783baf0..0b87e33 100644
+--- a/ghost-core/src/script/solver.cpp
++++ b/ghost-core/src/script/solver.cpp
+@@ -29,6 +29,7 @@ std::string GetTxnOutputType(TxoutType t)
+     case TxoutType::WITNESS_V0_SCRIPTHASH: return "witness_v0_scripthash";
+     case TxoutType::WITNESS_V1_TAPROOT: return "witness_v1_taproot";
+     case TxoutType::WITNESS_UNKNOWN: return "witness_unknown";
++    case TxoutType::RUNG_CONDITIONS: return "rung_conditions";
+     } // no default case, so the compiler can warn about missing cases
+     assert(false);
+ }
+@@ -151,6 +152,12 @@ TxoutType Solver(const CScript& scriptPubKey, std::vector<std::vector<unsigned c
+         return TxoutType::SCRIPTHASH;
+     }
+ 
++    // Ladder Script: 0xc1 prefix identifies rung conditions
++    if (scriptPubKey.size() >= 2 && scriptPubKey[0] == 0xc1) {
++        vSolutionsRet.push_back(std::vector<unsigned char>(scriptPubKey.begin() + 1, scriptPubKey.end()));
++        return TxoutType::RUNG_CONDITIONS;
++    }
++
+     int witnessversion;
+     std::vector<unsigned char> witnessprogram;
+     if (scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
+diff --git a/ghost-core/src/script/solver.h b/ghost-core/src/script/solver.h
+index d2b7fb8..9f777af 100644
+--- a/ghost-core/src/script/solver.h
++++ b/ghost-core/src/script/solver.h
+@@ -32,6 +32,7 @@ enum class TxoutType {
+     WITNESS_V0_KEYHASH,
+     WITNESS_V1_TAPROOT,
+     WITNESS_UNKNOWN, //!< Only for Witness versions not already defined above
++    RUNG_CONDITIONS, //!< Ladder Script conditions (0xc1 prefix)
+ };
+ 
+ /** Get the name of a TxoutType as a string */
+diff --git a/ghost-core/src/test/CMakeLists.txt b/ghost-core/src/test/CMakeLists.txt
+index 72d81a4..6552f36 100644
+--- a/ghost-core/src/test/CMakeLists.txt
++++ b/ghost-core/src/test/CMakeLists.txt
+@@ -88,6 +88,7 @@ add_executable(test_ghost
+   result_tests.cpp
+   reverselock_tests.cpp
+   rpc_tests.cpp
++  rung_tests.cpp
+   sanity_tests.cpp
+   scheduler_tests.cpp
+   script_assets_tests.cpp
+diff --git a/ghost-core/src/test/fuzz/CMakeLists.txt b/ghost-core/src/test/fuzz/CMakeLists.txt
+index 4d649a7..e54f388 100644
+--- a/ghost-core/src/test/fuzz/CMakeLists.txt
++++ b/ghost-core/src/test/fuzz/CMakeLists.txt
+@@ -98,6 +98,7 @@ add_executable(fuzz
+   rbf.cpp
+   rolling_bloom_filter.cpp
+   rpc.cpp
++  rung_deserialize.cpp
+   script.cpp
+   script_assets_test_minimizer.cpp
+   script_descriptor_cache.cpp
+diff --git a/ghost-core/src/validation.cpp b/ghost-core/src/validation.cpp
+index 8190e9c..f0fd526 100644
+--- a/ghost-core/src/validation.cpp
++++ b/ghost-core/src/validation.cpp
+@@ -39,6 +39,7 @@
+ #include <policy/settings.h>
+ #include <policy/truc_policy.h>
+ #include <pow.h>
++#include <rung/evaluator.h>  // LADDER SCRIPT
+ #include <primitives/block.h>
+ #include <primitives/transaction.h>
+ #include <random.h>
+@@ -2107,6 +2108,18 @@ std::optional<std::pair<ScriptError, std::string>> CScriptCheck::operator()() {
+     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
+     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
+     ScriptError error{SCRIPT_ERR_UNKNOWN_ERROR};
++
++    // LADDER SCRIPT: Route v3 RUNG_TX transactions to ladder witness evaluator
++    if (ptxTo->version == CTransaction::RUNG_TX_VERSION) {
++        CachingTransactionSignatureChecker checker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *m_signature_cache, *txdata);
++        if (rung::VerifyRungTx(*ptxTo, nIn, m_tx_out, nFlags, checker, *txdata, &error, m_block_height)) {
++            return std::nullopt;
++        } else {
++            auto debug_str = strprintf("input %i of %s (wtxid %s), spending %s:%i", nIn, ptxTo->GetHash().ToString(), ptxTo->GetWitnessHash().ToString(), ptxTo->vin[nIn].prevout.hash.ToString(), ptxTo->vin[nIn].prevout.n);
++            return std::make_pair(error, std::move(debug_str));
++        }
++    }
++
+     if (VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *m_signature_cache, *txdata), &error)) {
+         return std::nullopt;
+     } else {
+diff --git a/ghost-core/src/validation.h b/ghost-core/src/validation.h
+index f82a657..f4a6217 100644
+--- a/ghost-core/src/validation.h
++++ b/ghost-core/src/validation.h
+@@ -342,10 +342,11 @@ private:
+     bool cacheStore;
+     PrecomputedTransactionData *txdata;
+     SignatureCache* m_signature_cache;
++    int32_t m_block_height{0};
+ 
+ public:
+-    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, SignatureCache& signature_cache, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
+-        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), txdata(txdataIn), m_signature_cache(&signature_cache) { }
++    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, SignatureCache& signature_cache, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn, int32_t block_height = 0) :
++        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), txdata(txdataIn), m_signature_cache(&signature_cache), m_block_height(block_height) { }
+ 
+     CScriptCheck(const CScriptCheck&) = delete;
+     CScriptCheck& operator=(const CScriptCheck&) = delete;
+diff --git a/ghost-core/src/wallet/feebumper.h b/ghost-core/src/wallet/feebumper.h
+index 7b56cb7..791610a 100644
+--- a/ghost-core/src/wallet/feebumper.h
++++ b/ghost-core/src/wallet/feebumper.h
+@@ -92,6 +92,7 @@ public:
+             break;
+         case SigVersion::TAPROOT:
+         case SigVersion::TAPSCRIPT:
++        case SigVersion::LADDER: // LADDER SCRIPT: not used in wallet fee bumping
+             assert(false);
+         }
+     }
+diff --git a/ghost-core/src/wallet/rpc/addresses.cpp b/ghost-core/src/wallet/rpc/addresses.cpp
+index 320562c..aae74d8 100644
+--- a/ghost-core/src/wallet/rpc/addresses.cpp
++++ b/ghost-core/src/wallet/rpc/addresses.cpp
+@@ -352,6 +352,7 @@ public:
+     UniValue operator()(const PayToAnchor& id) const { return UniValue(UniValue::VOBJ); }
+     UniValue operator()(const WitnessUnknown& id) const { return UniValue(UniValue::VOBJ); }
+     UniValue operator()(const SilentPaymentDestination& sp) const { return UniValue(UniValue::VOBJ); }
++    UniValue operator()(const LadderDestination& ld) const { return UniValue(UniValue::VOBJ); }
+ };
+ 
+ static UniValue DescribeWalletAddress(const CWallet& wallet, const CTxDestination& dest)

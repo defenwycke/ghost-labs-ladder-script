@@ -1,0 +1,26 @@
+[Unit]
+Description=Ladder Script Signet Proxy
+After=ghostd.service network.target
+Requires=ghostd.service
+
+[Service]
+Type=simple
+User=ghost
+Group=ghost
+WorkingDirectory=/opt/ghost/ladder-proxy
+ExecStart=/opt/ghost/ladder-proxy/venv/bin/uvicorn ladder_proxy:app --host 127.0.0.1 --port 8801
+Restart=on-failure
+RestartSec=5
+
+Environment=RPC_URL=http://127.0.0.1:38332
+Environment=RPC_USER=ghostrpc
+Environment=RPC_PASS=ghost_signet_rpc_2024
+Environment=FAUCET_AMOUNT=0.001
+Environment=FAUCET_COOLDOWN=300
+Environment=RATE_LIMIT_RPM=30
+Environment=ALLOWED_ORIGINS=https://bitcoinghost.org,https://www.bitcoinghost.org
+Environment=LISTEN_HOST=0.0.0.0
+Environment=LISTEN_PORT=8801
+
+[Install]
+WantedBy=multi-user.target

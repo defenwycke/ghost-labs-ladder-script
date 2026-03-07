@@ -9,20 +9,7 @@ Transaction version 3 (`RUNG_TX`) carries structured conditions in outputs (pref
 ## Repository Structure
 
 ```
-docs/                    Documentation package
-  WHITEPAPER.md          Vision, motivation, architecture
-  BIP-XXXX.md            Formal Bitcoin Improvement Proposal
-  SPECIFICATION.md       Complete technical specification
-  BLOCK_LIBRARY.md       All 39 block types with fields and evaluation logic
-  GLOSSARY.md            Terminology reference
-  EXAMPLES.md            Worked examples with JSON wire format
-  INTEGRATION.md         Bitcoin integration guide
-  SOFT_FORK_GUIDE.md     Activation strategy and timeline
-  FAQ.md                 30 questions and answers
-  SUMMARY.md             One-page executive summary
-  LADDER_SCRIPT_SCENARIOS.md  Functional test results (19 scenarios)
-
-src/rung/                C++ reference implementation
+src/rung/                C++ reference implementation (20 files, ~5K lines)
   evaluator.cpp/h        Block evaluation engine (consensus)
   serialize.cpp/h        Wire format v2 serialization
   conditions.cpp/h       Output condition parsing (0xc1 prefix)
@@ -34,12 +21,36 @@ src/rung/                C++ reference implementation
   types.cpp/h            Block type, data type, and enum definitions
   policy.cpp/h           Mempool policy validation
 
-tools/ladder-engine/     Visual editor and simulator
-  index.html             Single-page React application
+patches/                 Surgical diffs against Bitcoin Core v30
+  bitcoin-core-v30-ladder-script.patch
 
 tests/
-  functional/rung_basic.py   19 end-to-end signet test scenarios
-  unit/rung_tests.cpp        185+ unit tests for evaluator logic
+  unit/rung_tests.cpp              185+ unit tests for evaluator logic
+  unit/rung_deserialize_fuzz.cpp   Fuzz target for wire format parser
+  functional/rung_basic.py         All 39 block types end-to-end
+  functional/rung_p2p.py           P2P relay tests
+  functional/rung_signet.py        Live signet test suite
+  functional/rung_pq_block.py      FALCON-512 stress test
+
+docs/                    Documentation package
+  WHITEPAPER.md          Vision, motivation, architecture
+  BIP-XXXX.md            Formal Bitcoin Improvement Proposal
+  SPECIFICATION.md       Complete technical specification
+  BLOCK_LIBRARY.md       All 39 block types with fields and evaluation logic
+  IMPLEMENTATION_NOTES.md  Spec deviations and rationale
+  EXAMPLES.md            Worked examples with JSON wire format
+  INTEGRATION.md         Bitcoin integration guide
+  SOFT_FORK_GUIDE.md     Activation strategy and timeline
+  FAQ.md, GLOSSARY.md, SUMMARY.md, SCENARIOS.md
+
+tools/ladder-engine/     Visual editor and simulator
+  index.html             Single-page React app with signet mode
+
+proxy/                   FastAPI signet proxy
+  ladder_proxy.py        Wraps ghost-core RPC for browser access
+  requirements.txt       Python dependencies
+  ladder-proxy.service   Systemd unit file
+  deploy.sh              Deployment script
 ```
 
 ## Quick Start

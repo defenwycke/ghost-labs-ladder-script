@@ -478,12 +478,32 @@ body {
 
 .contact-inverted {
   position: absolute;
-  top: -2px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.contact-inverted::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 50%;
+  width: 0;
+  border-left: 2px solid var(--red);
+  transform: translateX(-50%) rotate(-45deg);
+  transform-origin: center center;
+}
+.contact-inverted::after {
+  content: 'NOT';
+  position: absolute;
+  top: -10px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 7px;
-  color: var(--red);
+  font-size: 6px;
   font-weight: 700;
+  color: var(--red);
+  letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 /* Coil (output) */
@@ -531,8 +551,8 @@ body {
 }
 .coil-warn {
   position: absolute;
-  top: -4px;
-  right: -2px;
+  top: -6px;
+  right: 6px;
   font-size: 9px;
   color: var(--amber);
   line-height: 1;
@@ -623,6 +643,35 @@ body {
   line-height: 1;
   z-index: 3;
   text-shadow: 0 0 4px var(--bg-primary);
+}
+.input-contact-note {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  color: var(--cyan);
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.input-contact-note-input {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  background: var(--bg-primary);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 4px;
+  text-align: center;
+  outline: none;
+  z-index: 20;
 }
 /* Energized state */
 .input-contact.energized > .contact-bracket-left,
@@ -1734,6 +1783,376 @@ body {
   color: var(--text-dim);
   opacity: 0.6;
 }
+
+/* ─── Palette Tooltips ─── */
+.palette-item {
+  position: relative;
+}
+.palette-tip {
+  display: none;
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111;
+  border: 1px solid var(--amber-dim);
+  color: var(--text-primary);
+  font-size: 10px;
+  padding: 5px 9px;
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  line-height: 1.4;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.palette-tip::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 6px;
+  height: 6px;
+  background: #111;
+  border-left: 1px solid var(--amber-dim);
+  border-bottom: 1px solid var(--amber-dim);
+}
+.palette-tip .tip-code {
+  color: var(--amber-dim);
+  font-size: 9px;
+  margin-top: 2px;
+}
+.palette-item:hover .palette-tip {
+  display: block;
+}
+
+/* ─── Block Note Label ─── */
+.contact-note {
+  position: absolute;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  color: var(--cyan);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.contact-note-input {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  background: var(--bg-primary);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 4px;
+  text-align: center;
+  outline: none;
+  z-index: 20;
+}
+
+/* ─── Block Context Menu ─── */
+.block-context-menu {
+  position: fixed;
+  z-index: 600;
+  background: var(--bg-primary);
+  border: 1px solid var(--amber-dim);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6), 0 0 1px var(--amber-dim);
+  min-width: 160px;
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  animation: ctxFadeIn 0.1s ease-out;
+}
+@keyframes ctxFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+.ctx-item:hover {
+  background: var(--amber-dim);
+  color: var(--amber-bright);
+}
+.ctx-item-icon {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.ctx-item:hover .ctx-item-icon { opacity: 1; }
+.ctx-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+.ctx-item.ctx-danger:hover {
+  background: var(--red-dim);
+  color: var(--red-bright);
+}
+
+/* ─── Block Explorer Modal ─── */
+.block-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.15s ease-out;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.block-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 1px var(--amber-dim);
+  animation: modalSlideIn 0.15s ease-out;
+}
+@keyframes modalSlideIn {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.block-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+.block-modal-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 1.5px;
+}
+.block-modal-type-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+.block-modal-hex {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: auto;
+  letter-spacing: 1px;
+}
+.block-modal-family {
+  font-size: 9px;
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  letter-spacing: 1px;
+}
+.block-modal-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.block-modal-close:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+.block-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.block-modal-ok {
+  background: none;
+  border: 1px solid var(--amber-dim);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 20px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.block-modal-ok:hover {
+  background: var(--amber-dim);
+  color: var(--amber-bright);
+  border-color: var(--amber);
+}
+.block-modal-body {
+  overflow-y: auto;
+  padding: 0;
+}
+.block-modal-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.block-modal-section:last-child {
+  border-bottom: none;
+}
+.block-modal-section-title {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.block-modal-note-input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.block-modal-note-input:focus {
+  border-color: var(--cyan);
+}
+.block-modal-note-input::placeholder {
+  color: var(--text-dim);
+}
+.block-modal-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.block-modal-field-row:last-child {
+  margin-bottom: 0;
+}
+.block-modal-field-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+.block-modal-field-type {
+  font-size: 8px;
+  color: var(--text-dim);
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+.block-modal-field-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  outline: none;
+  min-width: 0;
+}
+.block-modal-field-input:focus {
+  border-color: var(--amber-dim);
+}
+.block-modal-field-input::placeholder {
+  color: var(--text-dim);
+}
+.block-modal-field-select {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  outline: none;
+  min-width: 0;
+}
+.block-modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.block-modal-checkbox-row label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+.block-modal-rules {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.block-modal-rules strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.block-modal-rules code {
+  color: var(--amber);
+  font-size: 10px;
+  background: var(--bg-primary);
+  padding: 0 3px;
+}
+.block-modal-constraints {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 3px 12px;
+  font-size: 9px;
+}
+.block-modal-constraints .c-label {
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.block-modal-constraints .c-type {
+  color: var(--text-secondary);
+}
+.block-modal-constraints .c-size {
+  color: var(--amber-dim);
+  text-align: right;
+}
+.block-modal-expand-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+.block-modal-expand-btn:hover {
+  border-color: var(--amber-dim);
+  color: var(--amber);
+}
 </style>
 </head>
 <body>
@@ -1749,7 +2168,7 @@ const BLOCK_FAMILIES = [
   {
     name: 'I/O', color: '#e6a817',
     blocks: [
-      { type: 'OUTPUT_REF', label: 'OUT_REF', fields: [
+      { type: 'OUTPUT_REF', label: 'OUT_REF', desc: 'Reference an output coil from another rung', fields: [
         { name: 'ref_name', dataType: 'TEXT', label: 'Output Name', placeholder: 'MOTOR_RUN' }
       ]},
     ]
@@ -1757,16 +2176,16 @@ const BLOCK_FAMILIES = [
   {
     name: 'SIGNATURE', color: '#e6a817',
     blocks: [
-      { type: 'SIG', label: 'SIG', fields: [
+      { type: 'SIG', label: 'SIG', desc: 'Single signature check — Schnorr, ECDSA, or post-quantum', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
-      { type: 'MULTISIG', label: 'MULTISIG', fields: [
+      { type: 'MULTISIG', label: 'MULTISIG', desc: 'M-of-N threshold signature verification', fields: [
         { name: 'threshold', dataType: 'NUMERIC', label: 'Threshold (M)', placeholder: '2' },
         { name: 'pubkeys', dataType: 'PUBKEY', label: 'Public Keys', placeholder: '02ab..., 03cd...', multi: true },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
-      { type: 'ADAPTOR_SIG', label: 'ADAPTOR_SIG', fields: [
+      { type: 'ADAPTOR_SIG', label: 'ADAPTOR_SIG', desc: 'Adaptor signature for atomic swaps and payment channels', fields: [
         { name: 'signing_key', dataType: 'PUBKEY', label: 'Signing Key', placeholder: '02abcdef...' },
         { name: 'adaptor_point', dataType: 'PUBKEY', label: 'Adaptor Point', placeholder: '32-byte x-only hex' }
       ]},
@@ -1775,16 +2194,16 @@ const BLOCK_FAMILIES = [
   {
     name: 'TIMELOCK', color: '#2d7dd2',
     blocks: [
-      { type: 'CSV', label: 'CSV', fields: [
+      { type: 'CSV', label: 'CSV', desc: 'Relative timelock in blocks (BIP-68)', fields: [
         { name: 'blocks', dataType: 'NUMERIC', label: 'Blocks', placeholder: '144' }
       ]},
-      { type: 'CSV_TIME', label: 'CSV_TIME', fields: [
+      { type: 'CSV_TIME', label: 'CSV_TIME', desc: 'Relative timelock in seconds (BIP-68)', fields: [
         { name: 'seconds', dataType: 'NUMERIC', label: 'Seconds', placeholder: '86400' }
       ]},
-      { type: 'CLTV', label: 'CLTV', fields: [
+      { type: 'CLTV', label: 'CLTV', desc: 'Absolute timelock by block height (BIP-65)', fields: [
         { name: 'height', dataType: 'NUMERIC', label: 'Height', placeholder: '850000' }
       ]},
-      { type: 'CLTV_TIME', label: 'CLTV_TIME', fields: [
+      { type: 'CLTV_TIME', label: 'CLTV_TIME', desc: 'Absolute timelock by median-time-past', fields: [
         { name: 'timestamp', dataType: 'NUMERIC', label: 'Timestamp', placeholder: '1700000000' }
       ]},
     ]
@@ -1792,13 +2211,13 @@ const BLOCK_FAMILIES = [
   {
     name: 'HASH', color: '#39a5b7',
     blocks: [
-      { type: 'HASH_PREIMAGE', label: 'HASH_PRE', fields: [
+      { type: 'HASH_PREIMAGE', label: 'HASH_PRE', desc: 'SHA-256 hash preimage reveal', fields: [
         { name: 'hash', dataType: 'HASH256', label: 'SHA256 Hash', placeholder: '32-byte hex' }
       ]},
-      { type: 'HASH160_PREIMAGE', label: 'HASH160', fields: [
+      { type: 'HASH160_PREIMAGE', label: 'HASH160', desc: 'RIPEMD160(SHA256()) preimage reveal', fields: [
         { name: 'hash', dataType: 'HASH160', label: 'HASH160', placeholder: '20-byte hex' }
       ]},
-      { type: 'TAGGED_HASH', label: 'TAGGED', fields: [
+      { type: 'TAGGED_HASH', label: 'TAGGED', desc: 'BIP-340 tagged hash verification', fields: [
         { name: 'tag', dataType: 'HASH256', label: 'Tag Hash', placeholder: '32-byte hex' },
         { name: 'hash', dataType: 'HASH256', label: 'Expected', placeholder: '32-byte hex' }
       ]},
@@ -1807,13 +2226,13 @@ const BLOCK_FAMILIES = [
   {
     name: 'COVENANT', color: '#2ea043',
     blocks: [
-      { type: 'CTV', label: 'CTV', fields: [
+      { type: 'CTV', label: 'CTV', desc: 'CheckTemplateVerify covenant (BIP-119)', fields: [
         { name: 'template_hash', dataType: 'HASH256', label: 'Template Hash', placeholder: '32-byte hex' }
       ]},
-      { type: 'VAULT_LOCK', label: 'VAULT', fields: [
+      { type: 'VAULT_LOCK', label: 'VAULT', desc: 'Vault with hot/cold key paths and delay', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Vault Key', placeholder: '02abcdef...' }
       ]},
-      { type: 'AMOUNT_LOCK', label: 'AMT_LOCK', fields: [
+      { type: 'AMOUNT_LOCK', label: 'AMT_LOCK', desc: 'Output amount range constraint [min, max]', fields: [
         { name: 'min', dataType: 'NUMERIC', label: 'Min (sats)', placeholder: '5000' },
         { name: 'max', dataType: 'NUMERIC', label: 'Max (sats)', placeholder: '100000' }
       ]},
@@ -1822,23 +2241,23 @@ const BLOCK_FAMILIES = [
   {
     name: 'RECURSION', color: '#a855f7',
     blocks: [
-      { type: 'RECURSE_SAME', label: 'REC_SAME', fields: [] },
-      { type: 'RECURSE_MODIFIED', label: 'REC_MOD', fields: [
+      { type: 'RECURSE_SAME', label: 'REC_SAME', desc: 'Re-encumber output with identical conditions', fields: [] },
+      { type: 'RECURSE_MODIFIED', label: 'REC_MOD', desc: 'Re-encumber with a single field mutation', fields: [
         { name: 'rung_idx', dataType: 'NUMERIC', label: 'Rung', placeholder: '0' },
         { name: 'block_idx', dataType: 'NUMERIC', label: 'Block', placeholder: '0' },
         { name: 'param_idx', dataType: 'NUMERIC', label: 'Param', placeholder: '0' },
         { name: 'delta', dataType: 'NUMERIC', label: 'Delta', placeholder: '1' }
       ]},
-      { type: 'RECURSE_UNTIL', label: 'REC_UNTIL', fields: [
+      { type: 'RECURSE_UNTIL', label: 'REC_UNTIL', desc: 'Recursive until target block height reached', fields: [
         { name: 'target_height', dataType: 'NUMERIC', label: 'Target Height', placeholder: '850000' }
       ]},
-      { type: 'RECURSE_COUNT', label: 'REC_COUNT', fields: [
+      { type: 'RECURSE_COUNT', label: 'REC_COUNT', desc: 'Recursive countdown — terminates at zero', fields: [
         { name: 'remaining', dataType: 'NUMERIC', label: 'Remaining', placeholder: '10' }
       ]},
-      { type: 'RECURSE_SPLIT', label: 'REC_SPLIT', fields: [
+      { type: 'RECURSE_SPLIT', label: 'REC_SPLIT', desc: 'Recursive output splitting with min sats', fields: [
         { name: 'split_count', dataType: 'NUMERIC', label: 'Split Count', placeholder: '2' }
       ]},
-      { type: 'RECURSE_DECAY', label: 'REC_DECAY', fields: [
+      { type: 'RECURSE_DECAY', label: 'REC_DECAY', desc: 'Recursive parameter decay per spend', fields: [
         { name: 'max_depth', dataType: 'NUMERIC', label: 'Max Depth', placeholder: '10' }
       ]},
     ]
@@ -1846,23 +2265,23 @@ const BLOCK_FAMILIES = [
   {
     name: 'ANCHOR', color: '#888888',
     blocks: [
-      { type: 'ANCHOR', label: 'ANCHOR', fields: [
+      { type: 'ANCHOR', label: 'ANCHOR', desc: 'Generic protocol anchor tag', fields: [
         { name: 'data', dataType: 'HASH256', label: 'Data', placeholder: '32-byte hex' }
       ]},
-      { type: 'ANCHOR_CHANNEL', label: 'A_CHAN', fields: [
+      { type: 'ANCHOR_CHANNEL', label: 'A_CHAN', desc: 'Lightning channel anchor binding', fields: [
         { name: 'commitment', dataType: 'HASH256', label: 'Commitment', placeholder: '32-byte hex' }
       ]},
-      { type: 'ANCHOR_POOL', label: 'A_POOL', fields: [
+      { type: 'ANCHOR_POOL', label: 'A_POOL', desc: 'Pool / VTXO tree anchor', fields: [
         { name: 'pool_id', dataType: 'HASH256', label: 'Pool ID', placeholder: '32-byte hex' }
       ]},
-      { type: 'ANCHOR_RESERVE', label: 'A_RESV', fields: [
+      { type: 'ANCHOR_RESERVE', label: 'A_RESV', desc: 'N-of-M guardian reserve anchor', fields: [
         { name: 'threshold_n', dataType: 'NUMERIC', label: 'N', placeholder: '3' },
         { name: 'threshold_m', dataType: 'NUMERIC', label: 'M', placeholder: '5' }
       ]},
-      { type: 'ANCHOR_SEAL', label: 'A_SEAL', fields: [
+      { type: 'ANCHOR_SEAL', label: 'A_SEAL', desc: 'Permanent data commitment seal', fields: [
         { name: 'seal', dataType: 'HASH256', label: 'Seal Hash', placeholder: '32-byte hex' }
       ]},
-      { type: 'ANCHOR_ORACLE', label: 'A_ORACLE', fields: [
+      { type: 'ANCHOR_ORACLE', label: 'A_ORACLE', desc: 'Oracle attestation anchor', fields: [
         { name: 'oracle_pk', dataType: 'PUBKEY', label: 'Oracle Key', placeholder: '02abc...' }
       ]},
     ]
@@ -1870,61 +2289,61 @@ const BLOCK_FAMILIES = [
   {
     name: 'PLC', color: '#c43030',
     blocks: [
-      { type: 'HYSTERESIS_FEE', label: 'HYST_FEE', fields: [
+      { type: 'HYSTERESIS_FEE', label: 'HYST_FEE', desc: 'Fee rate band constraint [low, high] sat/vB', fields: [
         { name: 'high_sat_vb', dataType: 'NUMERIC', label: 'High (sat/vB)', placeholder: '100' },
         { name: 'low_sat_vb', dataType: 'NUMERIC', label: 'Low (sat/vB)', placeholder: '5' }
       ]},
-      { type: 'HYSTERESIS_VALUE', label: 'HYST_VAL', fields: [
+      { type: 'HYSTERESIS_VALUE', label: 'HYST_VAL', desc: 'Output value band constraint [low, high] sats', fields: [
         { name: 'high_sats', dataType: 'NUMERIC', label: 'High (sats)', placeholder: '100000' },
         { name: 'low_sats', dataType: 'NUMERIC', label: 'Low (sats)', placeholder: '5000' }
       ]},
-      { type: 'TIMER_CONTINUOUS', label: 'TMR_CONT', fields: [
+      { type: 'TIMER_CONTINUOUS', label: 'TMR_CONT', desc: 'Continuous block timer — elapsed vs target', fields: [
         { name: 'accumulated', dataType: 'NUMERIC', label: 'Accumulated', placeholder: '0' },
         { name: 'target', dataType: 'NUMERIC', label: 'Target', placeholder: '144' }
       ]},
-      { type: 'TIMER_OFF_DELAY', label: 'TMR_OFF', fields: [
+      { type: 'TIMER_OFF_DELAY', label: 'TMR_OFF', desc: 'Off-delay timer — hold after trigger expires', fields: [
         { name: 'remaining', dataType: 'NUMERIC', label: 'Remaining', placeholder: '10' }
       ]},
-      { type: 'LATCH_SET', label: 'LATCH_S', fields: [
+      { type: 'LATCH_SET', label: 'LATCH_S', desc: 'State latch activation (0 → 1)', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Setter Key', placeholder: '02abc...' },
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '0' }
       ]},
-      { type: 'LATCH_RESET', label: 'LATCH_R', fields: [
+      { type: 'LATCH_RESET', label: 'LATCH_R', desc: 'State latch deactivation (1 → 0) with delay', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Resetter Key', placeholder: '02abc...' },
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '1' },
         { name: 'delay', dataType: 'NUMERIC', label: 'Delay', placeholder: '6' }
       ]},
-      { type: 'COUNTER_DOWN', label: 'CTR_DN', fields: [
+      { type: 'COUNTER_DOWN', label: 'CTR_DN', desc: 'Decrementing counter — satisfied while > 0', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Event Key', placeholder: '02abc...' },
         { name: 'count', dataType: 'NUMERIC', label: 'Count', placeholder: '5' }
       ]},
-      { type: 'COUNTER_PRESET', label: 'CTR_PRE', fields: [
+      { type: 'COUNTER_PRESET', label: 'CTR_PRE', desc: 'Approval accumulator — satisfied until preset', fields: [
         { name: 'current', dataType: 'NUMERIC', label: 'Current', placeholder: '0' },
         { name: 'preset', dataType: 'NUMERIC', label: 'Preset', placeholder: '10' }
       ]},
-      { type: 'COUNTER_UP', label: 'CTR_UP', fields: [
+      { type: 'COUNTER_UP', label: 'CTR_UP', desc: 'Incrementing counter — satisfied until target', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Event Key', placeholder: '02abc...' },
         { name: 'current', dataType: 'NUMERIC', label: 'Current', placeholder: '0' },
         { name: 'target', dataType: 'NUMERIC', label: 'Target', placeholder: '10' }
       ]},
-      { type: 'COMPARE', label: 'COMPARE', fields: [
+      { type: 'COMPARE', label: 'COMPARE', desc: 'Comparator — EQ, GT, LT, GTE, LTE, IN_RANGE', fields: [
         { name: 'operator', dataType: 'NUMERIC', label: 'Op (1-7)', placeholder: '1' },
         { name: 'value_b', dataType: 'NUMERIC', label: 'Value B', placeholder: '5000' }
       ]},
-      { type: 'SEQUENCER', label: 'SEQ', fields: [
+      { type: 'SEQUENCER', label: 'SEQ', desc: 'Step sequencer — current step vs total', fields: [
         { name: 'current', dataType: 'NUMERIC', label: 'Current Step', placeholder: '0' },
         { name: 'total', dataType: 'NUMERIC', label: 'Total Steps', placeholder: '5' }
       ]},
-      { type: 'ONE_SHOT', label: 'ONE_SHOT', fields: [
+      { type: 'ONE_SHOT', label: 'ONE_SHOT', desc: 'Single-use activation — fires once then locks', fields: [
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '0' },
         { name: 'commitment', dataType: 'HASH256', label: 'Commitment', placeholder: '32-byte hex' }
       ]},
-      { type: 'RATE_LIMIT', label: 'RATE_LIM', fields: [
+      { type: 'RATE_LIMIT', label: 'RATE_LIM', desc: 'Rate limiter — max spend per window', fields: [
         { name: 'max_per_block', dataType: 'NUMERIC', label: 'Max/Block', placeholder: '50000' },
         { name: 'acc_cap', dataType: 'NUMERIC', label: 'Acc. Cap', placeholder: '200000' },
         { name: 'refill_blocks', dataType: 'NUMERIC', label: 'Refill Blocks', placeholder: '144' }
       ]},
-      { type: 'COSIGN', label: 'COSIGN', fields: [
+      { type: 'COSIGN', label: 'COSIGN', desc: 'Co-spend requirement with another input', fields: [
         { name: 'conditions_hash', dataType: 'HASH256', label: 'Conditions Hash', placeholder: '32-byte hex' }
       ]},
     ]
@@ -1944,6 +2363,62 @@ ALL_BLOCK_DEFS['OUTPUT_REF'] = OUTPUT_REF_BLOCK;
 
 function getBlockDef(type) { return ALL_BLOCK_DEFS[type] || { type, label: type, fields: [], familyColor: '#888' }; }
 
+const DATA_TYPE_SIZES = {
+  PUBKEY: { min: 1, max: 2048, note: '32B x-only, 33B compressed, or PQ up to 1793B' },
+  PUBKEY_COMMIT: { min: 32, max: 32, note: 'SHA-256 commitment to a public key' },
+  HASH256: { min: 32, max: 32, note: 'SHA-256 digest' },
+  HASH160: { min: 20, max: 20, note: 'RIPEMD160(SHA256()) digest' },
+  PREIMAGE: { min: 1, max: 252, note: 'Hash preimage (witness only)' },
+  SIGNATURE: { min: 1, max: 5000, note: 'Schnorr 64-65B, ECDSA 8-72B, PQ up to ~3300B' },
+  SPEND_INDEX: { min: 4, max: 4, note: 'uint32 LE index reference' },
+  NUMERIC: { min: 1, max: 4, note: 'Unsigned 32-bit integer, little-endian' },
+  SCHEME: { min: 1, max: 1, note: 'Signature scheme selector byte' },
+  TEXT: { min: 0, max: 255, note: 'Text label (engine-internal only)' },
+};
+
+const BLOCK_RULES = {
+  SIG: 'Verifies a single signature against the public key. Schnorr (64-65B) or ECDSA (8-72B) detected by size. With PUBKEY_COMMIT, the key must hash to the commitment (commit-reveal for PQ migration). With SCHEME field, routes to PQ verification.',
+  MULTISIG: 'M-of-N threshold: first NUMERIC is M, followed by N public keys and signatures. Exactly M valid signatures from distinct keys required.',
+  ADAPTOR_SIG: 'Adaptor signature verification for atomic swaps. Second PUBKEY is the adaptor point T. Signature verified under combined challenge H(R+T || P || m).',
+  CSV: 'Relative timelock in blocks (BIP-68). Satisfied when input sequence meets the required delay. Disable flag bypasses check.',
+  CSV_TIME: 'Relative timelock in seconds (BIP-68 time-based). Same logic as CSV but with time flag.',
+  CLTV: 'Absolute timelock by block height (BIP-65). Satisfied when nLockTime >= specified height.',
+  CLTV_TIME: 'Absolute timelock by median-time-past. Same logic as CLTV but compared against MTP.',
+  HASH_PREIMAGE: 'Satisfied when SHA256(preimage) equals the committed hash.',
+  HASH160_PREIMAGE: 'Satisfied when RIPEMD160(SHA256(preimage)) equals the committed hash.',
+  TAGGED_HASH: 'BIP-340 tagged hash: SHA256(tag || tag || preimage) must equal expected hash.',
+  CTV: 'BIP-119 CheckTemplateVerify. Spending transaction must match the committed template hash exactly.',
+  VAULT_LOCK: 'Two-path vault: recovery key sweeps immediately, hot key requires CSV delay. No SIGNATURE = ERROR.',
+  AMOUNT_LOCK: 'Satisfied when output amount is within [min, max] satoshis inclusive.',
+  RECURSE_SAME: 'Spending output must carry identical conditions. Terminates when max_depth reaches 0.',
+  RECURSE_MODIFIED: 'Like RECURSE_SAME but one field may be mutated by delta. Supports cross-rung and multi-field mutation.',
+  RECURSE_UNTIL: 'Recursive until block_height >= target. Below target, output must re-encumber identically.',
+  RECURSE_COUNT: 'Countdown: output must carry count-1. Terminates (SATISFIED) when count reaches 0.',
+  RECURSE_SPLIT: 'Output splitting with min sats enforcement. max_splits decrements per level.',
+  RECURSE_DECAY: 'Like RECURSE_MODIFIED but negates all deltas — parameter decreases per spend.',
+  ANCHOR: 'Generic anchor tag. Requires at least one field. Structural validation only.',
+  ANCHOR_CHANNEL: 'Lightning channel anchor. Requires 2 pubkeys (local, remote).',
+  ANCHOR_POOL: 'Pool anchor with VTXO tree root hash.',
+  ANCHOR_RESERVE: 'Reserve anchor: N-of-M guardian set. Requires N <= M.',
+  ANCHOR_SEAL: 'Seal anchor: permanently binds UTXO to a data commitment.',
+  ANCHOR_ORACLE: 'Oracle anchor: requires oracle pubkey and quorum count.',
+  HYSTERESIS_FEE: 'Satisfied when tx fee rate falls within [low, high] sat/vB.',
+  HYSTERESIS_VALUE: 'Satisfied when output amount falls within [low, high] sats.',
+  TIMER_CONTINUOUS: 'Satisfied when accumulated >= target blocks.',
+  TIMER_OFF_DELAY: 'Hold after trigger: satisfied while remaining > 0, unsatisfied at 0.',
+  LATCH_SET: 'Satisfied when state is 0 (unset), allowing transition to 1.',
+  LATCH_RESET: 'Satisfied when state >= 1 (set), allowing transition to 0 after delay.',
+  COUNTER_DOWN: 'Satisfied while count > 0. Pair with RECURSE_MODIFIED to decrement.',
+  COUNTER_PRESET: 'Satisfied while current < preset. Unsatisfied when threshold reached.',
+  COUNTER_UP: 'Satisfied while current < target. Pair with RECURSE_MODIFIED to increment.',
+  COMPARE: 'Compares output amount: 1=EQ, 2=NEQ, 3=GT, 4=LT, 5=GTE, 6=LTE, 7=IN_RANGE.',
+  SEQUENCER: 'Step sequencer: satisfied when current_step < total_steps.',
+  ONE_SHOT: 'Single-use: satisfied when state is 0. Once fired (state=1), permanently unsatisfied.',
+  RATE_LIMIT: 'Rate limiter: unsatisfied when output_amount > max_per_block.',
+  COSIGN: 'Satisfied when another input in the same tx has conditions matching the hash.',
+  OUTPUT_REF: 'References a named output coil from another rung.',
+};
+
 let _id = 0;
 function uid() { return ++_id; }
 
@@ -1951,11 +2426,11 @@ function createBlock(type) {
   const def = getBlockDef(type);
   const values = {};
   def.fields.forEach(f => { values[f.name] = ''; });
-  return { id: uid(), type, values, inverted: false };
+  return { id: uid(), type, values, inverted: false, name: '' };
 }
 
 function createRung() {
-  return { id: uid(), label: '', blocks: [], output: { name: '', type: 'standard', txOutputId: null, wireType: 'UNLOCK', attestation: 'INLINE', scheme: 'SCHNORR' }, txInputIds: [], outputRefs: [] };
+  return { id: uid(), label: '', blocks: [], output: { name: '', type: 'standard', txOutputId: null, wireType: 'UNLOCK', attestation: 'INLINE', scheme: 'SCHNORR' }, txInputIds: [], outputRefs: [], inputName: '' };
 }
 
 function rungDisplayName(rung, index) {
@@ -1992,7 +2467,6 @@ const SCHEME_TYPES = [
   { value: 'FALCON512', label: 'FALCON-512 (PQ)' },
   { value: 'FALCON1024', label: 'FALCON-1024 (PQ)' },
   { value: 'DILITHIUM3', label: 'DILITHIUM3 (PQ)' },
-  { value: 'SPHINCS_SHA', label: 'SPHINCS+ SHA (PQ)' },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -2223,7 +2697,7 @@ function exportBlockFields(block) {
     } else if (f.dataType === 'HASH160') {
       fields.push({ type: 'HASH160', hex: val });
     } else if (f.dataType === 'SCHEME' && val) {
-      const schemeMap = { FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
+      const schemeMap = { FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12' };
       fields.push({ type: 'SCHEME', hex: schemeMap[val] || '00' });
     }
   });
@@ -2344,6 +2818,12 @@ function PalettePanel({ onDragStart }) {
             >
               <div className="dot" style={{ background: family.color }} />
               {block.label}
+              {block.desc && (
+                <div className="palette-tip">
+                  {block.desc}
+                  <div className="tip-code">0x{getTypeHex(block.type)}</div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2352,11 +2832,21 @@ function PalettePanel({ onDragStart }) {
   );
 }
 
-function ContactView({ block, selected, simMode, simResult, scanClass, onClick, onDelete, onDragStart, onDragOver, onDrop, forcedState, onForceToggle, tips }) {
+function ContactView({ block, selected, simMode, simResult, scanClass, onClick, onDelete, onDragStart, onDragOver, onDrop, forcedState, onForceToggle, tips, onNameChange, onExpand, onContextMenu: onCtxMenu, renaming, onClearRenaming }) {
   const def = getBlockDef(block.type);
   const isEnergized = simMode && !scanClass && simResult === 'satisfied';
   const isFault = simMode && !scanClass && simResult === 'error';
   const isForced = forcedState === 'satisfied' || forcedState === 'unsatisfied';
+  const [editingNote, setEditingNote] = useState(false);
+  const noteInputRef = useRef(null);
+
+  useEffect(() => {
+    if (renaming) {
+      setEditingNote(true);
+      onClearRenaming?.();
+      setTimeout(() => noteInputRef.current?.focus(), 0);
+    }
+  }, [renaming, onClearRenaming]);
 
   const summary = useMemo(() => {
     const v = block.values;
@@ -2372,7 +2862,6 @@ function ContactView({ block, selected, simMode, simResult, scanClass, onClick, 
 
   const handleClick = useCallback((e) => {
     if (simMode && !scanClass && e.altKey) {
-      // Alt+click to force-toggle in sim mode
       e.stopPropagation();
       onForceToggle?.(block.id);
     } else {
@@ -2380,17 +2869,44 @@ function ContactView({ block, selected, simMode, simResult, scanClass, onClick, 
     }
   }, [simMode, scanClass, onClick, onForceToggle, block.id]);
 
+  const handleDoubleClick = useCallback((e) => {
+    if (simMode) return;
+    e.stopPropagation();
+    setEditingNote(true);
+    setTimeout(() => noteInputRef.current?.focus(), 0);
+  }, [simMode]);
+
+  const handleNoteBlur = useCallback(() => {
+    setEditingNote(false);
+  }, []);
+
+  const handleNoteKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      setEditingNote(false);
+    }
+  }, []);
+
+  const handleContextMenu = useCallback((e) => {
+    if (simMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onCtxMenu?.(e.clientX, e.clientY, block);
+  }, [simMode, block, onCtxMenu]);
+
   return (
     <div
       className={`contact ${isEnergized ? 'energized' : ''} ${isFault ? 'fault' : ''} ${selected ? 'selected' : ''} ${scanClass || ''} ${isForced ? (forcedState === 'satisfied' ? 'forced-on' : 'forced-off') : ''}`}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
+      onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
       draggable={!simMode}
       onDragStart={simMode ? undefined : (e) => { e.dataTransfer.setData('reorderBlockId', String(block.id)); onDragStart?.(block.id); }}
       onDragOver={simMode ? undefined : (e) => { e.preventDefault(); e.stopPropagation(); onDragOver?.(e, block.id); }}
       onDrop={simMode ? undefined : (e) => { e.preventDefault(); e.stopPropagation(); onDrop?.(e, block.id); }}
-      title={tips ? (simMode ? (scanClass === 'step-next' ? 'Click to pass this block and advance' : 'Alt+click to force ON/OFF/AUTO') : 'Click to select, drag to reorder') : undefined}
+      title={tips ? (simMode ? (scanClass === 'step-next' ? 'Click to pass this block and advance' : 'Alt+click to force ON/OFF/AUTO') : 'Click to select · Double-click to name · Right-click for options · Drag to reorder') : undefined}
     >
-      {block.inverted && <span className="contact-inverted">NOT</span>}
+      {block.inverted && <span className="contact-inverted" />}
       {isForced && <span className={`force-badge ${forcedState === 'satisfied' ? 'on' : 'off'}`}>{forcedState === 'satisfied' ? 'FORCE' : 'BLOCK'}</span>}
       <span className="contact-bracket-left" style={{ color: isEnergized && !isForced ? undefined : isForced ? undefined : def.familyColor + '80' }}>─┤</span>
       <div className="contact-body" style={{ borderTopColor: isEnergized && !isForced ? undefined : isForced ? undefined : def.familyColor, borderTopWidth: 2 }}>
@@ -2399,14 +2915,550 @@ function ContactView({ block, selected, simMode, simResult, scanClass, onClick, 
       </div>
       <span className="contact-bracket-right" style={{ color: isEnergized && !isForced ? undefined : isForced ? undefined : def.familyColor + '80' }}>├─</span>
       {!simMode && <div className="contact-delete" onClick={(e) => { e.stopPropagation(); onDelete(); }}>✕</div>}
+      {block.name && !editingNote && <span className="contact-note">{block.name}</span>}
+      {editingNote && (
+        <input
+          ref={noteInputRef}
+          className="contact-note-input"
+          value={block.name || ''}
+          placeholder="Name this block..."
+          onChange={(e) => onNameChange?.(block.id, e.target.value)}
+          onBlur={handleNoteBlur}
+          onKeyDown={handleNoteKeyDown}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
+    </div>
+  );
+}
+
+function BlockContextMenu({ x, y, block, onRename, onExpand, onToggleInvert, onDuplicate, onDelete, onClose }) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) onClose();
+    };
+    const escHandler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escHandler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', escHandler); };
+  }, [onClose]);
+
+  // Clamp menu position to viewport
+  const style = useMemo(() => {
+    const s = { left: x, top: y };
+    if (typeof window !== 'undefined') {
+      if (x + 180 > window.innerWidth) s.left = window.innerWidth - 180;
+      if (y + 200 > window.innerHeight) s.top = window.innerHeight - 200;
+    }
+    return s;
+  }, [x, y]);
+
+  return (
+    <div className="block-context-menu" ref={menuRef} style={style}>
+      <div className="ctx-item" onClick={() => { onRename(); onClose(); }}>
+        <span className="ctx-item-icon">✎</span>RENAME
+      </div>
+      <div className="ctx-item" onClick={() => { onExpand(); onClose(); }}>
+        <span className="ctx-item-icon">⊞</span>INSPECT
+      </div>
+      <div className="ctx-sep" />
+      <div className="ctx-item" onClick={() => { onToggleInvert(); onClose(); }}>
+        <span className="ctx-item-icon">{block.inverted ? '○' : '◉'}</span>{block.inverted ? 'REMOVE NOT' : 'INVERT (NOT)'}
+      </div>
+      <div className="ctx-item" onClick={() => { onDuplicate(); onClose(); }}>
+        <span className="ctx-item-icon">⊕</span>DUPLICATE
+      </div>
+      <div className="ctx-sep" />
+      <div className="ctx-item ctx-danger" onClick={() => { onDelete(); onClose(); }}>
+        <span className="ctx-item-icon">✕</span>DELETE
+      </div>
+    </div>
+  );
+}
+
+function InputContextMenu({ x, y, rung, onRename, onExpand, onClear, onClose }) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) onClose();
+    };
+    const escHandler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escHandler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', escHandler); };
+  }, [onClose]);
+
+  const style = useMemo(() => {
+    const s = { left: x, top: y };
+    if (typeof window !== 'undefined') {
+      if (x + 180 > window.innerWidth) s.left = window.innerWidth - 180;
+      if (y + 120 > window.innerHeight) s.top = window.innerHeight - 120;
+    }
+    return s;
+  }, [x, y]);
+
+  return (
+    <div className="block-context-menu" ref={menuRef} style={style}>
+      <div className="ctx-item" onClick={() => { onRename(); onClose(); }}>
+        <span className="ctx-item-icon">✎</span>RENAME
+      </div>
+      <div className="ctx-item" onClick={() => { onExpand(); onClose(); }}>
+        <span className="ctx-item-icon">⊞</span>INSPECT
+      </div>
+      <div className="ctx-sep" />
+      <div className="ctx-item ctx-danger" onClick={() => { onClear(); onClose(); }}>
+        <span className="ctx-item-icon">✕</span>CLEAR INPUTS
+      </div>
+    </div>
+  );
+}
+
+function OutputContextMenu({ x, y, rung, onRename, onExpand, onClear, onClose }) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) onClose();
+    };
+    const escHandler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escHandler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', escHandler); };
+  }, [onClose]);
+
+  const style = useMemo(() => {
+    const s = { left: x, top: y };
+    if (typeof window !== 'undefined') {
+      if (x + 180 > window.innerWidth) s.left = window.innerWidth - 180;
+      if (y + 140 > window.innerHeight) s.top = window.innerHeight - 140;
+    }
+    return s;
+  }, [x, y]);
+
+  return (
+    <div className="block-context-menu" ref={menuRef} style={style}>
+      <div className="ctx-item" onClick={() => { onRename(); onClose(); }}>
+        <span className="ctx-item-icon">✎</span>RENAME
+      </div>
+      <div className="ctx-item" onClick={() => { onExpand(); onClose(); }}>
+        <span className="ctx-item-icon">⊞</span>INSPECT
+      </div>
+      <div className="ctx-sep" />
+      <div className="ctx-item ctx-danger" onClick={() => { onClear(); onClose(); }}>
+        <span className="ctx-item-icon">✕</span>CLEAR OUTPUT
+      </div>
+    </div>
+  );
+}
+
+function InputModal({ rung, rungIndex, onRungChange, txInputs, allRungs, onClose }) {
+  if (!rung) return null;
+  const rungNum = rung.label || `R${String(rungIndex).padStart(3, '0')}`;
+
+  const availableOutputs = useMemo(() => {
+    if (!allRungs) return [];
+    return allRungs.map((r, i) => {
+      if (r.id === rung.id) return null;
+      const label = r.label || `R${String(i).padStart(3, '0')}`;
+      const coilName = r.output.name;
+      const refValue = coilName || r.label || `R${String(i).padStart(3, '0')}`;
+      const display = `${label}${coilName && coilName !== r.label ? ' → ' + coilName : ''}${!coilName ? ' (unnamed)' : ''}`;
+      return { refValue, display, rungId: r.id };
+    }).filter(Boolean);
+  }, [allRungs, rung.id]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="block-modal-overlay" onClick={onClose}>
+      <div className="block-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="block-modal-header">
+          <span className="block-modal-type-badge" style={{ color: 'var(--cyan)' }}>
+            <span className="block-modal-type-dot" style={{ background: 'var(--cyan)' }} />
+            INPUT
+          </span>
+          <span className="block-modal-family">{rungNum}</span>
+          <span className="block-modal-hex">Rung Input Contact</span>
+          <button className="block-modal-close" onClick={onClose}>ESC</button>
+        </div>
+        <div className="block-modal-body">
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">NAME / NOTE</div>
+            <input
+              className="block-modal-note-input"
+              value={rung.inputName || ''}
+              placeholder="Label this input contact..."
+              onChange={(e) => onRungChange(rung.id, 'inputName', e.target.value)}
+            />
+          </div>
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">TX INPUTS (UTXOs)</div>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.4 }}>
+              Select which UTXOs this spending path consumes.
+            </div>
+            {(txInputs || []).map((input, idx) => {
+              const isChecked = (rung.txInputIds || []).includes(input.id);
+              const txidShort = input.txid ? input.txid.substring(0, 8) + '..' + input.txid.slice(-4) : '(no txid)';
+              return (
+                <div key={input.id} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    id={`im-txin-${rung.id}-${input.id}`}
+                    checked={isChecked}
+                    onChange={(e) => {
+                      const current = rung.txInputIds || [];
+                      const next = e.target.checked ? [...current, input.id] : current.filter(id => id !== input.id);
+                      onRungChange(rung.id, 'txInputIds', next);
+                    }}
+                  />
+                  <label htmlFor={`im-txin-${rung.id}-${input.id}`} style={{ fontSize: 9, lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--cyan)' }}>VIN {idx}</span> {txidShort}:{input.vout}
+                  </label>
+                </div>
+              );
+            })}
+            {(!txInputs || txInputs.length === 0) && (
+              <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>No TX inputs defined. Add inputs in the TX tab.</div>
+            )}
+          </div>
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">OUTPUT REFERENCES</div>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.4 }}>
+              Reference outputs from other rungs as input conditions.
+            </div>
+            {availableOutputs.map((out) => {
+              const isChecked = (rung.outputRefs || []).includes(out.refValue);
+              return (
+                <div key={out.rungId} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    id={`im-outref-${rung.id}-${out.rungId}`}
+                    checked={isChecked}
+                    onChange={(e) => {
+                      const current = rung.outputRefs || [];
+                      const next = e.target.checked ? [...current, out.refValue] : current.filter(v => v !== out.refValue);
+                      onRungChange(rung.id, 'outputRefs', next);
+                    }}
+                  />
+                  <label htmlFor={`im-outref-${rung.id}-${out.rungId}`} style={{ fontSize: 9, lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--amber-dim)' }}>{out.display}</span>
+                  </label>
+                </div>
+              );
+            })}
+            {availableOutputs.length === 0 && (
+              <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>No other rungs available to reference.</div>
+            )}
+          </div>
+        </div>
+        <div className="block-modal-footer">
+          <button className="block-modal-ok" onClick={onClose}>OK</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OutputModal({ rung, rungIndex, onChange, txOutputs, onClose }) {
+  if (!rung) return null;
+  const rungNum = rung.label || `R${String(rungIndex).padStart(3, '0')}`;
+  const coilSym = getCoilSymbol(rung.output.type);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const assignedTxOut = txOutputs?.find(o => o.id === rung.output.txOutputId);
+
+  return (
+    <div className="block-modal-overlay" onClick={onClose}>
+      <div className="block-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="block-modal-header">
+          <span className="block-modal-type-badge" style={{ color: 'var(--green-bright)' }}>
+            <span className="block-modal-type-dot" style={{ background: 'var(--green-bright)' }} />
+            {coilSym} OUTPUT
+          </span>
+          <span className="block-modal-family">{rungNum}</span>
+          <span className="block-modal-hex">Rung Output Coil</span>
+          <button className="block-modal-close" onClick={onClose}>ESC</button>
+        </div>
+        <div className="block-modal-body">
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">NAME</div>
+            <input
+              className="block-modal-note-input"
+              value={rung.output.name || ''}
+              placeholder="e.g. SPEND_PATH"
+              onChange={(e) => onChange(rung.id, 'name', e.target.value.toUpperCase())}
+              style={{ textTransform: 'uppercase' }}
+            />
+          </div>
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">COIL TYPE</div>
+            <select
+              className="block-modal-field-select"
+              value={rung.output.type}
+              onChange={(e) => onChange(rung.id, 'type', e.target.value)}
+            >
+              {COIL_TYPES.map(ct => (
+                <option key={ct.value} value={ct.value}>{ct.symbol} {ct.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">WIRE FORMAT</div>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6, lineHeight: 1.4 }}>
+              On-chain unlock parameters for this output.
+            </div>
+            <div className="block-modal-field-row">
+              <span className="block-modal-field-label">Coil Type</span>
+              <select
+                className="block-modal-field-select"
+                value={rung.output.wireType || 'UNLOCK'}
+                onChange={(e) => onChange(rung.id, 'wireType', e.target.value)}
+              >
+                {WIRE_COIL_TYPES.map(ct => (
+                  <option key={ct.value} value={ct.value}>{ct.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="block-modal-field-row">
+              <span className="block-modal-field-label">Attestation</span>
+              <select
+                className="block-modal-field-select"
+                value={rung.output.attestation || 'INLINE'}
+                onChange={(e) => onChange(rung.id, 'attestation', e.target.value)}
+              >
+                {ATTESTATION_TYPES.map(at => (
+                  <option key={at.value} value={at.value}>{at.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="block-modal-field-row">
+              <span className="block-modal-field-label">Scheme</span>
+              <select
+                className="block-modal-field-select"
+                value={rung.output.scheme || 'SCHNORR'}
+                onChange={(e) => onChange(rung.id, 'scheme', e.target.value)}
+              >
+                {SCHEME_TYPES.map(st => (
+                  <option key={st.value} value={st.value}>{st.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">TX OUTPUT</div>
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6, lineHeight: 1.4 }}>
+              Assign a transaction output to send funds when this path is satisfied.
+            </div>
+            <select
+              className="block-modal-field-select"
+              value={rung.output.txOutputId || ''}
+              onChange={(e) => onChange(rung.id, 'txOutputId', e.target.value ? parseInt(e.target.value) : null)}
+            >
+              <option value="">— none —</option>
+              {(txOutputs || []).map((o, idx) => (
+                <option key={o.id} value={o.id}>
+                  VOUT {idx}: {o.address ? (o.address.length > 20 ? o.address.substring(0, 10) + '...' + o.address.slice(-6) : o.address) : '(no addr)'} — {(parseInt(o.amount) || 0).toLocaleString()} sats
+                </option>
+              ))}
+            </select>
+            {assignedTxOut && (
+              <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 10 }}>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>Address:</div>
+                <div style={{ color: 'var(--amber)', wordBreak: 'break-all', fontSize: 9 }}>{assignedTxOut.address || '—'}</div>
+                <div style={{ color: 'var(--text-secondary)', marginTop: 4, marginBottom: 2 }}>Amount:</div>
+                <div style={{ color: 'var(--amber)' }}>{(parseInt(assignedTxOut.amount) || 0).toLocaleString()} sats</div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="block-modal-footer">
+          <button className="block-modal-ok" onClick={onClose}>OK</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BlockModal({ block, onChange, onClose, rungs }) {
+  if (!block) return null;
+  const def = getBlockDef(block.type);
+  const family = BLOCK_FAMILIES.find(f => f.blocks.some(b => b.type === block.type));
+  const rules = BLOCK_RULES[block.type];
+
+  // Collect outputs for OUTPUT_REF dropdown
+  const allOutputs = useMemo(() => {
+    if (!rungs) return [];
+    return rungs.map((r, i) => {
+      const rungNum = `R${String(i).padStart(3, '0')}`;
+      return { refValue: r.output.name || r.label || rungNum, display: `${rungNum} ${r.output.name || r.label || '(unnamed)'}` };
+    });
+  }, [rungs]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="block-modal-overlay" onClick={onClose}>
+      <div className="block-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="block-modal-header">
+          <span className="block-modal-type-badge" style={{ color: def.familyColor }}>
+            <span className="block-modal-type-dot" style={{ background: def.familyColor }} />
+            {def.label}
+          </span>
+          {family && <span className="block-modal-family">{family.name}</span>}
+          <span className="block-modal-hex">0x{getTypeHex(block.type)}</span>
+          <button className="block-modal-close" onClick={onClose}>ESC</button>
+        </div>
+        <div className="block-modal-body">
+          {/* Name / Note */}
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">NAME / NOTE</div>
+            <input
+              className="block-modal-note-input"
+              value={block.name || ''}
+              placeholder="Add a label or note for this block..."
+              onChange={(e) => onChange(block.id, '__name', e.target.value)}
+            />
+          </div>
+
+          {/* Configuration */}
+          <div className="block-modal-section">
+            <div className="block-modal-section-title">CONFIGURATION</div>
+            <div className="block-modal-checkbox-row">
+              <input
+                type="checkbox"
+                id="modal-inverted"
+                checked={block.inverted}
+                onChange={(e) => onChange(block.id, '__inverted', e.target.checked)}
+              />
+              <label htmlFor="modal-inverted">INVERTED (NOT) — flips SATISFIED ↔ UNSATISFIED</label>
+            </div>
+            {def.fields.map(field => {
+              if (block.type === 'OUTPUT_REF' && field.name === 'ref_name') {
+                return (
+                  <div key={field.name} className="block-modal-field-row">
+                    <span className="block-modal-field-label">{field.label}</span>
+                    <span className="block-modal-field-type">{field.dataType}</span>
+                    <select
+                      className="block-modal-field-select"
+                      value={block.values[field.name] || ''}
+                      onChange={(e) => onChange(block.id, field.name, e.target.value)}
+                    >
+                      <option value="">— select output —</option>
+                      {allOutputs.map((o, oi) => <option key={oi} value={o.refValue}>{o.display}</option>)}
+                    </select>
+                  </div>
+                );
+              }
+              if (field.dataType === 'SCHEME') {
+                return (
+                  <div key={field.name} className="block-modal-field-row">
+                    <span className="block-modal-field-label">{field.label}</span>
+                    <span className="block-modal-field-type">SCHEME</span>
+                    <select
+                      className="block-modal-field-select"
+                      value={block.values[field.name] || ''}
+                      onChange={(e) => onChange(block.id, field.name, e.target.value)}
+                    >
+                      <option value="">SCHNORR (default)</option>
+                      <option value="FALCON512">FALCON-512 (PQ)</option>
+                      <option value="FALCON1024">FALCON-1024 (PQ)</option>
+                      <option value="DILITHIUM3">DILITHIUM3 (PQ)</option>
+                    </select>
+                  </div>
+                );
+              }
+              return (
+                <div key={field.name} className="block-modal-field-row">
+                  <span className="block-modal-field-label">{field.label}</span>
+                  <span className="block-modal-field-type">{field.dataType}</span>
+                  <input
+                    className="block-modal-field-input"
+                    value={block.values[field.name] || ''}
+                    placeholder={field.placeholder}
+                    onChange={(e) => onChange(block.id, field.name, e.target.value)}
+                  />
+                </div>
+              );
+            })}
+            {def.fields.length === 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No configurable fields — structural block.</div>
+            )}
+          </div>
+
+          {/* Evaluation Rules */}
+          {rules && (
+            <div className="block-modal-section">
+              <div className="block-modal-section-title">EVALUATION RULES</div>
+              <div className="block-modal-rules">{rules}</div>
+            </div>
+          )}
+
+          {/* Data Type Constraints */}
+          {def.fields.length > 0 && (
+            <div className="block-modal-section">
+              <div className="block-modal-section-title">FIELD CONSTRAINTS</div>
+              <div className="block-modal-constraints">
+                {def.fields.filter(f => DATA_TYPE_SIZES[f.dataType]).map(field => {
+                  const s = DATA_TYPE_SIZES[field.dataType];
+                  return (
+                    <React.Fragment key={field.name}>
+                      <span className="c-label">{field.label}</span>
+                      <span className="c-type">{field.dataType}</span>
+                      <span className="c-size">{s.min === s.max ? `${s.min}B` : `${s.min}–${s.max}B`}</span>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="block-modal-footer">
+          <button className="block-modal-ok" onClick={onClose}>OK</button>
+        </div>
+      </div>
     </div>
   );
 }
 
 const MAX_BLOCKS_PER_RUNG = 8;
 
-function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput, simMode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, scanStep, scanResults, scanning, isSpent, spentType, forcedBlocks, onForceBlock, onExecuteRung, onStartScanFrom, isSteppingThrough, stepActiveIdx, stepResults, onStepBlock, tips }) {
+function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput, simMode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, scanStep, scanResults, scanning, isSpent, spentType, forcedBlocks, onForceBlock, onExecuteRung, onStartScanFrom, isSteppingThrough, stepActiveIdx, stepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onOutputContextMenu }) {
   const [dropSlot, setDropSlot] = useState(null);
+  const [editingInputName, setEditingInputName] = useState(false);
+  const inputNoteRef = useRef(null);
+
+  useEffect(() => {
+    if (renamingInputId === rung.id) {
+      setEditingInputName(true);
+      onClearRenamingInput?.();
+      setTimeout(() => inputNoteRef.current?.focus(), 0);
+    }
+  }, [renamingInputId, rung.id, onClearRenamingInput]);
 
   const blockResults = useMemo(() => {
     if (!simMode) return {};
@@ -2537,7 +3589,10 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
         <div
           className={`input-contact ${rungEnergized || isSteppingThrough ? 'energized' : ''} ${selectedInput === rung.id ? 'selected' : ''} ${(rung.txInputIds && rung.txInputIds.length > 0) || (rung.outputRefs && rung.outputRefs.length > 0) ? 'has-inputs' : ''} ${scanning && isActiveRung && scanStep?.type === 'input' ? 'scan-active' : ''}`}
           onClick={() => { if (!isSteppingThrough) onSelectInput(rung.id); }}
-          title={tips ? (simMode ? 'Input contact — TX inputs feeding this rung' : 'Click to assign TX inputs or output references') : undefined}
+          onDoubleClick={(e) => { if (!simMode) { e.stopPropagation(); setEditingInputName(true); setTimeout(() => inputNoteRef.current?.focus(), 0); } }}
+          onContextMenu={(e) => { if (!simMode) { e.preventDefault(); e.stopPropagation(); onInputContextMenu?.(e.clientX, e.clientY, rung); } }}
+          onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
+          title={tips ? (simMode ? 'Input contact — TX inputs feeding this rung' : 'Click to select · Double-click to name · Right-click for options') : undefined}
         >
           <span className="contact-bracket-left">─┤</span>
           <div className="input-contact-body">
@@ -2553,6 +3608,19 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
           </div>
           <span className="contact-bracket-right">├─</span>
           {(!rung.txInputIds || rung.txInputIds.length === 0) && (!rung.outputRefs || rung.outputRefs.length === 0) && <span className="input-warn" title="No TX inputs or output refs assigned">⚠</span>}
+          {rung.inputName && !editingInputName && <span className="input-contact-note">{rung.inputName}</span>}
+          {editingInputName && (
+            <input
+              ref={inputNoteRef}
+              className="input-contact-note-input"
+              value={rung.inputName || ''}
+              placeholder="Name this input..."
+              onChange={(e) => onRungChange?.(rung.id, 'inputName', e.target.value)}
+              onBlur={() => setEditingInputName(false)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingInputName(false); }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
 
         <div
@@ -2599,6 +3667,11 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
                   forcedState={forcedBlocks?.[slot.block.id] || null}
                   onForceToggle={onForceBlock}
                   tips={tips}
+                  onNameChange={onNameChange}
+                  onExpand={() => onExpandBlock?.(slot.block.id)}
+                  onContextMenu={(x, y, block) => onBlockContextMenu?.(x, y, block, rung.id)}
+                  renaming={renamingBlockId === slot.block.id}
+                  onClearRenaming={onClearRenaming}
                 />
               ) : (
                 <div className={`rung-slot-wire ${slot.isFlowing ? 'energized' : ''}`} />
@@ -2613,7 +3686,10 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
         <div
           className={`coil ${rungEnergized || stepCoilReached ? 'energized' : ''} ${selectedCoil === rung.id ? 'selected' : ''} ${rung.output.txOutputId ? 'has-tx-output' : ''} ${scanning && isActiveRung && scanStep?.type === 'coil' ? 'scan-active' : ''} ${coilResult === 'pass' ? 'scan-pass' : ''} ${coilResult === 'fail' ? 'scan-fail' : ''} ${stepCoilReached ? 'step-complete' : ''}`}
           onClick={() => onSelectCoil(rung.id)}
+          onContextMenu={(e) => { if (!simMode) { e.preventDefault(); e.stopPropagation(); onOutputContextMenu?.(e.clientX, e.clientY, rung); } }}
+          onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
           style={{ cursor: 'pointer', position: 'relative' }}
+          title={tips ? (simMode ? 'Output coil — rung result' : 'Click to select · Right-click for options') : undefined}
         >
           <span className="coil-symbol">{getCoilSymbol(rung.output.type)}</span>
           {(rung.output.name || rung.output.txOutputId) && (
@@ -2646,7 +3722,7 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
   );
 }
 
-function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onAddRung, onAddRungWithBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, fullscreen, onToggleFullscreen, scanPhase, scanStep, scanResults, scanSpeed, onScanStart, onScanPause, onScanResume, onScanStepFwd, onScanStepBack, onScanReset, onScanSpeedChange, scanIdx, scanTotal, spentRungs, forcedBlocks, onForceBlock, onExecuteRung, onResetSim, onStartScanFrom, simActiveRungId, simActiveStep, simStepResults, onStepBlock, tips }) {
+function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onAddRung, onAddRungWithBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, fullscreen, onToggleFullscreen, scanPhase, scanStep, scanResults, scanSpeed, onScanStart, onScanPause, onScanResume, onScanStepFwd, onScanStepBack, onScanReset, onScanSpeedChange, scanIdx, scanTotal, spentRungs, forcedBlocks, onForceBlock, onExecuteRung, onResetSim, onStartScanFrom, simActiveRungId, simActiveStep, simStepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onClear, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onDeselect, onOutputContextMenu }) {
   const simMode = mode === 'simulate' || mode === 'watch';
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -2727,11 +3803,13 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
         )}
         <div className="zoom-controls">
           <button className="zoom-btn" onClick={() => setZoom(z => Math.round(Math.max(0.3, z - 0.1) * 10) / 10)} title="Zoom out">−</button>
-          <span className="zoom-level" onClick={resetView} style={{ cursor: 'pointer' }} title="Reset zoom">{Math.round(zoom * 100)}%</span>
+          <span className="zoom-level" onClick={resetView} style={{ cursor: 'pointer' }} title="Click to reset zoom">{Math.round(zoom * 100)}%</span>
           <button className="zoom-btn" onClick={() => setZoom(z => Math.round(Math.min(3, z + 0.1) * 10) / 10)} title="Zoom in">+</button>
+          <button className="zoom-btn" onClick={resetView} title="Reset view — zoom 100% and re-centre">⌂</button>
         </div>
         <div style={{ flex: 1 }} />
         {!simMode && <button className="ladder-toolbar-btn" onClick={onAddRung}>+ RUNG</button>}
+        {!simMode && <button className="ladder-toolbar-btn" onClick={onClear} style={{ color: 'var(--red)', borderColor: 'var(--red-dim)' }} title="Clear all rungs and start fresh">CLEAR</button>}
         <button className="ladder-toolbar-btn" onClick={onToggleFullscreen} title={fullscreen ? 'Exit fullscreen (F11)' : 'Fullscreen (F11)'}>{fullscreen ? '⊡' : '⊞'}</button>
       </div>
       {simMode && (
@@ -2773,6 +3851,7 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
         className={`ladder-zoom-wrapper ${isPanning ? 'panning' : ''}`}
         ref={wrapperRef}
         onMouseDown={handleMouseDown}
+        onClick={(e) => { if (e.target === e.currentTarget || e.target.classList.contains('ladder-zoom-content')) onDeselect?.(); }}
         onContextMenu={(e) => e.preventDefault()}
       >
         <div
@@ -2819,6 +3898,16 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
                 stepResults={simStepResults}
                 onStepBlock={onStepBlock}
                 tips={tips}
+                onNameChange={onNameChange}
+                onExpandBlock={onExpandBlock}
+                onBlockContextMenu={onBlockContextMenu}
+                renamingBlockId={renamingBlockId}
+                onClearRenaming={onClearRenaming}
+                onInputContextMenu={onInputContextMenu}
+                onRungChange={onRungChange}
+                renamingInputId={renamingInputId}
+                onClearRenamingInput={onClearRenamingInput}
+                onOutputContextMenu={onOutputContextMenu}
               />
             ))
           )}
@@ -2841,7 +3930,7 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
   );
 }
 
-function PropertiesPanel({ block, onChange, rungs }) {
+function PropertiesPanel({ block, onChange, rungs, onExpand }) {
   if (!block) {
     return (
       <div className="no-selection">
@@ -2876,7 +3965,19 @@ function PropertiesPanel({ block, onChange, rungs }) {
   return (
     <div>
       <div className="prop-section">
-        <div className="prop-section-title">BLOCK — {block.type}</div>
+        <div className="prop-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>BLOCK — {block.type}</span>
+          <button className="block-modal-expand-btn" onClick={() => onExpand?.(block.id)}>EXPAND ◇</button>
+        </div>
+        <div className="prop-row">
+          <span className="prop-label">Name</span>
+          <input
+            className="prop-input"
+            value={block.name || ''}
+            placeholder="Label this block..."
+            onChange={(e) => onChange(block.id, '__name', e.target.value)}
+          />
+        </div>
         <div className="prop-checkbox-row">
           <input
             type="checkbox"
@@ -2926,7 +4027,6 @@ function PropertiesPanel({ block, onChange, rungs }) {
                     <option value="FALCON512">FALCON-512 (PQ)</option>
                     <option value="FALCON1024">FALCON-1024 (PQ)</option>
                     <option value="DILITHIUM3">DILITHIUM3 (PQ)</option>
-                    <option value="SPHINCS_SHA">SPHINCS+ SHA (PQ)</option>
                   </select>
                 </div>
               );
@@ -4374,18 +5474,631 @@ function ExamplesModal({ onClose, onLoad }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DECODED JSON → BUILDER RUNG CONVERTER
+// ═══════════════════════════════════════════════════════════════
+
+// Convert decoded rung JSON (from decoderung RPC, createrungtx format, or raw tx)
+// into the builder's internal rung format for visualization.
+function decodedToBuilderRungs(data) {
+  if (!data || typeof data !== 'object') return null;
+
+  const parseHexNumeric = (hex) => {
+    if (!hex) return '0';
+    const bytes = hex.match(/.{2}/g) || [];
+    let val = 0;
+    bytes.forEach((b, i) => { val |= parseInt(b, 16) << (i * 8); });
+    return String(val);
+  };
+  const SCHEME_REV = { '01': 'SCHNORR', '02': 'ECDSA', '10': 'FALCON512', '11': 'FALCON1024', '12': 'DILITHIUM3', '13': 'SPHINCS_SHA' };
+
+  const convertBlock = (bd) => {
+    const typeName = bd.block_type || bd.type || bd.block || 'SIG';
+    const block = createBlock(typeName);
+    block.inverted = !!bd.inverted;
+
+    const params = bd.params || bd.fields || [];
+    const def = getBlockDef(typeName);
+
+    if (Array.isArray(params) && params.length > 0) {
+      let pi = 0;
+      for (const field of def.fields) {
+        if (pi >= params.length) break;
+        if (field.multi) {
+          // Collect consecutive params matching this field's dataType
+          const vals = [];
+          while (pi < params.length) {
+            const p = params[pi];
+            const pType = (p.type || p.data_type || '').toUpperCase();
+            if (pType && pType !== field.dataType && vals.length > 0) break;
+            vals.push(p.hex || p.data || String(p.value || ''));
+            pi++;
+          }
+          block.values[field.name] = vals.join(', ');
+        } else {
+          const p = params[pi];
+          const hex = p.hex || p.data || '';
+          if (field.dataType === 'NUMERIC') {
+            block.values[field.name] = hex ? parseHexNumeric(hex) : String(p.value != null ? p.value : '');
+          } else if (field.dataType === 'SCHEME') {
+            block.values[field.name] = SCHEME_REV[hex] || hex || String(p.value || '');
+          } else {
+            block.values[field.name] = hex || String(p.value || '');
+          }
+          pi++;
+        }
+      }
+    } else if (typeof params === 'object' && !Array.isArray(params)) {
+      // Named params: { key: "02abc...", scheme: "SCHNORR", blocks: 144 }
+      for (const field of def.fields) {
+        const val = params[field.name] ?? params[field.label?.toLowerCase()] ?? '';
+        if (val !== '') block.values[field.name] = String(val);
+      }
+    }
+    return block;
+  };
+
+  const convertRung = (rd) => {
+    const rung = createRung();
+    const blocksData = rd.blocks || rd.contacts || [];
+    rung.blocks = blocksData.map(convertBlock);
+    const coil = rd.coil || {};
+    rung.output.wireType = coil.coil_type || coil.type || 'UNLOCK';
+    rung.output.attestation = coil.attestation || 'INLINE';
+    rung.output.scheme = coil.scheme || 'SCHNORR';
+    rung.label = rd.label || '';
+    return rung;
+  };
+
+  // Format 1: decoderung output — { rungs: [...] } or { n_rungs, rungs: [...] }
+  if (data.rungs && Array.isArray(data.rungs)) {
+    return { rungs: data.rungs.map(convertRung), txInputs: [], txOutputs: [] };
+  }
+  // Format 2: bare array of rungs
+  if (Array.isArray(data) && data.length > 0 && (data[0].blocks || data[0].contacts)) {
+    return { rungs: data.map(convertRung), txInputs: [], txOutputs: [] };
+  }
+  // Format 3: createrungtx / wire format — { inputs, outputs[].conditions[].blocks[] }
+  if (data.outputs && Array.isArray(data.outputs)) {
+    const txInputs = (data.inputs || []).map(i => ({ id: uid(), txid: i.txid || '', vout: i.vout || 0, sequence: i.sequence !== undefined ? String(i.sequence) : '' }));
+    const txOutputs = [];
+    const rungs = [];
+    data.outputs.forEach((out) => {
+      const txOut = { id: uid(), address: out.address || '', amount: Math.round((out.value || out.amount || 0) * (out.value ? 1e8 : 1)) };
+      txOutputs.push(txOut);
+      // Each output may have rungs or conditions
+      const rungsData = out.rungs || [];
+      const conditionsData = out.conditions || [];
+      const entries = rungsData.length > 0 ? rungsData : conditionsData;
+      entries.forEach((entry) => {
+        const rung = convertRung(entry);
+        rung.output.txOutputId = txOut.id;
+        if (out.coil) {
+          rung.output.wireType = out.coil.type || out.coil.coil_type || rung.output.wireType;
+          rung.output.attestation = out.coil.attestation || rung.output.attestation;
+          rung.output.scheme = out.coil.scheme || rung.output.scheme;
+        }
+        rung.txInputIds = txInputs.map(i => i.id);
+        rungs.push(rung);
+      });
+    });
+    return { rungs, txInputs, txOutputs };
+  }
+  // Format 4: raw tx with version 3 — { version: 3, vin, vout[].rung_conditions }
+  if (data.version === 3 && data.vout) {
+    const txInputs = (data.vin || []).map(v => ({ id: uid(), txid: v.txid || '', vout: v.vout || 0, sequence: v.sequence !== undefined ? String(v.sequence) : '' }));
+    const txOutputs = [];
+    const rungs = [];
+    data.vout.forEach((vout) => {
+      const txOut = { id: uid(), address: vout.scriptPubKey?.address || '', amount: Math.round((vout.value || 0) * 1e8) };
+      txOutputs.push(txOut);
+      const rc = vout.rung_conditions || vout.ladder || vout.rungs;
+      if (rc) {
+        const rungsData = Array.isArray(rc) ? rc : (rc.rungs || [rc]);
+        rungsData.forEach((rd) => {
+          const rung = convertRung(rd);
+          rung.output.txOutputId = txOut.id;
+          rung.txInputIds = txInputs.map(i => i.id);
+          rungs.push(rung);
+        });
+      }
+    });
+    return rungs.length > 0 ? { rungs, txInputs, txOutputs } : null;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIGNET PANEL
+// ═══════════════════════════════════════════════════════════════
+
+const SIGNET_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8801'
+  : 'https://bitcoinghost.org';
+
+function SignetPanel({ rungs, txOutputs, txInputs, locktime, onViewAsLadder }) {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState('');
+  const [error, setError] = useState(null);
+  const [walletInfo, setWalletInfo] = useState(null);
+  const [newAddress, setNewAddress] = useState('');
+  const [utxos, setUtxos] = useState(null);
+  const [faucetAddr, setFaucetAddr] = useState('');
+  const [txHex, setTxHex] = useState('');
+  const [signedHex, setSignedHex] = useState('');
+  const [txid, setTxid] = useState('');
+  const [txHistory, setTxHistory] = useState([]);
+  const [expandedTx, setExpandedTx] = useState(null);
+  const [lookupTxid, setLookupTxid] = useState('');
+  const [lookupResult, setLookupResult] = useState(null);
+  const [decodeHex, setDecodeHex] = useState('');
+  const [decodeResult, setDecodeResult] = useState(null);
+  const [validateHex, setValidateHex] = useState('');
+  const [validateResult, setValidateResult] = useState(null);
+  const [mempoolInfo, setMempoolInfo] = useState(null);
+  const [recentBlocks, setRecentBlocks] = useState(null);
+  const [pasteJson, setPasteJson] = useState('');
+  const [pasteError, setPasteError] = useState(null);
+
+  const apiCall = async (endpoint, body, silent) => {
+    if (!silent) setError(null);
+    setLoading(endpoint);
+    try {
+      const opts = body !== undefined
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        : {};
+      const r = await fetch(SIGNET_API + endpoint, opts);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail?.rpc_error || data.detail || `HTTP ${r.status}`);
+      return data;
+    } catch (e) {
+      if (!silent) setError(e.message);
+      return null;
+    } finally {
+      setLoading('');
+    }
+  };
+
+  useEffect(() => {
+    fetch(SIGNET_API + '/api/ladder/status')
+      .then(r => r.json())
+      .then(d => {
+        setStatus(d);
+        if (d.status === 'ok') {
+          apiCall('/api/ladder/wallet/balance', undefined, true).then(d => d && setWalletInfo(d));
+          apiCall('/api/ladder/mempool', undefined, true).then(d => d && setMempoolInfo(d));
+          apiCall('/api/ladder/blocks/recent', undefined, true).then(d => d && setRecentBlocks(d));
+        }
+      })
+      .catch(() => setStatus({ status: 'offline' }));
+  }, []);
+
+  useEffect(() => {
+    if (txHistory.length === 0) return;
+    const pending = txHistory.filter(t => t.confirmations === 0);
+    if (pending.length === 0) return;
+    const interval = setInterval(() => {
+      pending.forEach(async (t) => {
+        const data = await apiCall('/api/ladder/tx/' + t.txid, undefined, true);
+        if (data && data.confirmations > 0) {
+          setTxHistory(prev => prev.map(h => h.txid === t.txid ? { ...h, confirmations: data.confirmations } : h));
+        }
+      });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [txHistory]);
+
+  const online = status && status.status === 'ok';
+
+  const refreshWallet = async () => {
+    const d = await apiCall('/api/ladder/wallet/balance', undefined, true);
+    if (d) setWalletInfo(d);
+  };
+  const handleNewAddress = async () => {
+    const d = await apiCall('/api/ladder/wallet/address');
+    if (d) { setNewAddress(d.address); setFaucetAddr(d.address); }
+  };
+  const handleLoadUtxos = async () => {
+    const d = await apiCall('/api/ladder/wallet/utxos');
+    if (d) setUtxos(d);
+  };
+  const handleFaucet = async () => {
+    if (!faucetAddr) { setError('Enter a signet address.'); return; }
+    const data = await apiCall('/api/ladder/faucet', { address: faucetAddr });
+    if (data) { addToHistory('faucet', data.txid, 'Faucet: ' + data.amount + ' tBTC'); setTimeout(refreshWallet, 2000); }
+  };
+  const handleCreate = async () => {
+    const txData = exportCreateRungtx(rungs, txOutputs, txInputs, locktime);
+    const data = await apiCall('/api/ladder/create', txData);
+    if (data) { setTxHex(data.hex); setSignedHex(''); setTxid(''); }
+  };
+  const handleSign = async () => {
+    if (!txHex) { setError('No transaction hex. Create first.'); return; }
+    const data = await apiCall('/api/ladder/sign', { hex: txHex });
+    if (data) setSignedHex(data.hex || txHex);
+  };
+  const handleBroadcast = async () => {
+    const hex = signedHex || txHex;
+    if (!hex) { setError('No transaction to broadcast.'); return; }
+    const data = await apiCall('/api/ladder/broadcast', { hex });
+    if (data) { setTxid(data.txid); addToHistory('broadcast', data.txid, rungs.length + ' rungs'); setTimeout(refreshWallet, 2000); }
+  };
+  const handleDecode = async () => {
+    if (!decodeHex.trim()) { setError('Enter hex to decode.'); return; }
+    const data = await apiCall('/api/ladder/decode', { hex: decodeHex.trim() });
+    if (data) setDecodeResult(data);
+  };
+  const handleDecodeTx = async () => {
+    if (!decodeHex.trim()) { setError('Enter hex to decode.'); return; }
+    const data = await apiCall('/api/ladder/decode-tx', { hex: decodeHex.trim() });
+    if (data) setDecodeResult(data);
+  };
+  const handleValidate = async () => {
+    if (!validateHex.trim()) { setError('Enter hex to validate.'); return; }
+    const data = await apiCall('/api/ladder/validate', { hex: validateHex.trim() });
+    if (data) setValidateResult(data);
+  };
+  const handleLookup = async () => {
+    if (!lookupTxid) return;
+    const data = await apiCall('/api/ladder/tx/' + lookupTxid);
+    if (data) setLookupResult(data);
+  };
+  const refreshMempool = async () => {
+    const [mp, bl] = await Promise.all([
+      apiCall('/api/ladder/mempool', undefined, true),
+      apiCall('/api/ladder/blocks/recent', undefined, true),
+    ]);
+    if (mp) setMempoolInfo(mp);
+    if (bl) setRecentBlocks(bl);
+  };
+  const addToHistory = (type, txid, detail) => {
+    setTxHistory(prev => [{ type, txid, detail, time: Date.now(), confirmations: 0 }, ...prev]);
+  };
+
+  const sty = {
+    section: { marginBottom: 12, padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', fontSize: 12 },
+    label: { fontSize: 10, fontWeight: 600, letterSpacing: 1.5, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 },
+    input: { width: '100%', padding: '6px 8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12, outline: 'none', marginBottom: 8 },
+    btn: { padding: '6px 12px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: 0.5, cursor: 'pointer', border: '1px solid', transition: 'all 0.15s', marginRight: 6 },
+    btnPrimary: { color: 'var(--amber)', background: 'var(--amber-glow)', borderColor: 'var(--amber-dim)' },
+    btnGreen: { color: 'var(--green-bright)', background: 'var(--green-dim)', borderColor: 'var(--green)' },
+    btnDefault: { color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', borderColor: 'var(--border)' },
+    result: { marginTop: 8, padding: '8px 10px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 11, fontFamily: 'var(--font-mono)', wordBreak: 'break-all', maxHeight: 140, overflow: 'auto', color: 'var(--text-secondary)' },
+    dot: (color) => ({ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 8, boxShadow: `0 0 6px ${color}` }),
+    divider: { borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 },
+    sectionTitle: { fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--amber)', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 },
+    grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+    kv: { display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--border)' },
+    kvLabel: { color: 'var(--text-dim)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
+    kvValue: { color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12 },
+  };
+
+  const formatSats = (btc) => { if (btc == null) return '—'; return Math.round(btc * 1e8).toLocaleString() + ' sats'; };
+  const formatBtc = (btc) => { if (btc == null) return '—'; return parseFloat(btc).toFixed(8) + ' tBTC'; };
+  const timeAgo = (ts) => { const s = Math.floor((Date.now() - ts) / 1000); if (s < 60) return s + 's ago'; if (s < 3600) return Math.floor(s / 60) + 'm ago'; return Math.floor(s / 3600) + 'h ago'; };
+
+  return (
+    <div style={{ padding: '20px 32px', overflow: 'auto', flex: 1, maxWidth: 1008, margin: '0 auto', width: '100%' }}>
+      {/* STATUS BAR */}
+      <div style={{ ...sty.section, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={sty.dot(online ? '#2ea043' : '#c43030')} />
+          <span style={{ color: online ? 'var(--green-bright)' : 'var(--red-bright)', fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>
+            {online ? 'GHOST SIGNET ONLINE' : 'SIGNET OFFLINE'}
+          </span>
+          {online && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>Block {status.blocks}</span>}
+        </div>
+        {online && mempoolInfo && (
+          <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)' }}>
+            <span>Mempool: {mempoolInfo.size} txs</span>
+            <span>{(mempoolInfo.bytes / 1024).toFixed(1)} KB</span>
+          </div>
+        )}
+      </div>
+      {!online && (
+        <div style={{ ...sty.section, borderColor: 'var(--amber-dim)', background: 'var(--amber-glow)' }}>
+          <div style={{ color: 'var(--amber)', fontSize: 11, lineHeight: 1.6 }}>
+            Signet proxy is not available. The Ladder Script RPC commands require a ghost-core node running the feature/ladder-script branch. Build and test transactions locally using the BUILD, SIMULATE, and RPC tabs.
+          </div>
+        </div>
+      )}
+
+      {/* VIEW EXISTING TX AS LADDER — works offline, no signet required */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>VIEW TRANSACTION AS LADDER</div>
+      <div style={sty.section}>
+        <div style={sty.label}>PASTE RUNG TX JSON</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 6, lineHeight: 1.5 }}>
+          Paste decoded JSON from <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderung</code>, <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>createrungtx</code>, or <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderawtransaction</code> output to visualize it as a ladder diagram. Works offline.
+        </div>
+        <textarea
+          style={{ ...sty.input, height: 100, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          placeholder={'{\n  "rungs": [{ "blocks": [{ "block_type": "SIG", "params": [...] }], "coil": {...} }]\n}'}
+          value={pasteJson}
+          onChange={e => { setPasteJson(e.target.value); setPasteError(null); }}
+        />
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button style={{ ...sty.btn, ...sty.btnPrimary }} onClick={() => {
+            if (!pasteJson.trim()) { setPasteError('Paste some JSON first.'); return; }
+            try {
+              const parsed = JSON.parse(pasteJson.trim());
+              const result = decodedToBuilderRungs(parsed);
+              if (!result || result.rungs.length === 0) {
+                setPasteError('Could not find rung structure. Expected { rungs: [...] } or { outputs: [{ conditions: [...] }] } format.');
+                return;
+              }
+              setPasteError(null);
+              onViewAsLadder(parsed);
+            } catch (e) {
+              setPasteError('Invalid JSON: ' + e.message);
+            }
+          }}>VIEW AS LADDER</button>
+          <button style={{ ...sty.btn, ...sty.btnDefault }} onClick={() => { setPasteJson(''); setPasteError(null); }}>CLEAR</button>
+          {pasteError && <span style={{ color: 'var(--red-bright)', fontSize: 10, marginLeft: 4 }}>{pasteError}</span>}
+        </div>
+      </div>
+
+      {/* WALLET */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>WALLET</div>
+      <div style={sty.grid2}>
+        <div style={sty.section}>
+          <div style={sty.label}>BALANCE</div>
+          {walletInfo ? (<>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--amber-bright)', marginBottom: 4 }}>{formatBtc(walletInfo.balance)}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{formatSats(walletInfo.balance)}</div>
+            {walletInfo.unconfirmed_balance > 0 && <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 4 }}>+ {formatBtc(walletInfo.unconfirmed_balance)} unconfirmed</div>}
+            <div style={{ ...sty.kv, marginTop: 8, borderBottom: 'none' }}><span style={sty.kvLabel}>TX COUNT</span><span style={sty.kvValue}>{walletInfo.txcount}</span></div>
+            <button style={{ ...sty.btn, ...sty.btnDefault, marginTop: 8 }} onClick={refreshWallet}>{loading === '/api/ladder/wallet/balance' ? 'LOADING...' : 'REFRESH'}</button>
+          </>) : <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>{online ? 'Loading...' : 'Unavailable'}</div>}
+        </div>
+        <div style={sty.section}>
+          <div style={sty.label}>ADDRESS</div>
+          <button style={{ ...sty.btn, ...sty.btnGreen, opacity: online ? 1 : 0.3, marginBottom: 8 }} onClick={handleNewAddress} disabled={!online || loading === '/api/ladder/wallet/address'}>
+            {loading === '/api/ladder/wallet/address' ? 'GENERATING...' : 'GENERATE NEW ADDRESS'}
+          </button>
+          {newAddress && (
+            <div style={{ ...sty.result, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, maxHeight: 'none' }}>
+              <span style={{ wordBreak: 'break-all', flex: 1 }}>{newAddress}</span>
+              <button style={{ ...sty.btn, ...sty.btnDefault, marginRight: 0, whiteSpace: 'nowrap' }} onClick={() => navigator.clipboard.writeText(newAddress)}>COPY</button>
+            </div>
+          )}
+          <div style={{ ...sty.label, marginTop: 12 }}>FAUCET</div>
+          <input style={sty.input} placeholder="tb1q... signet address" value={faucetAddr} onChange={e => setFaucetAddr(e.target.value)} disabled={!online} />
+          <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleFaucet} disabled={!online || loading === '/api/ladder/faucet'}>
+            {loading === '/api/ladder/faucet' ? 'SENDING...' : 'REQUEST 0.001 tBTC'}
+          </button>
+        </div>
+      </div>
+
+      {/* UTXOs */}
+      <div style={sty.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={sty.label}>AVAILABLE UTXOs</div>
+          <button style={{ ...sty.btn, ...sty.btnDefault, opacity: online ? 1 : 0.3 }} onClick={handleLoadUtxos} disabled={!online || loading === '/api/ladder/wallet/utxos'}>
+            {loading === '/api/ladder/wallet/utxos' ? 'LOADING...' : utxos ? 'REFRESH' : 'LOAD UTXOs'}
+          </button>
+        </div>
+        {utxos && utxos.length === 0 && <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>No UTXOs. Use the faucet to get test coins.</div>}
+        {utxos && utxos.length > 0 && (
+          <div style={{ maxHeight: 200, overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+              <thead><tr style={{ color: 'var(--text-dim)', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>TXID</th>
+                <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>VOUT</th>
+                <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>AMOUNT</th>
+                <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>CONF</th>
+                <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}></th>
+              </tr></thead>
+              <tbody>{utxos.map((u, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '4px 8px', color: 'var(--text-secondary)' }} title={u.txid}>{u.txid.substring(0, 12)}...</td>
+                  <td style={{ padding: '4px 8px' }}>{u.vout}</td>
+                  <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--amber)' }}>{formatSats(u.amount)}</td>
+                  <td style={{ padding: '4px 8px', color: u.confirmations > 0 ? 'var(--green-bright)' : 'var(--amber)' }}>{u.confirmations}</td>
+                  <td style={{ padding: '4px 8px' }}><button style={{ ...sty.btn, ...sty.btnDefault, padding: '2px 6px', fontSize: 9, marginRight: 0 }} onClick={() => navigator.clipboard.writeText(u.txid + ':' + u.vout)} title="Copy txid:vout">COPY</button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* BUILD & BROADCAST */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>BUILD &amp; BROADCAST</div>
+      <div style={{ ...sty.section, padding: '16px 20px' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+            <div style={sty.label}>1. CREATE</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>Sends ladder JSON to createrungtx RPC.</div>
+            <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleCreate} disabled={!online || loading === '/api/ladder/create'}>
+              {loading === '/api/ladder/create' ? 'CREATING...' : 'CREATERUNGTX'}
+            </button>
+            {txHex && (<div style={{ ...sty.result, marginTop: 6 }}><div style={{ color: 'var(--green-bright)', marginBottom: 4 }}>TX HEX ({txHex.length / 2} bytes)</div>{txHex.substring(0, 80)}...<button style={{ ...sty.btn, ...sty.btnDefault, marginTop: 4, display: 'block' }} onClick={() => navigator.clipboard.writeText(txHex)}>COPY HEX</button></div>)}
+          </div>
+          <div style={{ color: 'var(--border-light)', fontSize: 20, alignSelf: 'center', padding: '20px 0' }}>&#x2192;</div>
+          <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+            <div style={sty.label}>2. SIGN</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>Signs via signrungtx RPC.</div>
+            <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: (online && txHex) ? 1 : 0.3 }} onClick={handleSign} disabled={!online || !txHex || loading === '/api/ladder/sign'}>
+              {loading === '/api/ladder/sign' ? 'SIGNING...' : 'SIGNRUNGTX'}
+            </button>
+            {signedHex && signedHex !== txHex && (<div style={{ ...sty.result, marginTop: 6 }}><div style={{ color: 'var(--green-bright)', marginBottom: 4 }}>SIGNED ({signedHex.length / 2} bytes)</div>{signedHex.substring(0, 80)}...</div>)}
+          </div>
+          <div style={{ color: 'var(--border-light)', fontSize: 20, alignSelf: 'center', padding: '20px 0' }}>&#x2192;</div>
+          <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+            <div style={sty.label}>3. BROADCAST</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>Push to signet network.</div>
+            <button style={{ ...sty.btn, ...sty.btnGreen, opacity: (online && (signedHex || txHex)) ? 1 : 0.3 }} onClick={handleBroadcast} disabled={!online || !(signedHex || txHex) || loading === '/api/ladder/broadcast'}>
+              {loading === '/api/ladder/broadcast' ? 'BROADCASTING...' : 'BROADCAST'}
+            </button>
+            {txid && (<div style={{ ...sty.result, marginTop: 6 }}><div style={{ color: 'var(--green-bright)', marginBottom: 4 }}>SUCCESS</div><a href={`https://mempool.space/signet/tx/${txid}`} target="_blank" rel="noopener" style={{ color: 'var(--amber)', textDecoration: 'none', wordBreak: 'break-all', fontSize: 10 }}>{txid}</a></div>)}
+          </div>
+        </div>
+      </div>
+
+      {/* SESSION HISTORY */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>SESSION HISTORY</div>
+      <div style={sty.section}>
+        {txHistory.length === 0 ? (
+          <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>No transactions this session.</div>
+        ) : (
+          <div style={{ maxHeight: 240, overflow: 'auto' }}>
+            {txHistory.map((tx, i) => (
+              <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setExpandedTx(expandedTx === i ? null : i)}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={sty.dot(tx.confirmations > 0 ? '#2ea043' : '#e6a817')} />
+                    <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{tx.txid.substring(0, 16)}...</span>
+                    <span style={{ fontSize: 9, padding: '2px 6px', letterSpacing: 1, fontWeight: 600, background: tx.type === 'broadcast' ? 'var(--green-dim)' : 'var(--amber-glow)', color: tx.type === 'broadcast' ? 'var(--green-bright)' : 'var(--amber)', border: `1px solid ${tx.type === 'broadcast' ? 'var(--green)' : 'var(--amber-dim)'}` }}>{tx.type.toUpperCase()}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: 'var(--text-dim)' }}>
+                    <span>{tx.detail}</span>
+                    <span>{tx.confirmations > 0 ? tx.confirmations + ' conf' : 'pending'}</span>
+                    <span>{timeAgo(tx.time)}</span>
+                  </div>
+                </div>
+                {expandedTx === i && (
+                  <div style={{ marginTop: 8, padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ marginBottom: 4 }}><span style={{ color: 'var(--text-dim)' }}>TXID: </span><span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{tx.txid}</span></div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                      <button style={{ ...sty.btn, ...sty.btnDefault, padding: '3px 8px', fontSize: 9 }} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(tx.txid); }}>COPY TXID</button>
+                      <a href={`https://mempool.space/signet/tx/${tx.txid}`} target="_blank" rel="noopener" style={{ ...sty.btn, ...sty.btnDefault, padding: '3px 8px', fontSize: 9, textDecoration: 'none', color: 'var(--amber)' }} onClick={(e) => e.stopPropagation()}>MEMPOOL.SPACE</a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* DECODE & VALIDATE */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>DECODE &amp; VALIDATE</div>
+      <div style={sty.grid2}>
+        <div style={sty.section}>
+          <div style={sty.label}>DECODE RAW HEX</div>
+          <textarea style={{ ...sty.input, height: 60, resize: 'vertical', fontFamily: 'var(--font-mono)' }} placeholder="Paste raw transaction or ladder witness hex..." value={decodeHex} onChange={e => setDecodeHex(e.target.value)} disabled={!online} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleDecode} disabled={!online || loading === '/api/ladder/decode'}>{loading === '/api/ladder/decode' ? 'DECODING...' : 'DECODE LADDER'}</button>
+            <button style={{ ...sty.btn, ...sty.btnDefault, opacity: online ? 1 : 0.3 }} onClick={handleDecodeTx} disabled={!online || loading === '/api/ladder/decode-tx'}>{loading === '/api/ladder/decode-tx' ? 'DECODING...' : 'DECODE RAW TX'}</button>
+          </div>
+          {decodeResult && (<div style={{ ...sty.result, maxHeight: 260 }}>
+            {decodedToBuilderRungs(decodeResult) && (
+              <button style={{ ...sty.btn, ...sty.btnPrimary, marginBottom: 8, display: 'block' }} onClick={() => onViewAsLadder(decodeResult)}>VIEW AS LADDER</button>
+            )}
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(decodeResult, null, 2)}</pre>
+          </div>)}
+        </div>
+        <div style={sty.section}>
+          <div style={sty.label}>VALIDATE LADDER</div>
+          <textarea style={{ ...sty.input, height: 60, resize: 'vertical', fontFamily: 'var(--font-mono)' }} placeholder="Paste ladder witness hex to validate..." value={validateHex} onChange={e => setValidateHex(e.target.value)} disabled={!online} />
+          <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleValidate} disabled={!online || loading === '/api/ladder/validate'}>{loading === '/api/ladder/validate' ? 'VALIDATING...' : 'VALIDATE'}</button>
+          {validateResult && (
+            <div style={{ ...sty.result, maxHeight: 220 }}>
+              {validateResult.valid !== undefined && <div style={{ color: validateResult.valid ? 'var(--green-bright)' : 'var(--red-bright)', marginBottom: 6, fontWeight: 600 }}>{validateResult.valid ? 'VALID LADDER STRUCTURE' : 'INVALID'}</div>}
+              <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(validateResult, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* TRANSACTION LOOKUP */}
+      <div style={sty.divider} />
+      <div style={sty.sectionTitle}>TRANSACTION LOOKUP</div>
+      <div style={sty.section}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <input style={{ ...sty.input, flex: 1, marginBottom: 0 }} placeholder="txid (64 hex chars)" value={lookupTxid} onChange={e => setLookupTxid(e.target.value)} disabled={!online} />
+          <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleLookup} disabled={!online}>LOOKUP</button>
+        </div>
+        {lookupResult && (
+          <div style={{ ...sty.result, maxHeight: 300, marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div><span style={{ color: 'var(--text-dim)' }}>CONF: </span><span style={{ color: lookupResult.confirmations > 0 ? 'var(--green-bright)' : 'var(--amber)' }}>{lookupResult.confirmations || 0}</span></div>
+              <div><span style={{ color: 'var(--text-dim)' }}>SIZE: </span>{lookupResult.size} bytes</div>
+              <div><span style={{ color: 'var(--text-dim)' }}>VSIZE: </span>{lookupResult.vsize} vbytes</div>
+              {lookupResult.version && <div><span style={{ color: 'var(--text-dim)' }}>VERSION: </span>{lookupResult.version}</div>}
+            </div>
+            {lookupResult.vin && (<div style={{ marginBottom: 6 }}><div style={{ color: 'var(--text-dim)', fontSize: 9, letterSpacing: 1, marginBottom: 2 }}>INPUTS ({lookupResult.vin.length})</div>{lookupResult.vin.map((vin, i) => <div key={i} style={{ fontSize: 10, color: 'var(--text-secondary)', padding: '2px 0' }}>{vin.coinbase ? 'coinbase' : `${(vin.txid || '').substring(0, 16)}...:${vin.vout}`}</div>)}</div>)}
+            {lookupResult.vout && (<div><div style={{ color: 'var(--text-dim)', fontSize: 9, letterSpacing: 1, marginBottom: 2 }}>OUTPUTS ({lookupResult.vout.length})</div>{lookupResult.vout.map((vout, i) => <div key={i} style={{ fontSize: 10, color: 'var(--text-secondary)', padding: '2px 0', display: 'flex', justifyContent: 'space-between' }}><span>#{vout.n} {vout.scriptPubKey?.type || ''}</span><span style={{ color: 'var(--amber)' }}>{formatSats(vout.value)}</span></div>)}</div>)}
+            {decodedToBuilderRungs(lookupResult) && (
+              <button style={{ ...sty.btn, ...sty.btnPrimary, marginTop: 8, display: 'block' }} onClick={() => onViewAsLadder(lookupResult)}>VIEW AS LADDER</button>
+            )}
+            <details style={{ marginTop: 8 }}><summary style={{ cursor: 'pointer', color: 'var(--text-dim)', fontSize: 10 }}>RAW JSON</summary><pre style={{ whiteSpace: 'pre-wrap', margin: '4px 0 0', fontSize: 10 }}>{JSON.stringify(lookupResult, null, 2)}</pre></details>
+          </div>
+        )}
+      </div>
+
+      {/* RECENT BLOCKS */}
+      <div style={sty.divider} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={sty.sectionTitle}>RECENT BLOCKS</div>
+        <button style={{ ...sty.btn, ...sty.btnDefault, opacity: online ? 1 : 0.3 }} onClick={refreshMempool} disabled={!online}>REFRESH</button>
+      </div>
+      <div style={sty.section}>
+        {recentBlocks && recentBlocks.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+            <thead><tr style={{ color: 'var(--text-dim)', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>HEIGHT</th>
+              <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>HASH</th>
+              <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>TXs</th>
+              <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>SIZE</th>
+              <th style={{ padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>TIME</th>
+            </tr></thead>
+            <tbody>{recentBlocks.map((b, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '6px 8px', color: 'var(--amber)' }}>{b.height}</td>
+                <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }} title={b.hash}>{b.hash.substring(0, 16)}...</td>
+                <td style={{ padding: '6px 8px', textAlign: 'right' }}>{b.tx_count}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-dim)' }}>{(b.size / 1024).toFixed(1)} KB</td>
+                <td style={{ padding: '6px 8px', color: 'var(--text-dim)' }}>{new Date(b.time * 1000).toLocaleTimeString()}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        ) : <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>{online ? 'Loading...' : 'Unavailable'}</div>}
+      </div>
+
+      {/* ERROR */}
+      {error && (
+        <div style={{ ...sty.section, borderColor: 'var(--red)', background: 'var(--red-dim)', position: 'sticky', bottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: 'var(--red-bright)', fontSize: 11 }}>{error}</div>
+            <button style={{ ...sty.btn, ...sty.btnDefault, padding: '2px 8px', fontSize: 9, marginRight: 0 }} onClick={() => setError(null)}>DISMISS</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 
 function App() {
   const [mode, setMode] = useState('build');
   const [showExamples, setShowExamples] = useState(false);
+  const [pendingExample, setPendingExample] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ex = params.get('example');
+    return ex !== null ? parseInt(ex, 10) : null;
+  });
   const [showTooltips, setShowTooltips] = useState(true);
   const [ladderFullscreen, setLadderFullscreen] = useState(false);
   const [rungs, setRungs] = useState([createRung()]);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [selectedCoilId, setSelectedCoilId] = useState(null);
   const [selectedInputId, setSelectedInputId] = useState(null);
+  const [expandedBlockId, setExpandedBlockId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, block, rungId }
+  const [inputContextMenu, setInputContextMenu] = useState(null); // { x, y, rung }
+  const [expandedInputId, setExpandedInputId] = useState(null); // rung id for InputModal
+  const [expandedOutputId, setExpandedOutputId] = useState(null); // rung id for OutputModal
+  const [outputContextMenu, setOutputContextMenu] = useState(null); // { x, y, rung }
+  const [renamingBlockId, setRenamingBlockId] = useState(null);
+  const [renamingInputId, setRenamingInputId] = useState(null);
   const [rightTab, setRightTab] = useState('properties');
   const [txInputs, setTxInputs] = useState([{ id: uid(), txid: '', vout: 0, sequence: '' }]);
   const [txOutputs, setTxOutputs] = useState([{ id: uid(), address: '', amount: 0 }]);
@@ -4419,11 +6132,16 @@ function App() {
   const [simActiveStep, setSimActiveStep] = useState(-1); // -1=input, 0..n-1=block index, n=coil reached
   const [simStepResults, setSimStepResults] = useState({}); // blockId → 'satisfied'|'unsatisfied'|'error'
 
-  // Keyboard shortcuts: ESC closes modals/fullscreen, F11 toggles fullscreen
+  // Keyboard shortcuts: ESC closes modals/fullscreen, F11 toggles fullscreen, Delete removes selection
   useEffect(() => {
     const handler = (e) => {
+      const tag = e.target.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
       if (e.key === 'Escape') {
-        if (simActiveRungId) { setSimActiveRungId(null); setSimActiveStep(-1); setSimStepResults({}); }
+        if (contextMenu) setContextMenu(null);
+        else if (inputContextMenu) setInputContextMenu(null);
+        else if (outputContextMenu) setOutputContextMenu(null);
+        else if (simActiveRungId) { setSimActiveRungId(null); setSimActiveStep(-1); setSimStepResults({}); }
         else if (showExamples) setShowExamples(false);
         else if (ladderFullscreen) setLadderFullscreen(false);
       }
@@ -4431,10 +6149,36 @@ function App() {
         e.preventDefault();
         setLadderFullscreen(prev => !prev);
       }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isInput && !isSimMode) {
+        if (selectedBlockId) {
+          // Find which rung owns this block and delete it
+          setRungs(prev => prev.map(r => {
+            if (r.blocks.some(b => b.id === selectedBlockId)) {
+              return { ...r, blocks: r.blocks.filter(b => b.id !== selectedBlockId) };
+            }
+            return r;
+          }));
+          setSelectedBlockId(null);
+        } else if (selectedInputId) {
+          // Clear input assignments (txInputIds + outputRefs) for this rung
+          setRungs(prev => prev.map(r => {
+            if (r.id !== selectedInputId) return r;
+            return { ...r, txInputIds: [], outputRefs: [], inputName: '' };
+          }));
+          setSelectedInputId(null);
+        } else if (selectedCoilId) {
+          // Clear output assignments for this rung
+          setRungs(prev => prev.map(r => {
+            if (r.id !== selectedCoilId) return r;
+            return { ...r, output: { ...r.output, name: '', txOutputId: null } };
+          }));
+          setSelectedCoilId(null);
+        }
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showExamples, ladderFullscreen, simActiveRungId]);
+  }, [showExamples, ladderFullscreen, simActiveRungId, contextMenu, inputContextMenu, outputContextMenu, selectedBlockId, selectedInputId, selectedCoilId, isSimMode]);
 
   const isSimMode = mode === 'simulate' || mode === 'watch';
 
@@ -4447,17 +6191,41 @@ function App() {
     }
   }, [isSimMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Watch mode ticker
+  // Watch mode — poll signet for real block height, no fallback ticker
+  const [watchLive, setWatchLive] = useState(false);
   useEffect(() => {
-    if (mode !== 'watch') return;
-    const interval = setInterval(() => {
-      setSimState(prev => ({
-        ...prev,
-        blockHeight: prev.blockHeight + 1,
-        csvBlocks: prev.csvBlocks + 1,
-      }));
-    }, 3000);
-    return () => clearInterval(interval);
+    if (mode !== 'watch') { setWatchLive(false); return; }
+    let cancelled = false;
+
+    const pollSignet = async () => {
+      try {
+        const r = await fetch(SIGNET_API + '/api/ladder/status');
+        if (cancelled) return;
+        if (r.ok) {
+          const data = await r.json();
+          if (data.blocks) {
+            setWatchLive(true);
+            setSimState(prev => {
+              const heightDelta = data.blocks - (prev.blockHeight || 0);
+              return {
+                ...prev,
+                blockHeight: data.blocks,
+                csvBlocks: prev.csvBlocks + Math.max(0, heightDelta),
+              };
+            });
+          }
+        } else {
+          setWatchLive(false);
+        }
+      } catch {
+        if (!cancelled) setWatchLive(false);
+      }
+    };
+
+    pollSignet();
+    const signetInterval = setInterval(pollSignet, 10000);
+
+    return () => { cancelled = true; clearInterval(signetInterval); };
   }, [mode]);
 
   // Build the flat scan sequence: input → block0 → block1 → ... → coil, for each rung
@@ -4587,6 +6355,51 @@ function App() {
     return null;
   }, [rungs, selectedBlockId]);
 
+  const expandedBlock = useMemo(() => {
+    if (!expandedBlockId) return null;
+    for (const rung of rungs) {
+      for (const block of rung.blocks) {
+        if (block.id === expandedBlockId) return block;
+      }
+    }
+    return null;
+  }, [rungs, expandedBlockId]);
+
+  const handleNameChange = useCallback((blockId, name) => {
+    setRungs(prev => prev.map(r => ({
+      ...r,
+      blocks: r.blocks.map(b => b.id === blockId ? { ...b, name } : b)
+    })));
+  }, []);
+
+  const handleBlockContextMenu = useCallback((x, y, block, rungId) => {
+    setContextMenu({ x, y, block, rungId });
+  }, []);
+
+  const handleInputContextMenu = useCallback((x, y, rung) => {
+    setInputContextMenu({ x, y, rung });
+  }, []);
+
+  const handleOutputContextMenu = useCallback((x, y, rung) => {
+    setOutputContextMenu({ x, y, rung });
+  }, []);
+
+  const handleDuplicateBlock = useCallback((rungId, blockId) => {
+    setRungs(prev => prev.map(r => {
+      if (r.id !== rungId) return r;
+      const src = r.blocks.find(b => b.id === blockId);
+      if (!src || r.blocks.length >= MAX_BLOCKS_PER_RUNG) return r;
+      const dup = createBlock(src.type);
+      dup.values = { ...src.values };
+      dup.inverted = src.inverted;
+      dup.name = src.name ? src.name + ' (copy)' : '';
+      const idx = r.blocks.findIndex(b => b.id === blockId);
+      const blocks = [...r.blocks];
+      blocks.splice(idx + 1, 0, dup);
+      return { ...r, blocks };
+    }));
+  }, []);
+
   const handleAddRung = useCallback(() => {
     setRungs(prev => prev.length >= 16 ? prev : [...prev, createRung()]);
   }, []);
@@ -4635,6 +6448,7 @@ function App() {
       blocks: r.blocks.map(b => {
         if (b.id !== blockId) return b;
         if (field === '__inverted') return { ...b, inverted: value };
+        if (field === '__name') return { ...b, name: value };
         return { ...b, values: { ...b.values, [field]: value } };
       })
     })));
@@ -4652,6 +6466,12 @@ function App() {
     setSelectedBlockId(null);
     setSelectedCoilId(null);
     setRightTab('properties');
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedBlockId(null);
+    setSelectedCoilId(null);
+    setSelectedInputId(null);
   }, []);
 
   const handleOutputChange = useCallback((rungId, field, value) => {
@@ -4908,6 +6728,14 @@ function App() {
     setShowExamples(false);
   }, []);
 
+  // Load example from URL param ?example=N
+  useEffect(() => {
+    if (pendingExample !== null && pendingExample >= 0 && pendingExample < EXAMPLES.length) {
+      handleLoadExample(EXAMPLES[pendingExample]);
+      setPendingExample(null);
+    }
+  }, [pendingExample, handleLoadExample]);
+
   const handlePrint = useCallback(() => {
     const w = window.open('', '_blank');
     if (!w) return;
@@ -5103,7 +6931,7 @@ ${ladderRows.map(r => `
               bytes.forEach((b, i) => { val |= parseInt(b, 16) << (i * 8); });
               block.values[f.name] = String(val);
             } else if (f.dataType === 'SCHEME' && fieldData.hex) {
-              const schemeRevMap = { '10': 'FALCON512', '11': 'FALCON1024', '12': 'DILITHIUM3', '13': 'SPHINCS_SHA' };
+              const schemeRevMap = { '10': 'FALCON512', '11': 'FALCON1024', '12': 'DILITHIUM3' };
               block.values[f.name] = schemeRevMap[fieldData.hex] || '';
             } else if (fieldData.hex) {
               block.values[f.name] = fieldData.hex;
@@ -5176,6 +7004,26 @@ ${ladderRows.map(r => `
     }
   }, [importBlocksFromFields]);
 
+  // VIEW AS LADDER — convert decoded JSON to builder rungs and switch to build mode
+  const handleViewAsLadder = useCallback((decodedJson) => {
+    try {
+      const result = decodedToBuilderRungs(decodedJson);
+      if (!result || result.rungs.length === 0) {
+        alert('Could not parse rung structure from this JSON. Try decoding with DECODE LADDER for ladder witness hex.');
+        return;
+      }
+      setRungs(result.rungs);
+      if (result.txInputs.length > 0) setTxInputs(result.txInputs);
+      if (result.txOutputs.length > 0) setTxOutputs(result.txOutputs);
+      setSelectedBlockId(null);
+      setSelectedCoilId(null);
+      setSelectedInputId(null);
+      setMode('build');
+    } catch (e) {
+      alert('Failed to convert: ' + e.message);
+    }
+  }, []);
+
   return (
     <div className={`app ${ladderFullscreen ? 'fullscreen' : ''}`}>
       {/* Header */}
@@ -5185,6 +7033,7 @@ ${ladderRows.map(r => `
         <div className="mode-tabs">
           <button className={`mode-tab ${mode === 'build' ? 'active' : ''}`} onClick={() => setMode('build')} title={showTooltips ? 'Construct ladder rungs — drag blocks from palette' : undefined}>BUILD</button>
           <button className={`mode-tab ${mode === 'simulate' ? 'active' : ''}`} onClick={() => setMode('simulate')} title={showTooltips ? 'Test rungs — click rung labels to step through, Alt+click blocks to force' : undefined}>SIMULATE</button>
+          <button className={`mode-tab ${mode === 'signet' ? 'active' : ''}`} onClick={() => setMode('signet')} title={showTooltips ? 'Submit transactions to Ghost signet via RPC proxy' : undefined} style={mode === 'signet' ? { color: 'var(--green-bright)', borderBottomColor: 'var(--green-bright)' } : {}}>SIGNET</button>
           <button className={`mode-tab ${mode === 'watch' ? 'active' : ''}`} onClick={() => setMode('watch')} title={showTooltips ? 'Live mode — block height auto-increments' : undefined}>WATCH</button>
         </div>
         <div className="header-actions">
@@ -5192,15 +7041,31 @@ ${ladderRows.map(r => `
           <button className="header-btn" onClick={handleImport} title={showTooltips ? 'Import createrungtx JSON from clipboard' : undefined}>IMPORT</button>
           <button className="header-btn" onClick={handleCopyJson} title={showTooltips ? 'Copy wire-format JSON to clipboard' : undefined}>COPY JSON</button>
           <button className="header-btn" onClick={handlePrint} title={showTooltips ? 'Print ladder diagram' : undefined}>PRINT</button>
-          <button className="header-btn" onClick={handleClear} title={showTooltips ? 'Clear all rungs and start fresh' : undefined}>CLEAR</button>
         </div>
       </div>
 
       {/* Main */}
       <div className="main-content">
+        {mode === 'signet' ? (
+          <div style={{ gridColumn: '1 / -1', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <SignetPanel rungs={rungs} txOutputs={txOutputs} txInputs={txInputs} locktime={locktime} onViewAsLadder={handleViewAsLadder} />
+          </div>
+        ) : <>
         {isSimMode ? (
-          <div className="palette" style={{ opacity: 0.3, pointerEvents: 'none' }}>
-            <div style={{ padding: '12px 8px', fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1, textAlign: 'center' }}>PALETTE LOCKED<br/>IN SIMULATOR MODE</div>
+          <div className="palette" style={{ opacity: mode === 'watch' && !watchLive ? 1 : 0.3, pointerEvents: 'none' }}>
+            {mode === 'watch' && !watchLive ? (
+              <div style={{ padding: '12px 8px' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, color: 'var(--amber)', textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' }}>WATCH MODE</div>
+                <div style={{ padding: '8px', background: 'rgba(230, 168, 23, 0.1)', border: '1px solid rgba(230, 168, 23, 0.25)', fontSize: 10, color: 'var(--amber)', lineHeight: 1.6 }}>
+                  Signet proxy is not available. Live block data requires a ghost-core node running the feature/ladder-script branch.
+                </div>
+                <div style={{ marginTop: 10, fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', letterSpacing: 0.5, lineHeight: 1.6 }}>
+                  Waiting for signet connection...
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '12px 8px', fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1, textAlign: 'center' }}>PALETTE LOCKED<br/>IN {mode === 'watch' ? 'WATCH' : 'SIMULATOR'} MODE</div>
+            )}
           </div>
         ) : (
           <PalettePanel />
@@ -5251,6 +7116,18 @@ ${ladderRows.map(r => `
           simStepResults={simStepResults}
           onStepBlock={handleStepBlock}
           tips={showTooltips}
+          onNameChange={handleNameChange}
+          onExpandBlock={(id) => setExpandedBlockId(id)}
+          onBlockContextMenu={handleBlockContextMenu}
+          renamingBlockId={renamingBlockId}
+          onClearRenaming={() => setRenamingBlockId(null)}
+          onClear={handleClear}
+          onInputContextMenu={handleInputContextMenu}
+          onRungChange={handleRungChange}
+          renamingInputId={renamingInputId}
+          onClearRenamingInput={() => setRenamingInputId(null)}
+          onDeselect={handleDeselect}
+          onOutputContextMenu={handleOutputContextMenu}
         />
 
         <div className="right-panel">
@@ -5279,7 +7156,7 @@ ${ladderRows.map(r => `
                 txOutputs={txOutputs}
               />
             ) : !isSimMode && rightTab === 'properties' && (
-              <PropertiesPanel block={selectedBlock} onChange={handleBlockChange} rungs={rungs} />
+              <PropertiesPanel block={selectedBlock} onChange={handleBlockChange} rungs={rungs} onExpand={(id) => setExpandedBlockId(id)} />
             )}
             {!isSimMode && rightTab === 'tx' && (
               <TxPanel
@@ -5353,10 +7230,11 @@ ${ladderRows.map(r => `
             )}
           </div>
         </div>
+        </>}
       </div>
 
-      {/* Register Table */}
-      <RegisterTable rungs={rungs} simMode={isSimMode} simState={fullSimState} />
+      {/* Register Table — hidden in signet and watch modes for more space */}
+      {mode !== 'signet' && mode !== 'watch' && <RegisterTable rungs={rungs} simMode={isSimMode} simState={fullSimState} />}
 
       {/* Status Bar */}
       <div className="status-bar">
@@ -5373,7 +7251,8 @@ ${ladderRows.map(r => `
         )}
         {mode === 'watch' && (
           <div className="status-item">
-            HEIGHT: {simState.blockHeight}
+            <div className={`status-dot ${watchLive ? 'green' : 'amber'}`} />
+            {watchLive ? 'SIGNET LIVE' : 'LOCAL'} HEIGHT: {simState.blockHeight}
           </div>
         )}
         {(() => {
@@ -5400,6 +7279,91 @@ ${ladderRows.map(r => `
       {showExamples && (
         <ExamplesModal onClose={() => setShowExamples(false)} onLoad={handleLoadExample} />
       )}
+      {expandedBlock && (
+        <BlockModal
+          block={expandedBlock}
+          onChange={handleBlockChange}
+          onClose={() => setExpandedBlockId(null)}
+          rungs={rungs}
+        />
+      )}
+      {contextMenu && (
+        <BlockContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          block={contextMenu.block}
+          onRename={() => {
+            setSelectedBlockId(contextMenu.block.id);
+            setRenamingBlockId(contextMenu.block.id);
+          }}
+          onExpand={() => setExpandedBlockId(contextMenu.block.id)}
+          onToggleInvert={() => handleBlockChange(contextMenu.block.id, '__inverted', !contextMenu.block.inverted)}
+          onDuplicate={() => handleDuplicateBlock(contextMenu.rungId, contextMenu.block.id)}
+          onDelete={() => handleDeleteBlock(contextMenu.rungId, contextMenu.block.id)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+      {inputContextMenu && (
+        <InputContextMenu
+          x={inputContextMenu.x}
+          y={inputContextMenu.y}
+          rung={inputContextMenu.rung}
+          onRename={() => {
+            setSelectedInputId(inputContextMenu.rung.id);
+            setRenamingInputId(inputContextMenu.rung.id);
+          }}
+          onExpand={() => setExpandedInputId(inputContextMenu.rung.id)}
+          onClear={() => {
+            handleRungChange(inputContextMenu.rung.id, 'txInputIds', []);
+            handleRungChange(inputContextMenu.rung.id, 'outputRefs', []);
+            handleRungChange(inputContextMenu.rung.id, 'inputName', '');
+          }}
+          onClose={() => setInputContextMenu(null)}
+        />
+      )}
+      {expandedInputId && (() => {
+        const ri = rungs.findIndex(r => r.id === expandedInputId);
+        const rung = ri >= 0 ? rungs[ri] : null;
+        return rung ? (
+          <InputModal
+            rung={rung}
+            rungIndex={ri}
+            onRungChange={handleRungChange}
+            txInputs={txInputs}
+            allRungs={rungs}
+            onClose={() => setExpandedInputId(null)}
+          />
+        ) : null;
+      })()}
+      {outputContextMenu && (
+        <OutputContextMenu
+          x={outputContextMenu.x}
+          y={outputContextMenu.y}
+          rung={outputContextMenu.rung}
+          onRename={() => {
+            setSelectedCoilId(outputContextMenu.rung.id);
+          }}
+          onExpand={() => setExpandedOutputId(outputContextMenu.rung.id)}
+          onClear={() => {
+            handleOutputChange(outputContextMenu.rung.id, 'name', '');
+            handleOutputChange(outputContextMenu.rung.id, 'txOutputId', null);
+          }}
+          onClose={() => setOutputContextMenu(null)}
+        />
+      )}
+      {expandedOutputId && (() => {
+        const ri = rungs.findIndex(r => r.id === expandedOutputId);
+        const rung = ri >= 0 ? rungs[ri] : null;
+        return rung ? (
+          <OutputModal
+            rung={rung}
+            rungIndex={ri}
+            onChange={handleOutputChange}
+            txOutputs={txOutputs}
+            onClose={() => setExpandedOutputId(null)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }
