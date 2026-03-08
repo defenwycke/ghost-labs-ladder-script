@@ -7371,7 +7371,6 @@ ${ladderRows.map(r => `
                     referencedNames.add(r.label || `R${String(ri).padStart(3, '0')}`);
                   });
                   const isRungReferenced = (rung, ri) => {
-                    if (rung.output.name) return true;
                     const rungName = rung.label || `R${String(ri).padStart(3, '0')}`;
                     return rungs.some(other => other.id !== rung.id && (
                       (other.outputRefs || []).some(ref => ref === rungName || ref === rung.output.name) ||
@@ -7382,7 +7381,8 @@ ${ladderRows.map(r => `
                   if (unassigned.length > 0) warnings.push(`${unassigned.length} rung(s) not assigned to a TX output — will be excluded from wire JSON`);
                   const outRefBlocks = rungs.reduce((c, r) => c + r.blocks.filter(b => b.type === 'OUTPUT_REF').length, 0);
                   if (outRefBlocks > 0) warnings.push(`${outRefBlocks} OUTPUT_REF block(s) stripped — use input refs on the input contact instead`);
-                  const emptyOutputs = txOutputs.filter(o => {
+                  const definedOutputs = txOutputs.filter(o => o.address || parseInt(o.amount) > 0);
+                  const emptyOutputs = definedOutputs.filter(o => {
                     const assigned = rungs.filter(r => r.output.txOutputId === o.id);
                     return assigned.length === 0;
                   });
