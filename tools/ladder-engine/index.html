@@ -3572,7 +3572,8 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
         onMoveBlockCrossRung?.(parseInt(sourceRungId), sourceId, rung.id, slotIdx);
         return;
       }
-      const targetBlock = rung.blocks[slotIdx];
+      // Find block at this slot position (slot-based, not array-index-based)
+      const targetBlock = rung.blocks.find(b => (b.slot ?? rung.blocks.indexOf(b)) === slotIdx);
       if (targetBlock && sourceId !== targetBlock.id) {
         onReorderBlock(rung.id, sourceId, targetBlock.id);
       } else if (!targetBlock && rung.blocks.find(b => b.id === sourceId)) {
@@ -3610,14 +3611,21 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
   // Is coil reached in step-through?
   const stepCoilReached = isSteppingThrough && stepActiveIdx >= rung.blocks.length;
 
-  // Build 8 slots: blocks fill from left, rest are empty wire
+  // Build 8 slots: blocks placed at their assigned slot positions (or packed left if no slot assigned)
   const slots = [];
+  const blocksBySlot = new Map();
+  rung.blocks.forEach((block, bi) => {
+    const s = block.slot !== undefined ? block.slot : bi;
+    blocksBySlot.set(s, { block, blockIndex: bi });
+  });
   for (let i = 0; i < MAX_BLOCKS_PER_RUNG; i++) {
-    const block = rung.blocks[i] || null;
+    const entry = blocksBySlot.get(i);
+    const block = entry ? entry.block : null;
+    const bi = entry ? entry.blockIndex : -1;
     const isFlowing = simMode && (block
-      ? powerFlow[i]
+      ? powerFlow[bi]
       : isSteppingThrough ? stepCoilReached : rungEnergized);
-    slots.push({ block, index: i, isFlowing });
+    slots.push({ block, index: i, blockIndex: bi, isFlowing });
   }
 
   return (
@@ -3715,21 +3723,21 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
                   rungId={rung.id}
                   selected={selectedBlock === slot.block.id}
                   simMode={simMode}
-                  simResult={isSteppingThrough ? (stepResults[slot.block.id] || (slot.index < stepActiveIdx ? 'satisfied' : null)) : blockResults[slot.block.id]}
+                  simResult={isSteppingThrough ? (stepResults[slot.block.id] || (slot.blockIndex < stepActiveIdx ? 'satisfied' : null)) : blockResults[slot.block.id]}
                   scanClass={isSteppingThrough ? (
-                    slot.index === stepActiveIdx ? 'step-next' :
-                    slot.index < stepActiveIdx && (stepResults[slot.block.id] === 'satisfied') ? 'step-passed' :
+                    slot.blockIndex === stepActiveIdx ? 'step-next' :
+                    slot.blockIndex < stepActiveIdx && (stepResults[slot.block.id] === 'satisfied') ? 'step-passed' :
                     stepResults[slot.block.id] === 'unsatisfied' || stepResults[slot.block.id] === 'error' ? 'step-failed' :
                     ''
                   ) : scanning ? (
-                    isActiveRung && scanStep?.type === 'block' && scanStep?.block === slot.index ? 'scan-active' :
-                    scanResults?.[`r${rungIndex}b${slot.index}`] === 'satisfied' ? 'scan-satisfied' :
-                    scanResults?.[`r${rungIndex}b${slot.index}`] === 'unsatisfied' ? 'scan-failed' :
-                    scanResults?.[`r${rungIndex}b${slot.index}`] ? 'scan-failed' :
+                    isActiveRung && scanStep?.type === 'block' && scanStep?.block === slot.blockIndex ? 'scan-active' :
+                    scanResults?.[`r${rungIndex}b${slot.blockIndex}`] === 'satisfied' ? 'scan-satisfied' :
+                    scanResults?.[`r${rungIndex}b${slot.blockIndex}`] === 'unsatisfied' ? 'scan-failed' :
+                    scanResults?.[`r${rungIndex}b${slot.blockIndex}`] ? 'scan-failed' :
                     (isActiveRung || !coilResult) ? 'scan-pending' : ''
                   ) : null}
                   onClick={() => {
-                    if (isSteppingThrough && slot.index === stepActiveIdx) {
+                    if (isSteppingThrough && slot.blockIndex === stepActiveIdx) {
                       onStepBlock(slot.block.id);
                     } else {
                       onSelectBlock(slot.block.id);
@@ -6497,9 +6505,18 @@ function App() {
       dup.values = { ...src.values };
       dup.inverted = src.inverted;
       dup.name = src.name ? src.name + ' (copy)' : '';
-      const idx = r.blocks.findIndex(b => b.id === blockId);
-      const blocks = [...r.blocks];
-      blocks.splice(idx + 1, 0, dup);
+      // Assign next free slot after the source block's slot
+      const srcSlot = src.slot ?? r.blocks.indexOf(src);
+      for (let s = srcSlot + 1; s < MAX_BLOCKS_PER_RUNG; s++) {
+        if (!r.blocks.some(b => (b.slot ?? r.blocks.indexOf(b)) === s)) { dup.slot = s; break; }
+      }
+      if (dup.slot === undefined) {
+        for (let s = 0; s < srcSlot; s++) {
+          if (!r.blocks.some(b => (b.slot ?? r.blocks.indexOf(b)) === s)) { dup.slot = s; break; }
+        }
+      }
+      if (dup.slot === undefined) return r; // no free slot
+      const blocks = [...r.blocks, dup].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
       return { ...r, blocks };
     }));
   }, []);
@@ -6521,13 +6538,19 @@ function App() {
     setRungs(prev => prev.map(r => {
       if (r.id !== rungId) return r;
       if (r.blocks.length >= MAX_BLOCKS_PER_RUNG) return r;
+      // Check if slot is occupied
+      if (slotIdx !== undefined && r.blocks.some(b => b.slot === slotIdx)) return r;
       const newBlock = createBlock(blockType);
-      if (slotIdx !== undefined && slotIdx < r.blocks.length) {
-        const blocks = [...r.blocks];
-        blocks.splice(slotIdx, 0, newBlock);
-        return { ...r, blocks };
+      newBlock.slot = slotIdx !== undefined ? slotIdx : r.blocks.length;
+      // Find first free slot if assigned slot is taken
+      if (r.blocks.some(b => b.slot === newBlock.slot)) {
+        for (let s = 0; s < MAX_BLOCKS_PER_RUNG; s++) {
+          if (!r.blocks.some(b => b.slot === s)) { newBlock.slot = s; break; }
+        }
       }
-      return { ...r, blocks: [...r.blocks, newBlock] };
+      // Insert in array sorted by slot position (evaluation order = left to right)
+      const blocks = [...r.blocks, newBlock].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+      return { ...r, blocks };
     }));
   }, []);
 
@@ -6567,9 +6590,16 @@ function App() {
       return prev.map(r => {
         if (r.id === sourceRungId) return { ...r, blocks: r.blocks.filter(b => b.id !== blockId) };
         if (r.id === targetRungId) {
-          const blocks = [...r.blocks];
-          const idx = slotIdx !== undefined ? Math.min(slotIdx, blocks.length) : blocks.length;
-          blocks.splice(idx, 0, block);
+          const movedBlock = { ...block };
+          // Assign to target slot, or first free slot
+          if (slotIdx !== undefined && !r.blocks.some(b => (b.slot ?? 0) === slotIdx)) {
+            movedBlock.slot = slotIdx;
+          } else {
+            for (let s = 0; s < MAX_BLOCKS_PER_RUNG; s++) {
+              if (!r.blocks.some(b => (b.slot ?? r.blocks.indexOf(b)) === s)) { movedBlock.slot = s; break; }
+            }
+          }
+          const blocks = [...r.blocks, movedBlock].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
           return { ...r, blocks };
         }
         return r;
@@ -6633,17 +6663,24 @@ function App() {
   const handleReorderBlock = useCallback((rungId, sourceBlockId, target) => {
     setRungs(prev => prev.map(r => {
       if (r.id !== rungId) return r;
-      const blocks = [...r.blocks];
-      const srcIdx = blocks.findIndex(b => b.id === sourceBlockId);
-      if (srcIdx === -1) return r;
+      const blocks = r.blocks.map(b => ({ ...b }));
+      const srcBlock = blocks.find(b => b.id === sourceBlockId);
+      if (!srcBlock) return r;
       // target can be a block id or a slot index
-      let tgtIdx = typeof target === 'number' && target < 100 && !blocks.find(b => b.id === target)
-        ? Math.min(target, blocks.length - 1)
-        : blocks.findIndex(b => b.id === target);
-      if (tgtIdx === -1) tgtIdx = blocks.length - 1;
-      if (srcIdx === tgtIdx) return r;
-      const [moved] = blocks.splice(srcIdx, 1);
-      blocks.splice(tgtIdx, 0, moved);
+      let targetSlot;
+      if (typeof target === 'number' && !blocks.find(b => b.id === target)) {
+        targetSlot = target;
+      } else {
+        const tgtBlock = blocks.find(b => b.id === target);
+        targetSlot = tgtBlock ? (tgtBlock.slot ?? blocks.indexOf(tgtBlock)) : srcBlock.slot;
+      }
+      if (targetSlot === (srcBlock.slot ?? 0)) return r;
+      // Swap: if target slot is occupied, give that block the source's old slot
+      const occupant = blocks.find(b => b.id !== sourceBlockId && (b.slot ?? blocks.indexOf(b)) === targetSlot);
+      if (occupant) occupant.slot = srcBlock.slot ?? 0;
+      srcBlock.slot = targetSlot;
+      // Re-sort by slot for evaluation order
+      blocks.sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
       return { ...r, blocks };
     }));
   }, []);
@@ -6883,7 +6920,7 @@ function App() {
 
       const slots = [];
       for (let s = 0; s < 8; s++) {
-        const block = rung.blocks[s];
+        const block = rung.blocks.find(b => (b.slot ?? rung.blocks.indexOf(b)) === s);
         if (block) {
           const def = getBlockDef(block.type);
           const firstField = def.fields[0];
@@ -6990,7 +7027,7 @@ ${ladderRows.map(r => `
     <span class="rung-input">${r.inputInfo}</span>
     <div class="rail"></div>
     <div class="slots">
-      ${r.slots.map((s, si) => `<div class="slot ${r.rung.blocks[si] ? 'occupied' : 'empty'}">${s}</div>`).join('')}
+      ${r.slots.map((s, si) => `<div class="slot ${r.rung.blocks.find(b => (b.slot ?? r.rung.blocks.indexOf(b)) === si) ? 'occupied' : 'empty'}">${s}</div>`).join('')}
     </div>
     <div class="rail"></div>
     <span class="coil">${r.coilSym}${r.coilName ? '<br><span class="coil-name">' + r.coilName + '</span>' : ''}</span>
