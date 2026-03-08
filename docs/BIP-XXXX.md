@@ -42,7 +42,7 @@ The `scriptPubKey` of a ladder-locked output is:
 0xc1 || SerializedRungConditions
 ```
 
-The prefix byte `0xc1` was chosen to avoid collision with all existing `OP_` prefixes and witness version programs. The payload is a serialized `RungConditions` structure containing only condition data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). The witness-only types SIGNATURE and PREIMAGE are forbidden in conditions.
+The prefix byte `0xc1` was chosen to avoid collision with all existing `OP_` prefixes and witness version programs. The payload is a serialized `RungConditions` structure containing only condition data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). The witness-only types PUBKEY, SIGNATURE, and PREIMAGE are forbidden in conditions. Blocks that reference public keys use PUBKEY_COMMIT (SHA-256 hash) in conditions; the raw PUBKEY is revealed in the witness at spend time.
 
 **Input (unlocking side):**
 
@@ -96,7 +96,7 @@ Every field in a Ladder Script witness or conditions structure has one of the fo
 
 | Code | Name | Min Size | Max Size | Context | Description |
 |------|------|----------|----------|---------|-------------|
-| `0x01` | PUBKEY | 1 | 2,048 | Both | Public key (compressed 33B, x-only 32B, or post-quantum up to 1,793B) |
+| `0x01` | PUBKEY | 1 | 2,048 | Witness only | Public key (compressed 33B, x-only 32B, or post-quantum up to 1,793B). Forbidden in conditions; use PUBKEY_COMMIT instead. |
 | `0x02` | PUBKEY_COMMIT | 32 | 32 | Both | SHA-256 commitment to a public key (for commit-reveal PQ migration) |
 | `0x03` | HASH256 | 32 | 32 | Both | SHA-256 hash digest |
 | `0x04` | HASH160 | 20 | 20 | Both | RIPEMD160(SHA256()) hash digest |
@@ -122,9 +122,9 @@ These block types cover the fundamental spending conditions equivalent to existi
 
 | Code | Name | Required Fields | Description |
 |------|------|----------------|-------------|
-| `0x0001` | SIG | PUBKEY + SIGNATURE | Single signature verification. Supports Schnorr (BIP-340), ECDSA, and post-quantum schemes via SCHEME field. If a PUBKEY_COMMIT field is present, the PUBKEY must hash to it (commit-reveal). |
-| `0x0002` | MULTISIG | NUMERIC(threshold) + N*(PUBKEY + SIGNATURE) | M-of-N threshold signature. First NUMERIC field is the threshold M. Exactly M valid signatures required from the N provided public keys. |
-| `0x0003` | ADAPTOR_SIG | PUBKEY(signer) + PUBKEY(adaptor point) + SIGNATURE | Adaptor signature verification. The second PUBKEY is the adaptor point T. Verification checks that the signature is valid under the combined challenge H(R+T \|\| P \|\| m). Enables atomic swaps and payment channel protocols. |
+| `0x0001` | SIG | PUBKEY_COMMIT (condition) + PUBKEY + SIGNATURE (witness) | Single signature verification. Supports Schnorr (BIP-340), ECDSA, and post-quantum schemes via SCHEME field. Conditions contain PUBKEY_COMMIT; the witness provides the raw PUBKEY which must hash-match. The `createrungtx` RPC auto-hashes pubkey to PUBKEY_COMMIT. |
+| `0x0002` | MULTISIG | NUMERIC(threshold) + N*PUBKEY_COMMIT (condition) + N*PUBKEY + M*SIGNATURE (witness) | M-of-N threshold signature. First NUMERIC field is the threshold M. Conditions contain N PUBKEY_COMMITs; witness provides N PUBKEYs (each must hash to its PUBKEY_COMMIT) and M SIGNATUREs. |
+| `0x0003` | ADAPTOR_SIG | 2*PUBKEY_COMMIT (condition) + 2*PUBKEY + SIGNATURE (witness) | Adaptor signature verification. Conditions contain PUBKEY_COMMITs for signer and adaptor point. Witness provides the raw PUBKEYs and adapted SIGNATURE. Enables atomic swaps and payment channel protocols. |
 
 **Timelock Family (0x0100-0x01FF):**
 
@@ -152,7 +152,7 @@ These block types constrain the spending transaction's outputs or anchor the UTX
 | Code | Name | Required Fields | Description |
 |------|------|----------------|-------------|
 | `0x0301` | CTV | HASH256(template) | OP_CHECKTEMPLATEVERIFY covenant (BIP-119). SATISFIED when the spending transaction matches the committed template hash. The template hash is computed identically to BIP-119. |
-| `0x0302` | VAULT_LOCK | PUBKEY + SIGNATURE + NUMERIC(delay) | Vault timelock covenant. Requires a valid signature plus an enforced delay period before the vault can be swept. |
+| `0x0302` | VAULT_LOCK | 2*PUBKEY_COMMIT + NUMERIC(delay) (condition) + 2*PUBKEY + SIGNATURE (witness) | Vault timelock covenant. Conditions contain PUBKEY_COMMITs for recovery and hot keys. Requires a valid signature plus an enforced delay period before the vault can be swept. |
 | `0x0303` | AMOUNT_LOCK | NUMERIC(min) + NUMERIC(max) | Output amount range check. SATISFIED when the corresponding output amount is within [min, max] satoshis inclusive. |
 
 **Anchor Family (0x0500-0x05FF):**
@@ -160,11 +160,11 @@ These block types constrain the spending transaction's outputs or anchor the UTX
 | Code | Name | Required Fields | Description |
 |------|------|----------------|-------------|
 | `0x0501` | ANCHOR | HASH256(protocol_id) | Generic anchor. Tags a UTXO as belonging to a protocol identified by the hash. Requires at least one field. |
-| `0x0502` | ANCHOR_CHANNEL | PUBKEY + NUMERIC(commitment) | Lightning channel anchor. Binds a UTXO to a channel identified by the public key. Commitment value must be non-zero if present. |
+| `0x0502` | ANCHOR_CHANNEL | PUBKEY_COMMIT + NUMERIC(commitment) | Lightning channel anchor. Binds a UTXO to a channel identified by the key commitment. Commitment value must be non-zero if present. |
 | `0x0503` | ANCHOR_POOL | HASH256(pool_id) + NUMERIC(participant_count) | Pool anchor. Requires a pool identifier hash and a non-zero participant count. |
 | `0x0504` | ANCHOR_RESERVE | NUMERIC(threshold_n) + NUMERIC(group_m) + HASH256(group_id) | Reserve anchor with N-of-M guardian set. Requires N <= M and a group identifier hash. |
 | `0x0505` | ANCHOR_SEAL | HASH256(seal_hash) | Seal anchor. Permanently binds a UTXO to a data commitment. |
-| `0x0506` | ANCHOR_ORACLE | PUBKEY(oracle) + NUMERIC(quorum) | Oracle anchor. Requires an oracle public key and a non-zero quorum count. |
+| `0x0506` | ANCHOR_ORACLE | PUBKEY_COMMIT(oracle) + NUMERIC(quorum) | Oracle anchor. Requires an oracle key commitment and a non-zero quorum count. |
 
 #### Phase 3 -- Recursion and Programmable Logic Controllers (0x0400-0x06FF)
 
@@ -191,11 +191,11 @@ The Programmable Logic Controller family brings industrial automation concepts t
 | `0x0602` | HYSTERESIS_VALUE | NUMERIC(low) + NUMERIC(high) | Value hysteresis band. SATISFIED when the output amount falls within the [low, high] range. Low must not exceed high. |
 | `0x0611` | TIMER_CONTINUOUS | NUMERIC(duration) [+ NUMERIC(elapsed)] | Continuous timer. Requires a specified number of consecutive blocks. With two NUMERIC fields, SATISFIED when elapsed >= duration. Duration must be non-zero. |
 | `0x0612` | TIMER_OFF_DELAY | NUMERIC(delay) + NUMERIC(remaining) | Off-delay timer. Hold after trigger expires. SATISFIED when remaining reaches zero. Both delay and remaining must be non-zero. |
-| `0x0621` | LATCH_SET | PUBKEY + [NUMERIC(state)] | Latch set (state activation). SATISFIED when the latch state is unset (0) or absent, allowing transition to set. UNSATISFIED if state is already non-zero. |
-| `0x0622` | LATCH_RESET | PUBKEY + NUMERIC(delay) + [NUMERIC(state)] | Latch reset (state deactivation). SATISFIED when the latch state is set (non-zero), allowing transition to unset after delay. UNSATISFIED if state is zero. |
-| `0x0631` | COUNTER_DOWN | PUBKEY + NUMERIC(current) + NUMERIC(step) | Down counter. SATISFIED when current count is positive. Decrements by step per spend. |
+| `0x0621` | LATCH_SET | PUBKEY_COMMIT + [NUMERIC(state)] | Latch set (state activation). SATISFIED when the latch state is unset (0) or absent, allowing transition to set. UNSATISFIED if state is already non-zero. |
+| `0x0622` | LATCH_RESET | PUBKEY_COMMIT + NUMERIC(delay) + [NUMERIC(state)] | Latch reset (state deactivation). SATISFIED when the latch state is set (non-zero), allowing transition to unset after delay. UNSATISFIED if state is zero. |
+| `0x0631` | COUNTER_DOWN | PUBKEY_COMMIT + NUMERIC(current) + NUMERIC(step) | Down counter. SATISFIED when current count is positive. Decrements by step per spend. |
 | `0x0632` | COUNTER_PRESET | NUMERIC(preset) + NUMERIC(current) | Preset counter (approval accumulator). SATISFIED when current >= preset (threshold reached). |
-| `0x0633` | COUNTER_UP | PUBKEY + NUMERIC(current) + NUMERIC(target) | Up counter. SATISFIED when current >= target. Requires two NUMERIC fields. |
+| `0x0633` | COUNTER_UP | PUBKEY_COMMIT + NUMERIC(current) + NUMERIC(target) | Up counter. SATISFIED when current >= target. Requires two NUMERIC fields. |
 | `0x0641` | COMPARE | NUMERIC(operator) + NUMERIC(operand) [+ NUMERIC(upper)] | Comparator. Operator encoding: 0=EQ, 1=NEQ, 2=LT, 3=GT, 4=LTE, 5=GTE, 6=IN_RANGE. IN_RANGE requires a third NUMERIC (upper bound). Compares against the output amount from evaluation context. |
 | `0x0651` | SEQUENCER | NUMERIC(current_step) + NUMERIC(total_steps) | Step sequencer. SATISFIED when current_step < total_steps. Total must be non-zero. |
 | `0x0661` | ONE_SHOT | HASH256(id) + NUMERIC(window) [+ NUMERIC(state)] | One-shot activation window. SATISFIED when state is zero (not yet fired) or absent. Once fired, permanently unsatisfied. |
@@ -237,7 +237,7 @@ The scheme selector determines which signature algorithm is used for verificatio
 
 Post-quantum schemes (codes >= `0x10`) require liboqs support compiled into the node. Verification against a PQ scheme without liboqs support returns false.
 
-The PUBKEY_COMMIT mechanism enables commit-reveal PQ migration: a conditions output commits to the SHA-256 hash of a PQ public key (32 bytes), while the witness reveals the full public key for verification. This prevents quantum adversaries from extracting keys from the conditions script before the spend occurs.
+The PUBKEY_COMMIT mechanism applies to all keys, not just PQ: conditions always use PUBKEY_COMMIT (SHA-256 hash, 32 bytes) rather than raw PUBKEY. The witness reveals the full public key for verification. This eliminates user-chosen bytes from conditions (anti-spam) and prevents quantum adversaries from extracting keys from the conditions script before the spend occurs. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when building conditions.
 
 ### Evaluation Rules
 
@@ -306,7 +306,8 @@ Policy additionally restricts:
 - Only Phase 1 block types are standard. Phase 2 and Phase 3 block types are consensus-valid but policy-non-standard, requiring miner cooperation to confirm.
 - All data types must be known (`IsKnownDataType` returns true).
 - All field sizes must conform to type constraints (`FieldMinSize` through `FieldMaxSize`).
-- Conditions scripts must not contain SIGNATURE or PREIMAGE fields.
+- Conditions scripts must not contain PUBKEY, SIGNATURE, or PREIMAGE fields.
+- A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH combined) are permitted per witness (`MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2`).
 
 ### RPC Interface
 
@@ -334,7 +335,7 @@ The following RPCs are provided for wallet and application integration:
 
 **Forward compatibility via unknown types.** Unknown block types return UNSATISFIED rather than ERROR. This means a rung containing a future block type simply fails to match, and evaluation falls through to subsequent rungs. Combined with inversion (where an unknown inverted block becomes SATISFIED), this enables soft fork deployment of new block types without breaking existing transaction validation.
 
-**Post-quantum signature support.** The PUBKEY maximum of 2,048 bytes and SIGNATURE maximum of 50,000 bytes were chosen to accommodate all NIST post-quantum finalist schemes. The PUBKEY_COMMIT mechanism enables a commit-reveal migration path: users can lock funds to a 32-byte hash of their PQ public key today, revealing the full key only at spend time.
+**Post-quantum signature support.** The PUBKEY maximum of 2,048 bytes and SIGNATURE maximum of 50,000 bytes were chosen to accommodate all NIST post-quantum finalist schemes. PUBKEY_COMMIT is mandatory in conditions for all keys (classical and PQ): users lock funds to a 32-byte hash, revealing the full key only at spend time. This serves dual purposes: anti-spam (zero user-chosen bytes in conditions) and PQ migration readiness.
 
 **Coil separation.** Separating input conditions (rungs) from output semantics (coil) provides a clean interface between "who can spend" and "where it can go." This makes covenant logic (UNLOCK_TO, COVENANT coil types) orthogonal to signature and timelock logic.
 

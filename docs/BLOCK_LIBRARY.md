@@ -36,8 +36,8 @@ Schnorr (BIP-340), ECDSA, and post-quantum schemes via the SCHEME field.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 1-2048 B | Yes | Signing public key (32B x-only, 33B compressed, or PQ) |
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x02) | 32 B | No | SHA-256 commitment to the public key. When present, PUBKEY must hash to this value. |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | SHA-256 commitment to the public key. Stored in conditions. The witness PUBKEY must hash to this value. |
+| PUBKEY | PUBKEY (0x01) | 1-2048 B | Yes (witness) | Signing public key (32B x-only, 33B compressed, or PQ). Witness only; must hash to PUBKEY_COMMIT. |
 | SCHEME | SCHEME (0x09) | 1 B | No | Signature algorithm selector (SCHNORR=0x01, ECDSA=0x02, FALCON512=0x10, FALCON1024=0x11, DILITHIUM3=0x12, SPHINCS_SHA=0x13). If absent, determined by signature size. |
 | SIGNATURE | SIGNATURE (0x06) | 1-50000 B | Yes (witness) | The signature. Schnorr: 64-65 B. ECDSA: 8-72 B. PQ: up to 49216 B. |
 
@@ -104,7 +104,8 @@ a set of N public keys, where each signature must correspond to a distinct key.
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | Threshold M (minimum valid signatures required) |
-| PUBKEY (x N) | PUBKEY (0x01) | 1-2048 B each | Yes | N public keys in the signing set |
+| PUBKEY_COMMIT (x N) | PUBKEY_COMMIT (0x02) | 32 B each | Yes (condition) | N key commitments. Stored in conditions. Each witness PUBKEY must hash to its corresponding PUBKEY_COMMIT. |
+| PUBKEY (x N) | PUBKEY (0x01) | 1-2048 B each | Yes (witness) | N public keys. Witness only; each must hash to its corresponding PUBKEY_COMMIT. |
 | SCHEME | SCHEME (0x09) | 1 B | No | Signature algorithm selector. Applies to all sigs uniformly. |
 | SIGNATURE (x M) | SIGNATURE (0x06) | 1-50000 B each | Yes (witness) | M signatures. Order need not match key order. |
 
@@ -113,7 +114,11 @@ a set of N public keys, where each signature must correspond to a distinct key.
 ```
 M = ReadNumeric(NUMERIC)
 if M <= 0: return ERROR
-pubkeys = FindAllFields(PUBKEY)
+commits = FindAllFields(PUBKEY_COMMIT)
+pubkeys = FindAllFields(PUBKEY)  // from witness
+if commits.size() != pubkeys.size(): return ERROR
+for i in 0..commits.size():
+    if SHA256(pubkeys[i]) != commits[i]: return UNSATISFIED
 sigs = FindAllFields(SIGNATURE)
 if pubkeys.empty() or M > pubkeys.size(): return ERROR
 if sigs.size() < M: return UNSATISFIED
@@ -179,15 +184,19 @@ verifies as a standard Schnorr signature against the signing key.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Signing public key |
-| PUBKEY[1] | PUBKEY (0x01) | 32 B | Yes | Adaptor point (x-only, 32 bytes exactly) |
+| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | Signing key commitment. Stored in conditions. |
+| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | Adaptor point commitment. Stored in conditions. |
+| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Signing public key. Must hash to PUBKEY_COMMIT[0]. |
+| PUBKEY[1] | PUBKEY (0x01) | 32 B | Yes (witness) | Adaptor point (x-only, 32 bytes exactly). Must hash to PUBKEY_COMMIT[1]. |
 | SIGNATURE | SIGNATURE (0x06) | 64-65 B | Yes (witness) | The adapted signature (full Schnorr sig after secret application) |
 
 **Evaluation logic:**
 
 ```
-pubkeys = FindAllFields(PUBKEY)
-if pubkeys.size() < 2 or SIGNATURE absent: return ERROR
+commits = FindAllFields(PUBKEY_COMMIT)
+pubkeys = FindAllFields(PUBKEY)  // from witness
+if commits.size() < 2 or pubkeys.size() < 2 or SIGNATURE absent: return ERROR
+if SHA256(pubkeys[0]) != commits[0] or SHA256(pubkeys[1]) != commits[1]: return UNSATISFIED
 signing_key = pubkeys[0]
 adaptor_point = pubkeys[1]
 if adaptor_point.size() != 32: return ERROR
@@ -666,16 +675,20 @@ cancellation window for unauthorized hot-key spends.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Recovery key (cold storage, immediate sweep) |
-| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes | Hot key (requires CSV delay) |
+| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Recovery key commitment (cold storage, immediate sweep) |
+| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Hot key commitment (requires CSV delay) |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | CSV delay in blocks for the hot-key path |
+| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Recovery key (must hash-match PUBKEY_COMMIT[0]) |
+| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Hot key (must hash-match PUBKEY_COMMIT[1]) |
 | SIGNATURE | SIGNATURE (0x06) | 64-65 B | Yes (witness) | Signature from either recovery or hot key |
 
 **Evaluation logic:**
 
 ```
-pubkeys = FindAllFields(PUBKEY)
-if pubkeys.size() < 2 or SIGNATURE absent or NUMERIC absent: return ERROR
+commits = FindAllFields(PUBKEY_COMMIT)
+pubkeys = FindAllFields(PUBKEY)  // from witness
+if commits.size() < 2 or pubkeys.size() < 2 or SIGNATURE absent or NUMERIC absent: return ERROR
+if SHA256(pubkeys[0]) != commits[0] or SHA256(pubkeys[1]) != commits[1]: return UNSATISFIED
 recovery_key = pubkeys[0]
 hot_key = pubkeys[1]
 hot_delay = ReadNumeric(NUMERIC)
@@ -837,20 +850,20 @@ a commitment number.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Local channel key |
-| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes | Remote channel key |
+| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Local channel key commitment |
+| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Remote channel key commitment |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | Commitment number (must be > 0 if present) |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 2: return ERROR
+if PUBKEY_COMMIT count < 2: return ERROR
 if NUMERIC present and ReadNumeric(NUMERIC) <= 0: return UNSATISFIED
 return SATISFIED
 ```
 
-**Return values:** SATISFIED if 2+ pubkeys present and commitment > 0 (or absent);
-ERROR if fewer than 2 pubkeys.
+**Return values:** SATISFIED if 2+ PUBKEY_COMMITs present and commitment > 0 (or absent);
+ERROR if fewer than 2 PUBKEY_COMMITs.
 
 **Context requirements:** None.
 
@@ -1014,18 +1027,18 @@ oracle public key and outcome count.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Oracle signing key |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Oracle signing key commitment |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | Outcome count (must be > 0 if present) |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 1: return ERROR
+if PUBKEY_COMMIT count < 1: return ERROR
 if NUMERIC present and ReadNumeric(NUMERIC) <= 0: return UNSATISFIED
 return SATISFIED
 ```
 
-**Return values:** SATISFIED if oracle key present and outcome count valid.
+**Return values:** SATISFIED if oracle key commitment present and outcome count valid.
 
 **Context requirements:** None.
 
@@ -1698,13 +1711,13 @@ enforce state transition from 0 to 1 in the output.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Setter key (authorized to set the latch) |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Setter key commitment (authorized to set the latch) |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | State (0=unset, 1=set). If absent, structural-only mode returns SATISFIED. |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 1: return ERROR
+if PUBKEY_COMMIT count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.empty(): return SATISFIED  // backward compat
 state = ReadNumeric(numerics[0])
@@ -1718,7 +1731,7 @@ return UNSATISFIED                // already set
 |-----------|--------|
 | state == 0 (unset) | SATISFIED |
 | state != 0 (already set) | UNSATISFIED |
-| No PUBKEY | ERROR |
+| No PUBKEY_COMMIT | ERROR |
 | No NUMERIC (structural mode) | SATISFIED |
 
 **Context requirements:** None.
@@ -1753,14 +1766,14 @@ RECURSE_MODIFIED to enforce state transition from 1 to 0.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Resetter key |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Resetter key commitment |
 | NUMERIC[0] | NUMERIC (0x08) | 1-4 B | Yes | State (0=unset, >=1=set) |
 | NUMERIC[1] | NUMERIC (0x08) | 1-4 B | Yes | Delay blocks (informational, not enforced by evaluator directly) |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 1: return ERROR
+if PUBKEY_COMMIT count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.size() < 2: return ERROR  // need state + delay
 state = ReadNumeric(numerics[0])
@@ -1776,7 +1789,7 @@ return UNSATISFIED                // already unset
 |-----------|--------|
 | state >= 1 (set) | SATISFIED |
 | state == 0 (already unset) | UNSATISFIED |
-| Missing PUBKEY or fewer than 2 NUMERICs | ERROR |
+| Missing PUBKEY_COMMIT or fewer than 2 NUMERICs | ERROR |
 
 **Context requirements:** None.
 
@@ -1811,13 +1824,13 @@ RECURSE_MODIFIED (delta=-1) to decrement each spend.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Event signer key |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Event signer key commitment |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | Current count |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 1: return ERROR
+if PUBKEY_COMMIT count < 1: return ERROR
 if NUMERIC absent: return ERROR
 count = ReadNumeric(NUMERIC)
 if count < 0: return ERROR
@@ -1912,20 +1925,20 @@ return UNSATISFIED
 **Family:** PLC | **Phase:** 3
 
 **Purpose:** Up counter with target. SATISFIED while current < target (still counting
-up). UNSATISFIED when current >= target. Requires a PUBKEY for authorization.
+up). UNSATISFIED when current >= target. Requires a PUBKEY_COMMIT for authorization.
 
 **Fields:**
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Event signer key |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Event signer key commitment |
 | NUMERIC[0] | NUMERIC (0x08) | 1-4 B | Yes | Current count |
 | NUMERIC[1] | NUMERIC (0x08) | 1-4 B | Yes | Target count |
 
 **Evaluation logic:**
 
 ```
-if pubkey count < 1: return ERROR
+if PUBKEY_COMMIT count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.size() < 2: return ERROR
 current = ReadNumeric(numerics[0])
@@ -1941,7 +1954,7 @@ return UNSATISFIED
 |-----------|--------|
 | current < target | SATISFIED |
 | current >= target | UNSATISFIED |
-| Missing PUBKEY, fewer than 2 NUMERICs, or negative values | ERROR |
+| Missing PUBKEY_COMMIT, fewer than 2 NUMERICs, or negative values | ERROR |
 
 **Context requirements:** None.
 
@@ -1961,7 +1974,7 @@ return UNSATISFIED
 0 of 10 events counted.
 
 **Common patterns:** Event counting with authorization. Similar to COUNTER_PRESET but
-with a PUBKEY requirement for spending authorization.
+with a PUBKEY_COMMIT requirement for spending authorization.
 
 ---
 
@@ -2261,7 +2274,7 @@ Authorization tokens that must be co-spent with a target UTXO.
 
 | Type Code | Name | Min Size | Max Size | Description |
 |-----------|------|----------|----------|-------------|
-| 0x01 | PUBKEY | 1 B | 2048 B | Public key (compressed, x-only, or PQ) |
+| 0x01 | PUBKEY | 1 B | 2048 B | Public key (compressed, x-only, or PQ). **Witness only.** |
 | 0x02 | PUBKEY_COMMIT | 32 B | 32 B | SHA-256 commitment to a public key |
 | 0x03 | HASH256 | 32 B | 32 B | SHA-256 hash digest |
 | 0x04 | HASH160 | 20 B | 20 B | RIPEMD160(SHA256()) hash digest |
@@ -2271,10 +2284,12 @@ Authorization tokens that must be co-spent with a target UTXO.
 | 0x08 | NUMERIC | 1 B | 4 B | Numeric value (little-endian unsigned) |
 | 0x09 | SCHEME | 1 B | 1 B | Signature scheme selector |
 
-Condition data types (allowed in scriptPubKey): PUBKEY, PUBKEY_COMMIT, HASH256,
+Condition data types (allowed in scriptPubKey): PUBKEY_COMMIT, HASH256,
 HASH160, NUMERIC, SCHEME, SPEND_INDEX.
 
-Witness-only data types (not allowed in scriptPubKey conditions): SIGNATURE, PREIMAGE.
+Witness-only data types (not allowed in scriptPubKey conditions): PUBKEY, SIGNATURE, PREIMAGE.
+
+Policy limit: A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH combined) are permitted per witness (`MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2`).
 
 ## Appendix: Signature Schemes
 

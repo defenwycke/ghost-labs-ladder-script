@@ -134,7 +134,7 @@ A v3 output's `scriptPubKey` is constructed as:
 
 The prefix byte `0xc1` (`RUNG_CONDITIONS_PREFIX`) identifies the script as Ladder Script conditions. It was chosen to avoid conflict with any existing `OP_` prefix byte.
 
-The serialized conditions use the same wire format as a `LadderWitness` (Section 3), but **only condition data types are permitted**. The witness-only types SIGNATURE (`0x06`) and PREIMAGE (`0x05`) must not appear in conditions. This separation ensures that locking conditions never contain secret material.
+The serialized conditions use the same wire format as a `LadderWitness` (Section 3), but **only condition data types are permitted**. The witness-only types PUBKEY (`0x01`), SIGNATURE (`0x06`), and PREIMAGE (`0x05`) must not appear in conditions. Blocks that need to reference a public key use PUBKEY_COMMIT (the SHA-256 hash of the key) in conditions; the raw PUBKEY is revealed only in the witness at spend time. This separation ensures that locking conditions never contain secret material or user-chosen bytes.
 
 Deserialization strips the `0xc1` prefix and decodes the remainder as a `LadderWitness`, then validates that no witness-only fields are present.
 
@@ -146,7 +146,7 @@ Every field in a Ladder Script witness or condition must be one of the following
 
 | Code | Name | Min Size | Max Size | Condition | Witness | Purpose |
 |------|------|----------|----------|-----------|---------|---------|
-| `0x01` | PUBKEY | 1 | 2048 | Yes | Yes | Public key (32-byte x-only, 33-byte compressed, or PQ) |
+| `0x01` | PUBKEY | 1 | 2048 | No | Yes | Public key (32-byte x-only, 33-byte compressed, or PQ). Witness-only. |
 | `0x02` | PUBKEY_COMMIT | 32 | 32 | Yes | No | SHA256 commitment to a public key |
 | `0x03` | HASH256 | 32 | 32 | Yes | Yes | SHA-256 hash digest |
 | `0x04` | HASH160 | 20 | 20 | Yes | Yes | RIPEMD160(SHA256()) hash digest |
@@ -172,9 +172,9 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0001` | SIG | PUBKEY, SIGNATURE | PUBKEY_COMMIT, SCHEME |
-| `0x0002` | MULTISIG | NUMERIC (threshold M), N x PUBKEY, M x SIGNATURE | SCHEME |
-| `0x0003` | ADAPTOR_SIG | 2 x PUBKEY (signing_key, adaptor_point), SIGNATURE | -- |
+| `0x0001` | SIG | PUBKEY_COMMIT (condition), PUBKEY + SIGNATURE (witness) | SCHEME |
+| `0x0002` | MULTISIG | NUMERIC (threshold M), N x PUBKEY_COMMIT (condition), N x PUBKEY + M x SIGNATURE (witness) | SCHEME |
+| `0x0003` | ADAPTOR_SIG | 2 x PUBKEY_COMMIT (condition), 2 x PUBKEY + SIGNATURE (witness) | -- |
 
 ### 6.2 Phase 1 -- Timelock Family (0x0100--0x01FF)
 
@@ -198,7 +198,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
 | `0x0301` | CTV | HASH256 (template hash) | -- |
-| `0x0302` | VAULT_LOCK | 2 x PUBKEY (recovery_key, hot_key), SIGNATURE, NUMERIC (hot_delay) | -- |
+| `0x0302` | VAULT_LOCK | 2 x PUBKEY_COMMIT (condition), 2 x PUBKEY + SIGNATURE (witness), NUMERIC (hot_delay) | -- |
 | `0x0303` | AMOUNT_LOCK | 2 x NUMERIC (min_sats, max_sats) | -- |
 
 ### 6.5 Phase 2 -- Anchor/L2 Family (0x0500--0x05FF)
@@ -206,11 +206,11 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
 | `0x0501` | ANCHOR | >= 1 typed field (any) | -- |
-| `0x0502` | ANCHOR_CHANNEL | 2 x PUBKEY (local_key, remote_key) | NUMERIC (commitment_number) |
+| `0x0502` | ANCHOR_CHANNEL | 2 x PUBKEY_COMMIT (local_key, remote_key) | NUMERIC (commitment_number) |
 | `0x0503` | ANCHOR_POOL | HASH256 (vtxo_tree_root) | NUMERIC (participant_count) |
 | `0x0504` | ANCHOR_RESERVE | 2 x NUMERIC (threshold_n, threshold_m), HASH256 (guardian_set_hash) | -- |
 | `0x0505` | ANCHOR_SEAL | 2 x HASH256 (asset_id, state_transition) | -- |
-| `0x0506` | ANCHOR_ORACLE | PUBKEY (oracle_key) | NUMERIC (outcome_count) |
+| `0x0506` | ANCHOR_ORACLE | PUBKEY_COMMIT (oracle_key) | NUMERIC (outcome_count) |
 
 ### 6.6 Phase 3 -- Recursion Family (0x0400--0x04FF)
 
@@ -231,11 +231,11 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0602` | HYSTERESIS_VALUE | 2 x NUMERIC (high_sats, low_sats) | -- |
 | `0x0611` | TIMER_CONTINUOUS | 2 x NUMERIC (accumulated, target) | -- |
 | `0x0612` | TIMER_OFF_DELAY | NUMERIC (remaining) | -- |
-| `0x0621` | LATCH_SET | PUBKEY (setter_key), NUMERIC (state) | -- |
-| `0x0622` | LATCH_RESET | PUBKEY (resetter_key), 2 x NUMERIC (state, delay_blocks) | -- |
-| `0x0631` | COUNTER_DOWN | PUBKEY (event_signer), NUMERIC (count) | -- |
+| `0x0621` | LATCH_SET | PUBKEY_COMMIT (setter_key), NUMERIC (state) | -- |
+| `0x0622` | LATCH_RESET | PUBKEY_COMMIT (resetter_key), 2 x NUMERIC (state, delay_blocks) | -- |
+| `0x0631` | COUNTER_DOWN | PUBKEY_COMMIT (event_signer), NUMERIC (count) | -- |
 | `0x0632` | COUNTER_PRESET | 2 x NUMERIC (current, preset) | -- |
-| `0x0633` | COUNTER_UP | PUBKEY (event_signer), 2 x NUMERIC (current, target) | -- |
+| `0x0633` | COUNTER_UP | PUBKEY_COMMIT (event_signer), 2 x NUMERIC (current, target) | -- |
 | `0x0641` | COMPARE | 2-3 x NUMERIC (operator, value_b [, value_c]) | -- |
 | `0x0651` | SEQUENCER | 2 x NUMERIC (current_step, total_steps) | -- |
 | `0x0661` | ONE_SHOT | NUMERIC (state), HASH256 (commitment) | -- |
@@ -255,8 +255,9 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 
 ### 7.2 SIG (0x0001)
 
-**Required fields:** PUBKEY, SIGNATURE
-**Optional fields:** PUBKEY_COMMIT, SCHEME
+**Condition fields:** PUBKEY_COMMIT (required)
+**Witness fields:** PUBKEY, SIGNATURE (required)
+**Optional fields:** SCHEME
 
 **Evaluation:**
 
@@ -280,7 +281,8 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 
 ### 7.3 MULTISIG (0x0002)
 
-**Required fields:** NUMERIC (threshold M), N x PUBKEY, M x SIGNATURE
+**Condition fields:** NUMERIC (threshold M), N x PUBKEY_COMMIT
+**Witness fields:** N x PUBKEY, M x SIGNATURE
 **Optional fields:** SCHEME
 
 **Evaluation:**
@@ -396,7 +398,8 @@ Identical logic to CLTV. The distinction is semantic: the NUMERIC value should e
 
 ### 7.13 VAULT_LOCK (0x0302)
 
-**Required fields:** 2 x PUBKEY (recovery_key at index 0, hot_key at index 1), SIGNATURE, NUMERIC (hot_delay)
+**Condition fields:** 2 x PUBKEY_COMMIT (recovery_key, hot_key), NUMERIC (hot_delay)
+**Witness fields:** 2 x PUBKEY, SIGNATURE
 
 **Evaluation (two-path):**
 
@@ -429,12 +432,12 @@ Identical logic to CLTV. The distinction is semantic: the NUMERIC value should e
 
 ### 7.16 ANCHOR_CHANNEL (0x0502)
 
-**Required fields:** 2 x PUBKEY (local_key, remote_key)
+**Required fields:** 2 x PUBKEY_COMMIT (local_key, remote_key)
 **Optional fields:** NUMERIC (commitment_number)
 
 **Evaluation:**
 
-1. If fewer than 2 PUBKEYs, return ERROR.
+1. If fewer than 2 PUBKEY_COMMITs, return ERROR.
 2. If NUMERIC is present and its value is <= 0, return UNSATISFIED.
 3. Return SATISFIED.
 
@@ -470,12 +473,12 @@ Identical logic to CLTV. The distinction is semantic: the NUMERIC value should e
 
 ### 7.20 ANCHOR_ORACLE (0x0506)
 
-**Required fields:** PUBKEY (oracle_key)
+**Required fields:** PUBKEY_COMMIT (oracle_key)
 **Optional fields:** NUMERIC (outcome_count)
 
 **Evaluation:**
 
-1. If no PUBKEY, return ERROR.
+1. If no PUBKEY_COMMIT, return ERROR.
 2. If NUMERIC is present and its value is <= 0, return UNSATISFIED.
 3. Return SATISFIED.
 
@@ -618,12 +621,12 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 7.31 LATCH_SET (0x0621)
 
-**Required fields:** PUBKEY (setter_key)
+**Required fields:** PUBKEY_COMMIT (setter_key)
 **Optional fields:** NUMERIC (state)
 
 **Evaluation:**
 
-1. If no PUBKEY, return ERROR.
+1. If no PUBKEY_COMMIT, return ERROR.
 2. If no NUMERIC (backward compat), return SATISFIED.
 3. If `state == 0` (unset), return SATISFIED (the latch can be set).
 4. If `state != 0` (already set), return UNSATISFIED.
@@ -631,11 +634,11 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 7.32 LATCH_RESET (0x0622)
 
-**Required fields:** PUBKEY (resetter_key), 2 x NUMERIC (state, delay_blocks)
+**Required fields:** PUBKEY_COMMIT (resetter_key), 2 x NUMERIC (state, delay_blocks)
 
 **Evaluation:**
 
-1. If no PUBKEY, return ERROR. If fewer than 2 NUMERICs, return ERROR.
+1. If no PUBKEY_COMMIT, return ERROR. If fewer than 2 NUMERICs, return ERROR.
 2. Read state and delay. If delay < 0, return ERROR.
 3. If `state >= 1` (set), return SATISFIED (the latch can be reset).
 4. If `state == 0` (already unset), return UNSATISFIED.
@@ -643,11 +646,11 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 7.33 COUNTER_DOWN (0x0631)
 
-**Required fields:** PUBKEY (event_signer), NUMERIC (count)
+**Required fields:** PUBKEY_COMMIT (event_signer), NUMERIC (count)
 
 **Evaluation:**
 
-1. If no PUBKEY, return ERROR. If no NUMERIC, return ERROR.
+1. If no PUBKEY_COMMIT, return ERROR. If no NUMERIC, return ERROR.
 2. Read count. If negative, return ERROR.
 3. If `count > 0`, return SATISFIED (can still decrement).
 4. If `count == 0`, return UNSATISFIED (countdown done).
@@ -666,11 +669,11 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 7.35 COUNTER_UP (0x0633)
 
-**Required fields:** PUBKEY (event_signer), 2 x NUMERIC (current at index 0, target at index 1)
+**Required fields:** PUBKEY_COMMIT (event_signer), 2 x NUMERIC (current at index 0, target at index 1)
 
 **Evaluation:**
 
-1. If no PUBKEY, return ERROR. If fewer than 2 NUMERICs, return ERROR.
+1. If no PUBKEY_COMMIT, return ERROR. If fewer than 2 NUMERICs, return ERROR.
 2. If either is negative, return ERROR.
 3. If `current < target`, return SATISFIED (still counting).
 4. If `current >= target`, return UNSATISFIED (target reached).
@@ -848,7 +851,7 @@ The coil type determines how the output can be spent.
 
 Post-quantum schemes (codes >= `0x10`) are identified by `IsPQScheme()`. PQ support requires the build to be compiled with liboqs (`HAVE_LIBOQS`). `HasPQSupport()` returns whether the runtime has PQ verification capability. Without liboqs, all PQ verification returns false.
 
-**PUBKEY_COMMIT for PQ keys:** Because PQ public keys are large (897--1952 bytes), outputs can store a 32-byte `PUBKEY_COMMIT = SHA256(pubkey)` in the conditions. The full public key is revealed only in the spending witness and verified against the commitment.
+**PUBKEY_COMMIT for all keys:** Conditions use `PUBKEY_COMMIT = SHA256(pubkey)` (32 bytes) instead of raw PUBKEY. The full public key is revealed only in the spending witness and verified against the commitment. This eliminates user-chosen bytes from conditions (anti-spam) and is especially beneficial for PQ keys (897--1952 bytes reduced to 32 bytes). The `createrungtx` RPC auto-hashes any provided pubkey hex into PUBKEY_COMMIT when building conditions.
 
 ---
 
@@ -864,6 +867,7 @@ Post-quantum schemes (codes >= `0x10`) are identified by `IsPQScheme()`. PQ supp
 | Maximum coil condition rungs | 16 (`MAX_RUNGS`) | Deserialization |
 | Maximum PREIMAGE size | 252 bytes | Data type constraint |
 | Maximum SIGNATURE size | 50,000 bytes | Data type constraint |
+| Maximum preimage blocks per witness | 2 (`MAX_PREIMAGE_BLOCKS_PER_WITNESS`) | Policy |
 | Maximum PUBKEY size | 2,048 bytes | Data type constraint |
 
 ---
@@ -909,7 +913,7 @@ Create a serialized ladder witness from a JSON specification. Returns the serial
 createrungtx [{"txid": "...", "vout": 0}] [{"amount": 0.001, "conditions": [...]}]
 ```
 
-Create an unsigned v3 RUNG_TX transaction with rung condition outputs. Inputs are outpoints to spend. Outputs specify rung conditions (using the same JSON block/field format) and amounts. Returns the raw transaction hex.
+Create an unsigned v3 RUNG_TX transaction with rung condition outputs. Inputs are outpoints to spend. Outputs specify rung conditions (using the same JSON block/field format) and amounts. Returns the raw transaction hex. When building conditions, PUBKEY fields are automatically hashed to PUBKEY_COMMIT (SHA-256) -- users provide pubkey hex as before and the RPC performs the conversion.
 
 ### 14.4 signrungtx
 

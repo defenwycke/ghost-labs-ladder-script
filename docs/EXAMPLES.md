@@ -8,6 +8,12 @@ walkthrough of how the evaluator processes the transaction.
 All examples use transaction version 3 (v3 RUNG_TX). Public keys, hashes, and
 transaction IDs shown here are illustrative placeholders.
 
+**Note on PUBKEY in conditions:** The `createrungtx` RPC auto-hashes any PUBKEY
+field to PUBKEY_COMMIT (SHA-256) when building output conditions. Users provide
+pubkey hex as `"type": "PUBKEY"` in the JSON and the RPC performs the conversion.
+The on-chain conditions contain PUBKEY_COMMIT (32 bytes); the raw PUBKEY is
+provided in the witness at spend time.
+
 ---
 
 ## Conventions

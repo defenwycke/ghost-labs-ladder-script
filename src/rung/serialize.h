@@ -23,6 +23,10 @@ static constexpr size_t MAX_BLOCKS_PER_RUNG = 8;
 static constexpr size_t MAX_FIELDS_PER_BLOCK = 16;
 /** Maximum total ladder witness size in bytes (must accommodate PQ signatures). */
 static constexpr size_t MAX_LADDER_WITNESS_SIZE = 100000;
+/** Maximum number of preimage-bearing blocks (HASH_PREIMAGE, HASH160_PREIMAGE,
+ *  TAGGED_HASH) per ladder witness. Limits user-chosen data to ~504 bytes
+ *  (2 * 252 bytes PREIMAGE max) while covering all legitimate use cases. */
+static constexpr size_t MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2;
 
 /** Deserialize a LadderWitness from raw witness bytes.
  *  Performs full type and size validation during deserialization.

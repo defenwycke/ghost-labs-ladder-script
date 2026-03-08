@@ -116,6 +116,7 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
             return false;
         }
 
+        size_t preimage_block_count = 0;
         for (const auto& rung : ladder.rungs) {
             if (rung.blocks.size() > MAX_BLOCKS_PER_RUNG) {
                 reason = "rung-too-many-blocks";
@@ -130,6 +131,13 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
                     return false;
                 }
 
+                // Count preimage-bearing blocks (spam surface limit)
+                if (block.type == RungBlockType::HASH_PREIMAGE ||
+                    block.type == RungBlockType::HASH160_PREIMAGE ||
+                    block.type == RungBlockType::TAGGED_HASH) {
+                    preimage_block_count++;
+                }
+
                 for (const auto& field : block.fields) {
                     std::string field_reason;
                     if (!field.IsValid(field_reason)) {
@@ -138,6 +146,11 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
                     }
                 }
             }
+        }
+
+        if (preimage_block_count > MAX_PREIMAGE_BLOCKS_PER_WITNESS) {
+            reason = "rung-too-many-preimage-blocks: " + std::to_string(preimage_block_count);
+            return false;
         }
     }
 

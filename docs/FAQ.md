@@ -155,9 +155,11 @@ Each output has a coil that determines what happens when a rung is satisfied:
 ### 12. What is the difference between conditions and witness?
 
 **Conditions** are the locking side -- stored in the output's scriptPubKey
-(prefixed with `0xc1`). They contain only *condition data types*: PUBKEY,
-PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only
-types (SIGNATURE, PREIMAGE) are forbidden in conditions.
+(prefixed with `0xc1`). They contain only *condition data types*: PUBKEY_COMMIT,
+HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only types (PUBKEY,
+SIGNATURE, PREIMAGE) are forbidden in conditions. Blocks that reference public
+keys use PUBKEY_COMMIT (SHA-256 hash of the key) in conditions; the raw PUBKEY
+is provided in the witness at spend time.
 
 The **witness** is the unlocking side -- stored in the transaction input's
 witness field. It contains the attestations: signatures, preimages, and other
@@ -351,23 +353,35 @@ Use cases:
 
 ### 25. Can arbitrary data be stored in Ladder Script?
 
-No. Ladder Script's typed field system makes arbitrary data embedding
-impractical. Every byte in a rung transaction must conform to a known data type
-with strict size limits and semantic validation:
+No. Ladder Script eliminates arbitrary data embedding through cryptographic
+binding on both sides of a transaction.
 
-1. **RPC layer**: Unknown data types are rejected. Witness-only types (SIGNATURE,
-   PREIMAGE) are blocked from conditions. Field sizes are validated against
-   type-specific min/max bounds.
-2. **Serialization**: Structure limits (max rungs, blocks, fields) are enforced
-   during deserialization.
-3. **Policy**: Output validation rejects oversized structures before mempool
-   admission.
-4. **Consensus**: Semantic validation at spend time rejects garbage operators,
-   wrong preimages, and mismatched keys.
-5. **Economic**: Even if structurally valid data gets into a UTXO (e.g., a
-   PUBKEY field with non-key bytes), the funds are burned because no valid
-   signature can be produced for a nonsense key. The attacker pays for storage
-   they can never recover.
+**Conditions (UTXO set — permanent storage):** Raw public keys (PUBKEY) are
+not permitted. All key references use PUBKEY_COMMIT — the SHA-256 hash of the
+key. The remaining condition types (HASH256, HASH160, NUMERIC, SCHEME,
+SPEND_INDEX) are either hash outputs (computationally impossible to choose —
+would require a SHA-256 preimage attack) or small bounded integers. There are
+zero user-chosen bytes in conditions.
+
+**Witness (prunable):** Every witness field is cryptographically bound to a
+condition:
+
+- **PUBKEY**: Must hash to a specific PUBKEY_COMMIT in conditions. Attacker
+  cannot substitute arbitrary bytes — SHA-256(fake_key) would not match the
+  commitment.
+- **SIGNATURE**: Must cryptographically verify against the committed key for
+  the specific transaction sighash. The bytes are determined by the private
+  key and message, not freely chosen.
+- **PREIMAGE**: Must hash to a specific HASH256 or HASH160 in conditions.
+  Limited to 252 bytes, and a maximum of 2 preimage-bearing blocks per
+  witness (policy). This is the one field with user-chosen content, retained
+  for HTLC compatibility. ADAPTOR_SIG provides a spam-free alternative for
+  the same use cases.
+
+The total embeddable data in a Ladder Script transaction is limited to a few
+bits of grindable entropy in signature nonces and small bounded NUMERIC values.
+This is comparable to the information encodable in output amounts on any
+Bitcoin transaction — an irreducible minimum, not a data channel.
 
 ### 26. What happens with unknown block types?
 

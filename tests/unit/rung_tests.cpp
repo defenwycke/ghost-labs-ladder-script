@@ -64,6 +64,14 @@ static std::vector<uint8_t> MakeNumeric(uint32_t val)
     return data;
 }
 
+/** Compute SHA-256 of a pubkey to produce a PUBKEY_COMMIT value. */
+static std::vector<uint8_t> MakePubkeyCommit(const std::vector<uint8_t>& pubkey)
+{
+    std::vector<uint8_t> commit(CSHA256::OUTPUT_SIZE);
+    CSHA256().Write(pubkey.data(), pubkey.size()).Finalize(commit.data());
+    return commit;
+}
+
 BOOST_FIXTURE_TEST_SUITE(rung_tests, BasicTestingSetup)
 
 // ============================================================================
@@ -1678,11 +1686,15 @@ BOOST_AUTO_TEST_CASE(policy_all_phases_standard)
 
 BOOST_AUTO_TEST_CASE(conditions_serialize_roundtrip)
 {
+    // Conditions now use PUBKEY_COMMIT instead of raw PUBKEY
+    auto pk = MakePubkey();
+    auto commit = MakePubkeyCommit(pk);
+
     RungConditions conditions;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, commit});
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
@@ -1698,7 +1710,7 @@ BOOST_AUTO_TEST_CASE(conditions_serialize_roundtrip)
     BOOST_CHECK_EQUAL(decoded.rungs[0].blocks.size(), 1u);
     BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::SIG);
     BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 1u);
-    BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].type == RungDataType::PUBKEY);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].type == RungDataType::PUBKEY_COMMIT);
 }
 
 BOOST_AUTO_TEST_CASE(conditions_roundtrip_with_inverted)
@@ -1722,11 +1734,12 @@ BOOST_AUTO_TEST_CASE(conditions_roundtrip_with_inverted)
 
 BOOST_AUTO_TEST_CASE(conditions_reject_signature_field)
 {
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
@@ -1781,7 +1794,8 @@ BOOST_AUTO_TEST_CASE(conditions_not_rung_script)
 
 BOOST_AUTO_TEST_CASE(conditions_data_type_check)
 {
-    BOOST_CHECK(rung::IsConditionDataType(RungDataType::PUBKEY));
+    // PUBKEY is now witness-only (prevents arbitrary data in UTXO set)
+    BOOST_CHECK(!rung::IsConditionDataType(RungDataType::PUBKEY));
     BOOST_CHECK(rung::IsConditionDataType(RungDataType::PUBKEY_COMMIT));
     BOOST_CHECK(rung::IsConditionDataType(RungDataType::HASH256));
     BOOST_CHECK(rung::IsConditionDataType(RungDataType::HASH160));
@@ -1810,11 +1824,12 @@ BOOST_AUTO_TEST_CASE(sighash_ladder_deterministic)
     output.scriptPubKey = CScript() << OP_RETURN;
     mtx.vout.push_back(output);
 
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
@@ -1847,11 +1862,12 @@ BOOST_AUTO_TEST_CASE(sighash_ladder_different_hashtypes)
     output.scriptPubKey = CScript() << OP_RETURN;
     mtx.vout.push_back(output);
 
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
@@ -1900,11 +1916,12 @@ BOOST_AUTO_TEST_CASE(sighash_ladder_rejects_invalid_hashtype)
 
 BOOST_AUTO_TEST_CASE(policy_valid_rung_output)
 {
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
@@ -1914,13 +1931,34 @@ BOOST_AUTO_TEST_CASE(policy_valid_rung_output)
     BOOST_CHECK(rung::IsStandardRungOutput(script, reason));
 }
 
-BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_signature_field)
+BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_pubkey_field)
 {
+    // Raw PUBKEY is now witness-only; conditions must reject it
     LadderWitness ladder;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
     block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    CScript script;
+    script.push_back(rung::RUNG_CONDITIONS_PREFIX);
+    script.insert(script.end(), bytes.begin(), bytes.end());
+
+    std::string reason;
+    BOOST_CHECK(!rung::IsStandardRungOutput(script, reason));
+}
+
+BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_signature_field)
+{
+    auto pk = MakePubkey();
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
     rung.blocks.push_back(block);
     ladder.rungs.push_back(rung);
@@ -1947,11 +1985,12 @@ BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_non_conditions)
 
 BOOST_AUTO_TEST_CASE(merge_rung_count_mismatch)
 {
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung cond_rung;
     RungBlock cond_block;
     cond_block.type = RungBlockType::SIG;
-    cond_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    cond_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     cond_rung.blocks.push_back(cond_block);
     conditions.rungs.push_back(cond_rung);
 
@@ -1995,11 +2034,12 @@ BOOST_AUTO_TEST_CASE(merge_rung_count_mismatch)
 
 BOOST_AUTO_TEST_CASE(merge_block_count_mismatch)
 {
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung cond_rung;
     RungBlock cond_sig;
     cond_sig.type = RungBlockType::SIG;
-    cond_sig.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    cond_sig.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     cond_rung.blocks.push_back(cond_sig);
     RungBlock cond_csv;
     cond_csv.type = RungBlockType::CSV;
@@ -2041,11 +2081,12 @@ BOOST_AUTO_TEST_CASE(merge_block_count_mismatch)
 
 BOOST_AUTO_TEST_CASE(merge_block_type_mismatch)
 {
+    auto pk = MakePubkey();
     RungConditions conditions;
     Rung cond_rung;
     RungBlock cond_block;
     cond_block.type = RungBlockType::SIG;
-    cond_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    cond_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
     cond_rung.blocks.push_back(cond_block);
     conditions.rungs.push_back(cond_rung);
 
@@ -3101,12 +3142,13 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_cross_rung)
 
     // Build input conditions: 2 rungs
     RungConditions input_conds;
+    auto pk = MakePubkey();
     {
-        // Rung 0: SIG block
+        // Rung 0: SIG block with PUBKEY_COMMIT (conditions use commits, not raw keys)
         Rung r0;
         RungBlock b0;
         b0.type = RungBlockType::SIG;
-        b0.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+        b0.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
         r0.blocks.push_back(std::move(b0));
         input_conds.rungs.push_back(std::move(r0));
 
@@ -3125,7 +3167,7 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_cross_rung)
         Rung r0;
         RungBlock b0;
         b0.type = RungBlockType::SIG;
-        b0.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+        b0.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
         r0.blocks.push_back(std::move(b0));
         output_conds.rungs.push_back(std::move(r0));
 
@@ -3841,6 +3883,301 @@ BOOST_AUTO_TEST_CASE(eval_adaptor_sig_valid_adaptor_point)
 
     // With mock checker returning true for schnorr, should be SATISFIED
     BOOST_CHECK(EvalAdaptorSigBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+// ============================================================================
+// Anti-spam: PUBKEY witness-only + preimage block limit tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(conditions_reject_pubkey_field)
+{
+    // Raw PUBKEY must be rejected from conditions (witness-only data type)
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    CScript script;
+    script.push_back(rung::RUNG_CONDITIONS_PREFIX);
+    script.insert(script.end(), bytes.begin(), bytes.end());
+
+    RungConditions decoded;
+    std::string error;
+    BOOST_CHECK(!rung::DeserializeRungConditions(script, decoded, error));
+    BOOST_CHECK(error.find("witness-only") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(conditions_accept_pubkey_commit)
+{
+    // PUBKEY_COMMIT is the correct condition-side type for key references
+    auto pk = MakePubkey();
+    auto commit = MakePubkeyCommit(pk);
+
+    RungConditions conditions;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, commit});
+    rung.blocks.push_back(block);
+    conditions.rungs.push_back(rung);
+
+    CScript script = rung::SerializeRungConditions(conditions);
+
+    RungConditions decoded;
+    std::string error;
+    BOOST_CHECK(rung::DeserializeRungConditions(script, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].type == RungDataType::PUBKEY_COMMIT);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].data == commit);
+}
+
+BOOST_AUTO_TEST_CASE(eval_sig_pubkey_commit_resolution)
+{
+    // SIG block with PUBKEY_COMMIT (conditions) + PUBKEY (witness) should
+    // verify commitment match before signature verification
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+
+    auto pk = MakePubkey();
+    auto commit = MakePubkeyCommit(pk);
+
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, commit});  // from conditions
+    block.fields.push_back({RungDataType::PUBKEY, pk});             // from witness
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    BOOST_CHECK(EvalSigBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_sig_pubkey_commit_mismatch_fails)
+{
+    // SIG block where witness PUBKEY doesn't match PUBKEY_COMMIT → UNSATISFIED
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+
+    auto pk = MakePubkey();
+    auto wrong_commit = MakeHash256();  // random hash, won't match
+
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, wrong_commit});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    BOOST_CHECK(EvalSigBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_multisig_pubkey_commit_resolution)
+{
+    // MULTISIG 2-of-3 with PUBKEY_COMMITs in conditions + PUBKEYs in witness
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+
+    auto pk1 = MakePubkey();
+    auto pk2 = std::vector<uint8_t>(33, 0x02);  // different fake key
+    auto pk3 = std::vector<uint8_t>(33, 0x03);
+    pk3[0] = 0x03;  // valid prefix
+
+    RungBlock block;
+    block.type = RungBlockType::MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});       // threshold
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk1)});  // conditions
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk2)});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk3)});
+    block.fields.push_back({RungDataType::PUBKEY, pk1});                   // witness
+    block.fields.push_back({RungDataType::PUBKEY, pk2});
+    block.fields.push_back({RungDataType::PUBKEY, pk3});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});  // 2 sigs
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    EvalResult result = EvalMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_multisig_pubkey_commit_mismatch_fails)
+{
+    // MULTISIG where one witness PUBKEY doesn't match its commit → ERROR (empty resolved)
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+
+    auto pk1 = MakePubkey();
+    auto wrong_pk = std::vector<uint8_t>(33, 0xFF);
+    wrong_pk[0] = 0x02;
+
+    RungBlock block;
+    block.type = RungBlockType::MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk1)});
+    block.fields.push_back({RungDataType::PUBKEY, wrong_pk});  // doesn't match commit
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    EvalResult result = EvalMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::ERROR);  // ResolvePubkeyCommitments returns empty
+}
+
+BOOST_AUTO_TEST_CASE(policy_preimage_block_limit)
+{
+    // Create a witness with 3 HASH_PREIMAGE blocks — should exceed the limit of 2
+    CMutableTransaction mtx;
+    mtx.version = 3;
+    CTxIn input;
+    input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
+    mtx.vin.push_back(input);
+    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+
+    LadderWitness ladder;
+    Rung rung;
+    // 3 HASH_PREIMAGE blocks in one rung
+    for (int i = 0; i < 3; ++i) {
+        RungBlock block;
+        block.type = RungBlockType::HASH_PREIMAGE;
+        block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+        block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(16, static_cast<uint8_t>(i))});
+        rung.blocks.push_back(block);
+    }
+    ladder.rungs.push_back(rung);
+
+    auto witness_bytes = SerializeLadderWitness(ladder);
+    mtx.vin[0].scriptWitness.stack.push_back(witness_bytes);
+
+    CTransaction tx(mtx);
+    std::string reason;
+    BOOST_CHECK(!rung::IsStandardRungTx(tx, reason));
+    BOOST_CHECK(reason.find("preimage-blocks") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(policy_preimage_block_limit_at_max)
+{
+    // 2 HASH_PREIMAGE blocks — should be within limit
+    CMutableTransaction mtx;
+    mtx.version = 3;
+    CTxIn input;
+    input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
+    mtx.vin.push_back(input);
+    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+
+    LadderWitness ladder;
+    Rung rung;
+    for (int i = 0; i < 2; ++i) {
+        RungBlock block;
+        block.type = RungBlockType::HASH_PREIMAGE;
+        block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+        block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(16, static_cast<uint8_t>(i))});
+        rung.blocks.push_back(block);
+    }
+    ladder.rungs.push_back(rung);
+
+    auto witness_bytes = SerializeLadderWitness(ladder);
+    mtx.vin[0].scriptWitness.stack.push_back(witness_bytes);
+
+    CTransaction tx(mtx);
+    std::string reason;
+    BOOST_CHECK(rung::IsStandardRungTx(tx, reason));
+}
+
+BOOST_AUTO_TEST_CASE(policy_preimage_block_limit_mixed_types)
+{
+    // 1 HASH_PREIMAGE + 1 HASH160_PREIMAGE + 1 TAGGED_HASH = 3 total → exceeds limit
+    CMutableTransaction mtx;
+    mtx.version = 3;
+    CTxIn input;
+    input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
+    mtx.vin.push_back(input);
+    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+
+    LadderWitness ladder;
+    Rung rung;
+
+    RungBlock b1;
+    b1.type = RungBlockType::HASH_PREIMAGE;
+    b1.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    b1.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(16, 0x01)});
+    rung.blocks.push_back(b1);
+
+    RungBlock b2;
+    b2.type = RungBlockType::HASH160_PREIMAGE;
+    b2.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    b2.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(16, 0x02)});
+    rung.blocks.push_back(b2);
+
+    RungBlock b3;
+    b3.type = RungBlockType::TAGGED_HASH;
+    b3.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    b3.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    b3.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(16, 0x03)});
+    rung.blocks.push_back(b3);
+
+    ladder.rungs.push_back(rung);
+
+    auto witness_bytes = SerializeLadderWitness(ladder);
+    mtx.vin[0].scriptWitness.stack.push_back(witness_bytes);
+
+    CTransaction tx(mtx);
+    std::string reason;
+    BOOST_CHECK(!rung::IsStandardRungTx(tx, reason));
+    BOOST_CHECK(reason.find("preimage-blocks") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(spam_embed_fake_pubkey_in_conditions_rejected)
+{
+    // Attacker tries to embed spam data as a "PUBKEY" in conditions
+    // This must be rejected since PUBKEY is now witness-only
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    // 2KB of spam disguised as a "PQ public key"
+    std::vector<uint8_t> spam(2048, 0x41);  // 'AAAA...'
+    block.fields.push_back({RungDataType::PUBKEY, spam});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    CScript script;
+    script.push_back(rung::RUNG_CONDITIONS_PREFIX);
+    script.insert(script.end(), bytes.begin(), bytes.end());
+
+    RungConditions decoded;
+    std::string error;
+    BOOST_CHECK(!rung::DeserializeRungConditions(script, decoded, error));
+    BOOST_CHECK(error.find("witness-only") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(spam_embed_fake_pubkey_commit_unrecoverable)
+{
+    // Attacker creates UTXO with PUBKEY_COMMIT = SHA256(spam).
+    // The spam never appears on chain — only its hash does.
+    // At spend time, revealing the spam in witness fails signature verification.
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;  // sig verification will fail
+    ScriptExecutionData execdata;
+
+    // "Spam" data masquerading as a public key
+    std::vector<uint8_t> spam(33, 0x42);
+    spam[0] = 0x02;
+
+    // Compute its commitment
+    auto commit = MakePubkeyCommit(spam);
+
+    // The conditions side only contains the 32-byte hash — not the spam
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, commit});  // conditions: just a hash
+    block.fields.push_back({RungDataType::PUBKEY, spam});            // witness: spam bytes
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    // Commitment verifies (SHA256 matches), but signature fails
+    // → spam is in the FAILED spending witness, never mined
+    EvalResult result = EvalSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -20,8 +20,11 @@ static constexpr uint8_t RUNG_CONDITIONS_PREFIX = 0xc1;
 
 /** Rung conditions = the "locking" side of a v3 output.
  *  Stored in scriptPubKey with the same wire format as a LadderWitness
- *  but containing only condition data types (PUBKEY, PUBKEY_COMMIT, HASH256,
- *  HASH160, NUMERIC, SCHEME, SPEND_INDEX) — never SIGNATURE or PREIMAGE. */
+ *  but containing only condition data types (PUBKEY_COMMIT, HASH256,
+ *  HASH160, NUMERIC, SCHEME, SPEND_INDEX) — never PUBKEY, SIGNATURE,
+ *  or PREIMAGE. Raw public keys are witness-only; conditions use
+ *  PUBKEY_COMMIT (SHA-256 of the key) to prevent arbitrary data
+ *  embedding in the UTXO set. */
 struct RungConditions {
     std::vector<Rung> rungs;
     RungCoil coil;               //!< Output coil (per-output, serialized with conditions)

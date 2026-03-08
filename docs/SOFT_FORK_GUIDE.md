@@ -310,6 +310,6 @@ After each phase activation, the following should be monitored:
 
 - **Block validation time:** Ladder evaluation adds computation per v3 input. Monitor for block validation latency increases.
 - **Mempool behavior:** Ensure v3 transactions are correctly relayed and that policy enforcement matches expectations.
-- **UTXO set growth:** Ladder conditions with large PQ public keys increase UTXO set size. Monitor growth rate.
+- **UTXO set growth:** Ladder conditions use PUBKEY_COMMIT (32 bytes) rather than raw public keys, keeping UTXO overhead constant regardless of key size. Monitor growth rate.
 - **Reorg behavior:** Verify that v3 transactions are correctly handled during chain reorganizations.
 - **Wallet adoption:** Track the percentage of outputs using ladder conditions to gauge ecosystem readiness for subsequent phases.

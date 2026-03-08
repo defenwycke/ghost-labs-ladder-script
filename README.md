@@ -18,9 +18,9 @@ The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and eve
 
 **Contact inversion.** Any block can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" — a primitive Bitcoin has never had. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
 
-**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. There is no push-data opcode. There is no arbitrary witness. If it doesn't parse as a typed field, it doesn't enter the mempool.
+**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. Conditions contain zero user-chosen bytes — every field is a hash digest or bounded numeric. PUBKEY is witness-only; conditions use PUBKEY_COMMIT (SHA-256 hash). Preimage blocks are limited to 2 per witness. There is no push-data opcode. If it doesn't parse as a typed field, it doesn't enter the mempool.
 
-**Post-quantum ready.** FALCON-512 signatures work today. The PUBKEY_COMMIT block reduces PQ key storage from 897 bytes to 32 bytes per UTXO. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs.
+**Post-quantum ready.** FALCON-512 signatures work today. All keys use PUBKEY_COMMIT in conditions (32-byte SHA-256 hash), keeping UTXO size constant regardless of key type. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs.
 
 **Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
 

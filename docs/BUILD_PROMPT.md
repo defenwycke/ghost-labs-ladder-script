@@ -46,7 +46,7 @@ Output spending conditions:
 
 **Why this matters architecturally:**
 
-1. **Spam is a parse error** — no untyped byte arrays exist in the format. Inscriptions, ordinals, arbitrary data embedding are structurally impossible. Not policy-restricted — parse error.
+1. **Spam is a parse error** — no untyped byte arrays exist in the format. Conditions contain zero user-chosen bytes (every field is a hash digest or bounded numeric). PUBKEY is witness-only; conditions use PUBKEY_COMMIT (SHA-256 hash). Inscriptions, ordinals, arbitrary data embedding are structurally impossible. Not policy-restricted — parse error.
 
 2. **Coils declare, not carry** — the coil declares attestation mode. Heavy cryptographic data (PQ signatures, aggregate proofs) lives at the block level, not in every transaction. Transactions carry only what is necessary.
 
@@ -87,8 +87,8 @@ Every parameter in every function block must be one of these enumerated types. *
 
 ```cpp
 enum class RungDataType : uint8_t {
-    PUBKEY        = 0x01,  // max 64 bytes — compressed (33B) or uncompressed (65B) EC key
-    PUBKEY_COMMIT = 0x02,  // exactly 32 bytes — hash commitment to a pubkey
+    PUBKEY        = 0x01,  // max 2048 bytes — witness-only. Conditions use PUBKEY_COMMIT instead.
+    PUBKEY_COMMIT = 0x02,  // exactly 32 bytes — SHA-256 hash of pubkey. Used in conditions instead of raw PUBKEY.
     HASH256       = 0x03,  // exactly 32 bytes — SHA-256 hash
     HASH160       = 0x04,  // exactly 20 bytes — HASH160
     PREIMAGE      = 0x05,  // max 32 bytes — hash preimage reveal

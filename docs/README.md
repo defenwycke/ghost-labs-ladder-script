@@ -78,7 +78,7 @@ are defined:
 
 | Type | Byte | Size | Allowed In |
 |------|------|------|------------|
-| PUBKEY | 0x01 | 1-2048 bytes | Conditions, Witness |
+| PUBKEY | 0x01 | 1-2048 bytes | Witness only |
 | PUBKEY_COMMIT | 0x02 | 32 bytes (fixed) | Conditions |
 | HASH256 | 0x03 | 32 bytes (fixed) | Conditions |
 | HASH160 | 0x04 | 20 bytes (fixed) | Conditions |

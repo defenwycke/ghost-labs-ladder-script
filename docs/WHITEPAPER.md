@@ -56,7 +56,7 @@ Every byte in a Ladder Script witness belongs to one of nine declared data types
 
 | Data Type | Code | Size (bytes) | Purpose |
 |-----------|------|-------------|---------|
-| PUBKEY | 0x01 | 1--2048 | Public key (compressed, x-only, or post-quantum) |
+| PUBKEY | 0x01 | 1--2048 | Public key (compressed, x-only, or post-quantum). Witness only. |
 | PUBKEY_COMMIT | 0x02 | 32 | SHA-256 commitment to a public key |
 | HASH256 | 0x03 | 32 | SHA-256 hash |
 | HASH160 | 0x04 | 20 | RIPEMD160(SHA-256) hash |
@@ -102,7 +102,7 @@ Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is trea
 
 Ladder Script transactions use **transaction version 3** (`RUNG_TX_VERSION = 3`). This cleanly separates Ladder Script transactions from legacy (version 1) and SegWit/Taproot (version 2) transactions at the protocol level.
 
-**Output (locking side):** The scriptPubKey of a version 3 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (SIGNATURE, PREIMAGE) are prohibited in conditions.
+**Output (locking side):** The scriptPubKey of a version 3 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are prohibited in conditions. Blocks that reference public keys use PUBKEY_COMMIT (a 32-byte SHA-256 hash) in conditions; the raw PUBKEY is provided in the witness at spend time.
 
 **Witness (unlocking side):** The witness for a version 3 input contains a serialized `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
 
@@ -297,9 +297,9 @@ The PUBKEY data type supports sizes up to 2,048 bytes, and the SIGNATURE data ty
 
 ### 5.2 PUBKEY_COMMIT: Compact UTXO Commitments
 
-Post-quantum public keys are large. A FALCON-512 public key is 897 bytes, which would significantly increase UTXO set size if stored in full. Ladder Script addresses this with the PUBKEY_COMMIT data type: a 32-byte SHA-256 commitment to the full public key.
+All public keys -- classical and post-quantum -- are referenced in conditions via the PUBKEY_COMMIT data type: a 32-byte SHA-256 commitment to the full public key. Raw PUBKEY is witness-only.
 
-The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This reduces UTXO overhead from 897 bytes to 32 bytes per post-quantum output -- a 96% reduction.
+The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This eliminates user-chosen bytes from conditions (anti-spam) and is especially beneficial for PQ keys, reducing UTXO overhead from 897 bytes to 32 bytes per post-quantum output -- a 96% reduction. The `createrungtx` RPC auto-hashes any provided pubkey hex into PUBKEY_COMMIT when building conditions.
 
 ### 5.3 The COSIGN Guardian Pattern
 
@@ -349,7 +349,7 @@ Every byte in a Ladder Script witness must belong to a typed field with validate
 
 ### 7.2 Witness-Only Types
 
-The SIGNATURE and PREIMAGE data types are prohibited in conditions (the locking side stored in the UTXO set). The function `IsConditionDataType()` enforces this distinction. This prevents using condition scripts as arbitrary data storage, since the only types allowed in conditions carry semantic meaning (keys, hashes, numeric parameters).
+The PUBKEY, SIGNATURE, and PREIMAGE data types are prohibited in conditions (the locking side stored in the UTXO set). The function `IsConditionDataType()` enforces this distinction -- `IsConditionDataType(PUBKEY)` returns false. Blocks that need keys use PUBKEY_COMMIT (the SHA-256 hash of the key) in conditions. This ensures that conditions contain zero user-chosen bytes: every field is either a fixed-size hash digest or a small bounded numeric. Witness data is prunable and cryptographically bound to conditions.
 
 ### 7.3 Structural Limits
 
@@ -366,7 +366,7 @@ These limits are sufficient for any practical spending condition while preventin
 
 ### 7.4 Economic Disincentive
 
-Because every field must conform to a data type that has semantic meaning in the evaluation model, embedding arbitrary data requires encoding it as valid-looking typed fields (e.g., as PUBKEY or HASH256 data). Such fields, if used in conditions, create cryptographically unspendable outputs -- the "data" would need to be a valid public key or hash with a known preimage. Funds locked to such outputs are permanently burned. This creates a direct economic cost for data embedding that scales with the amount of data stored.
+Conditions contain zero user-chosen bytes. Every condition field is either a fixed-size hash digest (PUBKEY_COMMIT, HASH256, HASH160 -- outputs of SHA-256 or RIPEMD160, computationally impossible to choose freely) or a small bounded integer (NUMERIC, SCHEME, SPEND_INDEX). Raw public keys are witness-only and cryptographically bound to their PUBKEY_COMMIT in conditions. Witness preimage blocks are limited to 2 per witness (MAX_PREIMAGE_BLOCKS_PER_WITNESS). The total embeddable data is limited to a few bits of grindable entropy in signature nonces -- an irreducible minimum, not a data channel.
 
 ---
 

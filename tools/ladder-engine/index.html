@@ -549,6 +549,12 @@ body {
 .coil.has-tx-output .coil-tx-info {
   color: var(--cyan);
 }
+.coil.has-ref .coil-symbol {
+  color: var(--green);
+}
+.coil.has-ref .coil-name {
+  color: var(--green);
+}
 .coil-warn {
   position: absolute;
   top: -6px;
@@ -1549,6 +1555,31 @@ body {
 }
 
 /* Rung delete */
+.rung-controls {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 5;
+}
+.rung:hover .rung-controls { display: flex; }
+.rung-ctrl-btn {
+  width: 16px;
+  height: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.rung-ctrl-btn:hover { border-color: var(--amber); color: var(--amber); }
+.rung-ctrl-btn.delete:hover { border-color: var(--red); color: var(--red); }
 .rung-delete {
   position: absolute;
   right: -4px;
@@ -2364,7 +2395,7 @@ ALL_BLOCK_DEFS['OUTPUT_REF'] = OUTPUT_REF_BLOCK;
 function getBlockDef(type) { return ALL_BLOCK_DEFS[type] || { type, label: type, fields: [], familyColor: '#888' }; }
 
 const DATA_TYPE_SIZES = {
-  PUBKEY: { min: 1, max: 2048, note: '32B x-only, 33B compressed, or PQ up to 1793B' },
+  PUBKEY: { min: 1, max: 2048, note: 'Witness-only. 32B x-only, 33B compressed, or PQ up to 1793B. Conditions use PUBKEY_COMMIT.' },
   PUBKEY_COMMIT: { min: 32, max: 32, note: 'SHA-256 commitment to a public key' },
   HASH256: { min: 32, max: 32, note: 'SHA-256 digest' },
   HASH160: { min: 20, max: 20, note: 'RIPEMD160(SHA256()) digest' },
@@ -2832,7 +2863,7 @@ function PalettePanel({ onDragStart }) {
   );
 }
 
-function ContactView({ block, selected, simMode, simResult, scanClass, onClick, onDelete, onDragStart, onDragOver, onDrop, forcedState, onForceToggle, tips, onNameChange, onExpand, onContextMenu: onCtxMenu, renaming, onClearRenaming }) {
+function ContactView({ block, rungId, selected, simMode, simResult, scanClass, onClick, onDelete, onDragStart, onDragOver, onDrop, forcedState, onForceToggle, tips, onNameChange, onExpand, onContextMenu: onCtxMenu, renaming, onClearRenaming }) {
   const def = getBlockDef(block.type);
   const isEnergized = simMode && !scanClass && simResult === 'satisfied';
   const isFault = simMode && !scanClass && simResult === 'error';
@@ -2901,7 +2932,7 @@ function ContactView({ block, selected, simMode, simResult, scanClass, onClick, 
       onContextMenu={handleContextMenu}
       onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
       draggable={!simMode}
-      onDragStart={simMode ? undefined : (e) => { e.dataTransfer.setData('reorderBlockId', String(block.id)); onDragStart?.(block.id); }}
+      onDragStart={simMode ? undefined : (e) => { e.dataTransfer.setData('reorderBlockId', String(block.id)); e.dataTransfer.setData('sourceRungId', String(rungId)); onDragStart?.(block.id, e); }}
       onDragOver={simMode ? undefined : (e) => { e.preventDefault(); e.stopPropagation(); onDragOver?.(e, block.id); }}
       onDrop={simMode ? undefined : (e) => { e.preventDefault(); e.stopPropagation(); onDrop?.(e, block.id); }}
       title={tips ? (simMode ? (scanClass === 'step-next' ? 'Click to pass this block and advance' : 'Alt+click to force ON/OFF/AUTO') : 'Click to select · Double-click to name · Right-click for options · Drag to reorder') : undefined}
@@ -3447,7 +3478,7 @@ function BlockModal({ block, onChange, onClose, rungs }) {
 
 const MAX_BLOCKS_PER_RUNG = 8;
 
-function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput, simMode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, scanStep, scanResults, scanning, isSpent, spentType, forcedBlocks, onForceBlock, onExecuteRung, onStartScanFrom, isSteppingThrough, stepActiveIdx, stepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onOutputContextMenu }) {
+function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, selectedInput, simMode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onRungLabelChange, onReorderBlock, onMoveRung, onMoveBlockCrossRung, txOutputs, txInputs, scanStep, scanResults, scanning, isSpent, spentType, forcedBlocks, onForceBlock, onExecuteRung, onStartScanFrom, isSteppingThrough, stepActiveIdx, stepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onOutputContextMenu, isCoilReferenced }) {
   const [dropSlot, setDropSlot] = useState(null);
   const [editingInputName, setEditingInputName] = useState(false);
   const inputNoteRef = useRef(null);
@@ -3523,6 +3554,12 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
     const reorderId = e.dataTransfer.getData('reorderBlockId');
     if (reorderId) {
       const sourceId = parseInt(reorderId);
+      const sourceRungId = e.dataTransfer.getData('sourceRungId');
+      // Cross-rung move: block from a different rung
+      if (sourceRungId && parseInt(sourceRungId) !== rung.id) {
+        onMoveBlockCrossRung?.(parseInt(sourceRungId), sourceId, rung.id, slotIdx);
+        return;
+      }
       const targetBlock = rung.blocks[slotIdx];
       if (targetBlock && sourceId !== targetBlock.id) {
         onReorderBlock(rung.id, sourceId, targetBlock.id);
@@ -3544,12 +3581,19 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
     e.preventDefault();
     setDropSlot(null);
     const reorderId = e.dataTransfer.getData('reorderBlockId');
-    if (reorderId) return;
+    if (reorderId) {
+      const sourceId = parseInt(reorderId);
+      const sourceRungId = e.dataTransfer.getData('sourceRungId');
+      if (sourceRungId && parseInt(sourceRungId) !== rung.id) {
+        onMoveBlockCrossRung?.(parseInt(sourceRungId), sourceId, rung.id);
+      }
+      return;
+    }
     const blockType = e.dataTransfer.getData('blockType');
     if (blockType && rung.blocks.length < MAX_BLOCKS_PER_RUNG) {
       onDropBlock(rung.id, blockType);
     }
-  }, [rung, onDropBlock]);
+  }, [rung, onDropBlock, onMoveBlockCrossRung]);
 
   // Is coil reached in step-through?
   const stepCoilReached = isSteppingThrough && stepActiveIdx >= rung.blocks.length;
@@ -3641,6 +3685,7 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
               {slot.block ? (
                 <ContactView
                   block={slot.block}
+                  rungId={rung.id}
                   selected={selectedBlock === slot.block.id}
                   simMode={simMode}
                   simResult={isSteppingThrough ? (stepResults[slot.block.id] || (slot.index < stepActiveIdx ? 'satisfied' : null)) : blockResults[slot.block.id]}
@@ -3684,7 +3729,7 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
         </div>
 
         <div
-          className={`coil ${rungEnergized || stepCoilReached ? 'energized' : ''} ${selectedCoil === rung.id ? 'selected' : ''} ${rung.output.txOutputId ? 'has-tx-output' : ''} ${scanning && isActiveRung && scanStep?.type === 'coil' ? 'scan-active' : ''} ${coilResult === 'pass' ? 'scan-pass' : ''} ${coilResult === 'fail' ? 'scan-fail' : ''} ${stepCoilReached ? 'step-complete' : ''}`}
+          className={`coil ${rungEnergized || stepCoilReached ? 'energized' : ''} ${selectedCoil === rung.id ? 'selected' : ''} ${rung.output.txOutputId ? 'has-tx-output' : ''} ${!rung.output.txOutputId && isCoilReferenced ? 'has-ref' : ''} ${scanning && isActiveRung && scanStep?.type === 'coil' ? 'scan-active' : ''} ${coilResult === 'pass' ? 'scan-pass' : ''} ${coilResult === 'fail' ? 'scan-fail' : ''} ${stepCoilReached ? 'step-complete' : ''}`}
           onClick={() => onSelectCoil(rung.id)}
           onContextMenu={(e) => { if (!simMode) { e.preventDefault(); e.stopPropagation(); onOutputContextMenu?.(e.clientX, e.clientY, rung); } }}
           onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
@@ -3705,7 +3750,7 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
               })()}
             </div>
           )}
-          {!rung.output.txOutputId && <span className="coil-warn" title="No TX output assigned">⚠</span>}
+          {!rung.output.txOutputId && !isCoilReferenced && <span className="coil-warn" title="No TX output assigned">⚠</span>}
           {simMode && !isSpent && !isSteppingThrough && onExecuteRung && (
             <span className={`coil-execute ${rungEnergized ? '' : 'coil-execute-dim'}`} onClick={(e) => { e.stopPropagation(); onExecuteRung(rung.id); }} title={tips ? (rungEnergized ? 'Execute this rung — marks as spent, cascades to shared inputs' : 'Force-execute — skip step-through, mark spent immediately') : undefined}>{rungEnergized ? 'EXECUTE' : 'FORCE'}</span>
           )}
@@ -3715,14 +3760,18 @@ function RungView({ rung, rungIndex, selectedBlock, selectedCoil, selectedInput,
         </div>
         <div className="rail-right" />
       </div>
-      {rungIndex > 0 && !simMode && (
-        <div className="rung-delete" onClick={() => onDeleteRung(rung.id)}>✕</div>
+      {!simMode && (
+        <div className="rung-controls">
+          {rungIndex > 0 && <div className="rung-ctrl-btn" onClick={() => onMoveRung?.(rungIndex, rungIndex - 1)} title="Move rung up">▲</div>}
+          <div className="rung-ctrl-btn delete" onClick={() => onDeleteRung(rung.id)} title="Delete rung">✕</div>
+          {rungIndex < rungCount - 1 && <div className="rung-ctrl-btn" onClick={() => onMoveRung?.(rungIndex, rungIndex + 1)} title="Move rung down">▼</div>}
+        </div>
       )}
     </div>
   );
 }
 
-function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onAddRung, onAddRungWithBlock, onRungLabelChange, onReorderBlock, txOutputs, txInputs, fullscreen, onToggleFullscreen, scanPhase, scanStep, scanResults, scanSpeed, onScanStart, onScanPause, onScanResume, onScanStepFwd, onScanStepBack, onScanReset, onScanSpeedChange, scanIdx, scanTotal, spentRungs, forcedBlocks, onForceBlock, onExecuteRung, onResetSim, onStartScanFrom, simActiveRungId, simActiveStep, simStepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onClear, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onDeselect, onOutputContextMenu }) {
+function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, simState, onSelectBlock, onSelectCoil, onSelectInput, onDeleteBlock, onDeleteRung, onDropBlock, onAddRung, onAddRungWithBlock, onRungLabelChange, onReorderBlock, onMoveRung, onMoveBlockCrossRung, txOutputs, txInputs, fullscreen, onToggleFullscreen, scanPhase, scanStep, scanResults, scanSpeed, onScanStart, onScanPause, onScanResume, onScanStepFwd, onScanStepBack, onScanReset, onScanSpeedChange, scanIdx, scanTotal, spentRungs, forcedBlocks, onForceBlock, onExecuteRung, onResetSim, onStartScanFrom, simActiveRungId, simActiveStep, simStepResults, onStepBlock, tips, onNameChange, onExpandBlock, onBlockContextMenu, renamingBlockId, onClearRenaming, onClear, onInputContextMenu, onRungChange, renamingInputId, onClearRenamingInput, onDeselect, onOutputContextMenu }) {
   const simMode = mode === 'simulate' || mode === 'watch';
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -3790,6 +3839,30 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
   }, [handleWheel]);
 
   const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+
+  // Build set of rung IDs whose coils are referenced by other rungs (via outputRefs or OUTPUT_REF blocks)
+  const referencedCoilIds = useMemo(() => {
+    const refs = new Set();
+    rungs.forEach((r, ri) => {
+      const rungName = r.label || `R${String(ri).padStart(3, '0')}`;
+      // Check if any other rung's outputRefs reference this rung's name
+      rungs.forEach(other => {
+        if (other.id === r.id) return;
+        if ((other.outputRefs || []).some(ref => ref === rungName || ref === r.output.name)) {
+          refs.add(r.id);
+        }
+        // Check if any OUTPUT_REF block in other rungs references this rung's output name
+        other.blocks.forEach(b => {
+          if (b.type === 'OUTPUT_REF' && b.values?.ref_name && (b.values.ref_name === rungName || b.values.ref_name === r.output.name)) {
+            refs.add(r.id);
+          }
+        });
+      });
+      // If this rung has a named output, it's considered referenced for internal use
+      if (r.output.name) refs.add(r.id);
+    });
+    return refs;
+  }, [rungs]);
 
   return (
     <div className="ladder-area">
@@ -3869,6 +3942,7 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
                 key={rung.id}
                 rung={rung}
                 rungIndex={i}
+                rungCount={rungs.length}
                 selectedBlock={selectedBlock}
                 selectedCoil={selectedCoil}
                 simMode={simMode}
@@ -3880,6 +3954,8 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
                 onDropBlock={onDropBlock}
                 onRungLabelChange={onRungLabelChange}
                 onReorderBlock={onReorderBlock}
+                onMoveRung={onMoveRung}
+                onMoveBlockCrossRung={onMoveBlockCrossRung}
                 txOutputs={txOutputs}
                 txInputs={txInputs}
                 selectedInput={selectedInput}
@@ -3908,6 +3984,7 @@ function LadderView({ rungs, selectedBlock, selectedCoil, selectedInput, mode, s
                 renamingInputId={renamingInputId}
                 onClearRenamingInput={onClearRenamingInput}
                 onOutputContextMenu={onOutputContextMenu}
+                isCoilReferenced={referencedCoilIds.has(rung.id)}
               />
             ))
           )}
@@ -6442,6 +6519,37 @@ function App() {
     });
   }, []);
 
+  const handleMoveRung = useCallback((fromIdx, toIdx) => {
+    setRungs(prev => {
+      if (fromIdx < 0 || fromIdx >= prev.length || toIdx < 0 || toIdx >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }, []);
+
+  const handleMoveBlockCrossRung = useCallback((sourceRungId, blockId, targetRungId, slotIdx) => {
+    setRungs(prev => {
+      const srcRung = prev.find(r => r.id === sourceRungId);
+      const tgtRung = prev.find(r => r.id === targetRungId);
+      if (!srcRung || !tgtRung) return prev;
+      const block = srcRung.blocks.find(b => b.id === blockId);
+      if (!block) return prev;
+      if (tgtRung.blocks.length >= MAX_BLOCKS_PER_RUNG) return prev;
+      return prev.map(r => {
+        if (r.id === sourceRungId) return { ...r, blocks: r.blocks.filter(b => b.id !== blockId) };
+        if (r.id === targetRungId) {
+          const blocks = [...r.blocks];
+          const idx = slotIdx !== undefined ? Math.min(slotIdx, blocks.length) : blocks.length;
+          blocks.splice(idx, 0, block);
+          return { ...r, blocks };
+        }
+        return r;
+      });
+    });
+  }, []);
+
   const handleBlockChange = useCallback((blockId, field, value) => {
     setRungs(prev => prev.map(r => ({
       ...r,
@@ -7088,6 +7196,8 @@ ${ladderRows.map(r => `
           onAddRungWithBlock={handleAddRungWithBlock}
           onRungLabelChange={handleRungLabelChange}
           onReorderBlock={handleReorderBlock}
+          onMoveRung={handleMoveRung}
+          onMoveBlockCrossRung={handleMoveBlockCrossRung}
           txOutputs={txOutputs}
           txInputs={txInputs}
           fullscreen={ladderFullscreen}

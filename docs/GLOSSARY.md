@@ -87,9 +87,11 @@ An enum (`RungCoilType`, `uint8_t`) that determines the unlock semantics of a ru
 
 A spending requirement embedded in a v3 output's scriptPubKey. Conditions are the
 "locking" side of Ladder Script -- they specify what must be satisfied to spend the
-UTXO. Conditions contain only condition data types (PUBKEY, PUBKEY_COMMIT, HASH256,
-HASH160, NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (SIGNATURE,
-PREIMAGE). Serialized with the `RUNG_CONDITIONS_PREFIX` (0xc1) byte.
+UTXO. Conditions contain only condition data types (PUBKEY_COMMIT, HASH256, HASH160,
+NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (PUBKEY, SIGNATURE,
+PREIMAGE). Blocks that reference public keys use PUBKEY_COMMIT (SHA-256 hash) in
+conditions; the raw PUBKEY is provided in the witness. Serialized with the
+`RUNG_CONDITIONS_PREFIX` (0xc1) byte.
 
 ### Contact
 
@@ -262,9 +264,12 @@ are SATISFIED, activating the coil.
 ### PUBKEY_COMMIT
 
 A 32-byte SHA-256 hash commitment to a full public key, stored as RungDataType 0x02.
-When present in a SIG block, the revealed PUBKEY in the witness must hash to this
-commitment. This allows conditions to commit to a key without revealing it until spend
-time, providing key privacy in the scriptPubKey.
+PUBKEY_COMMIT is the standard way to reference public keys in conditions -- raw PUBKEY
+is witness-only (`IsConditionDataType(PUBKEY)` returns false). At spend time, the
+revealed PUBKEY in the witness must hash to this commitment. This eliminates
+user-chosen bytes from conditions (anti-spam) and provides key privacy in the
+scriptPubKey. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when
+building conditions.
 
 Verification: `SHA256(PUBKEY.data) == PUBKEY_COMMIT.data`.
 
@@ -330,7 +335,7 @@ partition the type space by family:
 
 The conditions embedded in a v3 output's scriptPubKey. Represented by the
 `RungConditions` struct, which mirrors the `LadderWitness` structure but contains only
-condition data types (no SIGNATURE or PREIMAGE). Serialized with the
+condition data types (no PUBKEY, SIGNATURE, or PREIMAGE). Serialized with the
 `RUNG_CONDITIONS_PREFIX` (0xc1) byte as the first byte of the scriptPubKey.
 
 Contains:

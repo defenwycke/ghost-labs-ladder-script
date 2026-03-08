@@ -83,7 +83,7 @@ enum class RungBlockType : uint16_t {
  *  No arbitrary data pushes are possible.
  *  (Renamed from RungFieldType in v1.) */
 enum class RungDataType : uint8_t {
-    PUBKEY        = 0x01, //!< Public key: 1-2048 bytes (compressed, x-only, or PQ)
+    PUBKEY        = 0x01, //!< Public key: 1-2048 bytes (witness-only; conditions use PUBKEY_COMMIT)
     PUBKEY_COMMIT = 0x02, //!< Public key commitment: exactly 32 bytes
     HASH256       = 0x03, //!< SHA-256 hash: exactly 32 bytes
     HASH160       = 0x04, //!< RIPEMD160(SHA256()) hash: exactly 20 bytes

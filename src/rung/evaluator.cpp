@@ -106,16 +106,55 @@ static int64_t ReadNumeric(const RungField& field)
     return static_cast<int64_t>(val);
 }
 
-/** Helper: check if a pubkey field exists and has valid size. */
+/** Helper: check if a pubkey field exists and has valid size.
+ *  Accepts either raw PUBKEY (witness) or PUBKEY_COMMIT (conditions). */
 static bool HasRequiredPubkeys(const RungBlock& block, size_t count)
 {
     auto pks = FindAllFields(block, RungDataType::PUBKEY);
-    return pks.size() >= count;
+    auto commits = FindAllFields(block, RungDataType::PUBKEY_COMMIT);
+    return (pks.size() + commits.size()) >= count;
+}
+
+/** Verify all PUBKEY_COMMIT fields in a block match corresponding PUBKEY fields.
+ *  Returns the resolved PUBKEY fields (in commit order) on success, or empty on failure.
+ *  Each PUBKEY_COMMIT must have exactly one matching PUBKEY where SHA256(PUBKEY) == PUBKEY_COMMIT. */
+static std::vector<const RungField*> ResolvePubkeyCommitments(const RungBlock& block)
+{
+    auto commits = FindAllFields(block, RungDataType::PUBKEY_COMMIT);
+    auto pubkeys = FindAllFields(block, RungDataType::PUBKEY);
+
+    if (commits.empty()) {
+        // No commits — return raw pubkeys (backward compat / bootstrap)
+        return pubkeys;
+    }
+
+    std::vector<const RungField*> resolved;
+    std::vector<bool> pk_used(pubkeys.size(), false);
+
+    for (const auto* commit : commits) {
+        if (commit->data.size() != 32) return {};
+
+        bool found = false;
+        for (size_t i = 0; i < pubkeys.size(); ++i) {
+            if (pk_used[i]) continue;
+            unsigned char hash[CSHA256::OUTPUT_SIZE];
+            CSHA256().Write(pubkeys[i]->data.data(), pubkeys[i]->data.size()).Finalize(hash);
+            if (memcmp(hash, commit->data.data(), 32) == 0) {
+                resolved.push_back(pubkeys[i]);
+                pk_used[i] = true;
+                found = true;
+                break;
+            }
+        }
+        if (!found) return {}; // commitment without matching pubkey
+    }
+
+    return resolved;
 }
 
 /** Helper: compare two RungBlocks for structural equality (same type, same condition fields).
- *  Only compares condition data types (PUBKEY, HASH256, HASH160, NUMERIC, SCHEME),
- *  skips witness types (SIGNATURE, PREIMAGE). */
+ *  Only compares condition data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME),
+ *  skips witness types (PUBKEY, SIGNATURE, PREIMAGE). */
 static bool BlockConditionsEqual(const RungBlock& a, const RungBlock& b)
 {
     if (a.type != b.type) return false;
@@ -287,7 +326,8 @@ EvalResult EvalMultisigBlock(const RungBlock& block,
                              SigVersion sigversion,
                              ScriptExecutionData& execdata)
 {
-    // Expected field layout: NUMERIC (threshold M), N x PUBKEY, M x SIGNATURE
+    // Expected field layout: NUMERIC (threshold M), N x PUBKEY_COMMIT (conditions),
+    //                        N x PUBKEY (witness), M x SIGNATURE (witness)
     const RungField* threshold_field = FindField(block, RungDataType::NUMERIC);
     if (!threshold_field || threshold_field->data.size() < 1) {
         return EvalResult::ERROR;
@@ -299,7 +339,8 @@ EvalResult EvalMultisigBlock(const RungBlock& block,
     }
     uint32_t threshold = static_cast<uint32_t>(threshold_val);
 
-    auto pubkeys = FindAllFields(block, RungDataType::PUBKEY);
+    // Resolve pubkey commitments: verify each PUBKEY_COMMIT matches a witness PUBKEY
+    auto pubkeys = ResolvePubkeyCommitments(block);
     auto sigs = FindAllFields(block, RungDataType::SIGNATURE);
 
     if (pubkeys.empty() || threshold > pubkeys.size()) {
@@ -525,9 +566,9 @@ EvalResult EvalAdaptorSigBlock(const RungBlock& block,
                                 ScriptExecutionData& execdata)
 {
     // Adaptor signature verification:
-    // Requires two PUBKEY fields: signing_key and adaptor_point
+    // Requires two PUBKEY_COMMIT fields (conditions) resolved to PUBKEYs (witness)
     // Plus a SIGNATURE field (the adapted signature)
-    auto pubkeys = FindAllFields(block, RungDataType::PUBKEY);
+    auto pubkeys = ResolvePubkeyCommitments(block);
     const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
 
     if (pubkeys.size() < 2 || !sig_field) {
@@ -715,7 +756,7 @@ EvalResult EvalVaultLockBlock(const RungBlock& block,
     // Two-path vault:
     // - recovery_key sig → SATISFIED immediately (cold sweep)
     // - hot_key sig → check CSV hot_delay elapsed
-    auto pubkeys = FindAllFields(block, RungDataType::PUBKEY);
+    auto pubkeys = ResolvePubkeyCommitments(block);
     const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
     const RungField* delay_field = FindField(block, RungDataType::NUMERIC);
 

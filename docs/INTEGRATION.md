@@ -12,7 +12,7 @@ A Ladder Script transaction uses version 3 (`CTransaction::RUNG_TX_VERSION = 3`)
 
 1. **Select inputs.** Any UTXOs can be spent by a v3 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v3 rung conditions.
 
-2. **Define output conditions.** Each output's `scriptPubKey` is constructed as `0xc1 || serialized_conditions`. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX) may appear. SIGNATURE and PREIMAGE are forbidden in conditions.
+2. **Define output conditions.** Each output's `scriptPubKey` is constructed as `0xc1 || serialized_conditions`. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX) may appear. PUBKEY, SIGNATURE, and PREIMAGE are forbidden in conditions. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when building conditions -- users provide pubkey hex as before.
 
 3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v3 transaction.
 
@@ -102,7 +102,7 @@ The `0xc1` prefix byte is defined as `RUNG_CONDITIONS_PREFIX`. The function `IsR
 
 1. Verify the `0xc1` prefix.
 2. Strip the prefix and deserialize as a `LadderWitness`.
-3. Validate that no witness-only data types (SIGNATURE, PREIMAGE) appear in the conditions.
+3. Validate that no witness-only data types (PUBKEY, SIGNATURE, PREIMAGE) appear in the conditions.
 
 ### 3.3 Non-Conditions Outputs
 
@@ -202,7 +202,7 @@ Validates a `0xc1`-prefixed `scriptPubKey`:
 - Must deserialize as valid `RungConditions`.
 - Maximum 16 rungs, 8 blocks per rung.
 - All block types must be known.
-- All fields must be condition-allowed data types (no SIGNATURE, no PREIMAGE).
+- All fields must be condition-allowed data types (no PUBKEY, no SIGNATURE, no PREIMAGE).
 - All fields must pass size validation.
 
 ### 6.3 Phase Restrictions
@@ -257,7 +257,7 @@ A time-bounded covenant. Before `until_height`, the output must be re-encumbered
 
 The helper `FullConditionsEqual()` performs a deep structural comparison of two `RungConditions` objects. For mutated blocks, `VerifyMutatedConditions()` allows declared parameters to differ by the specified delta while requiring all other fields to match exactly.
 
-Only condition data types are compared (PUBKEY, HASH256, etc.). Witness-only types are excluded from comparison since they are never present in conditions.
+Only condition data types are compared (PUBKEY_COMMIT, HASH256, etc.). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are excluded from comparison since they are never present in conditions.
 
 ---
 

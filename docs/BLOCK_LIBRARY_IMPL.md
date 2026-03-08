@@ -37,17 +37,17 @@ Every parameter in every block must be one of the following enumerated types. No
 
 | Type | Enum | Size | Constraint | Purpose |
 |---|---|---|---|---|
-| `PUBKEY` | `0x01` | 1–64B | 33B compressed or 64B uncompressed | EC public key for signature blocks |
-| `PUBKEY_COMMIT` | `0x02` | 32B exact | SHA-256 hash of pubkey | Reveal pubkey at spend — smaller outputs |
+| `PUBKEY` | `0x01` | 1–2048B | 32B x-only, 33B compressed, or PQ | EC/PQ public key — **witness only**. Conditions use PUBKEY_COMMIT. |
+| `PUBKEY_COMMIT` | `0x02` | 32B exact | SHA-256 hash of pubkey | Standard key reference in conditions. PUBKEY revealed at spend time in witness. |
 | `HASH256` | `0x03` | 32B exact | SHA-256 hash | State commitments, contract roots, anchors |
 | `HASH160` | `0x04` | 20B exact | HASH160 | Legacy compatibility |
-| `PREIMAGE` | `0x05` | 1–32B | Raw preimage, max 32 bytes | Hash preimage reveal |
+| `PREIMAGE` | `0x05` | 1–252B | Raw preimage, max 252 bytes | Hash preimage reveal. Max 2 preimage blocks per witness (policy). |
 | `SIGNATURE` | `0x06` | 1–144B | Schnorr=64B, ECDSA/DER≈73B | INLINE attestation signatures only |
 | `SPEND_INDEX` | `0x07` | 4B exact | uint32 spend index | AGGREGATE attestation reference (Phase 4) |
 | `NUMERIC` | `0x08` | 1–4B | uint32 value | Timelocks, thresholds, counts, rates |
 | `SCHEME` | `0x09` | 1B exact | Enum value from RungScheme | Signature algorithm selector |
 
-**Key principle:** Type enforcement happens at the deserializer — before any cryptographic operation, before mempool admission, before everything. This is what makes spam structurally impossible.
+**Key principle:** Type enforcement happens at the deserializer — before any cryptographic operation, before mempool admission, before everything. PUBKEY is witness-only; conditions use PUBKEY_COMMIT (SHA-256 hash). `IsConditionDataType(PUBKEY)` returns false. The condition data types are: PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Conditions contain zero user-chosen bytes. A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH) are permitted per witness (`MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2`). This is what makes spam structurally impossible.
 
 ---
 
@@ -63,7 +63,8 @@ Signature blocks verify cryptographic proofs of authorisation. All signature blo
 
 Verifies a single signature from a specified key under a specified scheme.
 
-**Params:** `SCHEME scheme` · `PUBKEY key`
+**Condition params:** `PUBKEY_COMMIT key_commit` · `SCHEME scheme` (optional)
+**Witness params:** `PUBKEY key` · `SIGNATURE sig`
 
 **Invertible:** Yes
 
@@ -77,7 +78,8 @@ Verifies a single signature from a specified key under a specified scheme.
 
 Verifies n-of-m threshold signatures. Keys carried in params, signatures in witness.
 
-**Params:** `NUMERIC n` · `NUMERIC m` · `PUBKEY[m] keys` · `SCHEME scheme`
+**Condition params:** `NUMERIC threshold` · `PUBKEY_COMMIT[N] key_commits` · `SCHEME scheme` (optional)
+**Witness params:** `PUBKEY[N] keys` · `SIGNATURE[M] sigs`
 
 **Invertible:** Yes
 
@@ -91,7 +93,8 @@ Verifies n-of-m threshold signatures. Keys carried in params, signatures in witn
 
 Verifies an adaptor signature — a signature that becomes valid when combined with a secret adaptor point. Foundation of DLCs and atomic swaps.
 
-**Params:** `PUBKEY adaptor_point` · `PUBKEY signing_key` · `SCHEME scheme`
+**Condition params:** `PUBKEY_COMMIT adaptor_commit` · `PUBKEY_COMMIT signer_commit`
+**Witness params:** `PUBKEY adaptor_point` · `PUBKEY signing_key` · `SIGNATURE adapted_sig`
 
 **Invertible:** No
 
@@ -244,7 +247,8 @@ CheckTemplateVerify. Output must spend to a specific pre-committed transaction t
 
 Two-path vault. Hot path requires delay. Cold recovery key can always sweep. Classic vault construction as a single typed block.
 
-**Params:** `NUMERIC hot_delay` · `PUBKEY recovery_key` · `PUBKEY hot_key`
+**Condition params:** `NUMERIC hot_delay` · `PUBKEY_COMMIT recovery_key_commit` · `PUBKEY_COMMIT hot_key_commit`
+**Witness params:** `PUBKEY recovery_key` · `PUBKEY hot_key` · `SIGNATURE sig`
 
 **Invertible:** No
 
@@ -295,7 +299,7 @@ Generic L2 state anchor. Any protocol can commit a state root to L1 with monoton
 
 Payment channel anchor. Carries channel state root, commitment number, funding keys, and HTLC payment hash. Enables universal watchtower monitoring across all Lightning implementations.
 
-**Params:** `HASH256 state_root` · `HASH256 protocol_id` · `NUMERIC commitment_number` · `PUBKEY local_key` · `PUBKEY remote_key` · `NUMERIC to_self_delay` · `HASH256 payment_hash`
+**Params:** `HASH256 state_root` · `HASH256 protocol_id` · `NUMERIC commitment_number` · `PUBKEY_COMMIT local_key` · `PUBKEY_COMMIT remote_key` · `NUMERIC to_self_delay` · `HASH256 payment_hash`
 
 **Use case:** Lightning channels, Ghost Pay channels, any HTLC-based payment channel
 
@@ -307,7 +311,7 @@ Payment channel anchor. Carries channel state root, commitment number, funding k
 
 Shared UTXO pool anchor (Ark-style). Carries VTXO merkle tree root for all participants. One on-chain output represents N participants. Combined with `RECURSE_SPLIT` enables trustless unilateral exit.
 
-**Params:** `HASH256 vtxo_tree_root` · `HASH256 protocol_id` · `NUMERIC round_number` · `NUMERIC participant_count` · `NUMERIC expiry_height` · `PUBKEY asp_key`
+**Params:** `HASH256 vtxo_tree_root` · `HASH256 protocol_id` · `NUMERIC round_number` · `NUMERIC participant_count` · `NUMERIC expiry_height` · `PUBKEY_COMMIT asp_key`
 
 **Use case:** Ark protocol, shared UTXO pools, payment pool factories
 
@@ -341,7 +345,7 @@ Single-use seal (RGB-style). Replaces OP_RETURN for asset state commitments. The
 
 Oracle-attested contract anchor (DLC-style). Commits the full contract outcome tree root and oracle parameters. Any outcome can be revealed via merkle proof at settlement.
 
-**Params:** `HASH256 contract_tree_root` · `HASH256 protocol_id` · `PUBKEY oracle_key` · `HASH256 event_id` · `NUMERIC expiry_height` · `NUMERIC outcome_count`
+**Params:** `HASH256 contract_tree_root` · `HASH256 protocol_id` · `PUBKEY_COMMIT oracle_key` · `HASH256 event_id` · `NUMERIC expiry_height` · `NUMERIC outcome_count`
 
 **Use case:** DLC contracts, prediction markets, oracle-attested conditional payments
 
@@ -518,7 +522,7 @@ A latch has two coils — Set and Reset. Once Set, output stays active until exp
 
 Sets latch state for a specific `state_id`. Once set, `LATCH_RESET` is required to clear. State propagates through `RECURSE_SAME`.
 
-**Params:** `HASH256 state_id` · `PUBKEY setter_key` · `NUMERIC set_threshold`
+**Params:** `HASH256 state_id` · `PUBKEY_COMMIT setter_key` · `NUMERIC set_threshold`
 
 **Use case:** On-chain governance locking, DAO treasury freeze, dispute state initiation
 
@@ -528,7 +532,7 @@ Sets latch state for a specific `state_id`. Once set, `LATCH_RESET` is required 
 
 Clears latch state for `state_id`. Requires `reset_delay` blocks after set before reset is valid.
 
-**Params:** `HASH256 state_id` · `PUBKEY resetter_key` · `NUMERIC reset_delay` · `NUMERIC reset_threshold`
+**Params:** `HASH256 state_id` · `PUBKEY_COMMIT resetter_key` · `NUMERIC reset_delay` · `NUMERIC reset_threshold`
 
 **Use case:** Governance unlock after veto period, dispute resolution, treasury unfreeze
 
@@ -544,7 +548,7 @@ Counters count on-chain events and activate when reaching a threshold. Each incr
 
 Starts at `initial_count`, decrements with each authorised event. Combined with `RECURSE_SPLIT` releases a fraction of value per decrement. Terminates at zero.
 
-**Params:** `NUMERIC initial_count` · `HASH256 event_hash` · `PUBKEY event_signer`
+**Params:** `NUMERIC initial_count` · `HASH256 event_hash` · `PUBKEY_COMMIT event_signer`
 
 **Use case:** Salary streaming (100 weekly payments), subscription billing, N-installment purchase
 
@@ -568,7 +572,7 @@ Requires N separate approvals within a block window. Approvals are **separate tr
 
 Starts at zero, increments with each qualifying event. Spending allowed only when count reaches threshold.
 
-**Params:** `NUMERIC threshold` · `HASH256 event_hash` · `PUBKEY event_signer`
+**Params:** `NUMERIC threshold` · `HASH256 event_hash` · `PUBKEY_COMMIT event_signer`
 
 **Use case:** Milestone-based vesting, accumulation targets, proof-of-activity gates
 

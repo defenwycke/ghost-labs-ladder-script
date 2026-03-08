@@ -436,7 +436,7 @@ size limits and semantic validation. The following tests prove each defense laye
 | # | Attack Vector | Defense | Result |
 |---|--------------|---------|--------|
 | S1 | Arbitrary PREIMAGE | Hash preimage must match HASH256 in conditions | REJECTED at consensus |
-| S2 | Arbitrary PUBKEY bytes | UTXO created but cryptographically unspendable | Funds burned |
+| S2 | Arbitrary PUBKEY bytes | IsConditionDataType(PUBKEY) = false; PUBKEY is witness-only | REJECTED at RPC |
 | S3 | Garbage NUMERIC operator | RPC accepts (valid 4B field), evaluator rejects semantics at spend | REJECTED at consensus |
 | S4 | 5-byte NUMERIC | FieldMaxSize(NUMERIC) = 4 bytes | REJECTED at RPC |
 | S5 | Unknown data type | ParseDataType() rejects unknown names | REJECTED at RPC |
@@ -458,20 +458,21 @@ size limits and semantic validation. The following tests prove each defense laye
 3. **Policy**: Output validation rejects oversized structures before mempool
 4. **Consensus**: Semantic validation at spend time — garbage operators,
    wrong preimages, mismatched keys all produce UNSATISFIED/ERROR
-5. **Economic**: Even if structurally valid data gets into a UTXO (e.g.,
-   arbitrary PUBKEY), the funds are burned — the attacker pays for storage
-   they can never recover
+5. **Economic**: Conditions contain zero user-chosen bytes — every field is a
+   hash digest or bounded numeric. PUBKEY is witness-only (rejected from
+   conditions by `IsConditionDataType`). Even structurally valid witness data
+   costs real satoshis that are permanently burned if unusable.
 
 ### Maximum Data Capacity (theoretical upper bound)
 
 Even in the worst case where an attacker burns funds:
-- Max PUBKEY: 2048 bytes per field, but must start with valid prefix (02/03/04)
+- PUBKEY is witness-only (cannot appear in conditions); conditions use PUBKEY_COMMIT (32 B fixed)
 - Max NUMERIC: 4 bytes per field
 - Max fields/block: 16, max blocks/rung: 8, max rungs: 16
-- Theoretical max: ~2048 × 16 × 8 × 16 ≈ 4MB per UTXO — but this exceeds
-  standard transaction size limits. In practice, the 100KB witness limit and
-  standard tx size limit cap actual data at far less, and every byte costs
-  real satoshis that are permanently burned.
+- Condition fields are all fixed-size hashes (32 B PUBKEY_COMMIT, 32 B HASH256, 20 B HASH160)
+  or bounded numerics (1-4 B) — no variable-length user data in the UTXO set
+- Witness data is prunable and bounded by the 100KB witness limit and standard tx size limit,
+  and every byte costs real satoshis that are permanently burned.
 
 **Test methods:** `test_spam_*` (8 tests in `rung_basic.py`)
 
@@ -479,8 +480,9 @@ Even in the worst case where an attacker burns funds:
 
 ## Key Takeaways
 
-1. **PUBKEY_COMMIT** reduces PQ UTXO footprint by 96% (897B → 32B) with zero
-   security compromise — the full key is still required for verification.
+1. **PUBKEY_COMMIT** is used for all keys in conditions (not just PQ). PUBKEY is
+   witness-only. This keeps UTXO size constant at 32 bytes regardless of key type,
+   with zero security compromise — the full key is still required in the witness.
 
 2. **Multi-mutation RECURSE_MODIFIED** enables atomic state transitions across
    multiple parameters and rungs in a single spend. This is essential for

@@ -220,15 +220,24 @@ static RungBlock ParseBlockSpec(const UniValue& block_obj, bool conditions_only)
         if (!ParseDataType(ftype_str, field.type)) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Unknown data type: " + ftype_str);
         }
-        if (conditions_only && !rung::IsConditionDataType(field.type)) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                "Data type " + ftype_str + " not allowed in conditions (witness-only)");
-        }
         std::string hex_data = field_obj["hex"].get_str();
         field.data = ParseHex(hex_data);
         std::string reason;
         if (!field.IsValid(reason)) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid field: " + reason);
+        }
+        // Auto-convert PUBKEY to PUBKEY_COMMIT in conditions (PUBKEY is witness-only)
+        if (conditions_only && field.type == RungDataType::PUBKEY) {
+            RungField commit_field;
+            commit_field.type = RungDataType::PUBKEY_COMMIT;
+            commit_field.data.resize(CSHA256::OUTPUT_SIZE);
+            CSHA256().Write(field.data.data(), field.data.size()).Finalize(commit_field.data.data());
+            block.fields.push_back(std::move(commit_field));
+            continue;
+        }
+        if (conditions_only && !rung::IsConditionDataType(field.type)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+                "Data type " + ftype_str + " not allowed in conditions (witness-only)");
         }
         block.fields.push_back(std::move(field));
     }

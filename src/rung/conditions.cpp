@@ -13,7 +13,6 @@ namespace rung {
 bool IsConditionDataType(RungDataType type)
 {
     switch (type) {
-    case RungDataType::PUBKEY:
     case RungDataType::PUBKEY_COMMIT:
     case RungDataType::HASH256:
     case RungDataType::HASH160:
@@ -21,6 +20,7 @@ bool IsConditionDataType(RungDataType type)
     case RungDataType::SCHEME:
     case RungDataType::SPEND_INDEX:
         return true;
+    case RungDataType::PUBKEY:
     case RungDataType::SIGNATURE:
     case RungDataType::PREIMAGE:
         return false;
