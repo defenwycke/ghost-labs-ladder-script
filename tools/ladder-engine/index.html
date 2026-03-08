@@ -5857,8 +5857,8 @@ function decodedToBuilderRungs(data) {
     });
     return { rungs, txInputs, txOutputs };
   }
-  // Format 4: raw tx with version 3 — { version: 3, vin, vout[].rung_conditions }
-  if (data.version === 3 && data.vout) {
+  // Format 4: raw tx with version 4 — { version: 4, vin, vout[].rung_conditions }
+  if (data.version === 4 && data.vout) {
     const txInputs = (data.vin || []).map(v => ({ id: uid(), txid: v.txid || '', vout: v.vout || 0, sequence: v.sequence !== undefined ? String(v.sequence) : '' }));
     const txOutputs = [];
     const rungs = [];

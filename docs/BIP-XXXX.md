@@ -10,7 +10,7 @@ Created: 2026-03-06
 
 ## Abstract
 
-Ladder Script introduces transaction version 3 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organized as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system activates all 48 block types across 9 families in a single soft fork.
+Ladder Script introduces transaction version 4 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organized as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system activates all 48 block types across 9 families in a single soft fork.
 
 ## Motivation
 
@@ -32,7 +32,7 @@ Ladder Script addresses these limitations by replacing opcode sequences with a t
 
 ### Transaction Format
 
-A Ladder Script transaction is identified by `nVersion = 3` (constant `CTransaction::RUNG_TX_VERSION`). When a node encounters a version 3 transaction spending an output whose `scriptPubKey` begins with the byte `0xc1`, it invokes the ladder evaluator instead of the Script interpreter.
+A Ladder Script transaction is identified by `nVersion = 4` (constant `CTransaction::RUNG_TX_VERSION`). When a node encounters a version 4 transaction spending an output whose `scriptPubKey` begins with the byte `0xc1`, it invokes the ladder evaluator instead of the Script interpreter.
 
 **Output (locking side):**
 
@@ -46,11 +46,11 @@ The prefix byte `0xc1` was chosen to avoid collision with all existing `OP_` pre
 
 **Input (unlocking side):**
 
-The first element of the segregated witness stack for each v3 input is a serialized `LadderWitness`. This structure contains the same rung/block layout as the conditions but additionally includes SIGNATURE and PREIMAGE fields that satisfy the locking conditions.
+The first element of the segregated witness stack for each v4 input is a serialized `LadderWitness`. This structure contains the same rung/block layout as the conditions but additionally includes SIGNATURE and PREIMAGE fields that satisfy the locking conditions.
 
 **Evaluation entry point:**
 
-The function `VerifyRungTx` is called for each input of a v3 transaction. It deserializes both the conditions (from the spent output's `scriptPubKey`) and the witness (from the spending input), then evaluates the ladder.
+The function `VerifyRungTx` is called for each input of a v4 transaction. It deserializes both the conditions (from the spent output's `scriptPubKey`) and the witness (from the spending input), then evaluates the ladder.
 
 ### Wire Format (v2)
 
@@ -303,10 +303,10 @@ The following RPCs are provided for wallet and application integration:
 
 - `createrung` -- Create a rung conditions structure from a JSON description of blocks and fields.
 - `decoderung` -- Decode a hex-encoded rung conditions structure to human-readable JSON.
-- `validateladder` -- Validate a raw v3 RUNG_TX transaction's ladder witnesses against its spent outputs.
-- `createrungtx` -- Create an unsigned v3 RUNG_TX transaction with rung condition outputs.
-- `signrungtx` -- Sign a v3 RUNG_TX transaction's inputs given private keys and spent output information.
-- `computectvhash` -- Compute the BIP-119 CTV template hash for a v3 RUNG_TX transaction at a given input index.
+- `validateladder` -- Validate a raw v4 RUNG_TX transaction's ladder witnesses against its spent outputs.
+- `createrungtx` -- Create an unsigned v4 RUNG_TX transaction with rung condition outputs.
+- `signrungtx` -- Sign a v4 RUNG_TX transaction's inputs given private keys and spent output information.
+- `computectvhash` -- Compute the BIP-119 CTV template hash for a v4 RUNG_TX transaction at a given input index.
 - `pqkeygen` -- Generate a post-quantum keypair for a specified scheme.
 - `pqpubkeycommit` -- Compute the SHA-256 PUBKEY_COMMIT for a given public key.
 - `extractadaptorsecret` -- Extract the adaptor secret from a pre-signature and adapted signature pair.
@@ -335,7 +335,7 @@ The following RPCs are provided for wallet and application integration:
 
 ## Backward Compatibility
 
-**Non-upgraded nodes.** Transaction version 3 is currently non-standard in Bitcoin Core. No existing software creates v3 transactions. Non-upgraded nodes treat v3 transactions as anyone-can-spend, which is the standard soft fork upgrade path established by BIP-141 (Segregated Witness) and BIP-341 (Taproot).
+**Non-upgraded nodes.** Transaction version 4 is currently non-standard in Bitcoin Core. No existing software creates v4 transactions. Non-upgraded nodes treat v4 transactions as anyone-can-spend, which is the standard soft fork upgrade path established by BIP-141 (Segregated Witness) and BIP-341 (Taproot).
 
 **Existing transactions.** Ladder Script does not modify the validation rules for transaction versions 1 or 2. All existing UTXOs, scripts, and spending paths remain valid and unchanged.
 
@@ -404,7 +404,7 @@ The implementation includes comprehensive test coverage across two layers:
 - Deeply nested covenant chains
 
 Additional functional tests:
-- `test/functional/rung_p2p.py`: P2P relay of v3 transactions between nodes.
+- `test/functional/rung_p2p.py`: P2P relay of v4 transactions between nodes.
 - `test/functional/rung_pq_block.py`: Post-quantum block-level tests.
 
 **Fuzz testing** (`src/test/fuzz/rung_deserialize.cpp`): Continuous fuzz testing of the deserialization path.

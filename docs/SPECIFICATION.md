@@ -1,7 +1,7 @@
 # Ladder Script -- Technical Specification
 
 **Version:** 2 (wire format v2)
-**Transaction version:** 3 (`RUNG_TX_VERSION`)
+**Transaction version:** 4 (`RUNG_TX_VERSION`)
 **Status:** Implemented — all 48 block types consensus-valid and policy-standard
 
 ---
@@ -10,7 +10,7 @@
 
 Ladder Script is a structured, typed transaction verification system for Bitcoin Ghost. It replaces Bitcoin Script's stack-based opcode model with a declarative model of typed function blocks organized into rungs.
 
-A version 3 transaction (`RUNG_TX`) uses Ladder Script for both locking (output conditions) and unlocking (input witness). The system provides:
+A version 4 transaction (`RUNG_TX`) uses Ladder Script for both locking (output conditions) and unlocking (input witness). The system provides:
 
 - **Typed data fields** -- every byte in a Ladder Script witness belongs to a declared data type with enforced size constraints. No arbitrary data pushes are possible.
 - **Function blocks** -- each block evaluates a single spending condition (signature check, timelock, hash preimage, covenant, etc.).
@@ -126,7 +126,7 @@ Trailing bytes after the complete structure are rejected. The maximum total seri
 
 ## 4. Output Format (scriptPubKey)
 
-A v3 output's `scriptPubKey` is constructed as:
+A v4 output's `scriptPubKey` is constructed as:
 
 ```
 [0xc1] [serialized RungConditions]
@@ -754,7 +754,7 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 8.1 LadderSighash
 
-The signature hash for v3 RUNG_TX inputs uses the tagged hash `TaggedHash("LadderSighash")`.
+The signature hash for v4 RUNG_TX inputs uses the tagged hash `TaggedHash("LadderSighash")`.
 
 The tagged hash is computed as `SHA256(SHA256("LadderSighash") || SHA256("LadderSighash") || data)`.
 
@@ -805,7 +805,7 @@ The conditions_hash is `SHA256(serialized_conditions)` where `serialized_conditi
 
 ### 8.6 Precomputed Data
 
-The `PrecomputedTransactionData` structure has a `m_ladder_ready` flag. When a v3 transaction is initialized, the following hashes are precomputed:
+The `PrecomputedTransactionData` structure has a `m_ladder_ready` flag. When a v4 transaction is initialized, the following hashes are precomputed:
 
 - `m_prevouts_single_hash` -- SHA256 of all prevouts
 - `m_spent_amounts_single_hash` -- SHA256 of all spent amounts
@@ -913,7 +913,7 @@ Create a serialized ladder witness from a JSON specification. Returns the serial
 createrungtx [{"txid": "...", "vout": 0}] [{"amount": 0.001, "conditions": [...]}]
 ```
 
-Create an unsigned v3 RUNG_TX transaction with rung condition outputs. Inputs are outpoints to spend. Outputs specify rung conditions (using the same JSON block/field format) and amounts. Returns the raw transaction hex. When building conditions, PUBKEY fields are automatically hashed to PUBKEY_COMMIT (SHA-256) -- users provide pubkey hex as before and the RPC performs the conversion.
+Create an unsigned v4 RUNG_TX transaction with rung condition outputs. Inputs are outpoints to spend. Outputs specify rung conditions (using the same JSON block/field format) and amounts. Returns the raw transaction hex. When building conditions, PUBKEY fields are automatically hashed to PUBKEY_COMMIT (SHA-256) -- users provide pubkey hex as before and the RPC performs the conversion.
 
 ### 14.4 signrungtx
 
@@ -921,7 +921,7 @@ Create an unsigned v3 RUNG_TX transaction with rung condition outputs. Inputs ar
 signrungtx "txhex" [{"privkey": "cVt...", "input": 0}] [{"amount": 0.001, "scriptPubKey": "c1..."}]
 ```
 
-Sign a v3 RUNG_TX transaction's inputs. Takes the raw transaction hex, an array of signing keys mapped to input indices, and an array of spent outputs (for sighash computation). Returns the signed transaction hex.
+Sign a v4 RUNG_TX transaction's inputs. Takes the raw transaction hex, an array of signing keys mapped to input indices, and an array of spent outputs (for sighash computation). Returns the signed transaction hex.
 
 ### 14.5 validateladder
 
@@ -929,7 +929,7 @@ Sign a v3 RUNG_TX transaction's inputs. Takes the raw transaction hex, an array 
 validateladder "txhex"
 ```
 
-Validate a raw v3 RUNG_TX transaction's ladder witnesses. Checks that all input witnesses are valid ladder witnesses with correct structure, known block types, and valid field sizes. Returns validation results per input.
+Validate a raw v4 RUNG_TX transaction's ladder witnesses. Checks that all input witnesses are valid ladder witnesses with correct structure, known block types, and valid field sizes. Returns validation results per input.
 
 ### 14.6 computectvhash
 
@@ -937,7 +937,7 @@ Validate a raw v3 RUNG_TX transaction's ladder witnesses. Checks that all input 
 computectvhash "txhex" input_index
 ```
 
-Compute the BIP-119 CTV template hash for a v3 RUNG_TX transaction at the specified input index. Returns the 32-byte hash as hex.
+Compute the BIP-119 CTV template hash for a v4 RUNG_TX transaction at the specified input index. Returns the 32-byte hash as hex.
 
 ### 14.7 generatepqkeypair
 

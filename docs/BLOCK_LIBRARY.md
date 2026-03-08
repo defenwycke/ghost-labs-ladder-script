@@ -2290,7 +2290,7 @@ Saves 8 bytes vs separate blocks (5.1%).
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
 | PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
-| NUMERIC | NUMERIC | 1-8 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
+| NUMERIC | NUMERIC | 1-4 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
 | PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
 | SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
 | SCHEME | SCHEME | 1 B | Optional (witness) | PQ scheme identifier |
@@ -2313,7 +2313,7 @@ Saves 16 bytes vs separate blocks (6.9%), 48 bytes vs Tapscript (18.1%).
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
 | HASH256 | HASH256 | 32 B | Yes (condition) | SHA-256 hash preimage must match |
-| NUMERIC | NUMERIC | 1-8 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
+| NUMERIC | NUMERIC | 1-4 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
 | PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
 | PREIMAGE | PREIMAGE | 1-520 B | Yes (witness) | Hash preimage |
 | PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |

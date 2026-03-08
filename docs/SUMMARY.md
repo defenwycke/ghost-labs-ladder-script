@@ -1,6 +1,6 @@
 # Ladder Script -- Executive Summary
 
-Ladder Script is a typed, structured transaction format for Bitcoin that replaces opcode-based scripting with a declarative block model. Introduced as transaction version 3, it organizes spending conditions as named function blocks within rungs: all blocks in a rung must be satisfied (AND logic), and the first satisfied rung among alternatives wins (OR logic). Every byte in a Ladder Script witness is typed, every condition is a named block with validated fields, and evaluation is deterministic with bounded execution time. The design draws directly from industrial Programmable Logic Controller ladder diagrams, which solved analogous reliability problems in safety-critical control systems.
+Ladder Script is a typed, structured transaction format for Bitcoin that replaces opcode-based scripting with a declarative block model. Introduced as transaction version 4, it organizes spending conditions as named function blocks within rungs: all blocks in a rung must be satisfied (AND logic), and the first satisfied rung among alternatives wins (OR logic). Every byte in a Ladder Script witness is typed, every condition is a named block with validated fields, and evaluation is deterministic with bounded execution time. The design draws directly from industrial Programmable Logic Controller ladder diagrams, which solved analogous reliability problems in safety-critical control systems.
 
 ## Key Innovations
 
@@ -27,7 +27,7 @@ Ladder Script is a typed, structured transaction format for Bitcoin that replace
 
 ## Transaction Format
 
-A version 3 transaction output contains a `0xc1` prefix followed by serialized rung conditions (the lock). The input witness contains a serialized ladder witness (the key). At verification time, conditions and witness are merged field-by-field -- the conditions provide key commitments (PUBKEY_COMMIT), hashes, and parameters; the witness provides public keys, signatures, and preimages. Conditions contain zero user-chosen bytes: every field is either a fixed-size hash or a bounded numeric. The merged structure is evaluated by the three-level dispatch: `EvalLadder` (OR across rungs), `EvalRung` (AND within a rung), `EvalBlock` (type-specific logic). The sighash uses a tagged hash ("LadderSighash") that commits to the conditions hash, binding signatures to the exact conditions they satisfy.
+A version 4 transaction output contains a `0xc1` prefix followed by serialized rung conditions (the lock). The input witness contains a serialized ladder witness (the key). At verification time, conditions and witness are merged field-by-field -- the conditions provide key commitments (PUBKEY_COMMIT), hashes, and parameters; the witness provides public keys, signatures, and preimages. Conditions contain zero user-chosen bytes: every field is either a fixed-size hash or a bounded numeric. The merged structure is evaluated by the three-level dispatch: `EvalLadder` (OR across rungs), `EvalRung` (AND within a rung), `EvalBlock` (type-specific logic). The sighash uses a tagged hash ("LadderSighash") that commits to the conditions hash, binding signatures to the exact conditions they satisfy.
 
 ## Post-Quantum Support
 

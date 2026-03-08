@@ -179,7 +179,7 @@ RungConditions in scriptPubKey:
   [0xc1 prefix] + [LadderWitness bytes]
 ```
 
-**Transaction version:** `RUNG_TX_VERSION = 3`
+**Transaction version:** `RUNG_TX_VERSION = 4`
 
 **Signature hash:** `SignatureHashLadder` using tagged hash `"LadderSighash"`, commits to serialized rung conditions from spent output. `SigVersion::LADDER = 4`.
 
@@ -203,10 +203,10 @@ RungConditions in scriptPubKey:
 |-----|---------|
 | `createrung` | Build ladder witness hex from JSON rung spec |
 | `decoderung` | Decode ladder witness hex to JSON |
-| `validateladder` | Validate all witnesses in a v3 RUNG_TX |
-| `createrungtx` | Create unsigned v3 tx with rung condition outputs |
-| `signrungtx` | Sign v3 tx inputs (privkey or block-type witness) |
-| `computectvhash` | Compute BIP-119 template hash for a v3 tx |
+| `validateladder` | Validate all witnesses in a v4 RUNG_TX |
+| `createrungtx` | Create unsigned v4 tx with rung condition outputs |
+| `signrungtx` | Sign v4 tx inputs (privkey or block-type witness) |
+| `computectvhash` | Compute BIP-119 template hash for a v4 tx |
 
 ---
 

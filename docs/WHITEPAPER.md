@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Ladder Script is a typed, structured transaction format for Bitcoin (transaction version 3) that replaces opcode-based scripting with a declarative block model inspired by industrial Programmable Logic Controllers (PLC). Every byte in a Ladder Script witness is typed. Every condition is a named block with validated fields. Evaluation follows deterministic ladder logic: AND within rungs, OR across rungs, first match wins.
+Ladder Script is a typed, structured transaction format for Bitcoin (transaction version 4) that replaces opcode-based scripting with a declarative block model inspired by industrial Programmable Logic Controllers (PLC). Every byte in a Ladder Script witness is typed. Every condition is a named block with validated fields. Evaluation follows deterministic ladder logic: AND within rungs, OR across rungs, first match wins.
 
 The design eliminates the classes of bugs inherent to stack-based scripting -- type confusion, push-data ambiguity, implicit coercion -- by requiring that all data conform to one of nine declared data types with enforced size constraints. Spending conditions are not computed; they are stated. The result is a transaction format that is auditable by inspection, verifiable in bounded time, and extensible without opcode proliferation.
 
@@ -94,11 +94,11 @@ Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is trea
 
 ### 3.1 Transaction Format
 
-Ladder Script transactions use **transaction version 3** (`RUNG_TX_VERSION = 3`). This cleanly separates Ladder Script transactions from legacy (version 1) and SegWit/Taproot (version 2) transactions at the protocol level.
+Ladder Script transactions use **transaction version 4** (`RUNG_TX_VERSION = 4`). This cleanly separates Ladder Script transactions from legacy (version 1) and SegWit/Taproot (version 2) transactions at the protocol level.
 
-**Output (locking side):** The scriptPubKey of a version 3 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are prohibited in conditions. Blocks that reference public keys use PUBKEY_COMMIT (a 32-byte SHA-256 hash) in conditions; the raw PUBKEY is provided in the witness at spend time.
+**Output (locking side):** The scriptPubKey of a version 4 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are prohibited in conditions. Blocks that reference public keys use PUBKEY_COMMIT (a 32-byte SHA-256 hash) in conditions; the raw PUBKEY is provided in the witness at spend time.
 
-**Witness (unlocking side):** The witness for a version 3 input contains a serialized `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
+**Witness (unlocking side):** The witness for a version 4 input contains a serialized `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
 
 **Evaluation:** The `VerifyRungTx` entry point deserializes both structures, merges them field-by-field, and invokes `EvalLadder` on the merged result. The merge requires structural correspondence: same number of rungs, same number of blocks per rung, and matching block types.
 

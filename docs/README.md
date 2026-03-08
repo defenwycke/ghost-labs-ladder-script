@@ -20,7 +20,7 @@ cryptography, and stateful smart contracts.
 |----------|-------------|
 | [SUMMARY.md](SUMMARY.md) | One-page executive summary of Ladder Script's design and capabilities |
 | [WHITEPAPER.md](WHITEPAPER.md) | Vision, motivation, and architecture -- the case for structured conditions |
-| [BIP-XXXX.md](BIP-XXXX.md) | Formal Bitcoin Improvement Proposal for v3 RUNG_TX transactions |
+| [BIP-XXXX.md](BIP-XXXX.md) | Formal Bitcoin Improvement Proposal for v4 RUNG_TX transactions |
 | [SPECIFICATION.md](SPECIFICATION.md) | Complete technical specification: wire format, evaluation rules, sighash |
 | [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) | Block type reference with field layouts, evaluation semantics, and examples |
 | [GLOSSARY.md](GLOSSARY.md) | Terminology definitions for Ladder Script concepts |
@@ -45,7 +45,7 @@ cryptography, and stateful smart contracts.
 3. **Export JSON.**
    The right panel displays the `createrungtx` RPC JSON in real time. Copy the
    JSON and submit it to a Ghost node via `ghost-cli createrungtx '<json>'` to
-   create a v3 transaction. Use `signrungtx` to sign and `sendrawtransaction`
+   create a v4 transaction. Use `signrungtx` to sign and `sendrawtransaction`
    to broadcast.
 
 ---

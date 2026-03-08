@@ -55,15 +55,15 @@ Ladder Script maps this directly:
 
 ### 4. Is this a hard fork or soft fork?
 
-Ladder Script is designed as a soft fork. It uses transaction version 3 (v3)
+Ladder Script is designed as a soft fork. It uses transaction version 4 (v4)
 and a new scriptPubKey prefix byte (`0xc1`) that does not conflict with any
-existing opcode or witness version. Nodes that do not understand v3 transactions
+existing opcode or witness version. Nodes that do not understand v4 transactions
 treat them as anyone-can-spend under the soft fork activation rules, while
 upgraded nodes enforce the full condition evaluation.
 
 ### 5. What transaction version does Ladder Script use?
 
-Transaction version 3 (nVersion = 3). This version is currently unused in
+Transaction version 4 (nVersion = 4). This version is currently unused in
 Bitcoin consensus and is designated for RUNG_TX transactions. The version
 number signals to upgraded nodes that the transaction should be validated
 using the Ladder Script evaluator rather than the Bitcoin Script interpreter.
@@ -116,7 +116,7 @@ condition substitution attacks.
 ### 9. What is the 0xc1 prefix?
 
 The byte `0xc1` (hex) is the RUNG_CONDITIONS_PREFIX. It is the first byte of
-every v3 output scriptPubKey that contains Ladder Script conditions. The
+every v4 output scriptPubKey that contains Ladder Script conditions. The
 evaluator uses this prefix to quickly identify rung-encumbered outputs without
 parsing the full script.
 
@@ -438,15 +438,15 @@ Features include:
 
 | RPC | Purpose |
 |-----|---------|
-| `createrungtx` | Create a v3 RUNG_TX transaction from JSON conditions |
-| `signrungtx` | Sign a v3 transaction (Schnorr, ECDSA, or PQ) |
-| `decoderung` | Decode and display a v3 transaction's conditions and witness |
+| `createrungtx` | Create a v4 RUNG_TX transaction from JSON conditions |
+| `signrungtx` | Sign a v4 transaction (Schnorr, ECDSA, or PQ) |
+| `decoderung` | Decode and display a v4 transaction's conditions and witness |
 | `generatepqkeypair` | Generate a post-quantum keypair (FALCON512, etc.) |
 | `pqpubkeycommit` | Compute SHA-256 commitment for a PQ public key |
 | `extractadaptorsecret` | Extract adaptor secret from adapted/pre-signatures |
 | `verifyadaptorpresig` | Verify an adaptor pre-signature |
 
-### 30. How do I create a v3 transaction?
+### 30. How do I create a v4 transaction?
 
 1. **Define conditions** as JSON with inputs, outputs, and per-output condition
    arrays. Each condition is a rung; each rung contains blocks; each block

@@ -211,8 +211,8 @@ def get_utxo():
     return good[0]
 
 
-def bootstrap_v3_output(conditions, output_amount=None):
-    """Create a confirmed v3 rung output. Returns (txid, vout, amount, spk)."""
+def bootstrap_v4_output(conditions, output_amount=None):
+    """Create a confirmed v4 rung output. Returns (txid, vout, amount, spk)."""
     utxo = get_utxo()
     input_amount = float(utxo["amount"])
     txid = utxo["txid"]
@@ -305,7 +305,7 @@ def test_validateladder():
               "01" "0000000000000000" "016a" "00000000")
     result = node.validateladder(raw_tx)
     assert result["valid"] == False
-    assert "Not a v3" in result["error"]
+    assert "Not a v4" in result["error"]
 
 def test_decoderung_malformed():
     assert_raises_rpc_error(-22, "Failed to decode", node.decoderung, "00")
@@ -313,7 +313,7 @@ def test_decoderung_malformed():
 
 def test_createrungtx_signrungtx_spend():
     wif, pub = make_keypair()
-    txid1, vout1, amount1, spk1 = bootstrap_v3_output(
+    txid1, vout1, amount1, spk1 = bootstrap_v4_output(
         [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]}]}]
     )
     # Rung-to-rung spend
@@ -334,7 +334,7 @@ def test_hash_preimage_spend():
     preimage = os.urandom(32)
     hash_digest = hashlib.sha256(preimage).digest()
     conditions = [{"blocks": [{"type": "HASH_PREIMAGE", "fields": [{"type": "HASH256", "hex": hash_digest.hex()}]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     dest_conds = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_pub}]}]}]
     out_amount = round(amount - 0.001, 8)
@@ -351,7 +351,7 @@ def test_hash160_preimage_spend():
     preimage = os.urandom(20)
     h = hash160(preimage)
     conditions = [{"blocks": [{"type": "HASH160_PREIMAGE", "fields": [{"type": "HASH160", "hex": h.hex()}]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -370,7 +370,7 @@ def test_csv_spend():
         {"type": "CSV", "fields": [{"type": "NUMERIC", "hex": numeric_hex(10)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]}
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     mine_blocks(10)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
@@ -392,7 +392,7 @@ def test_cltv_spend():
         {"type": "CLTV", "fields": [{"type": "NUMERIC", "hex": numeric_hex(target)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]}
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     mine_blocks(5)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
@@ -415,7 +415,7 @@ def test_multisig_spend():
         {"type": "PUBKEY", "hex": pub1},
         {"type": "PUBKEY", "hex": pub2},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -434,7 +434,7 @@ def test_sig_plus_csv():
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
         {"type": "CSV", "fields": [{"type": "NUMERIC", "hex": numeric_hex(5)}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     mine_blocks(5)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
@@ -457,7 +457,7 @@ def test_or_logic():
         {"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub1}]}]},
         {"blocks": [{"type": "HASH_PREIMAGE", "fields": [{"type": "HASH256", "hex": hash_val.hex()}]}]},
     ]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     # Spend via rung 1 (hash preimage)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
@@ -475,7 +475,7 @@ def test_negative_wrong_sig():
     wif, pub = make_keypair()
     wrong_wif, wrong_pub = make_keypair()
     conditions = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -489,7 +489,7 @@ def test_negative_wrong_preimage():
     preimage = os.urandom(16)
     hash_val = hashlib.sha256(preimage).digest()
     conditions = [{"blocks": [{"type": "HASH_PREIMAGE", "fields": [{"type": "HASH256", "hex": hash_val.hex()}]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     wrong_preimage = os.urandom(16)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
@@ -509,7 +509,7 @@ def test_tagged_hash():
         {"type": "HASH256", "hex": tag_hash.hex()},
         {"type": "HASH256", "hex": expected.hex()},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -531,7 +531,7 @@ def test_amount_lock():
         {"type": "NUMERIC", "hex": numeric_hex(max_sats)},
     ]}]}]
     # Bootstrap with a small output (1 BTC) that fits within the amount lock range
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -548,7 +548,7 @@ def test_anchor_output():
     conditions = [{"blocks": [{"type": "ANCHOR", "fields": [
         {"type": "HASH256", "hex": os.urandom(32).hex()},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -566,7 +566,7 @@ def test_compare_block():
         {"type": "NUMERIC", "hex": numeric_hex(5)},  # GTE (0x05)
         {"type": "NUMERIC", "hex": numeric_hex(1000)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -588,7 +588,7 @@ def test_adaptor_sig():
         {"type": "PUBKEY", "hex": pub},
         {"type": "PUBKEY", "hex": adaptor_xonly},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -607,7 +607,7 @@ def test_recurse_same():
         {"type": "RECURSE_SAME", "fields": [{"type": "NUMERIC", "hex": numeric_hex(10)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     # Spend: re-encumber with same conditions
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -628,7 +628,7 @@ def test_vault_lock():
         {"type": "PUBKEY", "hex": hot_pub},         # hot_key (PUBKEY[1])
         {"type": "NUMERIC", "hex": numeric_hex(10)},  # hot_delay
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -648,7 +648,7 @@ def test_hysteresis_value():
         {"type": "NUMERIC", "hex": numeric_hex(200000000)},  # high: 2 BTC
         {"type": "NUMERIC", "hex": numeric_hex(50000000)},   # low: 0.5 BTC
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -667,7 +667,7 @@ def test_hysteresis_fee():
         {"type": "NUMERIC", "hex": numeric_hex(500)},  # high_sat_vb
         {"type": "NUMERIC", "hex": numeric_hex(1)},    # low_sat_vb
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     # Fee = amount - out_amount (in sats). Target ~10-100 sat/vB for a ~150 vB tx.
     out_amount = round(amount - 0.0001, 8)  # ~10000 sats fee / ~150 vB ≈ 66 sat/vB
@@ -689,7 +689,7 @@ def test_rate_limit():
         {"type": "NUMERIC", "hex": numeric_hex(144)},         # refill_blocks
     ]}]}]
     # Use 1 BTC output so output_amount < max_per_block (5 BTC)
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -707,7 +707,7 @@ def test_sequencer():
         {"type": "NUMERIC", "hex": numeric_hex(0)},
         {"type": "NUMERIC", "hex": numeric_hex(5)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -726,7 +726,7 @@ def test_timer_continuous():
         {"type": "NUMERIC", "hex": numeric_hex(100)},
         {"type": "NUMERIC", "hex": numeric_hex(10)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -744,7 +744,7 @@ def test_timer_off_delay():
     conditions = [{"blocks": [{"type": "TIMER_OFF_DELAY", "fields": [
         {"type": "NUMERIC", "hex": numeric_hex(5)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -763,7 +763,7 @@ def test_latch_set():
         {"type": "PUBKEY", "hex": pub},
         {"type": "NUMERIC", "hex": numeric_hex(0)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -783,7 +783,7 @@ def test_latch_reset():
         {"type": "NUMERIC", "hex": numeric_hex(1)},
         {"type": "NUMERIC", "hex": numeric_hex(0)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -802,7 +802,7 @@ def test_counter_down():
         {"type": "PUBKEY", "hex": pub},
         {"type": "NUMERIC", "hex": numeric_hex(10)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -820,7 +820,7 @@ def test_counter_preset():
         {"type": "NUMERIC", "hex": numeric_hex(5)},
         {"type": "NUMERIC", "hex": numeric_hex(100)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -840,7 +840,7 @@ def test_counter_up():
         {"type": "NUMERIC", "hex": numeric_hex(0)},
         {"type": "NUMERIC", "hex": numeric_hex(10)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -858,7 +858,7 @@ def test_one_shot():
         {"type": "NUMERIC", "hex": numeric_hex(0)},
         {"type": "HASH256", "hex": os.urandom(32).hex()},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -889,7 +889,7 @@ def test_recurse_decay():
         ]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     out_amount = round(amount - 0.001, 8)
     # Decay output: count decremented from 100 to 99 (output = input - delta)
     decay_conds = [{"blocks": [
@@ -923,7 +923,7 @@ def test_anchor_channel():
         {"type": "PUBKEY", "hex": pub2},       # remote_key
         {"type": "NUMERIC", "hex": numeric_hex(2)},  # commitment_number
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -941,7 +941,7 @@ def test_anchor_pool():
         {"type": "HASH256", "hex": os.urandom(32).hex()},
         {"type": "NUMERIC", "hex": numeric_hex(5)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -960,7 +960,7 @@ def test_anchor_reserve():
         {"type": "NUMERIC", "hex": numeric_hex(3)},         # threshold_m
         {"type": "HASH256", "hex": os.urandom(32).hex()},   # guardian set hash
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -978,7 +978,7 @@ def test_anchor_seal():
         {"type": "HASH256", "hex": os.urandom(32).hex()},  # asset_id
         {"type": "HASH256", "hex": os.urandom(32).hex()},  # state_transition
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -997,7 +997,7 @@ def test_anchor_oracle():
         {"type": "PUBKEY", "hex": oracle_pub},             # oracle_key
         {"type": "NUMERIC", "hex": numeric_hex(3)},        # outcome_count
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -1019,7 +1019,7 @@ def test_recurse_split():
         ]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     split_amount = round(amount / 2 - 0.001, 8)
     # Output conditions must have max_splits decremented to 1
     split_conds = [{"blocks": [
@@ -1046,7 +1046,7 @@ def test_recurse_count():
         {"type": "RECURSE_COUNT", "fields": [{"type": "NUMERIC", "hex": numeric_hex(3)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     out_amount = round(amount - 0.001, 8)
     # Spend with count-1
     next_conds = [{"blocks": [
@@ -1080,7 +1080,7 @@ def test_recurse_modified():
         ]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     out_amount = round(amount - 0.001, 8)
     # Next state: step 0->1 (RECURSE_MODIFIED verifies current_step incremented by delta)
     next_conds = [{"blocks": [
@@ -1120,7 +1120,7 @@ def test_inverted_csv():
         {"type": "CSV", "inverted": True, "fields": [{"type": "NUMERIC", "hex": numeric_hex(1000)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0, "sequence": 0}],
@@ -1139,7 +1139,7 @@ def test_inverted_hash_preimage():
     conditions = [{"blocks": [{"type": "HASH_PREIMAGE", "inverted": True, "fields": [
         {"type": "HASH256", "hex": wrong_hash.hex()}
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     # Provide a preimage whose hash does NOT match wrong_hash
@@ -1162,7 +1162,7 @@ def test_recurse_until():
         {"type": "RECURSE_UNTIL", "fields": [{"type": "NUMERIC", "hex": numeric_hex(target)}]},
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]},
     ]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     out_amount = round(amount - 0.001, 8)
     # Re-encumber (before target)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -1186,7 +1186,7 @@ def test_csv_time_spend():
     conditions = [{"blocks": [{"type": "CSV_TIME", "fields": [
         {"type": "NUMERIC", "hex": numeric_hex(csv_sequence)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     # Mine 60 blocks (10s apart each = 600s elapsed > 512s needed for 1 CSV_TIME unit)
     mine_blocks(60)
     dest_wif, dest_pub = make_keypair()
@@ -1209,7 +1209,7 @@ def test_cltv_time_spend():
     conditions = [{"blocks": [{"type": "CLTV_TIME", "fields": [
         {"type": "NUMERIC", "hex": numeric_hex(target_time)},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -1229,7 +1229,7 @@ def test_ctv_template():
     dest_wif, dest_pub = make_keypair()
     # Step 1: Create a SIG-locked output we control
     sig_conds = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": pub}]}]}]
-    sig_txid, sig_vout, sig_amount, sig_spk = bootstrap_v3_output(sig_conds, output_amount=1.0)
+    sig_txid, sig_vout, sig_amount, sig_spk = bootstrap_v4_output(sig_conds, output_amount=1.0)
     # Step 2: Pre-compute the CTV template hash
     spend_amount = round(sig_amount - 0.002, 8)
     dest_conds = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_pub}]}]}]
@@ -1270,7 +1270,7 @@ def test_cosign_spend():
     """COSIGN: two UTXOs co-spent — child requires anchor's scriptPubKey hash."""
     anchor_wif, anchor_pub = make_keypair()
     anchor_conds = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": anchor_pub}]}]}]
-    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v3_output(anchor_conds, output_amount=0.5)
+    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v4_output(anchor_conds, output_amount=0.5)
     # COSIGN hash = SHA256 of anchor's scriptPubKey
     cosign_hash = hashlib.sha256(bytes.fromhex(anchor_spk)).hexdigest()
     child_wif, child_pub = make_keypair()
@@ -1278,7 +1278,7 @@ def test_cosign_spend():
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": child_pub}]},
         {"type": "COSIGN", "fields": [{"type": "HASH256", "hex": cosign_hash}]},
     ]}]
-    child_txid, child_vout, child_amount, child_spk = bootstrap_v3_output(child_conds)
+    child_txid, child_vout, child_amount, child_spk = bootstrap_v4_output(child_conds)
     # Spend both in same tx
     dest_wif, dest_pub = make_keypair()
     dest_conds = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_pub}]}]}]
@@ -1338,7 +1338,7 @@ def test_pq_falcon512_sig():
         {"type": "SCHEME", "hex": "10"},
         {"type": "PUBKEY", "hex": pq_pubkey},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -1367,7 +1367,7 @@ def test_pq_falcon512_pubkey_commit():
         {"type": "SCHEME", "hex": "10"},
         {"type": "PUBKEY_COMMIT", "hex": commit_hex},
     ]}]}]
-    txid, vout, amount, spk = bootstrap_v3_output(conditions, output_amount=1.0)
+    txid, vout, amount, spk = bootstrap_v4_output(conditions, output_amount=1.0)
     dest_wif, dest_pub = make_keypair()
     out_amount = round(amount - 0.001, 8)
     spend = node.createrungtx([{"txid": txid, "vout": 0}],
@@ -1402,7 +1402,7 @@ def test_pq_cosign_anchor():
             {"type": "NUMERIC", "hex": numeric_hex(1000)},
         ]},
     ]}]
-    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v3_output(anchor_conds, output_amount=0.01)
+    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v4_output(anchor_conds, output_amount=0.01)
     # COSIGN hash = SHA256(anchor scriptPubKey)
     cosign_hash = hashlib.sha256(bytes.fromhex(anchor_spk)).hexdigest()
     # Create child with SIG + COSIGN
@@ -1411,7 +1411,7 @@ def test_pq_cosign_anchor():
         {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": child_pub}]},
         {"type": "COSIGN", "fields": [{"type": "HASH256", "hex": cosign_hash}]},
     ]}]
-    child_txid, child_vout, child_amount, child_spk = bootstrap_v3_output(child_conds, output_amount=1.0)
+    child_txid, child_vout, child_amount, child_spk = bootstrap_v4_output(child_conds, output_amount=1.0)
     # Spend both: anchor re-encumbers, child freed
     dest_wif, dest_pub = make_keypair()
     spend = node.createrungtx(
@@ -1452,7 +1452,7 @@ def test_pq_cosign_10_children():
         ]},
         {"type": "RECURSE_SAME", "fields": [{"type": "NUMERIC", "hex": numeric_hex(1000)}]},
     ]}]
-    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v3_output(anchor_conds, output_amount=0.01)
+    anchor_txid, anchor_vout, anchor_amount, anchor_spk = bootstrap_v4_output(anchor_conds, output_amount=0.01)
     cosign_hash = hashlib.sha256(bytes.fromhex(anchor_spk)).hexdigest()
     # Create 10 child UTXOs with SIG + COSIGN
     children = []
@@ -1462,7 +1462,7 @@ def test_pq_cosign_10_children():
             {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": c_pub}]},
             {"type": "COSIGN", "fields": [{"type": "HASH256", "hex": cosign_hash}]},
         ]}]
-        c_txid, c_vout, c_amount, c_spk = bootstrap_v3_output(c_conds, output_amount=0.1)
+        c_txid, c_vout, c_amount, c_spk = bootstrap_v4_output(c_conds, output_amount=0.1)
         children.append({"txid": c_txid, "vout": c_vout, "amount": c_amount, "spk": c_spk, "wif": c_wif})
     # Build 11-input transaction: anchor + 10 children
     dest_wif, dest_pub = make_keypair()

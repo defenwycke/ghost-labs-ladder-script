@@ -2,12 +2,12 @@
 
 ## 1. Overview
 
-Ladder Script introduces transaction version 3 (`RUNG_TX`) to Bitcoin, replacing opcode-based Script with typed, structured spending conditions for participating outputs. The soft fork changes the following:
+Ladder Script introduces transaction version 4 (`RUNG_TX`) to Bitcoin, replacing opcode-based Script with typed, structured spending conditions for participating outputs. The soft fork changes the following:
 
 **What changes:**
-- Transaction version 3 gains consensus meaning (currently non-standard, treated as anyone-can-spend).
+- Transaction version 4 gains consensus meaning (currently non-standard, treated as anyone-can-spend).
 - Outputs with scriptPubKey prefix `0xc1` are recognized as ladder conditions and evaluated by the ladder evaluator.
-- Witness validation for v3 inputs uses the ladder sighash (`TaggedHash("LadderSighash")`) instead of the Script interpreter.
+- Witness validation for v4 inputs uses the ladder sighash (`TaggedHash("LadderSighash")`) instead of the Script interpreter.
 - All 48 block types across 9 families are activated simultaneously.
 - Post-quantum signature schemes (FALCON-512/1024, Dilithium3, SPHINCS+-SHA) become available through the SCHEME field.
 
@@ -77,21 +77,21 @@ All 48 block types activated as a single unit:
 
 ### Upgraded nodes
 
-Upgraded nodes enforce the full ladder evaluation rules for v3 transactions. All 48 block types are consensus-valid and policy-standard after activation. Before activation, v3 transactions are non-standard (not relayed, not mined by default). If included in a block by a miner, they are valid (anyone-can-spend semantics).
+Upgraded nodes enforce the full ladder evaluation rules for v4 transactions. All 48 block types are consensus-valid and policy-standard after activation. Before activation, v4 transactions are non-standard (not relayed, not mined by default). If included in a block by a miner, they are valid (anyone-can-spend semantics).
 
 ### Non-upgraded nodes
 
 Non-upgraded nodes do not recognize the `0xc1` prefix or the ladder evaluator. Their behavior depends on the activation state:
 
-**Before activation:** v3 transactions are non-standard. Non-upgraded nodes neither relay nor mine them. No impact.
+**Before activation:** v4 transactions are non-standard. Non-upgraded nodes neither relay nor mine them. No impact.
 
-**After activation:** Non-upgraded nodes accept blocks containing v3 transactions because:
+**After activation:** Non-upgraded nodes accept blocks containing v4 transactions because:
 
-1. The transaction version 3 is not invalid under existing consensus rules (versions are a 32-bit signed integer; only negative versions are invalid).
+1. The transaction version 4 is not invalid under existing consensus rules (versions are a 32-bit signed integer; only negative versions are invalid).
 2. The `0xc1` scriptPubKey prefix does not match any existing standard output type, so the output is treated as anyone-can-spend.
 3. The soft fork security model ensures that non-upgraded nodes accept all blocks that upgraded nodes accept, because the new rules are strictly more restrictive (upgraded nodes reject transactions that non-upgraded nodes would accept, never the reverse).
 
-**Risk to non-upgraded nodes:** Non-upgraded nodes may accept an invalid v3 transaction (one that violates ladder rules) if it appears in a block. However, this can only happen if a majority of mining hashrate colludes to include an invalid transaction, which breaks the security assumption for any soft fork.
+**Risk to non-upgraded nodes:** Non-upgraded nodes may accept an invalid v4 transaction (one that violates ladder rules) if it appears in a block. However, this can only happen if a majority of mining hashrate colludes to include an invalid transaction, which breaks the security assumption for any soft fork.
 
 **Recommendation:** Node operators should upgrade before activation to enforce the full rule set.
 
@@ -118,7 +118,7 @@ SPV clients verify block headers and Merkle proofs but do not validate transacti
 Miners who signal for Ladder Script should ensure:
 
 1. Their node software includes the ladder evaluator and enforces ladder consensus rules.
-2. Their block template construction correctly handles v3 transactions in the mempool.
+2. Their block template construction correctly handles v4 transactions in the mempool.
 3. Their fee estimation accounts for the different witness size characteristics of ladder transactions (PQ signatures can be significantly larger than Schnorr).
 
 Miners who have not upgraded should not signal, as signaling implies enforcement of the new rules.
@@ -151,15 +151,15 @@ Wallets create ladder-locked outputs using the `createrung` and `createrungtx` R
 
 1. Define the spending conditions as a JSON structure of rungs, blocks, and typed fields.
 2. Call `createrung` to serialize the conditions to hex.
-3. Call `createrungtx` with the serialized conditions and desired output amounts to construct an unsigned v3 transaction.
+3. Call `createrungtx` with the serialized conditions and desired output amounts to construct an unsigned v4 transaction.
 
-The resulting transaction has `nVersion = 3` and outputs with `scriptPubKey = 0xc1 || conditions`.
+The resulting transaction has `nVersion = 4` and outputs with `scriptPubKey = 0xc1 || conditions`.
 
 ### Spending Ladder Outputs
 
 Wallets spend ladder-locked outputs using the `signrungtx` RPC:
 
-1. Construct a v3 transaction that spends the ladder-locked UTXO.
+1. Construct a v4 transaction that spends the ladder-locked UTXO.
 2. Call `signrungtx` with the unsigned transaction, the private key(s), and the spent output information (amount, scriptPubKey).
 3. The RPC computes the ladder sighash, signs with the appropriate scheme, and assembles the witness.
 
@@ -246,8 +246,8 @@ The following timeline assumes community review begins at publication and procee
 
 After activation, the following should be monitored:
 
-- **Block validation time:** Ladder evaluation adds computation per v3 input. Monitor for block validation latency increases.
-- **Mempool behavior:** Ensure v3 transactions are correctly relayed and that policy enforcement matches expectations.
+- **Block validation time:** Ladder evaluation adds computation per v4 input. Monitor for block validation latency increases.
+- **Mempool behavior:** Ensure v4 transactions are correctly relayed and that policy enforcement matches expectations.
 - **UTXO set growth:** Ladder conditions use PUBKEY_COMMIT (32 bytes) rather than raw public keys, keeping UTXO overhead constant regardless of key size. Monitor growth rate.
-- **Reorg behavior:** Verify that v3 transactions are correctly handled during chain reorganizations.
+- **Reorg behavior:** Verify that v4 transactions are correctly handled during chain reorganizations.
 - **Wallet adoption:** Track the percentage of outputs using ladder conditions to gauge ecosystem uptake.

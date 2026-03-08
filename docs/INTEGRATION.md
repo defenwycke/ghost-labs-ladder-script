@@ -6,15 +6,15 @@ This document describes how Ladder Script integrates with the Bitcoin transactio
 
 ## 1. Transaction Lifecycle
 
-### 1.1 Creating a v3 Transaction
+### 1.1 Creating a v4 Transaction
 
-A Ladder Script transaction uses version 3 (`CTransaction::RUNG_TX_VERSION = 3`). Creation follows this sequence:
+A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`). Creation follows this sequence:
 
-1. **Select inputs.** Any UTXOs can be spent by a v3 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v3 rung conditions.
+1. **Select inputs.** Any UTXOs can be spent by a v4 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v4 rung conditions.
 
 2. **Define output conditions.** Each output's `scriptPubKey` is constructed as `0xc1 || serialized_conditions`. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX) may appear. PUBKEY, SIGNATURE, and PREIMAGE are forbidden in conditions. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when building conditions -- users provide pubkey hex as before.
 
-3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v3 transaction.
+3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v4 transaction.
 
 4. **Sign the transaction.** Use the `signrungtx` RPC, which takes the unsigned transaction hex, an array of `{privkey, input_index}` pairs, and an array of spent outputs (needed for sighash computation). The RPC computes `LadderSighash` for each input and produces witness data.
 
@@ -44,7 +44,7 @@ At consensus time, `VerifyRungTx()` is called for each input. It:
 
 ### 2.1 Routing in validation.cpp
 
-The v3 routing occurs in `CScriptCheck::operator()` within `validation.cpp`:
+The v4 routing occurs in `CScriptCheck::operator()` within `validation.cpp`:
 
 ```cpp
 if (ptxTo->version == CTransaction::RUNG_TX_VERSION) {
@@ -57,11 +57,11 @@ if (ptxTo->version == CTransaction::RUNG_TX_VERSION) {
 }
 ```
 
-This routing is the sole entry point for Ladder Script consensus validation. All v3 transactions bypass the standard Bitcoin Script interpreter entirely and are evaluated exclusively through the rung evaluator.
+This routing is the sole entry point for Ladder Script consensus validation. All v4 transactions bypass the standard Bitcoin Script interpreter entirely and are evaluated exclusively through the rung evaluator.
 
 ### 2.2 Precomputed Transaction Data
 
-When `PrecomputedTransactionData::Init()` detects a v3 transaction, it initializes ladder-specific caches:
+When `PrecomputedTransactionData::Init()` detects a v4 transaction, it initializes ladder-specific caches:
 
 - `m_prevouts_single_hash` -- SHA256 of all input prevouts
 - `m_spent_amounts_single_hash` -- SHA256 of all spent amounts
@@ -83,7 +83,7 @@ For non-LADDER sig versions, the checker falls through to the wrapped `BaseSigna
 
 ### 3.1 Structure
 
-A v3 rung conditions output has the following `scriptPubKey` format:
+A v4 rung conditions output has the following `scriptPubKey` format:
 
 ```
 [0xc1] [serialized conditions using ladder wire format v2]
@@ -106,7 +106,7 @@ The `0xc1` prefix byte is defined as `RUNG_CONDITIONS_PREFIX`. The function `IsR
 
 ### 3.3 Non-Conditions Outputs
 
-A v3 transaction may also include non-conditions outputs:
+A v4 transaction may also include non-conditions outputs:
 
 - **OP_RETURN outputs** (data carrier) are permitted.
 - **Standard P2TR outputs** are permitted for change during bootstrap transitions.
@@ -134,7 +134,7 @@ This merge step is handled by `MergeConditionsAndWitness()`. If the structures d
 
 ### 4.3 Bootstrap Mode
 
-When a v3 transaction spends a v1/v2 UTXO (one whose `scriptPubKey` does not begin with `0xc1`), no merge is performed. The witness is evaluated directly with empty conditions. This allows v3 transactions to spend existing UTXOs by providing self-contained witness data.
+When a v4 transaction spends a v1/v2 UTXO (one whose `scriptPubKey` does not begin with `0xc1`), no merge is performed. The witness is evaluated directly with empty conditions. This allows v4 transactions to spend existing UTXOs by providing self-contained witness data.
 
 ---
 
@@ -178,7 +178,7 @@ It also exposes `ComputeSighash()` for PQ signature verification, which needs th
 
 ### 6.1 IsStandardRungTx()
 
-The mempool policy function `IsStandardRungTx()` validates v3 transactions before acceptance. It is called from `policy.cpp` when `tx.version == CTransaction::RUNG_TX_VERSION`.
+The mempool policy function `IsStandardRungTx()` validates v4 transactions before acceptance. It is called from `policy.cpp` when `tx.version == CTransaction::RUNG_TX_VERSION`.
 
 **Output validation:**
 
@@ -372,17 +372,17 @@ The ADAPTOR_SIG block (0x0003) verifies the adapted signature at consensus time.
 
 ### 10.1 Transaction Version Coexistence
 
-Version 3 transactions coexist with existing transaction types:
+Version 4 transactions coexist with existing transaction types:
 
 - **v1 transactions** (legacy) continue to be processed through the standard script interpreter.
 - **v2 transactions** (BIP-68/BIP-112/taproot) continue to be processed through BIP-341 tapscript evaluation.
-- **v3 transactions** are routed exclusively to `VerifyRungTx()`.
+- **v4 transactions** are routed exclusively to `VerifyRungTx()`.
 
 The routing decision is made solely on `tx.version` in `validation.cpp`. There is no interaction between the script interpreter and the rung evaluator.
 
-### 10.2 Spending v1/v2 UTXOs from v3
+### 10.2 Spending v1/v2 UTXOs from v4
 
-A v3 transaction can spend any UTXO, including v1/v2 outputs. When the spent output's `scriptPubKey` does not begin with `0xc1`:
+A v4 transaction can spend any UTXO, including v1/v2 outputs. When the spent output's `scriptPubKey` does not begin with `0xc1`:
 
 - No conditions merge is performed.
 - The witness is evaluated directly as a self-contained `LadderWitness`.
@@ -391,18 +391,18 @@ A v3 transaction can spend any UTXO, including v1/v2 outputs. When the spent out
 
 This bootstrap path enables migration from existing outputs to Ladder Script without requiring a special transition mechanism.
 
-### 10.3 Spending v3 UTXOs from v1/v2
+### 10.3 Spending v4 UTXOs from v1/v2
 
-A v1 or v2 transaction cannot spend a v3 rung conditions output. The `0xc1` prefix does not correspond to a valid Bitcoin Script opcode sequence, so any attempt to evaluate it as standard script would fail.
+A v1 or v2 transaction cannot spend a v4 rung conditions output. The `0xc1` prefix does not correspond to a valid Bitcoin Script opcode sequence, so any attempt to evaluate it as standard script would fail.
 
 ### 10.4 Block Validation
 
-Block-level validation applies the same `CScriptCheck` framework used for all transaction types. The v3 routing in `CScriptCheck::operator()` is transparent to the block validation pipeline. Script verification parallelism (`CCheckQueue`) works identically for v3 transactions.
+Block-level validation applies the same `CScriptCheck` framework used for all transaction types. The v4 routing in `CScriptCheck::operator()` is transparent to the block validation pipeline. Script verification parallelism (`CCheckQueue`) works identically for v4 transactions.
 
 ### 10.5 Wallet Integration
 
-The current wallet does not natively construct v3 transactions. The `SigVersion::LADDER` case is explicitly noted as unused in wallet fee bumping (`feebumper.h`). Transaction construction and signing are performed through the dedicated RPC interface (`createrungtx`, `signrungtx`).
+The current wallet does not natively construct v4 transactions. The `SigVersion::LADDER` case is explicitly noted as unused in wallet fee bumping (`feebumper.h`). Transaction construction and signing are performed through the dedicated RPC interface (`createrungtx`, `signrungtx`).
 
 ### 10.6 P2P Relay
 
-v3 transactions are relayed through the standard P2P transaction relay mechanism. The mempool's `IsStandard()` check delegates to `IsStandardRungTx()` for v3 transactions. Nodes without Ladder Script support would reject v3 transactions as non-standard but would accept blocks containing them (consensus-valid).
+v4 transactions are relayed through the standard P2P transaction relay mechanism. The mempool's `IsStandard()` check delegates to `IsStandardRungTx()` for v4 transactions. Nodes without Ladder Script support would reject v4 transactions as non-standard but would accept blocks containing them (consensus-valid).

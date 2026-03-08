@@ -3,9 +3,9 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://opensource.org/license/mit/.
 
-"""P2P relay test for v3 RUNG_TX transactions.
+"""P2P relay test for v4 RUNG_TX transactions.
 
-Tests that v3 transactions are properly relayed between two connected nodes
+Tests that v4 transactions are properly relayed between two connected nodes
 and that both nodes confirm the transaction after mining.
 """
 
@@ -48,7 +48,7 @@ class LadderScriptP2PTest(BitcoinTestFramework):
         wallet.rescan_utxos()
         self.sync_blocks()
 
-        self.log.info("Creating v3 RUNG_TX on node0...")
+        self.log.info("Creating v4 RUNG_TX on node0...")
         privkey_wif, pubkey_hex = make_keypair()
 
         utxo = wallet.get_utxo()
@@ -61,7 +61,7 @@ class LadderScriptP2PTest(BitcoinTestFramework):
 
         output_amount = Decimal(input_amount) - Decimal("0.001")
 
-        # Create v3 tx
+        # Create v4 tx
         result = node0.createrungtx(
             [{"txid": input_txid, "vout": input_vout}],
             [{"amount": output_amount, "conditions": [{"blocks": [{
@@ -80,14 +80,14 @@ class LadderScriptP2PTest(BitcoinTestFramework):
 
         # Broadcast on node0
         txid = node0.sendrawtransaction(sign_result["hex"])
-        self.log.info(f"  Broadcast v3 tx on node0: {txid}")
+        self.log.info(f"  Broadcast v4 tx on node0: {txid}")
 
         # Verify relay to node1's mempool
         self.log.info("Syncing mempools...")
         self.sync_mempools()
         mempool1 = node1.getrawmempool()
-        assert txid in mempool1, f"v3 tx {txid} not relayed to node1 mempool"
-        self.log.info("  v3 tx found in node1's mempool — relay confirmed!")
+        assert txid in mempool1, f"v4 tx {txid} not relayed to node1 mempool"
+        self.log.info("  v4 tx found in node1's mempool — relay confirmed!")
 
         # Mine on node0, sync blocks
         self.generate(node0, 1)
@@ -99,11 +99,11 @@ class LadderScriptP2PTest(BitcoinTestFramework):
         assert tx_info0["confirmations"] >= 1, "tx not confirmed on node0"
         assert tx_info1["confirmations"] >= 1, "tx not confirmed on node1"
         assert_equal(tx_info0["txid"], tx_info1["txid"])
-        self.log.info("  v3 tx confirmed on both nodes!")
+        self.log.info("  v4 tx confirmed on both nodes!")
 
-        # Verify it's a v3 transaction on both nodes
-        assert_equal(tx_info0["version"], 3)
-        assert_equal(tx_info1["version"], 3)
+        # Verify it's a v4 transaction on both nodes
+        assert_equal(tx_info0["version"], 4)
+        assert_equal(tx_info1["version"], 4)
         self.log.info("  P2P relay test PASSED!")
 
 

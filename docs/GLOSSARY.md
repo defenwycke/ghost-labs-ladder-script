@@ -134,7 +134,7 @@ sub-checks must pass for the compound block to return SATISFIED.
 
 ### Condition
 
-A spending requirement embedded in a v3 output's scriptPubKey. Conditions are the
+A spending requirement embedded in a v4 output's scriptPubKey. Conditions are the
 "locking" side of Ladder Script -- they specify what must be satisfied to spend the
 UTXO. Conditions contain only condition data types (PUBKEY_COMMIT, HASH256, HASH160,
 NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (PUBKEY, SIGNATURE,
@@ -266,7 +266,7 @@ Defined in `src/rung/sighash.h`.
 
 ### LadderWitness
 
-The witness data for a v3 (RUNG_TX) input. Contains:
+The witness data for a v4 (RUNG_TX) input. Contains:
 
 - `rungs`: A vector of `Rung` objects, each containing blocks with witness data
   (signatures, preimages)
@@ -404,7 +404,7 @@ partition the type space by family:
 
 ### RungConditions
 
-The conditions embedded in a v3 output's scriptPubKey. Represented by the
+The conditions embedded in a v4 output's scriptPubKey. Represented by the
 `RungConditions` struct, which mirrors the `LadderWitness` structure but contains only
 condition data types (no PUBKEY, SIGNATURE, or PREIMAGE). Serialized with the
 `RUNG_CONDITIONS_PREFIX` (0xc1) byte as the first byte of the scriptPubKey.
@@ -448,8 +448,8 @@ Fields are validated against the size constraints of their data type via
 
 ### RUNG_TX
 
-Transaction version 3, which signals that the transaction uses Ladder Script for input
-validation instead of traditional Bitcoin Script. When a node encounters a v3
+Transaction version 4, which signals that the transaction uses Ladder Script for input
+validation instead of traditional Bitcoin Script. When a node encounters a v4
 transaction, inputs are validated through the rung evaluator (`VerifyRungTx()`) rather
 than the script interpreter.
 

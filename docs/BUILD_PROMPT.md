@@ -10,7 +10,7 @@ You are working on **Ghost Core**, a Bitcoin Core v30 fork that is part of the B
 
 The repository is a fork of Bitcoin Core. All existing Bitcoin consensus rules, p2p, wallet, and RPC must remain completely untouched and functional. Every test in the existing Bitcoin Core test suite must continue to pass.
 
-Your task is to implement **Ladder Script** as a new module on a branch of Ghost Core. This is a softfork-compatible addition — new transaction version 3 (`RUNG_TX`) that old nodes treat as non-standard but do not reject, following the exact precedent of SegWit.
+Your task is to implement **Ladder Script** as a new module on a branch of Ghost Core. This is a softfork-compatible addition — new transaction version 4 (`RUNG_TX`) that old nodes treat as non-standard but do not reject, following the exact precedent of SegWit.
 
 ---
 
@@ -80,7 +80,7 @@ Phase 4 (future):      PQ signatures + AGGREGATE attestation
 ```cpp
 // src/primitives/transaction.h
 // LADDER SCRIPT: new version constant
-static const int32_t RUNG_TX_VERSION = 3;
+static const int32_t RUNG_TX_VERSION = 4;
 ```
 
 ### Data Type System
@@ -296,7 +296,7 @@ struct RungTx {
 
 ```
 RUNG_TX:
-  version:          int32_t     (must be 3)
+  version:          int32_t     (must be 4)
   locktime:         uint32_t
   input_count:      varint
   inputs[]:
@@ -361,7 +361,7 @@ src/rung/
 
 ```
 src/primitives/transaction.h   ← add RUNG_TX_VERSION
-src/script/interpreter.cpp     ← route version 3 to VerifyRungTx
+src/script/interpreter.cpp     ← route version 4 to VerifyRungTx
 src/policy/policy.cpp          ← add IsStandardRungTx
 src/consensus/tx_verify.cpp    ← RUNG_TX consensus validation
 src/rpc/rawtransaction.cpp     ← new RPC commands
@@ -890,7 +890,7 @@ Full test matrix of every block type × normal/inverted × satisfied/unsatisfied
 - 17 rungs = rejected, reason "rung-count-too-high"
 - 9 blocks per rung = rejected, reason "block-count-too-high"
 - Unknown block type = rejected as non-standard (but consensus-valid)
-- RUNG_TX version 3 with version 1/2 outputs = rejected
+- RUNG_TX version 4 with version 1/2 outputs = rejected
 
 ### `test/functional/rung_basic.py`
 

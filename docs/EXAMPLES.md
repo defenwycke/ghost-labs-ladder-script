@@ -5,7 +5,7 @@ Each example includes the scenario rationale, an ASCII ladder diagram showing th
 rung layout, the `createrungtx` JSON wire representation, and a step-by-step
 walkthrough of how the evaluator processes the transaction.
 
-All examples use transaction version 3 (v3 RUNG_TX). Public keys, hashes, and
+All examples use transaction version 4 (v4 RUNG_TX). Public keys, hashes, and
 transaction IDs shown here are illustrative placeholders.
 
 **Note on PUBKEY in conditions:** The `createrungtx` RPC auto-hashes any PUBKEY
