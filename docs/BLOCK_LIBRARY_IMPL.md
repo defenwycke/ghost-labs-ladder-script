@@ -4,27 +4,16 @@
 
 ---
 
-## Phase Legend
-
-| Phase | Scope |
-|---|---|
-| **Phase 1** | Core blocks — implement now |
-| **Phase 2** | L2 Anchors + Covenants |
-| **Phase 3** | PLC Primitives + Recursion |
-| **Phase 4** | PQ Signatures + Aggregate Attestation |
-
----
-
 ## Table of Contents
 
 1. [The Type System](#1-the-type-system)
 2. [Signature Blocks](#2-signature-blocks)
 3. [Timelock Blocks](#3-timelock-blocks)
 4. [Hash Blocks](#4-hash-blocks)
-5. [Covenant Blocks](#5-covenant-blocks-phase-2)
-6. [L2 Anchor Blocks](#6-l2-anchor-blocks-phase-2)
-7. [Recursive Covenant Blocks](#7-recursive-covenant-blocks-phase-3)
-8. [PLC Primitive Blocks](#8-plc-primitive-blocks-phase-3)
+5. [Covenant Blocks](#5-covenant-blocks)
+6. [L2 Anchor Blocks](#6-l2-anchor-blocks)
+7. [Recursive Covenant Blocks](#7-recursive-covenant-blocks)
+8. [PLC Primitive Blocks](#8-plc-primitive-blocks)
 9. [Contact Inversion — Normally Closed Contacts](#9-contact-inversion--normally-closed-contacts)
 10. [Coil Types and Attestation Modes](#10-coil-types-and-attestation-modes)
 11. [Complete Block Registry](#11-complete-block-registry)
@@ -43,7 +32,7 @@ Every parameter in every block must be one of the following enumerated types. No
 | `HASH160` | `0x04` | 20B exact | HASH160 | Legacy compatibility |
 | `PREIMAGE` | `0x05` | 1–252B | Raw preimage, max 252 bytes | Hash preimage reveal. Max 2 preimage blocks per witness (policy). |
 | `SIGNATURE` | `0x06` | 1–144B | Schnorr=64B, ECDSA/DER≈73B | INLINE attestation signatures only |
-| `SPEND_INDEX` | `0x07` | 4B exact | uint32 spend index | AGGREGATE attestation reference (Phase 4) |
+| `SPEND_INDEX` | `0x07` | 4B exact | uint32 spend index | AGGREGATE attestation reference |
 | `NUMERIC` | `0x08` | 1–4B | uint32 value | Timelocks, thresholds, counts, rates |
 | `SCHEME` | `0x09` | 1B exact | Enum value from RungScheme | Signature algorithm selector |
 
@@ -52,8 +41,6 @@ Every parameter in every block must be one of the following enumerated types. No
 ---
 
 ## 2. Signature Blocks
-
-**Phase 1 — implement fully.**
 
 Signature blocks verify cryptographic proofs of authorisation. All signature blocks accept an `inverted` flag — inverted means the condition must NOT be satisfied for the contact to pass.
 
@@ -104,20 +91,18 @@ Verifies an adaptor signature — a signature that becomes valid when combined w
 
 ### Signature Schemes
 
-| Scheme | Enum | Sig Size | Phase | Notes |
-|---|---|---|---|---|
-| `SCHNORR` | `0x01` | 64 bytes | Phase 1 | BIP-340. Primary scheme. Batch-verifiable. Use by default. |
-| `ECDSA` | `0x02` | ~73 bytes | Phase 1 | Legacy compatibility only. DER-encoded. Not batch-verifiable. |
-| `FALCON512` | `0x10` | 666 bytes | Phase 4 | NIST PQC standard. Post-quantum secure. AGGREGATE mode reduces tx cost to ~80 vB. |
-| `FALCON1024` | `0x11` | 1280 bytes | Phase 4 | Higher security level. 256-bit post-quantum security. |
-| `DILITHIUM3` | `0x12` | 3293 bytes | Phase 4 | NIST PQC standard. Better batch verification properties than FALCON. |
-| `SPHINCS_SHA` | `0x13` | 7856 bytes | Phase 4 | Hash-based. Most conservative PQ assumption. Very large sigs — AGGREGATE essential. |
+| Scheme | Enum | Sig Size | Notes |
+|---|---|---|---|
+| `SCHNORR` | `0x01` | 64 bytes | BIP-340. Primary scheme. Batch-verifiable. Use by default. |
+| `ECDSA` | `0x02` | ~73 bytes | Legacy compatibility only. DER-encoded. Not batch-verifiable. |
+| `FALCON512` | `0x10` | 666 bytes | NIST PQC standard. Post-quantum secure. AGGREGATE mode reduces tx cost to ~80 vB. |
+| `FALCON1024` | `0x11` | 1280 bytes | Post-quantum. Higher security level. 256-bit post-quantum security. |
+| `DILITHIUM3` | `0x12` | 3293 bytes | NIST PQC standard. Better batch verification properties than FALCON. |
+| `SPHINCS_SHA` | `0x13` | 7856 bytes | Post-quantum. Hash-based. Most conservative PQ assumption. Very large sigs — AGGREGATE essential. |
 
 ---
 
 ## 3. Timelock Blocks
-
-**Phase 1 — implement fully.**
 
 Timelock blocks enforce temporal spending constraints. All timelock blocks are invertible — an inverted timelock creates a **spend BEFORE** condition, a genuinely new Bitcoin primitive with no current equivalent in Bitcoin Script.
 
@@ -177,8 +162,6 @@ CLTV by median-time-past. Locktime encodes Unix timestamp.
 
 ## 4. Hash Blocks
 
-**Phase 1 — implement fully.**
-
 Hash blocks verify preimage knowledge. Invertible hash blocks enable spend-if-NOT-revealed conditions — the refund path in HTLCs expressed as a first-class typed block.
 
 ---
@@ -221,7 +204,7 @@ BIP-340 tagged hash verification. Domain-separated hash prevents cross-context c
 
 ---
 
-## 5. Covenant Blocks `[Phase 2]`
+## 5. Covenant Blocks
 
 Covenant blocks constrain how a UTXO can be spent — what outputs it must produce, what amounts must be preserved, what scripts the outputs must carry.
 
@@ -268,7 +251,7 @@ Output amount must fall within specified range. Prevents fee manipulation attack
 
 ---
 
-## 6. L2 Anchor Blocks `[Phase 2]`
+## 6. L2 Anchor Blocks
 
 Anchor blocks provide a standardised mechanism for L2 protocols to commit state to L1.
 
@@ -353,7 +336,7 @@ Oracle-attested contract anchor (DLC-style). Commits the full contract outcome t
 
 ---
 
-## 7. Recursive Covenant Blocks `[Phase 3]`
+## 7. Recursive Covenant Blocks
 
 Recursive covenant blocks propagate spending conditions forward through a chain of UTXOs.
 
@@ -438,7 +421,7 @@ Each recursion relaxes one constraint. Uses `RECURSE_MODIFIED` semantics with ne
 
 ---
 
-## 8. PLC Primitive Blocks `[Phase 3]`
+## 8. PLC Primitive Blocks
 
 Industrial PLC (Programmable Logic Controller) systems solved the problem of controlling safety-critical state machines over time. Bitcoin UTXOs are value containers that need to be controlled safely over time. The state machines are structurally identical.
 
@@ -594,7 +577,7 @@ Evaluates a comparison between transaction amounts or block height and a thresho
 
 **Use case:** Tiered custody by amount, minimum balance enforcement, fee attack prevention, amount-conditional spending paths
 
-**Note:** Phase 4 — combine with CONFIDENTIAL amounts for ZK amount range proofs without revealing exact values.
+**Note:** Combine with CONFIDENTIAL amounts for ZK amount range proofs without revealing exact values.
 
 ---
 
@@ -681,11 +664,11 @@ The coil declares what happens when all contacts on a rung are satisfied. It is 
 
 ### Attestation Modes
 
-| Mode | Enum | Witness Size | Proof Location | Phase |
-|---|---|---|---|---|
-| `INLINE` | `0x01` | Full sig (64B Schnorr / 666B FALCON512) | In transaction witness | Phase 1 |
-| `AGGREGATE` | `0x02` | 36 bytes (4B spend_index + 32B pubkey_commit) | Block-level aggregate proof (~3.5KB amortised) | Phase 4 |
-| `DEFERRED` | `0x03` | 32 bytes (template hash only) | Prior committed state | Phase 4 |
+| Mode | Enum | Witness Size | Proof Location |
+|---|---|---|---|
+| `INLINE` | `0x01` | Full sig (64B Schnorr / 666B FALCON512) | In transaction witness |
+| `AGGREGATE` | `0x02` | 36 bytes (4B spend_index + 32B pubkey_commit) | Block-level aggregate proof (~3.5KB amortised) |
+| `DEFERRED` | `0x03` | 32 bytes (template hash only) | Prior committed state |
 
 **The key insight:** Coil declares claim type. Protocol validates claim. Transaction carries minimum necessary data. `AGGREGATE` mode is what enables post-quantum signatures at classical transaction sizes — a FALCON512 signature in `AGGREGATE` mode produces an ~80 vB transaction, identical to a classical Schnorr transaction today.
 
@@ -693,48 +676,48 @@ The coil declares what happens when all contacts on a rung are satisfied. It is 
 
 ## 11. Complete Block Registry
 
-All block type enum values. Phase 3+ blocks return `UNSATISFIED` in Phase 1 implementations — forward compatibility preserved.
+All block type enum values. Unrecognised blocks return `UNSATISFIED` — forward compatibility preserved.
 
-| Enum | Block | Category | Phase | Summary |
-|---|---|---|---|---|
-| `0x0001` | `SIG` | Signature | 1 | Single signature verification |
-| `0x0002` | `MULTISIG` | Signature | 1 | n-of-m threshold signatures |
-| `0x0003` | `ADAPTOR_SIG` | Signature | 1 | Adaptor signature (DLC / atomic swap) |
-| `0x0101` | `CSV` | Timelock | 1 | Relative block timelock |
-| `0x0102` | `CSV_TIME` | Timelock | 1 | Relative time timelock |
-| `0x0103` | `CLTV` | Timelock | 1 | Absolute block height timelock |
-| `0x0104` | `CLTV_TIME` | Timelock | 1 | Absolute time timelock |
-| `0x0201` | `HASH_PREIMAGE` | Hash | 1 | SHA-256 preimage reveal |
-| `0x0202` | `HASH160_PREIMAGE` | Hash | 1 | HASH160 preimage |
-| `0x0203` | `TAGGED_HASH` | Hash | 1 | BIP-340 tagged hash |
-| `0x0301` | `CTV` | Covenant | 2 | CheckTemplateVerify |
-| `0x0302` | `VAULT_LOCK` | Covenant | 2 | Vault with hot delay + cold recovery |
-| `0x0303` | `AMOUNT_LOCK` | Covenant | 2 | Output amount range constraint |
-| `0x0401` | `RECURSE_SAME` | Recurse | 3 | Inherit identical rung set |
-| `0x0402` | `RECURSE_MODIFIED` | Recurse | 3 | Inherit with typed mutation |
-| `0x0403` | `RECURSE_UNTIL` | Recurse | 3 | Recurse until block height |
-| `0x0404` | `RECURSE_COUNT` | Recurse | 3 | Recurse N times maximum |
-| `0x0405` | `RECURSE_SPLIT` | Recurse | 3 | Split value, re-encumber each piece |
-| `0x0406` | `RECURSE_DECAY` | Recurse | 3 | Relax one constraint per recursion |
-| `0x0501` | `ANCHOR` | L2 Anchor | 2 | Generic L2 state anchor |
-| `0x0502` | `ANCHOR_CHANNEL` | L2 Anchor | 2 | Payment channel anchor |
-| `0x0503` | `ANCHOR_POOL` | L2 Anchor | 2 | Shared UTXO pool anchor |
-| `0x0504` | `ANCHOR_RESERVE` | L2 Anchor | 2 | Federation reserve anchor |
-| `0x0505` | `ANCHOR_SEAL` | L2 Anchor | 2 | Single-use seal (RGB-style) |
-| `0x0506` | `ANCHOR_ORACLE` | L2 Anchor | 2 | Oracle-attested contract |
-| `0x0601` | `HYSTERESIS_FEE` | PLC | 3 | Fee-rate hysteresis band |
-| `0x0602` | `HYSTERESIS_VALUE` | PLC | 3 | Value hysteresis band |
-| `0x0611` | `TIMER_CONTINUOUS` | PLC | 3 | Continuous condition timer |
-| `0x0612` | `TIMER_OFF_DELAY` | PLC | 3 | Off-delay dispute window |
-| `0x0621` | `LATCH_SET` | PLC | 3 | SR flip-flop — set state |
-| `0x0622` | `LATCH_RESET` | PLC | 3 | SR flip-flop — reset state |
-| `0x0631` | `COUNTER_DOWN` | PLC | 3 | Decrementing event counter |
-| `0x0632` | `COUNTER_PRESET` | PLC | 3 | N-approval preset counter |
-| `0x0633` | `COUNTER_UP` | PLC | 3 | Incrementing event counter |
-| `0x0641` | `COMPARE` | PLC | 3 | Value comparator (EQ/NEQ/GT/LT/IN_RANGE) |
-| `0x0651` | `SEQUENCER` | PLC | 3 | Ordered multi-stage execution |
-| `0x0661` | `ONE_SHOT` | PLC | 3 | Single-activation monoflop |
-| `0x0671` | `RATE_LIMIT` | PLC | 3 | Per-block spending rate limiter |
+| Enum | Block | Category | Summary |
+|---|---|---|---|
+| `0x0001` | `SIG` | Signature | Single signature verification |
+| `0x0002` | `MULTISIG` | Signature | n-of-m threshold signatures |
+| `0x0003` | `ADAPTOR_SIG` | Signature | Adaptor signature (DLC / atomic swap) |
+| `0x0101` | `CSV` | Timelock | Relative block timelock |
+| `0x0102` | `CSV_TIME` | Timelock | Relative time timelock |
+| `0x0103` | `CLTV` | Timelock | Absolute block height timelock |
+| `0x0104` | `CLTV_TIME` | Timelock | Absolute time timelock |
+| `0x0201` | `HASH_PREIMAGE` | Hash | SHA-256 preimage reveal |
+| `0x0202` | `HASH160_PREIMAGE` | Hash | HASH160 preimage |
+| `0x0203` | `TAGGED_HASH` | Hash | BIP-340 tagged hash |
+| `0x0301` | `CTV` | Covenant | CheckTemplateVerify |
+| `0x0302` | `VAULT_LOCK` | Covenant | Vault with hot delay + cold recovery |
+| `0x0303` | `AMOUNT_LOCK` | Covenant | Output amount range constraint |
+| `0x0401` | `RECURSE_SAME` | Recurse | Inherit identical rung set |
+| `0x0402` | `RECURSE_MODIFIED` | Recurse | Inherit with typed mutation |
+| `0x0403` | `RECURSE_UNTIL` | Recurse | Recurse until block height |
+| `0x0404` | `RECURSE_COUNT` | Recurse | Recurse N times maximum |
+| `0x0405` | `RECURSE_SPLIT` | Recurse | Split value, re-encumber each piece |
+| `0x0406` | `RECURSE_DECAY` | Recurse | Relax one constraint per recursion |
+| `0x0501` | `ANCHOR` | L2 Anchor | Generic L2 state anchor |
+| `0x0502` | `ANCHOR_CHANNEL` | L2 Anchor | Payment channel anchor |
+| `0x0503` | `ANCHOR_POOL` | L2 Anchor | Shared UTXO pool anchor |
+| `0x0504` | `ANCHOR_RESERVE` | L2 Anchor | Federation reserve anchor |
+| `0x0505` | `ANCHOR_SEAL` | L2 Anchor | Single-use seal (RGB-style) |
+| `0x0506` | `ANCHOR_ORACLE` | L2 Anchor | Oracle-attested contract |
+| `0x0601` | `HYSTERESIS_FEE` | PLC | Fee-rate hysteresis band |
+| `0x0602` | `HYSTERESIS_VALUE` | PLC | Value hysteresis band |
+| `0x0611` | `TIMER_CONTINUOUS` | PLC | Continuous condition timer |
+| `0x0612` | `TIMER_OFF_DELAY` | PLC | Off-delay dispute window |
+| `0x0621` | `LATCH_SET` | PLC | SR flip-flop — set state |
+| `0x0622` | `LATCH_RESET` | PLC | SR flip-flop — reset state |
+| `0x0631` | `COUNTER_DOWN` | PLC | Decrementing event counter |
+| `0x0632` | `COUNTER_PRESET` | PLC | N-approval preset counter |
+| `0x0633` | `COUNTER_UP` | PLC | Incrementing event counter |
+| `0x0641` | `COMPARE` | PLC | Value comparator (EQ/NEQ/GT/LT/IN_RANGE) |
+| `0x0651` | `SEQUENCER` | PLC | Ordered multi-stage execution |
+| `0x0661` | `ONE_SHOT` | PLC | Single-activation monoflop |
+| `0x0671` | `RATE_LIMIT` | PLC | Per-block spending rate limiter |
 
 **Total: 48 block types across 9 families.**
 

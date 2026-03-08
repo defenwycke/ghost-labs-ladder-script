@@ -226,20 +226,6 @@ first rung that returns SATISFIED causes the entire ladder to pass. If no rung i
 satisfied, the ladder evaluation fails. Implemented as first-match semantics in
 `EvalLadder()`.
 
-### Phase
-
-The deployment phase in which a block type is activated. Three phases are defined:
-
-- **Phase 1:** Core spending primitives -- Signature family (SIG, MULTISIG,
-  ADAPTOR_SIG), Timelock family (CSV, CSV_TIME, CLTV, CLTV_TIME), and Hash family
-  (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH). Code ranges 0x0001-0x02FF.
-- **Phase 2:** Covenant and metadata blocks -- Covenant family (CTV, VAULT_LOCK,
-  AMOUNT_LOCK) and Anchor family (ANCHOR through ANCHOR_ORACLE). Code ranges
-  0x0300-0x05FF.
-- **Phase 3:** Advanced programmability -- Recursion family (RECURSE_*) and PLC family
-  (HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT,
-  RATE_LIMIT, COSIGN). Code ranges 0x0400-0x06FF.
-
 ### PLC
 
 Programmable Logic Controller. An analogy from industrial automation that informs the

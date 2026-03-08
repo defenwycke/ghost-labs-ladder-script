@@ -2,7 +2,7 @@
 
 **Version:** 2 (wire format v2)
 **Transaction version:** 3 (`RUNG_TX_VERSION`)
-**Status:** Implemented -- Phase 1 (consensus-standard), Phase 2/3 (consensus-valid, policy-non-standard)
+**Status:** Implemented — all 48 block types consensus-valid and policy-standard
 
 ---
 
@@ -166,9 +166,9 @@ Every field in a Ladder Script witness or condition must be one of the following
 
 ## 6. Block Types
 
-Block types are encoded as `uint16_t` little-endian. They are organized into ranges by family and deployment phase.
+Block types are encoded as `uint16_t` little-endian. They are organized into ranges by family.
 
-### 6.1 Phase 1 -- Signature Family (0x0001--0x00FF)
+### 6.1 Signature Family (0x0001--0x00FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -176,7 +176,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0002` | MULTISIG | NUMERIC (threshold M), N x PUBKEY_COMMIT (condition), N x PUBKEY + M x SIGNATURE (witness) | SCHEME |
 | `0x0003` | ADAPTOR_SIG | 2 x PUBKEY_COMMIT (condition), 2 x PUBKEY + SIGNATURE (witness) | -- |
 
-### 6.2 Phase 1 -- Timelock Family (0x0100--0x01FF)
+### 6.2 Timelock Family (0x0100--0x01FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -185,7 +185,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0103` | CLTV | NUMERIC (locktime value) | -- |
 | `0x0104` | CLTV_TIME | NUMERIC (locktime value) | -- |
 
-### 6.3 Phase 1 -- Hash Family (0x0200--0x02FF)
+### 6.3 Hash Family (0x0200--0x02FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -193,7 +193,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0202` | HASH160_PREIMAGE | HASH160, PREIMAGE | -- |
 | `0x0203` | TAGGED_HASH | 2 x HASH256 (tag_hash, expected_hash), PREIMAGE | -- |
 
-### 6.4 Phase 2 -- Covenant Family (0x0300--0x03FF)
+### 6.4 Covenant Family (0x0300--0x03FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -201,7 +201,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0302` | VAULT_LOCK | 2 x PUBKEY_COMMIT (condition), 2 x PUBKEY + SIGNATURE (witness), NUMERIC (hot_delay) | -- |
 | `0x0303` | AMOUNT_LOCK | 2 x NUMERIC (min_sats, max_sats) | -- |
 
-### 6.5 Phase 2 -- Anchor/L2 Family (0x0500--0x05FF)
+### 6.5 Anchor/L2 Family (0x0500--0x05FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -212,7 +212,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0505` | ANCHOR_SEAL | 2 x HASH256 (asset_id, state_transition) | -- |
 | `0x0506` | ANCHOR_ORACLE | PUBKEY_COMMIT (oracle_key) | NUMERIC (outcome_count) |
 
-### 6.6 Phase 3 -- Recursion Family (0x0400--0x04FF)
+### 6.6 Recursion Family (0x0400--0x04FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
@@ -223,7 +223,7 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 | `0x0405` | RECURSE_SPLIT | 2 x NUMERIC (max_splits, min_split_sats) | -- |
 | `0x0406` | RECURSE_DECAY | >= 4 x NUMERIC (same format as RECURSE_MODIFIED) | -- |
 
-### 6.7 Phase 3 -- PLC Family (0x0600--0x06FF)
+### 6.7 PLC Family (0x0600--0x06FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|

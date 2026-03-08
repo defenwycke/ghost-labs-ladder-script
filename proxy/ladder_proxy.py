@@ -6,7 +6,7 @@ Builder. Runs on the same VM as ghostd, proxying browser requests to localhost
 RPC with rate limiting and input validation.
 
 Endpoints:
-  POST /api/ladder/create     - createrungtx (build v4 tx from JSON)
+  POST /api/ladder/create     - createrungtx (build v3 tx from JSON)
   POST /api/ladder/sign       - signrungtx (sign with wallet keys)
   POST /api/ladder/broadcast   - sendrawtransaction (push to signet)
   POST /api/ladder/decode      - decoderung (decode ladder hex)
@@ -175,7 +175,7 @@ async def status():
 
 @app.post("/api/ladder/create")
 async def create_rungtx(request: Request):
-    """Build a v4 ladder transaction from JSON spec."""
+    """Build a v3 ladder transaction from JSON spec."""
     body = await request.body()
     if len(body) > MAX_JSON_SIZE:
         raise HTTPException(400, "Request too large.")
@@ -193,7 +193,7 @@ async def create_rungtx(request: Request):
 
 @app.post("/api/ladder/sign")
 async def sign_rungtx(request: Request):
-    """Sign a v4 ladder transaction."""
+    """Sign a v3 ladder transaction."""
     body = await request.body()
     if len(body) > MAX_JSON_SIZE:
         raise HTTPException(400, "Request too large.")

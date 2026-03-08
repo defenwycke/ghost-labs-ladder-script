@@ -246,7 +246,7 @@
       <div class="section-num">// 00</div>
       <h2 class="section-title">What Is Ladder Script</h2>
       <div class="section-content">
-        <p>Ladder Script introduces <strong>transaction version 4</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">RUNG_TX</code>) to Bitcoin. Instead of writing opcode sequences on an untyped stack, you declare spending conditions as named, typed function blocks organized into rungs. The result is a transaction format where every byte has a declared type, every condition is a named block with validated fields, and evaluation is deterministic with bounded execution time.</p>
+        <p>Ladder Script introduces <strong>transaction version 3</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">RUNG_TX</code>) to Bitcoin. Instead of writing opcode sequences on an untyped stack, you declare spending conditions as named, typed function blocks organized into rungs. The result is a transaction format where every byte has a declared type, every condition is a named block with validated fields, and evaluation is deterministic with bounded execution time.</p>
         <p><strong>Zero-spam conditions.</strong> Bitcoin Script allows arbitrary data pushes &mdash; 32 bytes of anything can be a key, a hash, or a JPEG shard. Ladder Script makes this structurally impossible. Conditions (the UTXO set) contain only fixed-size hashes and bounded numerics &mdash; zero user-chosen bytes. Raw public keys are witness-only; conditions use PUBKEY_COMMIT (SHA-256 of the key). Every witness field must cryptographically verify against its condition counterpart. Embedding arbitrary data is not merely expensive &mdash; it is a parse error.</p>
         <p><strong>Post-quantum ready.</strong> FALCON-512, FALCON-1024, and Dilithium3 are native. The SCHEME field routes any SIG block to classical or post-quantum verification without changing the wire format. PUBKEY_COMMIT lets you lock funds to a 32-byte hash of a 1,793-byte PQ key today &mdash; reveal the full key only at spend time. COSIGN lets a single PQ-secured UTXO guard unlimited classical UTXOs.</p>
         <p><strong>Programmable money.</strong> Covenants, recursive conditions, rate limiters, state machines, sequenced approvals, fee-band gating, adaptor signatures, and protocol anchoring &mdash; all as composable typed blocks within the same wire format. No new opcodes, no Script gymnastics. The PLC family alone brings decades of proven industrial automation patterns to Bitcoin transaction logic. The possibilities are endless.</p>
@@ -341,7 +341,7 @@
         </div>
         <div class="json-body">
 <pre><span class="jp">{</span>
-  <span class="jk">"version"</span><span class="jp">:</span> <span class="jn">4</span><span class="jp">,</span>
+  <span class="jk">"version"</span><span class="jp">:</span> <span class="jn">3</span><span class="jp">,</span>
   <span class="jk">"outputs"</span><span class="jp">: [</span>
     <span class="jp">{</span>
       <span class="jk">"amount_sats"</span><span class="jp">:</span> <span class="jn">100000</span><span class="jp">,</span>
@@ -645,7 +645,7 @@
       <div class="section-num">// 05</div>
       <h2 class="section-title">Block Type Families</h2>
       <div class="section-content">
-        <p>48 block types organized into nine numbered families. New block types are added within families, not as opcodes.</p>
+        <p>48 block types organized into nine numbered families. New block types are added within families, not as opcodes. See the <a href="block-docs/index.html" style="color:var(--orange);text-decoration:none;">Block Reference</a> for deep-dive documentation on each type.</p>
       </div>
 
       <div class="family-grid">
@@ -790,7 +790,7 @@
 
       <div class="explainer">
         <div class="explainer-text">
-          <h4>Version 4 Transactions</h4>
+          <h4>Version 3 Transactions</h4>
           <p>A Ladder Script output starts with the <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xc1</code> prefix byte, followed by serialized rung conditions. The witness contains matching rung structure with signatures and preimages.</p>
           <p>The conditions provide the lock (pubkeys, hashes, parameters). The witness provides the key (signatures, preimages). At verification time, they merge field-by-field for evaluation.</p>
           <p>Sighash uses a tagged hash <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">"LadderSighash"</code> that commits to the conditions hash, binding each signature to the exact conditions it satisfies.</p>
@@ -1398,8 +1398,10 @@
         <p>Full documentation covering the BIP proposal, technical specification, whitepaper, block library, integration guide, examples, and more.</p>
       </div>
 
-      <div style="margin-top: 24px;">
+      <div style="margin-top: 24px; display: flex; gap: 16px; flex-wrap: wrap;">
         <a href="docs/#SUMMARY" class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;">Read the Documentation</a>
+        <a href="block-docs/index.html" class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;">Block Reference</a>
+        <a href="ladder-engine.html" class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;">Open Builder</a>
       </div>
     </div>
   </section>

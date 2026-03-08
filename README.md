@@ -24,7 +24,7 @@ The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and eve
 
 **Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
 
-## 39 Block Types
+## 48 Block Types
 
 | Category | Blocks |
 |----------|--------|
@@ -35,6 +35,8 @@ The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and eve
 | Recursion | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY |
 | Anchor | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE |
 | PLC | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN |
+| Compound | TIMELOCKED_SIG, HTLC, HASH_SIG |
+| Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR |
 
 ## Try it
 
@@ -57,10 +59,27 @@ proxy/             FastAPI signet proxy for live testing
 
 - [Whitepaper](docs/WHITEPAPER.md) — design rationale and architecture
 - [Specification](docs/SPECIFICATION.md) — wire format, evaluation rules, data types
-- [Block Library](docs/BLOCK_LIBRARY.md) — all 39 blocks with fields and semantics
+- [Block Library](docs/BLOCK_LIBRARY.md) — all 48 blocks with fields and semantics
 - [BIP Draft](docs/BIP-XXXX.md) — formal Bitcoin Improvement Proposal
 - [Examples](docs/EXAMPLES.md) — 18 worked scenarios with JSON
 - [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) — spec deviations and why
+
+## Links
+
+| Resource | Path |
+|----------|------|
+| Ladder Engine (visual tool) | `tools/ladder-engine/index.html` |
+| Block Reference (visual docs) | `tools/block-docs/index.html` |
+| Rung evaluator (C++) | `src/rung/evaluator.cpp` |
+| Rung types and enums | `src/rung/types.h` |
+| Conditions (de)serialization | `src/rung/conditions.cpp` |
+| Wire format serialization | `src/rung/serialize.cpp` |
+| Sighash computation | `src/rung/sighash.cpp` |
+| RPC interface | `src/rung/rpc.cpp` |
+| PQ signature verification | `src/rung/pq_verify.cpp` |
+| Adaptor signature support | `src/rung/adaptor.cpp` |
+| Policy validation | `src/rung/policy.cpp` |
+| Unit tests | `tests/unit/rung_tests.cpp` |
 
 ## License
 

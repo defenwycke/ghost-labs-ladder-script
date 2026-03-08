@@ -10,7 +10,7 @@ Created: 2026-03-06
 
 ## Abstract
 
-Ladder Script introduces transaction version 3 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organized as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system supports three deployment phases: Phase 1 (signatures, timelocks, hashes), Phase 2 (covenants, anchors), and Phase 3 (recursion, programmable logic controllers).
+Ladder Script introduces transaction version 3 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organized as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system activates all 48 block types across 9 families in a single soft fork.
 
 ## Motivation
 
@@ -112,11 +112,7 @@ Data type validity is checked by `IsKnownDataType()`. Unknown data type codes ca
 
 ### Block Types
 
-Block types are organized into numbered families corresponding to deployment phases. Each block type evaluates a single spending condition. The block type is encoded as a `uint16_t` (little-endian) on the wire.
-
-#### Phase 1 -- Signature, Timelock, and Hash (0x0001-0x02FF)
-
-These block types cover the fundamental spending conditions equivalent to existing Script capabilities.
+Block types are organized into 9 numbered families. Each block type evaluates a single spending condition. The block type is encoded as a `uint16_t` (little-endian) on the wire.
 
 **Signature Family (0x0001-0x00FF):**
 
@@ -143,10 +139,6 @@ These block types cover the fundamental spending conditions equivalent to existi
 | `0x0202` | HASH160_PREIMAGE | HASH160 + PREIMAGE | HASH160 preimage reveal. SATISFIED when RIPEMD160(SHA256(preimage)) equals the committed hash. |
 | `0x0203` | TAGGED_HASH | HASH256(tag) + HASH256(expected) + PREIMAGE | BIP-340 tagged hash verification. SATISFIED when TaggedHash(tag, preimage) equals the expected hash. |
 
-#### Phase 2 -- Covenant and Anchor (0x0300-0x05FF)
-
-These block types constrain the spending transaction's outputs or anchor the UTXO to a protocol role.
-
 **Covenant Family (0x0300-0x03FF):**
 
 | Code | Name | Required Fields | Description |
@@ -165,10 +157,6 @@ These block types constrain the spending transaction's outputs or anchor the UTX
 | `0x0504` | ANCHOR_RESERVE | NUMERIC(threshold_n) + NUMERIC(group_m) + HASH256(group_id) | Reserve anchor with N-of-M guardian set. Requires N <= M and a group identifier hash. |
 | `0x0505` | ANCHOR_SEAL | HASH256(seal_hash) | Seal anchor. Permanently binds a UTXO to a data commitment. |
 | `0x0506` | ANCHOR_ORACLE | PUBKEY_COMMIT(oracle) + NUMERIC(quorum) | Oracle anchor. Requires an oracle key commitment and a non-zero quorum count. |
-
-#### Phase 3 -- Recursion and Programmable Logic Controllers (0x0400-0x06FF)
-
-These block types enable stateful, self-referencing, and rate-governed spending conditions.
 
 **Recursion Family (0x0400-0x04FF):**
 
@@ -303,7 +291,7 @@ The following limits are enforced at the policy (mempool) layer. Consensus enfor
 | MAX_LADDER_WITNESS_SIZE | 100,000 bytes | Maximum total serialized witness size. Accommodates PQ signatures (SPHINCS+ at 49,216 bytes). |
 
 Policy additionally restricts:
-- Only Phase 1 block types are standard. Phase 2 and Phase 3 block types are consensus-valid but policy-non-standard, requiring miner cooperation to confirm.
+- All 48 block types across all 9 families are consensus-valid. Standardness classification is determined by `IsStandardRungTx` policy.
 - All data types must be known (`IsKnownDataType` returns true).
 - All field sizes must conform to type constraints (`FieldMinSize` through `FieldMaxSize`).
 - Conditions scripts must not contain PUBKEY, SIGNATURE, or PREIMAGE fields.
@@ -358,12 +346,7 @@ The following RPCs are provided for wallet and application integration:
 
 Wallets cannot spend ladder-locked outputs without implementing the ladder evaluator and sighash computation.
 
-**Phase-based deployment.** The three-phase activation schedule allows incremental rollout:
-- Phase 1 activates the core framework plus signature, timelock, and hash blocks. This covers all functionality equivalent to existing Script capabilities.
-- Phase 2 adds covenant and anchor blocks, enabling constrained spending and protocol-specific UTXO tagging.
-- Phase 3 adds recursion and PLC blocks, enabling stateful and self-referencing conditions.
-
-Each phase can be activated independently via BIP-9 versionbits signaling with its own activation threshold and timeout. Phase 2 blocks are consensus-valid but policy-non-standard until Phase 2 activation. Phase 3 blocks follow the same pattern.
+**Single activation.** All 48 block types across 9 families activate in a single soft fork via BIP-9 versionbits signaling. This avoids the coordination overhead and ecosystem fragmentation of multi-phase rollouts while ensuring that covenant, recursion, and PLC capabilities are available from day one alongside signatures, timelocks, and hashes.
 
 ## Reference Implementation
 

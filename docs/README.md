@@ -52,7 +52,7 @@ cryptography, and stateful smart contracts.
 
 ## Block Type Overview
 
-Ladder Script defines 37 block types across 7 families. Each block evaluates a
+Ladder Script defines 48 block types across 9 families. Each block evaluates a
 single spending condition within a rung.
 
 | Family | Range | Block Types |
@@ -64,6 +64,8 @@ single spending condition within a rung.
 | **Recursion** | 0x0400-0x04FF | `RECURSE_SAME`, `RECURSE_MODIFIED`, `RECURSE_UNTIL`, `RECURSE_COUNT`, `RECURSE_SPLIT`, `RECURSE_DECAY` |
 | **Anchor** | 0x0500-0x05FF | `ANCHOR`, `ANCHOR_CHANNEL`, `ANCHOR_POOL`, `ANCHOR_RESERVE`, `ANCHOR_SEAL`, `ANCHOR_ORACLE` |
 | **PLC** | 0x0600-0x06FF | `HYSTERESIS_FEE`, `HYSTERESIS_VALUE`, `TIMER_CONTINUOUS`, `TIMER_OFF_DELAY`, `LATCH_SET`, `LATCH_RESET`, `COUNTER_DOWN`, `COUNTER_PRESET`, `COUNTER_UP`, `COMPARE`, `SEQUENCER`, `ONE_SHOT`, `RATE_LIMIT`, `COSIGN` |
+| **Compound** | 0x0700-0x07FF | `TIMELOCKED_SIG`, `HTLC`, `HASH_SIG` |
+| **Governance** | 0x0800-0x08FF | `EPOCH_GATE`, `WEIGHT_LIMIT`, `INPUT_COUNT`, `OUTPUT_COUNT`, `RELATIVE_VALUE`, `ACCUMULATOR` |
 
 Each block type accepts typed fields (PUBKEY, HASH256, NUMERIC, SCHEME, etc.)
 with enforced size constraints. See [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) for

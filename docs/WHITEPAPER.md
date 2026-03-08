@@ -80,19 +80,13 @@ A Ladder Script output does not contain instructions. It contains conditions. Th
 
 This makes Ladder Script programs amenable to static analysis. The set of conditions required to spend an output can be enumerated by parsing the conditions structure. No execution or simulation is necessary.
 
-### 2.4 Phased Deployment
+### 2.4 Family Classification
 
-Block types are organized into three deployment phases:
-
-- **Phase 1** (0x0001--0x02FF): Signature, timelock, and hash blocks. These cover the functionality of existing Bitcoin Script and are mempool-standard.
-- **Phase 2** (0x0300--0x05FF): Covenant, anchor, and L2 integration blocks. These are consensus-valid but mempool-nonstandard, requiring miners to include them directly.
-- **Phase 3** (0x0400--0x06FF): Recursion and PLC blocks. These enable state machines, self-referential covenants, and advanced flow control.
-
-This phasing allows the network to adopt fundamental capabilities first while more complex features are validated in production.
+Block types are organized into nine families based on their type code range. All 48 block types are consensus-valid and mempool-standard from activation. Family classification functions (`IsBaseBlockType`, `IsCovenantBlockType`, `IsStatefulBlockType`) exist for potential future policy differentiation, but currently all families are treated equally by the relay and mining policy.
 
 ### 2.5 Forward Compatibility
 
-Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing a block type from a future phase will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognize all block types.
+Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing a block type not yet recognized by the local node will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognize all block types.
 
 ---
 
@@ -374,7 +368,7 @@ Conditions contain zero user-chosen bytes. Every condition field is either a fix
 
 ### 8.1 vs OP_CTV (BIP-119)
 
-OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 40+. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, phased deployment) that OP_CTV does not address.
+OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 48. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, standardness tiers) that OP_CTV does not address.
 
 ### 8.2 vs OP_CAT
 
@@ -407,7 +401,7 @@ Ladder Script evaluation contains no loops, no recursion in the evaluator (recur
 
 Three mechanisms ensure that ambiguity defaults to rejection:
 
-1. **Unknown block types** return UNKNOWN_BLOCK_TYPE, which is treated as UNSATISFIED by the rung evaluator. An output containing a block type from a future phase cannot be spent by a node that does not implement that phase.
+1. **Unknown block types** return UNKNOWN_BLOCK_TYPE, which is treated as UNSATISFIED by the rung evaluator. An output containing an unrecognized block type cannot be spent by a node that does not implement it.
 
 2. **Deferred attestation** (`VerifyDeferredAttestation`) always returns false. This mode is defined for forward compatibility but is not activated.
 

@@ -9,6 +9,8 @@ OR logic across rungs (first satisfied rung wins).
 **Source of truth:** `src/rung/types.h` (type definitions), `src/rung/evaluator.cpp`
 (evaluation logic), `src/rung/evaluator.h` (`RungEvalContext` struct).
 
+**Visual reference:** See the [Block Reference](../tools/block-docs/index.html) for interactive diagrams, wire format visualizations, and worked examples for each block type.
+
 ---
 
 ## Table of Contents
