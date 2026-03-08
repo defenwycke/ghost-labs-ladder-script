@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation | Ladder Script</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
+      --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
+      --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
+      --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
+      --white: #f0f0f0;
+      --orange: #f7931a; --orange-light: #ffb347;
+      --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
+      --amber: #e6a817; --amber-dim: #8a6a10; --amber-glow: #e6a81740;
+      --font-display: 'Outfit', system-ui, sans-serif;
+      --font-mono: 'Geist Mono', monospace;
+      --font-engine: 'IBM Plex Mono', 'Consolas', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
+    ::selection { background: var(--orange); color: var(--black); }
+
+    /* Nav */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 12px 0; background: rgba(5, 5, 5, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--white); }
+    .logo-icon { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; }
+    .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-text { font-weight: 700; font-size: 18px; }
+    .logo-text span { color: var(--orange); }
+    .nav-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gray-400); }
+    .nav-breadcrumb a { color: var(--gray-400); text-decoration: none; }
+    .nav-breadcrumb a:hover { color: var(--white); }
+    .nav-breadcrumb .sep { color: var(--gray-600); }
+    .nav-breadcrumb .current { color: var(--orange); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-family: var(--font-display); font-size: 13px; font-weight: 600; border-radius: 8px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-secondary { background: var(--gray-800); color: var(--white); }
+    .btn-secondary:hover { background: var(--gray-700); }
+    .btn-ghost { background: transparent; color: var(--gray-300); padding: 8px 12px; }
+    .btn-ghost:hover { color: var(--white); }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 240px 1fr; margin-top: 53px; min-height: calc(100vh - 53px); }
+
+    /* Sidebar */
+    .sidebar { background: var(--gray-900); border-right: 1px solid var(--gray-800); padding: 24px 0; position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto; }
+    .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); padding: 8px 20px; }
+    .sidebar-link { display: block; padding: 8px 20px; font-size: 14px; color: var(--gray-300); text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent; }
+    .sidebar-link:hover { color: var(--white); background: var(--gray-800); }
+    .sidebar-link.active { color: var(--orange); border-left-color: var(--orange); background: rgba(247, 147, 26, 0.05); }
+    .sidebar-divider { height: 1px; background: var(--gray-800); margin: 12px 0; }
+
+    /* Content */
+    .content { padding: 40px 48px 80px; max-width: 900px; }
+    .content-loading { text-align: center; padding: 80px 0; color: var(--gray-400); font-family: var(--font-mono); }
+
+    /* Markdown Styles */
+    .md h1 { font-size: 32px; font-weight: 800; color: var(--white); margin: 0 0 24px; letter-spacing: -0.02em; }
+    .md h2 { font-size: 24px; font-weight: 700; color: var(--white); margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-800); }
+    .md h3 { font-size: 18px; font-weight: 600; color: var(--white); margin: 32px 0 12px; }
+    .md h4 { font-size: 15px; font-weight: 600; color: var(--gray-200); margin: 24px 0 8px; }
+    .md p { font-size: 15px; color: var(--gray-300); line-height: 1.8; margin: 0 0 16px; }
+    .md a { color: var(--orange); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+    .md strong { color: var(--white); font-weight: 600; }
+    .md em { color: var(--gray-200); }
+    .md ul, .md ol { margin: 0 0 16px 24px; color: var(--gray-300); }
+    .md li { margin-bottom: 6px; font-size: 15px; line-height: 1.7; }
+    .md li p { margin-bottom: 6px; }
+    .md blockquote { border-left: 3px solid var(--orange); padding: 12px 20px; margin: 16px 0; background: rgba(247, 147, 26, 0.05); border-radius: 0 8px 8px 0; }
+    .md blockquote p { color: var(--gray-200); margin-bottom: 0; }
+    .md code { font-family: var(--font-engine); font-size: 13px; background: #2a2a2a; color: var(--amber); padding: 2px 6px; border-radius: 4px; }
+    .md pre { background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 16px; overflow-x: auto; margin: 16px 0; }
+    .md pre code { background: none; padding: 0; font-size: 13px; color: #d4d4d4; line-height: 1.6; }
+    .md table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    .md th { text-align: left; padding: 10px 12px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--white); font-weight: 600; font-size: 13px; }
+    .md td { padding: 8px 12px; border: 1px solid var(--gray-800); color: var(--gray-300); font-size: 13px; }
+    .md td code { font-size: 12px; }
+    .md tr:hover td { background: rgba(247, 147, 26, 0.03); }
+    .md hr { border: none; height: 1px; background: var(--gray-800); margin: 32px 0; }
+    .md img { max-width: 100%; border-radius: 8px; margin: 16px 0; }
+
+    /* Block Reference styles (inline for docs shell) */
+    .block-ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+    @media (max-width: 640px) { .block-ref-grid { grid-template-columns: 1fr; } }
+
+    .block-ref-card {
+      display: block;
+      background: var(--gray-900);
+      border: 1px solid var(--gray-800);
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .block-ref-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .block-ref-code { font-size: 10px; font-family: var(--font-mono); color: var(--gray-500); letter-spacing: 1.5px; margin-bottom: 2px; }
+    .block-ref-name { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; letter-spacing: 0.5px; }
+    .block-ref-desc { font-size: 13px; color: var(--gray-400); line-height: 1.5; }
+    .block-ref-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 9px;
+      font-family: var(--font-mono);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+
+    .family-section { margin-bottom: 40px; }
+    .family-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--gray-800);
+      margin-bottom: 16px;
+    }
+    .family-intro { font-size: 14px; color: var(--gray-400); line-height: 1.7; margin-bottom: 16px; max-width: 640px; }
+
+    .family-signature { color: #e6a817; }
+    .family-timelock { color: #39a5b7; }
+    .family-hash { color: #b070b0; }
+    .family-covenant { color: #e06c75; }
+    .family-anchor { color: #56b6c2; }
+    .family-recursion { color: #e5c07b; }
+    .family-plc { color: #98c379; }
+    .family-compound { color: #f59e0b; }
+    .family-governance { color: #8b5cf6; }
+
+    .badge-signature { color: #e6a817; background: rgba(230, 168, 23, 0.1); }
+    .badge-timelock { color: #39a5b7; background: rgba(57, 165, 183, 0.1); }
+    .badge-hash { color: #b070b0; background: rgba(176, 112, 176, 0.1); }
+    .badge-covenant { color: #e06c75; background: rgba(224, 108, 117, 0.1); }
+    .badge-anchor { color: #56b6c2; background: rgba(86, 182, 194, 0.1); }
+    .badge-recursion { color: #e5c07b; background: rgba(229, 192, 123, 0.1); }
+    .badge-plc { color: #98c379; background: rgba(152, 195, 121, 0.1); }
+    .badge-compound { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+    .badge-governance { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+
+    /* Block detail page styles (when loaded via AJAX) */
+    .block-detail-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--gray-400);
+      text-decoration: none;
+      margin-bottom: 24px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .block-detail-back:hover { color: var(--orange); background: var(--gray-900); }
+
+    .block-title-section { margin-bottom: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--gray-800); }
+    .block-type-code { font-family: var(--font-mono); font-size: 12px; color: var(--orange); letter-spacing: 1px; margin-bottom: 8px; }
+    .block-title { font-size: 32px; font-weight: 800; color: var(--white); letter-spacing: -0.02em; margin-bottom: 12px; }
+    .block-subtitle { font-size: 15px; color: var(--gray-300); max-width: 640px; line-height: 1.7; }
+    .block-family-badge { display: inline-block; padding: 4px 12px; border: 1px solid; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; margin-top: 14px; }
+
+    .doc-section { margin-bottom: 40px; }
+    .section-label { font-family: var(--font-mono); font-size: 12px; color: var(--orange); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-800); }
+    .section-text { color: var(--gray-300); margin-bottom: 12px; font-size: 15px; }
+
+    .ladder-diagram { background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 12px; padding: 24px; margin: 16px 0 24px; overflow-x: auto; }
+    .ladder-diagram svg { display: block; margin: 0 auto; }
+
+    .field-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    .field-table th { text-align: left; padding: 10px 14px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--gray-300); font-weight: 600; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
+    .field-table td { padding: 10px 14px; border: 1px solid var(--gray-800); vertical-align: top; }
+    .field-table tr:hover td { background: var(--gray-900); }
+    .field-name { color: var(--orange); font-weight: 600; font-family: var(--font-mono); }
+    .field-type { color: var(--cyan); font-family: var(--font-mono); }
+    .field-size { color: var(--gray-400); font-family: var(--font-mono); }
+    .field-side-c { color: #5b9bd5; }
+    .field-side-w { color: var(--green); }
+    .field-desc { color: var(--gray-300); }
+
+    .eval-box { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; font-size: 14px; line-height: 1.8; }
+    .eval-step { display: flex; gap: 12px; margin-bottom: 8px; }
+    .eval-step-num { color: var(--orange); font-weight: 700; font-family: var(--font-mono); min-width: 24px; }
+    .eval-step-text { color: var(--gray-100); }
+    .eval-keyword { color: var(--orange); font-weight: 600; font-family: var(--font-mono); }
+    .eval-result-sat { color: var(--green); font-weight: 600; }
+    .eval-result-unsat { color: var(--red); font-weight: 600; }
+    .eval-result-err { color: var(--red); font-weight: 600; }
+
+    .result-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    .result-table th { text-align: left; padding: 10px 14px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--gray-300); font-weight: 600; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
+    .result-table td { padding: 10px 14px; border: 1px solid var(--gray-800); }
+    td.r-sat { color: var(--green); font-weight: 600; }
+    td.r-unsat { color: var(--red); font-weight: 600; }
+    td.r-err { color: var(--red); opacity: 0.7; font-weight: 600; }
+
+    .json-block { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+    .json-block pre { margin: 0; font-family: var(--font-engine); color: var(--gray-100); }
+    .json-key { color: var(--cyan); }
+    .json-str { color: var(--green); }
+    .json-num { color: var(--orange); }
+    .json-label { font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--gray-400); margin-bottom: 8px; }
+
+    .wire-breakdown { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+    .wire-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+    .wire-segment { display: inline-flex; align-items: center; justify-content: center; height: 28px; padding: 0 8px; border: 1px solid; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
+    .wire-type { background: rgba(247, 147, 26, 0.1); border-color: var(--amber-dim); color: var(--orange); }
+    .wire-inv { background: rgba(100, 100, 140, 0.1); border-color: #4a4a6a; color: #8888bb; min-width: 20px; }
+    .wire-count { background: rgba(0, 255, 136, 0.08); border-color: #1a5c28; color: var(--green); min-width: 20px; }
+    .wire-field { border-color: var(--gray-700); color: var(--gray-300); }
+    .wire-field-pubkey { background: rgba(45, 125, 210, 0.1); border-color: #1a4a7a; color: #5b9bd5; }
+    .wire-field-hash { background: rgba(176, 112, 176, 0.1); border-color: #5a3a5a; color: #b070b0; }
+    .wire-field-sig { background: rgba(176, 176, 112, 0.1); border-color: #5a5a3a; color: #b0b070; }
+    .wire-field-num { background: rgba(0, 212, 255, 0.08); border-color: #3a5a5a; color: var(--cyan); }
+    .wire-field-pre { background: rgba(192, 112, 112, 0.1); border-color: #5a3a3a; color: #c07070; }
+    .wire-bytes { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); margin-left: auto; }
+    .wire-total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--gray-800); font-weight: 600; }
+    .wire-total-label { color: var(--gray-300); font-size: 12px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
+    .wire-total-bytes { color: var(--orange); font-family: var(--font-mono); }
+
+    .use-case { background: var(--gray-900); border: 1px solid var(--gray-800); border-left: 3px solid var(--orange); border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 12px 0; transition: all 0.2s; }
+    .use-case:hover { border-left-color: var(--orange-light); background: var(--gray-800); }
+    .use-case-title { color: var(--white); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+    .use-case-desc { color: var(--gray-300); font-size: 14px; line-height: 1.6; }
+
+    .invertible-badge { display: inline-block; padding: 4px 10px; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; margin-left: 8px; border-radius: 6px; }
+    .inv-yes { color: var(--green); border: 1px solid rgba(0, 255, 136, 0.3); background: rgba(0, 255, 136, 0.08); }
+    .inv-no { color: var(--gray-400); border: 1px solid var(--gray-700); background: var(--gray-900); }
+
+    .doc-nav { display: flex; justify-content: space-between; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--gray-800); }
+    .doc-nav a, .doc-nav span { color: var(--gray-300); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; }
+    .doc-nav a:hover, .doc-nav span:hover { color: var(--orange); background: var(--gray-900); }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; left: -260px; width: 260px; z-index: 50; transition: left 0.3s; height: 100vh; top: 0; padding-top: 70px; }
+      .sidebar.open { left: 0; }
+      .content { padding: 24px 20px 80px; }
+      .block-ref-grid { grid-template-columns: 1fr; }
+      .wire-row { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="../../index.html" class="logo">
+        <div class="logo-icon"><img src="../../logo.png" alt="Bitcoin Ghost"></div>
+        <div class="logo-text">Bitcoin<span>Ghost</span></div>
+      </a>
+      <div class="nav-breadcrumb">
+        <a href="../../ghost-labs.html">Labs</a>
+        <span class="sep">/</span>
+        <a href="../ladder-script.html">Ladder Script</a>
+        <span class="sep">/</span>
+        <span class="current" id="breadcrumb-title">Docs</span>
+      </div>
+      <div class="nav-right">
+        <a href="../ladder-script.html" class="btn btn-secondary">Back to Project</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-label">Documentation</div>
+      <a href="#SUMMARY" class="sidebar-link" data-doc="SUMMARY.md" data-title="Executive Summary">Executive Summary</a>
+      <a href="#BIP-XXXX" class="sidebar-link" data-doc="BIP-XXXX.md" data-title="BIP-XXXX">BIP-XXXX</a>
+      <a href="#WHITEPAPER" class="sidebar-link" data-doc="WHITEPAPER.md" data-title="Whitepaper">Whitepaper</a>
+      <a href="#SPECIFICATION" class="sidebar-link" data-doc="SPECIFICATION.md" data-title="Technical Specification">Technical Specification</a>
+      <div class="sidebar-divider"></div>
+      <a href="#BLOCK_LIBRARY" class="sidebar-link" data-doc="BLOCK_LIBRARY.md" data-title="Block Library">Block Library</a>
+      <a href="#EXAMPLES" class="sidebar-link" data-doc="EXAMPLES.md" data-title="Examples">Examples</a>
+      <a href="#INTEGRATION" class="sidebar-link" data-doc="INTEGRATION.md" data-title="Integration Guide">Integration Guide</a>
+      <a href="#SOFT_FORK_GUIDE" class="sidebar-link" data-doc="SOFT_FORK_GUIDE.md" data-title="Soft Fork Guide">Soft Fork Guide</a>
+      <div class="sidebar-divider"></div>
+      <a href="#FAQ" class="sidebar-link" data-doc="FAQ.md" data-title="FAQ">FAQ</a>
+      <a href="#GLOSSARY" class="sidebar-link" data-doc="GLOSSARY.md" data-title="Glossary">Glossary</a>
+      <a href="#README" class="sidebar-link" data-doc="README.md" data-title="README">README</a>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-label">Block Reference</div>
+      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 48 Blocks</a>
+    </aside>
+
+    <main class="content">
+      <div class="content-loading" id="loading">Loading documentation...</div>
+      <div class="md" id="doc-content"></div>
+    </main>
+  </div>
+
+  <script>
+    const docContent = document.getElementById('doc-content');
+    const loading = document.getElementById('loading');
+    const breadcrumb = document.getElementById('breadcrumb-title');
+    const links = document.querySelectorAll('.sidebar-link');
+    let currentDoc = null;
+
+    // Block reference data — all 48 blocks organized by family
+    const BLOCK_FAMILIES = [
+      {
+        name: 'Signature Family', range: '0x0000', cls: 'signature',
+        intro: 'Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization.',
+        blocks: [
+          { code: '0x0001', name: 'SIG', file: 'sig', desc: 'Single Schnorr signature verification against a committed public key. The most fundamental block type.' },
+          { code: '0x0002', name: 'MULTISIG', file: 'multisig', desc: 'M-of-N threshold signature verification. Conditions commit to N pubkeys and threshold M.' },
+          { code: '0x0003', name: 'ADAPTOR_SIG', file: 'adaptor-sig', desc: 'Adaptor signature verification for atomic swaps and DLCs. Reveals a secret scalar upon completion.' },
+        ]
+      },
+      {
+        name: 'Timelock Family', range: '0x0100', cls: 'timelock',
+        intro: 'Timelock blocks enforce temporal constraints on spending \u2014 either relative to confirmation (CSV) or absolute block height / timestamp (CLTV).',
+        blocks: [
+          { code: '0x0101', name: 'CSV', file: 'csv', desc: 'Relative timelock by block count. UTXO cannot be spent until N blocks after confirmation.' },
+          { code: '0x0102', name: 'CSV_TIME', file: 'csv-time', desc: 'Relative timelock by time (512-second granularity).' },
+          { code: '0x0103', name: 'CLTV', file: 'cltv', desc: 'Absolute timelock by block height. UTXO cannot be spent until block height reaches N.' },
+          { code: '0x0104', name: 'CLTV_TIME', file: 'cltv-time', desc: 'Absolute timelock by Unix timestamp.' },
+        ]
+      },
+      {
+        name: 'Hash Family', range: '0x0200', cls: 'hash',
+        intro: 'Hash blocks verify knowledge of a preimage that produces a committed hash digest. Used for hash locks, atomic swaps, and commitment schemes.',
+        blocks: [
+          { code: '0x0201', name: 'HASH_PREIMAGE', file: 'hash-preimage', desc: 'SHA-256 hash preimage verification. Conditions commit to a 32-byte hash; witness provides the preimage.' },
+          { code: '0x0202', name: 'HASH160_PREIMAGE', file: 'hash160-preimage', desc: 'RIPEMD160(SHA256) hash preimage verification. 20-byte digest saves 12 bytes on wire.' },
+          { code: '0x0203', name: 'TAGGED_HASH', file: 'tagged-hash', desc: 'BIP-340 tagged hash preimage verification. Domain-separated hashing for protocol-specific commitments.' },
+        ]
+      },
+      {
+        name: 'Covenant Family', range: '0x0400', cls: 'covenant',
+        intro: 'Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself.',
+        blocks: [
+          { code: '0x0401', name: 'CTV', file: 'ctv', desc: 'CheckTemplateVerify (BIP-119). Verifies spending transaction matches a committed template hash.' },
+          { code: '0x0402', name: 'VAULT_LOCK', file: 'vault-lock', desc: 'Two-path vault with recovery key (immediate) and hot key (CSV-delayed).' },
+          { code: '0x0403', name: 'AMOUNT_LOCK', file: 'amount-lock', desc: 'Output amount range check. Verifies min_sats \u2264 output_amount \u2264 max_sats.' },
+        ]
+      },
+      {
+        name: 'Recursion Family', range: '0x0300', cls: 'recursion',
+        intro: 'Recursion blocks create self-referencing covenants \u2014 outputs that enforce spending back into the same (or modified) covenant structure.',
+        blocks: [
+          { code: '0x0301', name: 'RECURSE_SAME', file: 'recurse-same', desc: 'Enforces that an output recreates the identical covenant verbatim.' },
+          { code: '0x0302', name: 'RECURSE_MODIFIED', file: 'recurse-modified', desc: 'Recursive covenant with allowed field mutations between iterations.' },
+          { code: '0x0303', name: 'RECURSE_UNTIL', file: 'recurse-until', desc: 'Conditional recursion \u2014 continues until a termination condition is met.' },
+          { code: '0x0304', name: 'RECURSE_COUNT', file: 'recurse-count', desc: 'Count-limited recursion. Decrements each spend, terminates at zero.' },
+          { code: '0x0305', name: 'RECURSE_SPLIT', file: 'recurse-split', desc: 'Recursive split \u2014 one input fans out into multiple output covenants.' },
+          { code: '0x0306', name: 'RECURSE_DECAY', file: 'recurse-decay', desc: 'Value-decaying recursion. Each spend reduces output value by a committed factor.' },
+        ]
+      },
+      {
+        name: 'Anchor Family', range: '0x0500', cls: 'anchor',
+        intro: 'Anchor blocks commit to external state references \u2014 channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals.',
+        blocks: [
+          { code: '0x0501', name: 'ANCHOR', file: 'anchor', desc: 'Generic anchor point. Commits to a 32-byte hash identifying an off-chain structure.' },
+          { code: '0x0502', name: 'ANCHOR_CHANNEL', file: 'anchor-channel', desc: 'Payment channel anchor. Commits to a channel ID and sequence number.' },
+          { code: '0x0503', name: 'ANCHOR_POOL', file: 'anchor-pool', desc: 'Liquidity pool anchor. Commits to a pool ID binding the UTXO to a pool structure.' },
+          { code: '0x0504', name: 'ANCHOR_RESERVE', file: 'anchor-reserve', desc: 'Reserve proof anchor. Commits to a minimum reserve amount.' },
+          { code: '0x0505', name: 'ANCHOR_SEAL', file: 'anchor-seal', desc: 'Tamper-evident seal. Single-use commitment for client-side validation.' },
+          { code: '0x0506', name: 'ANCHOR_ORACLE', file: 'anchor-oracle', desc: 'Oracle attestation anchor. Requires oracle\'s signed attestation of event outcome.' },
+        ]
+      },
+      {
+        name: 'PLC Family', range: '0x0600', cls: 'plc',
+        intro: 'PLC (Programmable Logic Controller) blocks bring industrial automation primitives to Bitcoin \u2014 hysteresis, timers, latches, counters, comparators, sequencers, and rate limiters.',
+        blocks: [
+          { code: '0x0601', name: 'HYSTERESIS_FEE', file: 'hysteresis-fee', desc: 'Fee-rate hysteresis controller. Allows spending when fee rate crosses a threshold with deadband.' },
+          { code: '0x0602', name: 'HYSTERESIS_VALUE', file: 'hysteresis-value', desc: 'Value-based hysteresis controller with high/low thresholds.' },
+          { code: '0x0603', name: 'TIMER_CONTINUOUS', file: 'timer-continuous', desc: 'Continuous on-delay timer. Spending allowed after preset duration elapses.' },
+          { code: '0x0604', name: 'TIMER_OFF_DELAY', file: 'timer-off-delay', desc: 'Off-delay timer. Allows spending during a window after a trigger event.' },
+          { code: '0x0605', name: 'LATCH_SET', file: 'latch-set', desc: 'Set-dominant latch. Once set, remains set permanently.' },
+          { code: '0x0606', name: 'LATCH_RESET', file: 'latch-reset', desc: 'Reset-dominant latch. Default set; trigger resets permanently.' },
+          { code: '0x0607', name: 'COUNTER_DOWN', file: 'counter-down', desc: 'Down counter. Starts at preset, decrements each spend. Triggers at zero.' },
+          { code: '0x0608', name: 'COUNTER_PRESET', file: 'counter-preset', desc: 'Preset counter. Counts up to target value, resets on trigger.' },
+          { code: '0x0609', name: 'COUNTER_UP', file: 'counter-up', desc: 'Up counter. Increments each recursive spend with no upper bound.' },
+          { code: '0x060A', name: 'COMPARE', file: 'compare', desc: 'Numeric comparator with configurable operator (EQ, NE, LT, LE, GT, GE).' },
+          { code: '0x060B', name: 'SEQUENCER', file: 'sequencer', desc: 'Step sequencer. Advances through committed states, one per spend.' },
+          { code: '0x060C', name: 'ONE_SHOT', file: 'one-shot', desc: 'Single-pulse trigger. Allows exactly one spend, then permanently disables.' },
+          { code: '0x060D', name: 'RATE_LIMIT', file: 'rate-limit', desc: 'Spend rate limiter. Maximum spends within a block-height window.' },
+          { code: '0x060E', name: 'COSIGN', file: 'cosign', desc: 'Co-signing gate. Requires additional signature from a committed co-signer.' },
+        ]
+      },
+      {
+        name: 'Compound Family', range: '0x0700', cls: 'compound',
+        intro: 'Compound blocks collapse common multi-block patterns into single blocks, reducing wire overhead by eliminating duplicate block headers.',
+        blocks: [
+          { code: '0x0701', name: 'TIMELOCKED_SIG', file: 'timelocked-sig', desc: 'Signature verification with relative timelock in a single block. Replaces SIG + CSV.' },
+          { code: '0x0702', name: 'HTLC', file: 'htlc', desc: 'Hash Time Locked Contract \u2014 hash preimage + timelock + signature in one block.' },
+          { code: '0x0703', name: 'HASH_SIG', file: 'hash-sig', desc: 'Hash preimage verification combined with signature check.' },
+        ]
+      },
+      {
+        name: 'Governance Family', range: '0x0800', cls: 'governance',
+        intro: 'Governance blocks enforce transaction-level constraints \u2014 structure, weight, input/output counts, and value ratios at the consensus level.',
+        blocks: [
+          { code: '0x0801', name: 'EPOCH_GATE', file: 'epoch-gate', desc: 'Periodic spending windows using block height modular arithmetic.' },
+          { code: '0x0802', name: 'WEIGHT_LIMIT', file: 'weight-limit', desc: 'Maximum transaction weight constraint.' },
+          { code: '0x0803', name: 'INPUT_COUNT', file: 'input-count', desc: 'Bounds on number of inputs in the spending transaction.' },
+          { code: '0x0804', name: 'OUTPUT_COUNT', file: 'output-count', desc: 'Bounds on number of outputs in the spending transaction.' },
+          { code: '0x0805', name: 'RELATIVE_VALUE', file: 'relative-value', desc: 'Anti-siphon ratio enforcement between input and output values.' },
+          { code: '0x0806', name: 'ACCUMULATOR', file: 'accumulator', desc: 'Merkle set membership proof using sorted-pair Merkle proofs.' },
+        ]
+      }
+    ];
+
+    function renderBlockIndex() {
+      let html = '<h1 style="font-size:32px;font-weight:800;color:var(--white);margin-bottom:8px;">Block Reference</h1>';
+      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 48 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
+
+      for (const family of BLOCK_FAMILIES) {
+        html += `<div class="family-section">`;
+        html += `<h2 class="family-title family-${family.cls}">${family.name} \u2014 ${family.range}</h2>`;
+        html += `<p class="family-intro">${family.intro}</p>`;
+        html += `<div class="block-ref-grid">`;
+        for (const block of family.blocks) {
+          html += `<div class="block-ref-card" data-block-file="${block.file}" onclick="loadBlock('${block.file}', '${block.name}')">`;
+          html += `<div class="block-ref-code">${block.code}</div>`;
+          html += `<div class="block-ref-name">${block.name}</div>`;
+          html += `<div class="block-ref-desc">${block.desc}</div>`;
+          html += `<div class="block-ref-badge badge-${family.cls}">${family.name.replace(' Family', '')}</div>`;
+          html += `</div>`;
+        }
+        html += `</div></div>`;
+      }
+      return html;
+    }
+
+    async function loadBlock(file, name) {
+      loading.style.display = 'block';
+      docContent.innerHTML = '';
+      breadcrumb.textContent = name;
+      document.title = name + ' | Block Reference | Ladder Script';
+      currentDoc = '__BLOCK__' + file;
+
+      // Update sidebar active state
+      links.forEach(l => l.classList.remove('active'));
+      const blockLink = document.querySelector('[data-doc="__BLOCK_INDEX__"]');
+      if (blockLink) blockLink.classList.add('active');
+
+      history.pushState(null, '', '#BLOCK_' + file);
+
+      try {
+        const res = await fetch('blocks/' + file + '.html');
+        if (!res.ok) throw new Error('Not found');
+        const html = await res.text();
+
+        // Parse the HTML and extract the .doc-content inner HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const content = doc.querySelector('.doc-content');
+
+        if (content) {
+          loading.style.display = 'none';
+          // Add back-to-index link at top
+          let blockHtml = '<span class="block-detail-back" onclick="loadBlockIndex()">\u2190 All Blocks</span>';
+          blockHtml += content.innerHTML;
+
+          // Replace the doc-nav links with JS click handlers
+          docContent.innerHTML = blockHtml;
+
+          // Intercept doc-nav links to load blocks via JS
+          docContent.querySelectorAll('.doc-nav a').forEach(a => {
+            const href = a.getAttribute('href');
+            if (href && href.endsWith('.html') && href !== 'index.html') {
+              const blockFile = href.replace('.html', '');
+              const blockName = a.textContent.replace(/[^\w_]/g, '').trim();
+              a.href = '#';
+              a.onclick = function(e) { e.preventDefault(); loadBlock(blockFile, blockName); window.scrollTo(0, 0); };
+            } else if (href === 'index.html') {
+              a.href = '#';
+              a.onclick = function(e) { e.preventDefault(); loadBlockIndex(); };
+            }
+          });
+        } else {
+          loading.style.display = 'none';
+          docContent.innerHTML = '<p style="color:var(--gray-400);">Could not parse block documentation.</p>';
+        }
+      } catch (e) {
+        loading.style.display = 'none';
+        docContent.innerHTML = '<p style="color:var(--gray-400);">Could not load block documentation.</p>';
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    function loadBlockIndex() {
+      currentDoc = '__BLOCK_INDEX__';
+      loading.style.display = 'none';
+      breadcrumb.textContent = 'Block Reference';
+      document.title = 'Block Reference | Ladder Script';
+
+      links.forEach(l => l.classList.remove('active'));
+      const blockLink = document.querySelector('[data-doc="__BLOCK_INDEX__"]');
+      if (blockLink) blockLink.classList.add('active');
+
+      history.pushState(null, '', '#BLOCKS');
+      docContent.innerHTML = renderBlockIndex();
+      window.scrollTo(0, 0);
+    }
+
+    async function loadDoc(filename, title) {
+      if (currentDoc === filename) return;
+      currentDoc = filename;
+
+      if (filename === '__BLOCK_INDEX__') {
+        loadBlockIndex();
+        return;
+      }
+
+      loading.style.display = 'block';
+      docContent.innerHTML = '';
+      breadcrumb.textContent = title;
+      document.title = title + ' | Ladder Script';
+
+      links.forEach(l => l.classList.remove('active'));
+      const activeLink = document.querySelector(`[data-doc="${filename}"]`);
+      if (activeLink) activeLink.classList.add('active');
+
+      try {
+        const res = await fetch(filename);
+        if (!res.ok) throw new Error('Not found');
+        const md = await res.text();
+        loading.style.display = 'none';
+        docContent.innerHTML = marked.parse(md);
+      } catch (e) {
+        loading.style.display = 'none';
+        docContent.innerHTML = '<p style="color:var(--gray-400);">Could not load document.</p>';
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    links.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const doc = link.dataset.doc;
+        const title = link.dataset.title;
+        if (doc === '__BLOCK_INDEX__') {
+          loadBlockIndex();
+        } else {
+          history.pushState(null, '', '#' + doc.replace('.md', ''));
+          loadDoc(doc, title);
+        }
+      });
+    });
+
+    function loadFromHash() {
+      const hash = location.hash.slice(1);
+      if (!hash) {
+        loadDoc('SUMMARY.md', 'Executive Summary');
+        return;
+      }
+
+      // Block reference index
+      if (hash === 'BLOCKS') {
+        loadBlockIndex();
+        return;
+      }
+
+      // Individual block page: #BLOCK_sig, #BLOCK_multisig, etc.
+      if (hash.startsWith('BLOCK_')) {
+        const file = hash.substring(6);
+        // Find the block name from our data
+        let blockName = file.toUpperCase().replace(/-/g, '_');
+        for (const family of BLOCK_FAMILIES) {
+          for (const block of family.blocks) {
+            if (block.file === file) { blockName = block.name; break; }
+          }
+        }
+        loadBlock(file, blockName);
+        return;
+      }
+
+      // Markdown docs
+      const link = document.querySelector(`[data-doc="${hash}.md"]`) ||
+                   document.querySelector(`[data-doc="${hash}"]`);
+      if (link) {
+        loadDoc(link.dataset.doc, link.dataset.title);
+      } else {
+        loadDoc('SUMMARY.md', 'Executive Summary');
+      }
+    }
+
+    window.addEventListener('hashchange', loadFromHash);
+    window.addEventListener('DOMContentLoaded', loadFromHash);
+  </script>
+</body>
+</html>

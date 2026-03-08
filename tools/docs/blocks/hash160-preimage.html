@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HASH160_PREIMAGE — LADDER SCRIPT Block Reference</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="doc-header">
+  <a href="index.html">Block Reference</a>
+  <div class="doc-header-divider"></div>
+  <span class="doc-header-title">HASH160_PREIMAGE</span>
+  <div class="doc-header-divider"></div>
+  <span class="doc-header-family">Hash Family</span>
+</div>
+
+<div class="doc-content">
+
+<!-- Title -->
+<div class="block-title-section">
+  <div class="block-type-code">TYPE 0x0302 &middot; HASH FAMILY</div>
+  <h1 class="block-title">HASH160_PREIMAGE</h1>
+  <p class="block-subtitle">RIPEMD160(SHA-256) hash preimage verification. Uses the same double-hash as Bitcoin addresses for compact 20-byte hash commitments.</p>
+  <span class="block-family-badge badge-hash">Hash</span>
+</div>
+
+<!-- Ladder Diagram -->
+<div class="doc-section">
+  <div class="section-label">Ladder Diagram</div>
+  <div class="ladder-diagram">
+    <svg width="620" height="150" viewBox="0 0 620 150">
+      <!-- Power rails -->
+      <line x1="20" y1="10" x2="20" y2="140" stroke="#4a4a4a" stroke-width="3"/>
+      <line x1="600" y1="10" x2="600" y2="140" stroke="#4a4a4a" stroke-width="3"/>
+      <!-- Wire -->
+      <line x1="20" y1="60" x2="140" y2="60" stroke="#e6a817" stroke-width="2"/>
+      <line x1="460" y1="60" x2="600" y2="60" stroke="#e6a817" stroke-width="2"/>
+      <!-- Block body -->
+      <rect x="140" y="20" width="320" height="80" rx="2" fill="#2a2a2a" stroke="#b070b0" stroke-width="1.5"/>
+      <!-- Block label -->
+      <text x="300" y="38" text-anchor="middle" fill="#b070b0" font-family="Share Tech Mono" font-size="13" letter-spacing="2">HASH160_PREIMAGE</text>
+      <!-- Internal: double hash -->
+      <rect x="160" y="48" width="80" height="28" rx="2" fill="#1e1e1e" stroke="#3a3a3a"/>
+      <text x="200" y="66" text-anchor="middle" fill="#b070b0" font-family="IBM Plex Mono" font-size="10" font-weight="600">SHA-256</text>
+      <text x="252" y="66" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="12">&rarr;</text>
+      <rect x="264" y="48" width="90" height="28" rx="2" fill="#1e1e1e" stroke="#3a3a3a"/>
+      <text x="309" y="66" text-anchor="middle" fill="#b070b0" font-family="IBM Plex Mono" font-size="10" font-weight="600">RIPEMD160</text>
+      <text x="367" y="66" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="12">&rarr;</text>
+      <rect x="380" y="48" width="60" height="28" rx="2" fill="#1e1e1e" stroke="#3a3a3a"/>
+      <text x="410" y="66" text-anchor="middle" fill="#b070b0" font-family="IBM Plex Mono" font-size="9" font-weight="600">CMP</text>
+      <!-- Annotation -->
+      <text x="300" y="125" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">RIPEMD160(SHA256(preimage)) == expected_hash160</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Fields -->
+<div class="doc-section">
+  <div class="section-label">Fields</div>
+  <table class="field-table">
+    <thead>
+      <tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="field-name">expected_hash</td>
+        <td class="field-type">HASH160</td>
+        <td class="field-size">20 B</td>
+        <td class="field-side-c">Conditions</td>
+        <td class="field-desc">Expected RIPEMD160(SHA256) hash value</td>
+      </tr>
+      <tr>
+        <td class="field-name">preimage</td>
+        <td class="field-type">PREIMAGE</td>
+        <td class="field-size">1-520 B</td>
+        <td class="field-side-w">Witness</td>
+        <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Wire Format -->
+<div class="doc-section">
+  <div class="section-label">Wire Format Breakdown</div>
+
+  <p class="section-text" style="margin-bottom:16px">Conditions side (in scriptPubKey):</p>
+  <div class="wire-breakdown">
+    <div class="wire-row">
+      <span class="wire-segment wire-type">0x0302</span>
+      <span class="wire-segment wire-inv">0</span>
+      <span class="wire-segment wire-count">1</span>
+      <span class="wire-segment wire-field-hash" style="min-width:140px">HASH160 &middot; 20B</span>
+      <span class="wire-bytes">= 26 bytes</span>
+    </div>
+  </div>
+
+  <p class="section-text" style="margin-bottom:16px">Witness side (in input witness):</p>
+  <div class="wire-breakdown">
+    <div class="wire-row">
+      <span class="wire-segment wire-type">0x0302</span>
+      <span class="wire-segment wire-inv">0</span>
+      <span class="wire-segment wire-count">1</span>
+      <span class="wire-segment wire-field-pre" style="min-width:140px">PREIMAGE &middot; 32B</span>
+      <span class="wire-bytes">= 38 bytes</span>
+    </div>
+
+    <div class="wire-total">
+      <span class="wire-total-label">Total (conditions + witness)</span>
+      <span class="wire-total-bytes">~66 bytes</span>
+    </div>
+  </div>
+
+  <p class="section-text">12 bytes smaller than HASH_PREIMAGE due to compact 20-byte hash commitment.</p>
+</div>
+
+<!-- Evaluation Logic -->
+<div class="doc-section">
+  <div class="section-label">Evaluation Logic</div>
+  <div class="eval-box">
+    <div class="eval-step">
+      <span class="eval-step-num">1.</span>
+      <span class="eval-step-text"><span class="eval-keyword">PREIMAGE</span> missing &rarr; <span class="eval-result-err">ERROR</span></span>
+    </div>
+    <div class="eval-step">
+      <span class="eval-step-num">2.</span>
+      <span class="eval-step-text"><span class="eval-keyword">HASH160</span> missing &rarr; <span class="eval-result-err">ERROR</span></span>
+    </div>
+    <div class="eval-step">
+      <span class="eval-step-num">3.</span>
+      <span class="eval-step-text">Compute RIPEMD160(SHA256(<span class="eval-keyword">PREIMAGE</span>)). If result matches <span class="eval-keyword">HASH160</span> &rarr; <span class="eval-result-sat">SATISFIED</span></span>
+    </div>
+    <div class="eval-step">
+      <span class="eval-step-num">4.</span>
+      <span class="eval-step-text">Hash mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- Result Table -->
+<div class="doc-section">
+  <div class="section-label">Return Values</div>
+  <table class="result-table">
+    <thead><tr><th>Condition</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Missing PREIMAGE field</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing HASH160 field</td><td class="r-err">ERROR</td></tr>
+      <tr><td>RIPEMD160(SHA256(PREIMAGE)) != HASH160</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>RIPEMD160(SHA256(PREIMAGE)) == HASH160</td><td class="r-sat">SATISFIED</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- JSON Output -->
+<div class="doc-section">
+  <div class="section-label">JSON Wire Format</div>
+
+  <div class="json-label">Conditions (scriptPubKey)</div>
+  <div class="json-block"><pre>{
+  <span class="json-key">"type"</span>: <span class="json-str">"HASH160_PREIMAGE"</span>,
+  <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
+  <span class="json-key">"fields"</span>: [
+    { <span class="json-key">"type"</span>: <span class="json-str">"HASH160"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"89abcd...20 bytes"</span> }
+  ]
+}</pre></div>
+
+  <div class="json-label" style="margin-top:16px">Witness (input)</div>
+  <div class="json-block"><pre>{
+  <span class="json-key">"type"</span>: <span class="json-str">"HASH160_PREIMAGE"</span>,
+  <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
+  <span class="json-key">"fields"</span>: [
+    { <span class="json-key">"type"</span>: <span class="json-str">"PREIMAGE"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"deadbeef...1-520 bytes"</span> }
+  ]
+}</pre></div>
+</div>
+
+<!-- Use Cases -->
+<div class="doc-section">
+  <div class="section-label">Use Cases</div>
+
+  <div class="use-case">
+    <div class="use-case-title">Bitcoin Address-Compatible Hashlocks</div>
+    <div class="use-case-desc">Hash commitments using the same HASH160 function as Bitcoin addresses. Allows reuse of existing address-generation tooling and familiar 20-byte hash format.</div>
+  </div>
+
+  <div class="use-case">
+    <div class="use-case-title">Compact Hash Commitments</div>
+    <div class="use-case-desc">When wire size matters, HASH160 saves 12 bytes per commitment compared to HASH256 (20 bytes vs 32 bytes) while maintaining strong preimage resistance.</div>
+  </div>
+
+  <div class="use-case">
+    <div class="use-case-title">Legacy Compatibility</div>
+    <div class="use-case-desc">Interoperability with systems that already use RIPEMD160(SHA256) for hash commitments, including existing Bitcoin script hash-lock patterns and P2PKH-derived protocols.</div>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="doc-nav">
+  <a href="hash-preimage.html">&larr; HASH_PREIMAGE</a>
+  <a href="tagged-hash.html">TAGGED_HASH &rarr;</a>
+</div>
+
+</div>
+</body>
+</html>
