@@ -207,13 +207,13 @@ Validates a `0xc1`-prefixed `scriptPubKey`:
 
 ### 6.3 Phase Restrictions
 
-The current policy implementation accepts all known block types. Block types are categorized by deployment phase:
+The current policy implementation accepts all known block types. Block types are categorized by family:
 
-- **Phase 1** (0x0001--0x02FF): SIG, MULTISIG, ADAPTOR_SIG, CSV, CSV_TIME, CLTV, CLTV_TIME, HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH.
-- **Phase 2** (0x0300--0x05FF): CTV, VAULT_LOCK, AMOUNT_LOCK, ANCHOR_*.
-- **Phase 3** (0x0400--0x06FF): RECURSE_*, HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN.
+- **Base** (0x0001--0x02FF): SIG, MULTISIG, ADAPTOR_SIG, CSV, CSV_TIME, CLTV, CLTV_TIME, HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH.
+- **Covenant + Anchor** (0x0300--0x05FF): CTV, VAULT_LOCK, AMOUNT_LOCK, ANCHOR_*.
+- **Recursion + PLC** (0x0400--0x06FF): RECURSE_*, HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN.
 
-The functions `IsPhase1BlockType()`, `IsPhase2BlockType()`, and `IsPhase3BlockType()` classify blocks. These are available for future policy tightening where Phase 2/3 blocks could be made non-standard while remaining consensus-valid.
+The functions `IsPhase1BlockType()`, `IsPhase2BlockType()`, and `IsPhase3BlockType()` classify blocks into these families. These are available for future policy tightening where covenant/recursion/PLC blocks could be made non-standard while remaining consensus-valid.
 
 ---
 

@@ -8,6 +8,7 @@
 #include <rung/serialize.h>
 #include <rung/sighash.h>
 
+#include <consensus/validation.h>
 #include <crypto/sha256.h>
 #include <hash.h>
 #include <policy/policy.h>
@@ -246,7 +247,7 @@ static EvalResult EvalPQSig(RungScheme scheme,
 }
 
 // ============================================================================
-// Phase 1 evaluators
+// Signature evaluators
 // ============================================================================
 
 EvalResult EvalSigBlock(const RungBlock& block,
@@ -643,7 +644,7 @@ EvalResult EvalTaggedHashBlock(const RungBlock& block)
 }
 
 // ============================================================================
-// Phase 2 evaluators — Covenant
+// Covenant evaluators
 // ============================================================================
 
 uint256 ComputeCTVHash(const CTransaction& tx, uint32_t input_index)
@@ -829,7 +830,7 @@ EvalResult EvalAmountLockBlock(const RungBlock& block, const RungEvalContext& ct
 }
 
 // ============================================================================
-// Phase 2 evaluators — Anchor
+// Anchor evaluators
 // ============================================================================
 
 static bool HasRequiredHashes(const RungBlock& block, size_t count)
@@ -913,7 +914,7 @@ EvalResult EvalAnchorOracleBlock(const RungBlock& block)
 }
 
 // ============================================================================
-// Phase 3 evaluators — Recursion
+// Recursion evaluators
 // ============================================================================
 
 EvalResult EvalRecurseSameBlock(const RungBlock& block, const RungEvalContext& ctx)
@@ -1222,7 +1223,7 @@ EvalResult EvalRecurseDecayBlock(const RungBlock& block, const RungEvalContext& 
 }
 
 // ============================================================================
-// Phase 3 evaluators — PLC
+// PLC evaluators
 // ============================================================================
 
 EvalResult EvalHysteresisFeeBlock(const RungBlock& block, const RungEvalContext& ctx)
@@ -1508,6 +1509,379 @@ EvalResult EvalCosignBlock(const RungBlock& block, const RungEvalContext& ctx)
 }
 
 // ============================================================================
+// Compound evaluators (multi-block patterns in single block)
+// ============================================================================
+
+EvalResult EvalTimelockedSigBlock(const RungBlock& block,
+                                   const BaseSignatureChecker& checker,
+                                   SigVersion sigversion,
+                                   ScriptExecutionData& execdata)
+{
+    // TIMELOCKED_SIG = SIG + CSV in one block
+    // Fields: PUBKEY_COMMIT (conditions), PUBKEY (witness), SIGNATURE (witness), NUMERIC (timelock blocks)
+    // Optional: SCHEME field for PQ routing
+
+    // 1. Verify signature (same logic as EvalSigBlock)
+    const RungField* pubkey_commit = FindField(block, RungDataType::PUBKEY_COMMIT);
+    const RungField* pubkey_field = FindField(block, RungDataType::PUBKEY);
+    const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
+    const RungField* numeric_field = FindField(block, RungDataType::NUMERIC);
+
+    if (pubkey_commit && !pubkey_field) return EvalResult::ERROR;
+    if (pubkey_commit && pubkey_field) {
+        unsigned char hash[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(pubkey_field->data.data(), pubkey_field->data.size()).Finalize(hash);
+        if (pubkey_commit->data.size() != 32 || memcmp(hash, pubkey_commit->data.data(), 32) != 0) {
+            return EvalResult::UNSATISFIED;
+        }
+    }
+    if (!pubkey_field || !sig_field || !numeric_field) return EvalResult::ERROR;
+
+    // Check for PQ scheme
+    bool sig_verified = false;
+    const RungField* scheme_field = FindField(block, RungDataType::SCHEME);
+    if (scheme_field && !scheme_field->data.empty()) {
+        auto scheme = static_cast<RungScheme>(scheme_field->data[0]);
+        if (IsPQScheme(scheme)) {
+            EvalResult sig_result = EvalPQSig(scheme, *sig_field, *pubkey_field, checker);
+            if (sig_result != EvalResult::SATISFIED) return sig_result;
+            sig_verified = true;
+        }
+    }
+
+    if (!sig_verified) {
+        std::span<const unsigned char> sig_span{sig_field->data.data(), sig_field->data.size()};
+        std::span<const unsigned char> pubkey_span{pubkey_field->data.data(), pubkey_field->data.size()};
+
+        if (sig_field->data.size() >= 64 && sig_field->data.size() <= 65) {
+            std::vector<unsigned char> xonly;
+            if (pubkey_field->data.size() == 33) {
+                xonly.assign(pubkey_field->data.begin() + 1, pubkey_field->data.end());
+                pubkey_span = std::span<const unsigned char>{xonly.data(), xonly.size()};
+            }
+            if (!checker.CheckSchnorrSignature(sig_span, pubkey_span, sigversion, execdata, nullptr)) {
+                return EvalResult::UNSATISFIED;
+            }
+        } else if (sig_field->data.size() >= 8 && sig_field->data.size() <= 72) {
+            std::vector<unsigned char> sig_vec(sig_field->data.begin(), sig_field->data.end());
+            std::vector<unsigned char> pubkey_vec(pubkey_field->data.begin(), pubkey_field->data.end());
+            CScript empty_script;
+            if (!checker.CheckECDSASignature(sig_vec, pubkey_vec, empty_script, sigversion)) {
+                return EvalResult::UNSATISFIED;
+            }
+        } else {
+            return EvalResult::ERROR;
+        }
+    }
+
+    // 2. Check CSV timelock (same logic as EvalCSVBlock)
+    int64_t sequence_val = ReadNumeric(*numeric_field);
+    if (sequence_val < 0) return EvalResult::ERROR;
+    if ((sequence_val & CTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) != 0) return EvalResult::SATISFIED;
+    CScriptNum nSequence(sequence_val);
+    if (!checker.CheckSequence(nSequence)) return EvalResult::UNSATISFIED;
+
+    return EvalResult::SATISFIED;
+}
+
+EvalResult EvalHTLCBlock(const RungBlock& block,
+                          const BaseSignatureChecker& checker,
+                          SigVersion sigversion,
+                          ScriptExecutionData& execdata)
+{
+    // HTLC = HASH_PREIMAGE + CSV + SIG in one block
+    // Fields: HASH256 (conditions), PREIMAGE (witness), NUMERIC (timelock),
+    //         PUBKEY_COMMIT (conditions), PUBKEY (witness), SIGNATURE (witness)
+
+    // 1. Verify hash preimage
+    const RungField* hash_field = FindField(block, RungDataType::HASH256);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+    if (!hash_field || !preimage_field) return EvalResult::ERROR;
+    if (hash_field->data.size() != 32) return EvalResult::ERROR;
+
+    unsigned char computed_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(preimage_field->data.data(), preimage_field->data.size()).Finalize(computed_hash);
+    if (memcmp(computed_hash, hash_field->data.data(), 32) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // 2. Verify CSV timelock
+    const RungField* numeric_field = FindField(block, RungDataType::NUMERIC);
+    if (!numeric_field) return EvalResult::ERROR;
+    int64_t sequence_val = ReadNumeric(*numeric_field);
+    if (sequence_val < 0) return EvalResult::ERROR;
+    if ((sequence_val & CTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) == 0) {
+        CScriptNum nSequence(sequence_val);
+        if (!checker.CheckSequence(nSequence)) return EvalResult::UNSATISFIED;
+    }
+
+    // 3. Verify signature
+    const RungField* pubkey_commit = FindField(block, RungDataType::PUBKEY_COMMIT);
+    const RungField* pubkey_field = FindField(block, RungDataType::PUBKEY);
+    const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
+
+    if (pubkey_commit && !pubkey_field) return EvalResult::ERROR;
+    if (pubkey_commit && pubkey_field) {
+        unsigned char pk_hash[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(pubkey_field->data.data(), pubkey_field->data.size()).Finalize(pk_hash);
+        if (pubkey_commit->data.size() != 32 || memcmp(pk_hash, pubkey_commit->data.data(), 32) != 0) {
+            return EvalResult::UNSATISFIED;
+        }
+    }
+    if (!pubkey_field || !sig_field) return EvalResult::ERROR;
+
+    std::span<const unsigned char> sig_span{sig_field->data.data(), sig_field->data.size()};
+    std::span<const unsigned char> pubkey_span{pubkey_field->data.data(), pubkey_field->data.size()};
+
+    if (sig_field->data.size() >= 64 && sig_field->data.size() <= 65) {
+        std::vector<unsigned char> xonly;
+        if (pubkey_field->data.size() == 33) {
+            xonly.assign(pubkey_field->data.begin() + 1, pubkey_field->data.end());
+            pubkey_span = std::span<const unsigned char>{xonly.data(), xonly.size()};
+        }
+        if (!checker.CheckSchnorrSignature(sig_span, pubkey_span, sigversion, execdata, nullptr)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else if (sig_field->data.size() >= 8 && sig_field->data.size() <= 72) {
+        std::vector<unsigned char> sig_vec(sig_field->data.begin(), sig_field->data.end());
+        std::vector<unsigned char> pubkey_vec(pubkey_field->data.begin(), pubkey_field->data.end());
+        CScript empty_script;
+        if (!checker.CheckECDSASignature(sig_vec, pubkey_vec, empty_script, sigversion)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else {
+        return EvalResult::ERROR;
+    }
+
+    return EvalResult::SATISFIED;
+}
+
+EvalResult EvalHashSigBlock(const RungBlock& block,
+                             const BaseSignatureChecker& checker,
+                             SigVersion sigversion,
+                             ScriptExecutionData& execdata)
+{
+    // HASH_SIG = HASH_PREIMAGE + SIG in one block
+    // Fields: HASH256 (conditions), PREIMAGE (witness),
+    //         PUBKEY_COMMIT (conditions), PUBKEY (witness), SIGNATURE (witness)
+
+    // 1. Verify hash preimage
+    const RungField* hash_field = FindField(block, RungDataType::HASH256);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+    if (!hash_field || !preimage_field) return EvalResult::ERROR;
+    if (hash_field->data.size() != 32) return EvalResult::ERROR;
+
+    unsigned char computed_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(preimage_field->data.data(), preimage_field->data.size()).Finalize(computed_hash);
+    if (memcmp(computed_hash, hash_field->data.data(), 32) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // 2. Verify signature
+    const RungField* pubkey_commit = FindField(block, RungDataType::PUBKEY_COMMIT);
+    const RungField* pubkey_field = FindField(block, RungDataType::PUBKEY);
+    const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
+
+    if (pubkey_commit && !pubkey_field) return EvalResult::ERROR;
+    if (pubkey_commit && pubkey_field) {
+        unsigned char pk_hash[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(pubkey_field->data.data(), pubkey_field->data.size()).Finalize(pk_hash);
+        if (pubkey_commit->data.size() != 32 || memcmp(pk_hash, pubkey_commit->data.data(), 32) != 0) {
+            return EvalResult::UNSATISFIED;
+        }
+    }
+    if (!pubkey_field || !sig_field) return EvalResult::ERROR;
+
+    std::span<const unsigned char> sig_span{sig_field->data.data(), sig_field->data.size()};
+    std::span<const unsigned char> pubkey_span{pubkey_field->data.data(), pubkey_field->data.size()};
+
+    if (sig_field->data.size() >= 64 && sig_field->data.size() <= 65) {
+        std::vector<unsigned char> xonly;
+        if (pubkey_field->data.size() == 33) {
+            xonly.assign(pubkey_field->data.begin() + 1, pubkey_field->data.end());
+            pubkey_span = std::span<const unsigned char>{xonly.data(), xonly.size()};
+        }
+        if (!checker.CheckSchnorrSignature(sig_span, pubkey_span, sigversion, execdata, nullptr)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else if (sig_field->data.size() >= 8 && sig_field->data.size() <= 72) {
+        std::vector<unsigned char> sig_vec(sig_field->data.begin(), sig_field->data.end());
+        std::vector<unsigned char> pubkey_vec(pubkey_field->data.begin(), pubkey_field->data.end());
+        CScript empty_script;
+        if (!checker.CheckECDSASignature(sig_vec, pubkey_vec, empty_script, sigversion)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else {
+        return EvalResult::ERROR;
+    }
+
+    return EvalResult::SATISFIED;
+}
+
+// ============================================================================
+// Governance evaluators (transaction-level constraints)
+// ============================================================================
+
+EvalResult EvalEpochGateBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // EPOCH_GATE: spending allowed only within periodic windows.
+    // Fields: NUMERIC[0] = epoch_size (blocks per epoch),
+    //         NUMERIC[1] = window_size (blocks within epoch where spending is allowed)
+    // Gate opens at block_height % epoch_size < window_size
+    auto numerics = FindAllFields(block, RungDataType::NUMERIC);
+    if (numerics.size() < 2) return EvalResult::ERROR;
+
+    int64_t epoch_size = ReadNumeric(*numerics[0]);
+    int64_t window_size = ReadNumeric(*numerics[1]);
+    if (epoch_size <= 0 || window_size <= 0 || window_size > epoch_size) {
+        return EvalResult::ERROR;
+    }
+
+    int64_t position = ctx.block_height % epoch_size;
+    if (position < window_size) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalWeightLimitBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // WEIGHT_LIMIT: max transaction weight
+    // Fields: NUMERIC = max weight units (1 WU = 4 bytes for non-witness, 1 byte for witness)
+    const RungField* numeric_field = FindField(block, RungDataType::NUMERIC);
+    if (!numeric_field) return EvalResult::ERROR;
+
+    int64_t max_weight = ReadNumeric(*numeric_field);
+    if (max_weight <= 0) return EvalResult::ERROR;
+
+    if (!ctx.tx) return EvalResult::SATISFIED; // structural validation only
+
+    int64_t tx_weight = GetTransactionWeight(*ctx.tx);
+    if (tx_weight <= max_weight) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalInputCountBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // INPUT_COUNT: bounds on number of inputs in spending tx
+    // Fields: NUMERIC[0] = min_inputs, NUMERIC[1] = max_inputs
+    auto numerics = FindAllFields(block, RungDataType::NUMERIC);
+    if (numerics.size() < 2) return EvalResult::ERROR;
+
+    int64_t min_inputs = ReadNumeric(*numerics[0]);
+    int64_t max_inputs = ReadNumeric(*numerics[1]);
+    if (min_inputs < 0 || max_inputs < 0 || min_inputs > max_inputs) {
+        return EvalResult::ERROR;
+    }
+
+    if (!ctx.tx) return EvalResult::SATISFIED;
+
+    int64_t count = static_cast<int64_t>(ctx.tx->vin.size());
+    if (count >= min_inputs && count <= max_inputs) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalOutputCountBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // OUTPUT_COUNT: bounds on number of outputs in spending tx
+    // Fields: NUMERIC[0] = min_outputs, NUMERIC[1] = max_outputs
+    auto numerics = FindAllFields(block, RungDataType::NUMERIC);
+    if (numerics.size() < 2) return EvalResult::ERROR;
+
+    int64_t min_outputs = ReadNumeric(*numerics[0]);
+    int64_t max_outputs = ReadNumeric(*numerics[1]);
+    if (min_outputs < 0 || max_outputs < 0 || min_outputs > max_outputs) {
+        return EvalResult::ERROR;
+    }
+
+    if (!ctx.tx) return EvalResult::SATISFIED;
+
+    int64_t count = static_cast<int64_t>(ctx.tx->vout.size());
+    if (count >= min_outputs && count <= max_outputs) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalRelativeValueBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // RELATIVE_VALUE: output must be within a ratio of input value
+    // Fields: NUMERIC[0] = numerator, NUMERIC[1] = denominator
+    // Satisfied when: output_amount * denominator >= input_amount * numerator
+    // Example: 9/10 means output must be >= 90% of input (anti-fee-siphon)
+    auto numerics = FindAllFields(block, RungDataType::NUMERIC);
+    if (numerics.size() < 2) return EvalResult::ERROR;
+
+    int64_t numerator = ReadNumeric(*numerics[0]);
+    int64_t denominator = ReadNumeric(*numerics[1]);
+    if (numerator < 0 || denominator <= 0) return EvalResult::ERROR;
+
+    // Use 64-bit multiplication to avoid overflow: compare output*denom >= input*num
+    // Both amounts are in satoshis (max ~2.1e15), and num/denom are small (max 2^32),
+    // so the products fit in int64_t (max ~9.2e18).
+    int64_t lhs = ctx.output_amount * denominator;
+    int64_t rhs = ctx.input_amount * numerator;
+
+    // Overflow check: if either multiplication would overflow, use __int128
+    if (ctx.output_amount > 0 && lhs / denominator != ctx.output_amount) {
+        // Overflow — use extended precision
+        __int128 lhs128 = static_cast<__int128>(ctx.output_amount) * denominator;
+        __int128 rhs128 = static_cast<__int128>(ctx.input_amount) * numerator;
+        if (lhs128 >= rhs128) return EvalResult::SATISFIED;
+        return EvalResult::UNSATISFIED;
+    }
+
+    if (lhs >= rhs) return EvalResult::SATISFIED;
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalAccumulatorBlock(const RungBlock& block)
+{
+    // ACCUMULATOR: Merkle set membership proof
+    // Conditions fields: HASH256[0] = merkle_root
+    // Witness fields: HASH256[1..N] = merkle_proof (sibling hashes from leaf to root)
+    //                 HASH256[N+1] = leaf_hash (the element being proven)
+    // Proof verification: hash leaf with siblings bottom-up, compare to root.
+    auto hashes = FindAllFields(block, RungDataType::HASH256);
+    if (hashes.size() < 3) return EvalResult::ERROR; // root + at least 1 proof node + leaf
+
+    const RungField* root_field = hashes[0];
+    const RungField* leaf_field = hashes[hashes.size() - 1];
+    if (root_field->data.size() != 32 || leaf_field->data.size() != 32) {
+        return EvalResult::ERROR;
+    }
+
+    // Compute Merkle path: start from leaf, hash with each sibling
+    // Convention: if computed_hash < sibling, hash(computed || sibling), else hash(sibling || computed)
+    unsigned char current[32];
+    memcpy(current, leaf_field->data.data(), 32);
+
+    for (size_t i = 1; i < hashes.size() - 1; ++i) {
+        const auto& sibling = hashes[i]->data;
+        if (sibling.size() != 32) return EvalResult::ERROR;
+
+        unsigned char combined[64];
+        if (memcmp(current, sibling.data(), 32) < 0) {
+            memcpy(combined, current, 32);
+            memcpy(combined + 32, sibling.data(), 32);
+        } else {
+            memcpy(combined, sibling.data(), 32);
+            memcpy(combined + 32, current, 32);
+        }
+        CSHA256().Write(combined, 64).Finalize(current);
+    }
+
+    if (memcmp(current, root_field->data.data(), 32) == 0) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+// ============================================================================
 // Block dispatch
 // ============================================================================
 
@@ -1519,7 +1893,7 @@ EvalResult EvalBlock(const RungBlock& block,
 {
     EvalResult raw;
     switch (block.type) {
-    // Phase 1 — Signature
+    // Signature
     case RungBlockType::SIG:
         raw = EvalSigBlock(block, checker, sigversion, execdata);
         break;
@@ -1529,7 +1903,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::ADAPTOR_SIG:
         raw = EvalAdaptorSigBlock(block, checker, sigversion, execdata);
         break;
-    // Phase 1 — Timelock
+    // Timelock
     case RungBlockType::CSV:
         raw = EvalCSVBlock(block, checker);
         break;
@@ -1542,7 +1916,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::CLTV_TIME:
         raw = EvalCLTVTimeBlock(block, checker);
         break;
-    // Phase 1 — Hash
+    // Hash
     case RungBlockType::HASH_PREIMAGE:
         raw = EvalHashPreimageBlock(block);
         break;
@@ -1552,7 +1926,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::TAGGED_HASH:
         raw = EvalTaggedHashBlock(block);
         break;
-    // Phase 2 — Covenant
+    // Covenant
     case RungBlockType::CTV:
         raw = EvalCTVBlock(block, ctx);
         break;
@@ -1562,7 +1936,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::AMOUNT_LOCK:
         raw = EvalAmountLockBlock(block, ctx);
         break;
-    // Phase 2 — Anchor
+    // Anchor
     case RungBlockType::ANCHOR:
         raw = EvalAnchorBlock(block);
         break;
@@ -1581,7 +1955,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::ANCHOR_ORACLE:
         raw = EvalAnchorOracleBlock(block);
         break;
-    // Phase 3 — Recursion
+    // Recursion
     case RungBlockType::RECURSE_SAME:
         raw = EvalRecurseSameBlock(block, ctx);
         break;
@@ -1600,7 +1974,7 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::RECURSE_DECAY:
         raw = EvalRecurseDecayBlock(block, ctx);
         break;
-    // Phase 3 — PLC
+    // PLC
     case RungBlockType::HYSTERESIS_FEE:
         raw = EvalHysteresisFeeBlock(block, ctx);
         break;
@@ -1642,6 +2016,35 @@ EvalResult EvalBlock(const RungBlock& block,
         break;
     case RungBlockType::COSIGN:
         raw = EvalCosignBlock(block, ctx);
+        break;
+    // Compound
+    case RungBlockType::TIMELOCKED_SIG:
+        raw = EvalTimelockedSigBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::HTLC:
+        raw = EvalHTLCBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::HASH_SIG:
+        raw = EvalHashSigBlock(block, checker, sigversion, execdata);
+        break;
+    // Governance
+    case RungBlockType::EPOCH_GATE:
+        raw = EvalEpochGateBlock(block, ctx);
+        break;
+    case RungBlockType::WEIGHT_LIMIT:
+        raw = EvalWeightLimitBlock(block, ctx);
+        break;
+    case RungBlockType::INPUT_COUNT:
+        raw = EvalInputCountBlock(block, ctx);
+        break;
+    case RungBlockType::OUTPUT_COUNT:
+        raw = EvalOutputCountBlock(block, ctx);
+        break;
+    case RungBlockType::RELATIVE_VALUE:
+        raw = EvalRelativeValueBlock(block, ctx);
+        break;
+    case RungBlockType::ACCUMULATOR:
+        raw = EvalAccumulatorBlock(block);
         break;
     default:
         raw = EvalResult::UNKNOWN_BLOCK_TYPE;
@@ -1888,7 +2291,7 @@ bool VerifyRungTx(const CTransaction& tx,
     std::string cond_error;
     bool has_conditions = DeserializeRungConditions(spent_output.scriptPubKey, conditions, cond_error);
 
-    // Build evaluation context for Phase 2+ blocks
+    // Build evaluation context for covenant, anchor, recursion, and PLC blocks
     RungEvalContext eval_ctx;
     eval_ctx.tx = &tx;
     eval_ctx.input_index = nIn;

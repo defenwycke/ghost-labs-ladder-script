@@ -4603,4 +4603,435 @@ BOOST_AUTO_TEST_CASE(relay_merge_conditions_witness)
     BOOST_CHECK(decoded_cond.relays[0].blocks[0].fields[0].type == RungDataType::PUBKEY_COMMIT);
 }
 
+// ============================================================================
+// Compound block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(timelocked_sig_satisfied)
+{
+    // TIMELOCKED_SIG with passing sig and CSV
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(timelocked_sig_csv_fails)
+{
+    // Sig passes but CSV fails
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = false;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(timelocked_sig_sig_fails)
+{
+    // CSV passes but sig fails
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(htlc_satisfied)
+{
+    // HTLC with correct preimage, passing sig and CSV
+    // Build hash from known preimage
+    std::vector<uint8_t> preimage(32, 0x42);
+    std::vector<uint8_t> hash(32);
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash.data());
+
+    RungBlock block;
+    block.type = RungBlockType::HTLC;
+    block.fields.push_back({RungDataType::HASH256, hash});
+    block.fields.push_back({RungDataType::PREIMAGE, preimage});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalHTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(htlc_wrong_preimage)
+{
+    // Wrong preimage → unsatisfied
+    std::vector<uint8_t> preimage(32, 0x42);
+    std::vector<uint8_t> hash(32);
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash.data());
+
+    std::vector<uint8_t> wrong_preimage(32, 0x99); // different preimage
+
+    RungBlock block;
+    block.type = RungBlockType::HTLC;
+    block.fields.push_back({RungDataType::HASH256, hash});
+    block.fields.push_back({RungDataType::PREIMAGE, wrong_preimage});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalHTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(hash_sig_satisfied)
+{
+    std::vector<uint8_t> preimage(32, 0x42);
+    std::vector<uint8_t> hash(32);
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash.data());
+
+    RungBlock block;
+    block.type = RungBlockType::HASH_SIG;
+    block.fields.push_back({RungDataType::HASH256, hash});
+    block.fields.push_back({RungDataType::PREIMAGE, preimage});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalHashSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(hash_sig_bad_hash)
+{
+    std::vector<uint8_t> preimage(32, 0x42);
+    std::vector<uint8_t> wrong_hash(32, 0xFF); // doesn't match preimage
+
+    RungBlock block;
+    block.type = RungBlockType::HASH_SIG;
+    block.fields.push_back({RungDataType::HASH256, wrong_hash});
+    block.fields.push_back({RungDataType::PREIMAGE, preimage});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalHashSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+// ============================================================================
+// Governance block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(epoch_gate_in_window)
+{
+    // block_height 100, epoch_size 2016, window_size 144 → 100 % 2016 = 100 < 144 → satisfied
+    RungBlock block;
+    block.type = RungBlockType::EPOCH_GATE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2016)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    RungEvalContext ctx;
+    ctx.block_height = 100;
+    auto result = EvalEpochGateBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(epoch_gate_outside_window)
+{
+    // block_height 200, epoch_size 2016, window_size 144 → 200 % 2016 = 200 >= 144 → unsatisfied
+    RungBlock block;
+    block.type = RungBlockType::EPOCH_GATE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2016)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    RungEvalContext ctx;
+    ctx.block_height = 200;
+    auto result = EvalEpochGateBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(epoch_gate_boundary)
+{
+    // Exactly at window boundary: position 143 < 144 → satisfied; position 144 >= 144 → unsatisfied
+    RungBlock block;
+    block.type = RungBlockType::EPOCH_GATE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2016)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    RungEvalContext ctx;
+    ctx.block_height = 143;
+    BOOST_CHECK(EvalEpochGateBlock(block, ctx) == EvalResult::SATISFIED);
+    ctx.block_height = 144;
+    BOOST_CHECK(EvalEpochGateBlock(block, ctx) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(weight_limit_within_bounds)
+{
+    RungBlock block;
+    block.type = RungBlockType::WEIGHT_LIMIT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(100000)});  // max weight
+
+    CMutableTransaction mtx;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalWeightLimitBlock(block, ctx);
+    // A minimal tx with 1 input and 1 output is well under 100000 WU
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(weight_limit_exceeded)
+{
+    RungBlock block;
+    block.type = RungBlockType::WEIGHT_LIMIT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});  // max weight = 1 (impossibly small)
+
+    CMutableTransaction mtx;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalWeightLimitBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(input_count_within_bounds)
+{
+    RungBlock block;
+    block.type = RungBlockType::INPUT_COUNT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});  // min
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5)});  // max
+
+    // Build a mock tx with 3 inputs
+    CMutableTransaction mtx;
+    mtx.vin.resize(3);
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalInputCountBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(input_count_below_min)
+{
+    RungBlock block;
+    block.type = RungBlockType::INPUT_COUNT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(3)});  // min
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5)});  // max
+
+    CMutableTransaction mtx;
+    mtx.vin.resize(1); // only 1 input, min is 3
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalInputCountBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(output_count_within_bounds)
+{
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_COUNT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});  // min
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});  // max
+
+    CMutableTransaction mtx;
+    mtx.vout.resize(2);
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalOutputCountBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(output_count_exceeds_max)
+{
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_COUNT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});  // min
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});  // max
+
+    CMutableTransaction mtx;
+    mtx.vout.resize(5); // 5 outputs, max is 2
+    CTransaction tx(mtx);
+
+    RungEvalContext ctx;
+    ctx.tx = &tx;
+    auto result = EvalOutputCountBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(relative_value_satisfied)
+{
+    // 90% ratio: output 9000, input 10000 → 9000*10 >= 10000*9 → 90000 >= 90000 → satisfied
+    RungBlock block;
+    block.type = RungBlockType::RELATIVE_VALUE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(9)});   // numerator
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(10)});  // denominator
+
+    RungEvalContext ctx;
+    ctx.input_amount = 10000;
+    ctx.output_amount = 9000;
+    auto result = EvalRelativeValueBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(relative_value_unsatisfied)
+{
+    // 90% ratio: output 8999, input 10000 → 8999*10 = 89990 < 90000 → unsatisfied
+    RungBlock block;
+    block.type = RungBlockType::RELATIVE_VALUE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(9)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(10)});
+
+    RungEvalContext ctx;
+    ctx.input_amount = 10000;
+    ctx.output_amount = 8999;
+    auto result = EvalRelativeValueBlock(block, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(accumulator_valid_proof)
+{
+    // Build a simple 2-leaf Merkle tree and verify membership
+    // Leaves: L0 = SHA256("leaf0"), L1 = SHA256("leaf1")
+    // Root = SHA256(min(L0,L1) || max(L0,L1))
+
+    unsigned char l0[32], l1[32];
+    const char* d0 = "leaf0"; const char* d1 = "leaf1";
+    CSHA256().Write((const unsigned char*)d0, 5).Finalize(l0);
+    CSHA256().Write((const unsigned char*)d1, 5).Finalize(l1);
+
+    // Compute root: sorted concatenation
+    unsigned char combined[64];
+    if (memcmp(l0, l1, 32) < 0) {
+        memcpy(combined, l0, 32);
+        memcpy(combined + 32, l1, 32);
+    } else {
+        memcpy(combined, l1, 32);
+        memcpy(combined + 32, l0, 32);
+    }
+    unsigned char root[32];
+    CSHA256().Write(combined, 64).Finalize(root);
+
+    // Prove L0 membership: root + [sibling=L1] + [leaf=L0]
+    RungBlock block;
+    block.type = RungBlockType::ACCUMULATOR;
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(root, root + 32)});       // root
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(l1, l1 + 32)});           // sibling
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(l0, l0 + 32)});           // leaf
+
+    auto result = EvalAccumulatorBlock(block);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(accumulator_invalid_proof)
+{
+    // Same tree but wrong leaf → unsatisfied
+    unsigned char l0[32], l1[32];
+    const char* d0 = "leaf0"; const char* d1 = "leaf1";
+    CSHA256().Write((const unsigned char*)d0, 5).Finalize(l0);
+    CSHA256().Write((const unsigned char*)d1, 5).Finalize(l1);
+
+    unsigned char combined[64];
+    if (memcmp(l0, l1, 32) < 0) {
+        memcpy(combined, l0, 32);
+        memcpy(combined + 32, l1, 32);
+    } else {
+        memcpy(combined, l1, 32);
+        memcpy(combined + 32, l0, 32);
+    }
+    unsigned char root[32];
+    CSHA256().Write(combined, 64).Finalize(root);
+
+    // Wrong leaf: use random bytes instead of L0
+    std::vector<uint8_t> wrong_leaf(32, 0xFF);
+
+    RungBlock block;
+    block.type = RungBlockType::ACCUMULATOR;
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(root, root + 32)});
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(l1, l1 + 32)});
+    block.fields.push_back({RungDataType::HASH256, wrong_leaf});
+
+    auto result = EvalAccumulatorBlock(block);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(compound_block_types_recognized)
+{
+    // Verify all new block types are known
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::TIMELOCKED_SIG)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::HTLC)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::HASH_SIG)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::EPOCH_GATE)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::WEIGHT_LIMIT)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::INPUT_COUNT)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::OUTPUT_COUNT)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::RELATIVE_VALUE)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::ACCUMULATOR)));
+}
+
+BOOST_AUTO_TEST_CASE(compound_serialize_roundtrip)
+{
+    // Serialize a witness with compound blocks, verify roundtrip
+    LadderWitness ladder;
+    Rung rung;
+
+    RungBlock htlc_block;
+    htlc_block.type = RungBlockType::HTLC;
+    htlc_block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    htlc_block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0x42)});
+    htlc_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    htlc_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    htlc_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(std::move(htlc_block));
+
+    ladder.rungs.push_back(std::move(rung));
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks.size(), 1u);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::HTLC);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 5u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

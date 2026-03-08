@@ -2396,6 +2396,52 @@ const BLOCK_FAMILIES = [
       ]},
     ]
   },
+  {
+    name: 'COMPOUND', color: '#f59e0b',
+    blocks: [
+      { type: 'TIMELOCKED_SIG', label: 'TL_SIG', desc: 'SIG + CSV combined — signature with relative timelock', fields: [
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+        { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' },
+        { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
+      ]},
+      { type: 'HTLC', label: 'HTLC', desc: 'Hash + Timelock + Sig — Lightning HTLC / atomic swap', fields: [
+        { name: 'hash', dataType: 'HASH256', label: 'Payment Hash', placeholder: '32-byte hex' },
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+        { name: 'blocks', dataType: 'NUMERIC', label: 'Timeout (blocks)', placeholder: '144' }
+      ]},
+      { type: 'HASH_SIG', label: 'HASH_SIG', desc: 'Hash preimage + Signature — atomic swap claim', fields: [
+        { name: 'hash', dataType: 'HASH256', label: 'SHA256 Hash', placeholder: '32-byte hex' },
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' }
+      ]},
+    ]
+  },
+  {
+    name: 'GOVERNANCE', color: '#8b5cf6',
+    blocks: [
+      { type: 'EPOCH_GATE', label: 'EPOCH', desc: 'Periodic spending window — spendable only in epoch windows', fields: [
+        { name: 'epoch_size', dataType: 'NUMERIC', label: 'Epoch Size (blocks)', placeholder: '2016' },
+        { name: 'window_size', dataType: 'NUMERIC', label: 'Window Size (blocks)', placeholder: '144' }
+      ]},
+      { type: 'WEIGHT_LIMIT', label: 'WT_LIMIT', desc: 'Maximum transaction weight limit', fields: [
+        { name: 'max_weight', dataType: 'NUMERIC', label: 'Max Weight (WU)', placeholder: '400000' }
+      ]},
+      { type: 'INPUT_COUNT', label: 'IN_COUNT', desc: 'Input count bounds [min, max]', fields: [
+        { name: 'min', dataType: 'NUMERIC', label: 'Min Inputs', placeholder: '1' },
+        { name: 'max', dataType: 'NUMERIC', label: 'Max Inputs', placeholder: '10' }
+      ]},
+      { type: 'OUTPUT_COUNT', label: 'OUT_COUNT', desc: 'Output count bounds [min, max]', fields: [
+        { name: 'min', dataType: 'NUMERIC', label: 'Min Outputs', placeholder: '1' },
+        { name: 'max', dataType: 'NUMERIC', label: 'Max Outputs', placeholder: '2' }
+      ]},
+      { type: 'RELATIVE_VALUE', label: 'REL_VAL', desc: 'Output must be ≥ ratio of input (anti-siphon)', fields: [
+        { name: 'numerator', dataType: 'NUMERIC', label: 'Numerator', placeholder: '9' },
+        { name: 'denominator', dataType: 'NUMERIC', label: 'Denominator', placeholder: '10' }
+      ]},
+      { type: 'ACCUMULATOR', label: 'ACCUM', desc: 'Merkle set membership proof with root verification', fields: [
+        { name: 'merkle_root', dataType: 'HASH256', label: 'Merkle Root', placeholder: '32-byte hex' }
+      ]},
+    ]
+  },
 ];
 
 // Internal block type for referencing output coils from other rungs
@@ -2697,6 +2743,67 @@ function evaluateBlock(block, simState) {
     case 'ANCHOR_ORACLE':
     case 'COSIGN':
       result = 'satisfied';
+      break;
+    // Compound blocks: combine evaluation of their sub-components
+    case 'TIMELOCKED_SIG': {
+      const keyOk = simState.availableKeys?.has(v.pubkey);
+      const required = parseInt(v.blocks) || 0;
+      const elapsed = simState.csvBlocks || 0;
+      result = (keyOk && elapsed >= required) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'HTLC': {
+      const keyOk = simState.availableKeys?.has(v.pubkey);
+      const hashOk = simState.knownPreimages?.has(v.hash);
+      const required = parseInt(v.blocks) || 0;
+      const elapsed = simState.csvBlocks || 0;
+      result = (keyOk && hashOk && elapsed >= required) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'HASH_SIG': {
+      const keyOk = simState.availableKeys?.has(v.pubkey);
+      const hashOk = simState.knownPreimages?.has(v.hash);
+      result = (keyOk && hashOk) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    // Governance blocks
+    case 'EPOCH_GATE': {
+      const epochSize = parseInt(v.epoch_size) || 1;
+      const windowSize = parseInt(v.window_size) || 0;
+      const height = simState.blockHeight || 0;
+      result = (height % epochSize) < windowSize ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'WEIGHT_LIMIT': {
+      // Sim doesn't have tx weight — use rough estimate from tx totals
+      const maxWeight = parseInt(v.max_weight) || 0;
+      result = maxWeight > 0 ? 'satisfied' : 'unsatisfied'; // structural in sim
+      break;
+    }
+    case 'INPUT_COUNT': {
+      const min = parseInt(v.min) || 0;
+      const max = parseInt(v.max) || 255;
+      const count = simState.inputCount || 1;
+      result = (count >= min && count <= max) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'OUTPUT_COUNT': {
+      const min = parseInt(v.min) || 0;
+      const max = parseInt(v.max) || 255;
+      const count = simState.outputCount || 1;
+      result = (count >= min && count <= max) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'RELATIVE_VALUE': {
+      const num = parseInt(v.numerator) || 0;
+      const den = parseInt(v.denominator) || 1;
+      const input = simState.inputAmount || 0;
+      const output = simState.outputAmount || 0;
+      result = (output * den >= input * num) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'ACCUMULATOR':
+      result = 'satisfied'; // structural in sim — Merkle proof verification
       break;
     default:
       result = 'unknown';
@@ -6917,8 +7024,10 @@ function App() {
     energizedOutputs,
     energizedRungNums,
     outputAmount: txTotals.totalOut || simState.outputAmount,
+    inputCount: txTotals.inputCount || 1,
+    outputCount: txOutputs.filter(o => o.address || parseInt(o.amount) > 0).length || 1,
     forcedBlocks,
-  }), [simState, energizedOutputs, energizedRungNums, txTotals, forcedBlocks]);
+  }), [simState, energizedOutputs, energizedRungNums, txTotals, txOutputs, forcedBlocks]);
 
   // Count energized rungs
   const energizedCount = useMemo(() => {

@@ -1,6 +1,6 @@
 # Ladder Script Block Library
 
-Complete reference for all 39 Ladder Script block types. Each block evaluates a single
+Complete reference for all 48 Ladder Script block types. Each block evaluates a single
 spending condition within a rung. Blocks are combined with AND logic within a rung and
 OR logic across rungs (first satisfied rung wins).
 
@@ -13,13 +13,15 @@ OR logic across rungs (first satisfied rung wins).
 
 ## Table of Contents
 
-1. [Signature Family (0x00xx, Phase 1)](#signature-family)
-2. [Timelock Family (0x01xx, Phase 1)](#timelock-family)
-3. [Hash Family (0x02xx, Phase 1)](#hash-family)
-4. [Covenant Family (0x03xx, Phase 2)](#covenant-family)
-5. [Anchor Family (0x05xx, Phase 2)](#anchor-family)
-6. [Recursion Family (0x04xx, Phase 3)](#recursion-family)
-7. [PLC Family (0x06xx, Phase 3)](#plc-family)
+1. [Signature Family (0x00xx)](#signature-family)
+2. [Timelock Family (0x01xx)](#timelock-family)
+3. [Hash Family (0x02xx)](#hash-family)
+4. [Covenant Family (0x03xx)](#covenant-family)
+5. [Anchor Family (0x05xx)](#anchor-family)
+6. [Recursion Family (0x04xx)](#recursion-family)
+7. [PLC Family (0x06xx)](#plc-family)
+8. [Compound Family (0x07xx)](#compound-family)
+9. [Governance Family (0x08xx)](#governance-family)
 
 ---
 
@@ -2304,3 +2306,188 @@ Policy limit: A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PRE
 
 Post-quantum schemes (code >= 0x10) are routed through `VerifyPQSignature()` and
 use `ComputeLadderSighash()` with `SIGHASH_DEFAULT`.
+
+---
+
+## Compound Family
+
+Compound blocks collapse common multi-block patterns into single blocks, eliminating
+duplicate block headers on wire. Each compound block evaluates its constituent checks
+in sequence — all must pass for SATISFIED.
+
+### 40. TIMELOCKED_SIG (0x0701)
+
+**Family:** Compound
+
+**Purpose:** SIG + CSV in one block. Signature verification with relative timelock.
+Saves 8 bytes vs separate blocks (5.1%).
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
+| NUMERIC | NUMERIC | 1-8 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
+| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
+| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
+| SCHEME | SCHEME | 1 B | Optional (witness) | PQ scheme identifier |
+
+**Evaluation:**
+1. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
+2. Verify signature (Schnorr, ECDSA, or PQ based on SCHEME)
+3. Verify CheckSequence(timelock)
+4. All pass → SATISFIED
+
+### 41. HTLC (0x0702)
+
+**Family:** Compound
+
+**Purpose:** HASH_PREIMAGE + CSV + SIG in one block. Hash Time Locked Contract.
+Saves 16 bytes vs separate blocks (6.9%), 48 bytes vs Tapscript (18.1%).
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| HASH256 | HASH256 | 32 B | Yes (condition) | SHA-256 hash preimage must match |
+| NUMERIC | NUMERIC | 1-8 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
+| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
+| PREIMAGE | PREIMAGE | 1-520 B | Yes (witness) | Hash preimage |
+| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
+| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
+
+**Evaluation:**
+1. Verify SHA256(PREIMAGE) = HASH256
+2. Verify CheckSequence(timelock)
+3. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
+4. Verify signature against PUBKEY
+5. All pass → SATISFIED
+
+### 42. HASH_SIG (0x0703)
+
+**Family:** Compound
+
+**Purpose:** HASH_PREIMAGE + SIG in one block. Hash preimage + signature check.
+Saves 8 bytes vs separate blocks (3.6%).
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| HASH256 | HASH256 | 32 B | Yes (condition) | SHA-256 hash preimage must match |
+| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
+| PREIMAGE | PREIMAGE | 1-520 B | Yes (witness) | Hash preimage |
+| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
+| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
+
+**Evaluation:**
+1. Verify SHA256(PREIMAGE) = HASH256
+2. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
+3. Verify signature against PUBKEY
+4. All pass → SATISFIED
+
+---
+
+## Governance Family
+
+Governance blocks enforce transaction-level constraints. They inspect the spending
+transaction's structure, weight, and value ratios. None have Tapscript equivalents —
+these constraints are not expressible in Bitcoin Script.
+
+### 43. EPOCH_GATE (0x0801)
+
+**Family:** Governance
+
+**Purpose:** Periodic spending windows. Allows spending only when
+`block_height % epoch_size < window_size`.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| NUMERIC[0] | NUMERIC | 1-8 B | Yes (condition) | Epoch size in blocks |
+| NUMERIC[1] | NUMERIC | 1-8 B | Yes (condition) | Window size (must be ≤ epoch_size) |
+
+**Evaluation:** `block_height % epoch_size < window_size` → SATISFIED
+
+### 44. WEIGHT_LIMIT (0x0802)
+
+**Family:** Governance
+
+**Purpose:** Maximum transaction weight constraint.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| NUMERIC | NUMERIC | 1-8 B | Yes (condition) | Maximum allowed weight units |
+
+**Evaluation:** `GetTransactionWeight(tx) <= max_weight` → SATISFIED
+
+### 45. INPUT_COUNT (0x0803)
+
+**Family:** Governance
+
+**Purpose:** Bounds on number of inputs in the spending transaction.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| NUMERIC[0] | NUMERIC | 1-8 B | Yes (condition) | Minimum inputs |
+| NUMERIC[1] | NUMERIC | 1-8 B | Yes (condition) | Maximum inputs |
+
+**Evaluation:** `min <= tx.vin.size() <= max` → SATISFIED
+
+### 46. OUTPUT_COUNT (0x0804)
+
+**Family:** Governance
+
+**Purpose:** Bounds on number of outputs in the spending transaction.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| NUMERIC[0] | NUMERIC | 1-8 B | Yes (condition) | Minimum outputs |
+| NUMERIC[1] | NUMERIC | 1-8 B | Yes (condition) | Maximum outputs |
+
+**Evaluation:** `min <= tx.vout.size() <= max` → SATISFIED
+
+### 47. RELATIVE_VALUE (0x0805)
+
+**Family:** Governance
+
+**Purpose:** Anti-siphon ratio enforcement. Output must maintain a minimum ratio of
+input value. Uses integer ratio (no floating point). Overflow-safe via `__int128`.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| NUMERIC[0] | NUMERIC | 1-8 B | Yes (condition) | Numerator (≥ 0) |
+| NUMERIC[1] | NUMERIC | 1-8 B | Yes (condition) | Denominator (> 0) |
+
+**Evaluation:** `output_amount * denominator >= input_amount * numerator` → SATISFIED
+
+Example: 9/10 ratio means output must be ≥ 90% of input.
+
+### 48. ACCUMULATOR (0x0806)
+
+**Family:** Governance
+
+**Purpose:** Merkle set membership proof. Conditions commit to a Merkle root; witness
+provides the leaf and sibling path. Uses sorted-pair convention: `hash(min(a,b) || max(a,b))`.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| HASH256[0] | HASH256 | 32 B | Yes (condition) | Merkle root |
+| HASH256[1..N] | HASH256 | 32 B each | Yes (witness) | Sibling hashes (proof path) |
+| HASH256[N+1] | HASH256 | 32 B | Yes (witness) | Leaf hash being proven |
+
+**Evaluation:**
+1. Start with leaf
+2. For each sibling: `current = SHA256(min(current, sibling) || max(current, sibling))`
+3. Compare computed root to committed root → SATISFIED if equal

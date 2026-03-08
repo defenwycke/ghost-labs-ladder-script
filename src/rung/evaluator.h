@@ -56,7 +56,7 @@ public:
     bool ComputeSighash(uint8_t hash_type, uint256& hash_out) const;
 };
 
-/** Extended evaluation context for Phase 2+ block types.
+/** Extended evaluation context for block types that need transaction data.
  *  Provides transaction and amount data needed by covenant, anchor,
  *  recursion, and PLC evaluators. */
 struct RungEvalContext {
@@ -82,7 +82,7 @@ enum class EvalResult {
  *  SATISFIED↔UNSATISFIED, ERROR unchanged, UNKNOWN_BLOCK_TYPE inverted → SATISFIED. */
 EvalResult ApplyInversion(EvalResult raw, bool inverted);
 
-// Phase 1 evaluators
+// Signature evaluators
 EvalResult EvalSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalMultisigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalHashPreimageBlock(const RungBlock& block);
@@ -94,7 +94,7 @@ EvalResult EvalCLTVTimeBlock(const RungBlock& block, const BaseSignatureChecker&
 EvalResult EvalAdaptorSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalTaggedHashBlock(const RungBlock& block);
 
-// Phase 2 evaluators
+// Covenant evaluators
 EvalResult EvalCTVBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalVaultLockBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalAmountLockBlock(const RungBlock& block, const RungEvalContext& ctx);
@@ -105,7 +105,7 @@ EvalResult EvalAnchorReserveBlock(const RungBlock& block);
 EvalResult EvalAnchorSealBlock(const RungBlock& block);
 EvalResult EvalAnchorOracleBlock(const RungBlock& block);
 
-// Phase 3 — Recursion evaluators
+// Recursion evaluators
 EvalResult EvalRecurseSameBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalRecurseModifiedBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalRecurseUntilBlock(const RungBlock& block, const RungEvalContext& ctx);
@@ -113,7 +113,7 @@ EvalResult EvalRecurseCountBlock(const RungBlock& block, const RungEvalContext& 
 EvalResult EvalRecurseSplitBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalRecurseDecayBlock(const RungBlock& block, const RungEvalContext& ctx);
 
-// Phase 3 — PLC evaluators
+// PLC evaluators
 EvalResult EvalHysteresisFeeBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalHysteresisValueBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalTimerContinuousBlock(const RungBlock& block, const RungEvalContext& ctx);
@@ -128,6 +128,19 @@ EvalResult EvalSequencerBlock(const RungBlock& block, const RungEvalContext& ctx
 EvalResult EvalOneShotBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalRateLimitBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalCosignBlock(const RungBlock& block, const RungEvalContext& ctx);
+
+// Compound evaluators (multi-block patterns in single block)
+EvalResult EvalTimelockedSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalHTLCBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalHashSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+
+// Governance evaluators (transaction-level constraints)
+EvalResult EvalEpochGateBlock(const RungBlock& block, const RungEvalContext& ctx);
+EvalResult EvalWeightLimitBlock(const RungBlock& block, const RungEvalContext& ctx);
+EvalResult EvalInputCountBlock(const RungBlock& block, const RungEvalContext& ctx);
+EvalResult EvalOutputCountBlock(const RungBlock& block, const RungEvalContext& ctx);
+EvalResult EvalRelativeValueBlock(const RungBlock& block, const RungEvalContext& ctx);
+EvalResult EvalAccumulatorBlock(const RungBlock& block);
 
 /** Evaluate a single block by dispatching to the appropriate evaluator. */
 EvalResult EvalBlock(const RungBlock& block,

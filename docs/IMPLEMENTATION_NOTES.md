@@ -127,13 +127,13 @@ Block layout: [NUMERIC threshold] [PUBKEY key_1] ... [PUBKEY key_N] [SIGNATURE s
 
 ---
 
-## 9. Policy: All Phases Standard
+## 9. Policy: All Families Standard
 
-**Spec implies:** Phase 1 blocks standard, Phase 2/3 blocks non-standard until activation.
+**Spec implies:** Base blocks standard, covenant/recursion/PLC blocks non-standard until activation.
 
-**Implementation:** All 39 known block types pass `IsStandardRungTx()` policy checks. Phase classification functions (`IsPhase1BlockType`, `IsPhase2BlockType`, `IsPhase3BlockType`) exist but are not used as policy gates.
+**Implementation:** All 39 known block types pass `IsStandardRungTx()` policy checks. Family classification functions (`IsPhase1BlockType`, `IsPhase2BlockType`, `IsPhase3BlockType`) exist but are not used as policy gates.
 
-**Rationale:** Ghost Core operates on its own signet where all nodes run the same software. There is no need for a phased activation timeline — all block types are consensus-valid from genesis. The phase functions are retained for documentation and for potential mainnet activation logic.
+**Rationale:** Ghost Core operates on its own signet where all nodes run the same software. There is no need for a phased activation timeline — all block types are consensus-valid from genesis. The classification functions are retained for documentation and for potential mainnet activation logic.
 
 ---
 

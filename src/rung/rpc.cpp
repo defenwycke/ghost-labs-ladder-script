@@ -156,38 +156,49 @@ static UniValue LadderWitnessToJSON(const LadderWitness& ladder)
 /** Parse a block type string to enum. Returns false on unknown type. */
 static bool ParseBlockType(const std::string& name, RungBlockType& out)
 {
-    // Phase 1 — Signature
+    // Signature family
     if (name == "SIG")              { out = RungBlockType::SIG; return true; }
     if (name == "MULTISIG")         { out = RungBlockType::MULTISIG; return true; }
     if (name == "ADAPTOR_SIG")      { out = RungBlockType::ADAPTOR_SIG; return true; }
-    // Phase 1 — Timelock
+    // Timelock family
     if (name == "CSV")              { out = RungBlockType::CSV; return true; }
     if (name == "CSV_TIME")         { out = RungBlockType::CSV_TIME; return true; }
     if (name == "CLTV")             { out = RungBlockType::CLTV; return true; }
     if (name == "CLTV_TIME")        { out = RungBlockType::CLTV_TIME; return true; }
-    // Phase 1 — Hash
+    // Hash family
     if (name == "HASH_PREIMAGE")    { out = RungBlockType::HASH_PREIMAGE; return true; }
     if (name == "HASH160_PREIMAGE") { out = RungBlockType::HASH160_PREIMAGE; return true; }
     if (name == "TAGGED_HASH")      { out = RungBlockType::TAGGED_HASH; return true; }
-    // Phase 2 — Covenant
+    // Compound family
+    if (name == "TIMELOCKED_SIG")   { out = RungBlockType::TIMELOCKED_SIG; return true; }
+    if (name == "HTLC")             { out = RungBlockType::HTLC; return true; }
+    if (name == "HASH_SIG")         { out = RungBlockType::HASH_SIG; return true; }
+    // Covenant family
     if (name == "CTV")              { out = RungBlockType::CTV; return true; }
     if (name == "VAULT_LOCK")       { out = RungBlockType::VAULT_LOCK; return true; }
     if (name == "AMOUNT_LOCK")      { out = RungBlockType::AMOUNT_LOCK; return true; }
-    // Phase 2 — Anchor
+    // Anchor family
     if (name == "ANCHOR")           { out = RungBlockType::ANCHOR; return true; }
     if (name == "ANCHOR_CHANNEL")   { out = RungBlockType::ANCHOR_CHANNEL; return true; }
     if (name == "ANCHOR_POOL")      { out = RungBlockType::ANCHOR_POOL; return true; }
     if (name == "ANCHOR_RESERVE")   { out = RungBlockType::ANCHOR_RESERVE; return true; }
     if (name == "ANCHOR_SEAL")      { out = RungBlockType::ANCHOR_SEAL; return true; }
     if (name == "ANCHOR_ORACLE")    { out = RungBlockType::ANCHOR_ORACLE; return true; }
-    // Phase 3 — Recursion
+    // Governance family
+    if (name == "EPOCH_GATE")       { out = RungBlockType::EPOCH_GATE; return true; }
+    if (name == "WEIGHT_LIMIT")     { out = RungBlockType::WEIGHT_LIMIT; return true; }
+    if (name == "INPUT_COUNT")      { out = RungBlockType::INPUT_COUNT; return true; }
+    if (name == "OUTPUT_COUNT")     { out = RungBlockType::OUTPUT_COUNT; return true; }
+    if (name == "RELATIVE_VALUE")   { out = RungBlockType::RELATIVE_VALUE; return true; }
+    if (name == "ACCUMULATOR")      { out = RungBlockType::ACCUMULATOR; return true; }
+    // Recursion family
     if (name == "RECURSE_SAME")     { out = RungBlockType::RECURSE_SAME; return true; }
     if (name == "RECURSE_MODIFIED") { out = RungBlockType::RECURSE_MODIFIED; return true; }
     if (name == "RECURSE_UNTIL")    { out = RungBlockType::RECURSE_UNTIL; return true; }
     if (name == "RECURSE_COUNT")    { out = RungBlockType::RECURSE_COUNT; return true; }
     if (name == "RECURSE_SPLIT")    { out = RungBlockType::RECURSE_SPLIT; return true; }
     if (name == "RECURSE_DECAY")    { out = RungBlockType::RECURSE_DECAY; return true; }
-    // Phase 3 — PLC
+    // PLC family
     if (name == "HYSTERESIS_FEE")   { out = RungBlockType::HYSTERESIS_FEE; return true; }
     if (name == "HYSTERESIS_VALUE") { out = RungBlockType::HYSTERESIS_VALUE; return true; }
     if (name == "TIMER_CONTINUOUS") { out = RungBlockType::TIMER_CONTINUOUS; return true; }
@@ -1012,7 +1023,7 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         // No witness fields needed — NUMERIC comes from conditions
         break;
     default:
-        // Phase 2/3/4 blocks — no witness fields needed
+        // Covenant/governance/recursion/PLC blocks — no witness fields needed
         break;
     }
 

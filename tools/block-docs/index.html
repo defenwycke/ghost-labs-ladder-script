@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Block Reference — LADDER SCRIPT</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .index-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  @media (max-width: 640px) { .index-grid { grid-template-columns: 1fr; } }
+
+  .block-card {
+    display: block;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .block-card:hover {
+    border-color: var(--amber-dim);
+    background: var(--bg-hover);
+  }
+  .block-card-code {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .block-card-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--amber);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .block-card-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .block-card-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  .family-section {
+    margin-bottom: 48px;
+  }
+  .family-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .family-signature { color: #e6a817; }
+  .family-timelock { color: #39a5b7; }
+  .family-hash { color: #b070b0; }
+  .family-covenant { color: #e06c75; }
+  .family-anchor { color: #56b6c2; }
+  .family-recursion { color: #e5c07b; }
+  .family-plc { color: #98c379; }
+  .family-compound { color: #f59e0b; }
+  .family-governance { color: #8b5cf6; }
+
+  .intro-text {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    max-width: 640px;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <span class="doc-header-title">LADDER SCRIPT</span>
+  <div class="doc-header-divider"></div>
+  <a href="../ladder-engine/index.html">Engine</a>
+  <div class="doc-header-divider"></div>
+  <span class="doc-header-family">Block Reference</span>
+</div>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">REFERENCE DOCUMENTATION</div>
+  <h1 class="block-title">BLOCK LIBRARY</h1>
+  <p class="block-subtitle">Deep-dive documentation for each block type in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>
+</div>
+
+<!-- Signature Family -->
+<div class="family-section">
+  <h2 class="family-title family-signature">Signature Family — 0x0000</h2>
+  <p class="intro-text">Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization — every spend ultimately requires at least one signature check.</p>
+
+  <div class="index-grid">
+    <a href="sig.html" class="block-card">
+      <div class="block-card-code">0x0001</div>
+      <div class="block-card-name">SIG</div>
+      <div class="block-card-desc">Single Schnorr signature verification against a committed public key. The most fundamental block type. Equivalent to OP_CHECKSIG in Tapscript.</div>
+      <div class="block-card-badge badge-anchor">Signature</div>
+    </a>
+
+    <a href="multisig.html" class="block-card">
+      <div class="block-card-code">0x0002</div>
+      <div class="block-card-name">MULTISIG</div>
+      <div class="block-card-desc">M-of-N threshold signature verification. Conditions commit to N pubkeys and threshold M; witness provides M valid signatures.</div>
+      <div class="block-card-badge badge-anchor">Signature</div>
+    </a>
+
+    <a href="adaptor-sig.html" class="block-card">
+      <div class="block-card-code">0x0003</div>
+      <div class="block-card-name">ADAPTOR_SIG</div>
+      <div class="block-card-desc">Adaptor signature verification for atomic swaps and DLCs. Verifies a signature that reveals a secret scalar upon completion.</div>
+      <div class="block-card-badge badge-anchor">Signature</div>
+    </a>
+  </div>
+</div>
+
+<!-- Timelock Family -->
+<div class="family-section">
+  <h2 class="family-title family-timelock">Timelock Family — 0x0100</h2>
+  <p class="intro-text">Timelock blocks enforce temporal constraints on spending — either relative to when the UTXO was confirmed (CSV) or absolute block height / timestamp (CLTV). Direct Tapscript equivalents exist for all four types.</p>
+
+  <div class="index-grid">
+    <a href="csv.html" class="block-card">
+      <div class="block-card-code">0x0101</div>
+      <div class="block-card-name">CSV</div>
+      <div class="block-card-desc">Relative timelock by block count. UTXO cannot be spent until N blocks after confirmation. Equivalent to OP_CHECKSEQUENCEVERIFY.</div>
+      <div class="block-card-badge badge-anchor">Timelock</div>
+    </a>
+
+    <a href="csv-time.html" class="block-card">
+      <div class="block-card-code">0x0102</div>
+      <div class="block-card-name">CSV_TIME</div>
+      <div class="block-card-desc">Relative timelock by time (512-second granularity). UTXO cannot be spent until N seconds after confirmation.</div>
+      <div class="block-card-badge badge-anchor">Timelock</div>
+    </a>
+
+    <a href="cltv.html" class="block-card">
+      <div class="block-card-code">0x0103</div>
+      <div class="block-card-name">CLTV</div>
+      <div class="block-card-desc">Absolute timelock by block height. UTXO cannot be spent until block height reaches N. Equivalent to OP_CHECKLOCKTIMEVERIFY.</div>
+      <div class="block-card-badge badge-anchor">Timelock</div>
+    </a>
+
+    <a href="cltv-time.html" class="block-card">
+      <div class="block-card-code">0x0104</div>
+      <div class="block-card-name">CLTV_TIME</div>
+      <div class="block-card-desc">Absolute timelock by Unix timestamp. UTXO cannot be spent until the median-time-past reaches the committed timestamp.</div>
+      <div class="block-card-badge badge-anchor">Timelock</div>
+    </a>
+  </div>
+</div>
+
+<!-- Hash Family -->
+<div class="family-section">
+  <h2 class="family-title family-hash">Hash Family — 0x0200</h2>
+  <p class="intro-text">Hash blocks verify knowledge of a preimage that produces a committed hash digest. Used for hash locks, atomic swaps, and commitment schemes. HASH_PREIMAGE has a direct Tapscript equivalent; HASH160 and TAGGED_HASH do not.</p>
+
+  <div class="index-grid">
+    <a href="hash-preimage.html" class="block-card">
+      <div class="block-card-code">0x0201</div>
+      <div class="block-card-name">HASH_PREIMAGE</div>
+      <div class="block-card-desc">SHA-256 hash preimage verification. Conditions commit to a 32-byte hash; witness provides the preimage. Equivalent to OP_SHA256 OP_EQUAL.</div>
+      <div class="block-card-badge badge-hash">Hash</div>
+    </a>
+
+    <a href="hash160-preimage.html" class="block-card">
+      <div class="block-card-code">0x0202</div>
+      <div class="block-card-name">HASH160_PREIMAGE</div>
+      <div class="block-card-desc">RIPEMD160(SHA256) hash preimage verification. 20-byte digest saves 12 bytes on wire vs HASH_PREIMAGE. Used for address-based hash locks.</div>
+      <div class="block-card-badge badge-hash">Hash</div>
+    </a>
+
+    <a href="tagged-hash.html" class="block-card">
+      <div class="block-card-code">0x0203</div>
+      <div class="block-card-name">TAGGED_HASH</div>
+      <div class="block-card-desc">BIP-340 tagged hash preimage verification. SHA256(SHA256(tag) || SHA256(tag) || preimage). Domain-separated hashing for protocol-specific commitments.</div>
+      <div class="block-card-badge badge-hash">Hash</div>
+    </a>
+  </div>
+</div>
+
+<!-- Covenant Family -->
+<div class="family-section">
+  <h2 class="family-title family-covenant">Covenant Family — 0x0400</h2>
+  <p class="intro-text">Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself. They enable pre-committed transaction templates, tiered vault custody, and output value restrictions &mdash; capabilities that have no direct Tapscript equivalent.</p>
+
+  <div class="index-grid">
+    <a href="ctv.html" class="block-card">
+      <div class="block-card-code">0x0401</div>
+      <div class="block-card-name">CTV</div>
+      <div class="block-card-desc">CheckTemplateVerify (BIP-119). Verifies spending transaction matches a committed template hash covering version, locktime, outputs, and input index.</div>
+      <div class="block-card-badge badge-covenant">Covenant</div>
+    </a>
+
+    <a href="vault-lock.html" class="block-card">
+      <div class="block-card-code">0x0402</div>
+      <div class="block-card-name">VAULT_LOCK</div>
+      <div class="block-card-desc">Two-path vault with recovery key (immediate) and hot key (CSV-delayed). Combines custody tiering and time-delayed authorization.</div>
+      <div class="block-card-badge badge-covenant">Covenant</div>
+    </a>
+
+    <a href="amount-lock.html" class="block-card">
+      <div class="block-card-code">0x0403</div>
+      <div class="block-card-name">AMOUNT_LOCK</div>
+      <div class="block-card-desc">Output amount range check. Verifies min_sats &le; output_amount &le; max_sats. Prevents dust and enforces spending caps.</div>
+      <div class="block-card-badge badge-covenant">Covenant</div>
+    </a>
+  </div>
+</div>
+
+<!-- Anchor Family -->
+<div class="family-section">
+  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
+  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
+
+  <div class="index-grid">
+    <a href="anchor.html" class="block-card">
+      <div class="block-card-code">0x0501</div>
+      <div class="block-card-name">ANCHOR</div>
+      <div class="block-card-desc">Generic anchor point. Commits to a 32-byte anchor hash identifying an off-chain structure. Base type for all anchor variants.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-channel.html" class="block-card">
+      <div class="block-card-code">0x0502</div>
+      <div class="block-card-name">ANCHOR_CHANNEL</div>
+      <div class="block-card-desc">Payment channel anchor. Commits to a channel ID and sequence number. Enables channel state binding to on-chain UTXOs.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-pool.html" class="block-card">
+      <div class="block-card-code">0x0503</div>
+      <div class="block-card-name">ANCHOR_POOL</div>
+      <div class="block-card-desc">Liquidity pool anchor. Commits to a pool ID binding the UTXO to a specific liquidity pool or coinpool structure.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-reserve.html" class="block-card">
+      <div class="block-card-code">0x0504</div>
+      <div class="block-card-name">ANCHOR_RESERVE</div>
+      <div class="block-card-desc">Reserve proof anchor. Commits to a minimum reserve amount, providing on-chain proof of reserves for off-chain balances.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-seal.html" class="block-card">
+      <div class="block-card-code">0x0505</div>
+      <div class="block-card-name">ANCHOR_SEAL</div>
+      <div class="block-card-desc">Tamper-evident seal. Single-use commitment that can only be opened once. Used for client-side validation and single-use seals.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-oracle.html" class="block-card">
+      <div class="block-card-code">0x0506</div>
+      <div class="block-card-name">ANCHOR_ORACLE</div>
+      <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+  </div>
+</div>
+
+<!-- Recursion Family -->
+<div class="family-section">
+  <h2 class="family-title family-recursion">Recursion Family — 0x0300</h2>
+  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
+
+  <div class="index-grid">
+    <a href="recurse-same.html" class="block-card">
+      <div class="block-card-code">0x0301</div>
+      <div class="block-card-name">RECURSE_SAME</div>
+      <div class="block-card-desc">Enforces that an output recreates the identical covenant. The spent conditions must appear verbatim in the spending transaction's output.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-modified.html" class="block-card">
+      <div class="block-card-code">0x0302</div>
+      <div class="block-card-name">RECURSE_MODIFIED</div>
+      <div class="block-card-desc">Recursive covenant with allowed field mutations. Specifies which fields may change between iterations while enforcing structural identity.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-until.html" class="block-card">
+      <div class="block-card-code">0x0303</div>
+      <div class="block-card-name">RECURSE_UNTIL</div>
+      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-count.html" class="block-card">
+      <div class="block-card-code">0x0304</div>
+      <div class="block-card-name">RECURSE_COUNT</div>
+      <div class="block-card-desc">Count-limited recursion. Commits to a maximum iteration count; each spend decrements the counter. Terminates at zero.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-split.html" class="block-card">
+      <div class="block-card-code">0x0305</div>
+      <div class="block-card-name">RECURSE_SPLIT</div>
+      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-decay.html" class="block-card">
+      <div class="block-card-code">0x0306</div>
+      <div class="block-card-name">RECURSE_DECAY</div>
+      <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+  </div>
+</div>
+
+<!-- PLC Family -->
+<div class="family-section">
+  <h2 class="family-title family-plc">PLC Family — 0x0600</h2>
+  <p class="intro-text">PLC (Programmable Logic Controller) blocks bring industrial automation primitives to Bitcoin script. Hysteresis, timers, latches, counters, comparators, sequencers, and rate limiters — deterministic state machines for UTXO spending policy.</p>
+
+  <div class="index-grid">
+    <a href="hysteresis-fee.html" class="block-card">
+      <div class="block-card-code">0x0601</div>
+      <div class="block-card-name">HYSTERESIS_FEE</div>
+      <div class="block-card-desc">Fee-rate hysteresis controller. Allows spending only when fee rate crosses a threshold with deadband, preventing oscillation around boundary values.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="hysteresis-value.html" class="block-card">
+      <div class="block-card-code">0x0602</div>
+      <div class="block-card-name">HYSTERESIS_VALUE</div>
+      <div class="block-card-desc">Value-based hysteresis controller. Triggers on UTXO value crossing high/low thresholds with deadband to prevent rapid state flipping.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="timer-continuous.html" class="block-card">
+      <div class="block-card-code">0x0603</div>
+      <div class="block-card-name">TIMER_CONTINUOUS</div>
+      <div class="block-card-desc">Continuous on-delay timer. Starts counting from UTXO confirmation; spending allowed only after the preset duration elapses continuously.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="timer-off-delay.html" class="block-card">
+      <div class="block-card-code">0x0604</div>
+      <div class="block-card-name">TIMER_OFF_DELAY</div>
+      <div class="block-card-desc">Off-delay timer. Allows spending during a window after a trigger event, then locks. Used for time-limited withdrawal windows.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="latch-set.html" class="block-card">
+      <div class="block-card-code">0x0605</div>
+      <div class="block-card-name">LATCH_SET</div>
+      <div class="block-card-desc">Set-dominant latch. Once set by a trigger condition, remains set permanently. Creates irreversible state transitions in covenant logic.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="latch-reset.html" class="block-card">
+      <div class="block-card-code">0x0606</div>
+      <div class="block-card-name">LATCH_RESET</div>
+      <div class="block-card-desc">Reset-dominant latch. Default state is set; a trigger condition resets it permanently. Inverse of LATCH_SET for complementary logic.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="counter-down.html" class="block-card">
+      <div class="block-card-code">0x0607</div>
+      <div class="block-card-name">COUNTER_DOWN</div>
+      <div class="block-card-desc">Down counter. Starts at a preset value and decrements each recursive spend. Triggers when count reaches zero. Used for N-spend limits.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="counter-preset.html" class="block-card">
+      <div class="block-card-code">0x0608</div>
+      <div class="block-card-name">COUNTER_PRESET</div>
+      <div class="block-card-desc">Preset counter with configurable target. Counts up from zero; triggers when count reaches preset value. Reset on trigger.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="counter-up.html" class="block-card">
+      <div class="block-card-code">0x0609</div>
+      <div class="block-card-name">COUNTER_UP</div>
+      <div class="block-card-desc">Up counter. Increments each recursive spend with no upper bound. Used for tracking spend count in stateful covenants.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="compare.html" class="block-card">
+      <div class="block-card-code">0x060A</div>
+      <div class="block-card-name">COMPARE</div>
+      <div class="block-card-desc">Numeric comparator. Compares two values with configurable operator (EQ, NE, LT, LE, GT, GE). Used for conditional branching in covenant logic.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="sequencer.html" class="block-card">
+      <div class="block-card-code">0x060B</div>
+      <div class="block-card-name">SEQUENCER</div>
+      <div class="block-card-desc">Step sequencer. Advances through a committed sequence of states, one step per recursive spend. Enforces ordered multi-phase spending policies.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="one-shot.html" class="block-card">
+      <div class="block-card-code">0x060C</div>
+      <div class="block-card-name">ONE_SHOT</div>
+      <div class="block-card-desc">Single-pulse trigger. Allows exactly one spend, then permanently disables. The simplest state machine — a one-time authorization token.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="rate-limit.html" class="block-card">
+      <div class="block-card-code">0x060D</div>
+      <div class="block-card-name">RATE_LIMIT</div>
+      <div class="block-card-desc">Spend rate limiter. Enforces a maximum number of spends within a block-height window. Combines counter logic with temporal constraints.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+
+    <a href="cosign.html" class="block-card">
+      <div class="block-card-code">0x060E</div>
+      <div class="block-card-name">COSIGN</div>
+      <div class="block-card-desc">Co-signing gate. Requires an additional signature from a committed co-signer key before the primary spending condition is evaluated.</div>
+      <div class="block-card-badge badge-plc">PLC</div>
+    </a>
+  </div>
+</div>
+
+<!-- Compound Family -->
+<div class="family-section">
+  <h2 class="family-title family-compound">Compound Family — 0x0700</h2>
+  <p class="intro-text">Compound blocks collapse common multi-block patterns into single blocks, reducing wire overhead by eliminating duplicate block headers. Each compound block performs the evaluation of its constituent blocks in sequence.</p>
+
+  <div class="index-grid">
+    <a href="timelocked-sig.html" class="block-card">
+      <div class="block-card-code">0x0701</div>
+      <div class="block-card-name">TIMELOCKED_SIG</div>
+      <div class="block-card-desc">Signature verification with relative timelock in a single block. Replaces SIG + CSV pattern. Saves 8 bytes on wire.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+
+    <a href="htlc.html" class="block-card">
+      <div class="block-card-code">0x0702</div>
+      <div class="block-card-name">HTLC</div>
+      <div class="block-card-desc">Hash Time Locked Contract — hash preimage verification + relative timelock + signature in one block. Replaces 3 blocks. Saves 16 bytes.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+
+    <a href="hash-sig.html" class="block-card">
+      <div class="block-card-code">0x0703</div>
+      <div class="block-card-name">HASH_SIG</div>
+      <div class="block-card-desc">Hash preimage verification combined with signature check. Replaces HASH_PREIMAGE + SIG. Saves 8 bytes on wire.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+  </div>
+</div>
+
+<!-- Governance Family -->
+<div class="family-section">
+  <h2 class="family-title family-governance">Governance Family — 0x0800</h2>
+  <p class="intro-text">Governance blocks enforce transaction-level constraints that have no Tapscript equivalent. They inspect the spending transaction's structure, weight, input/output counts, and value ratios to enforce spending policies at the consensus level.</p>
+
+  <div class="index-grid">
+    <a href="epoch-gate.html" class="block-card">
+      <div class="block-card-code">0x0801</div>
+      <div class="block-card-name">EPOCH_GATE</div>
+      <div class="block-card-desc">Periodic spending windows — allows spending only during specific portions of each epoch. Uses block height modular arithmetic.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+
+    <a href="weight-limit.html" class="block-card">
+      <div class="block-card-code">0x0802</div>
+      <div class="block-card-name">WEIGHT_LIMIT</div>
+      <div class="block-card-desc">Maximum transaction weight constraint. Prevents the UTXO from being spent in oversized transactions.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+
+    <a href="input-count.html" class="block-card">
+      <div class="block-card-code">0x0803</div>
+      <div class="block-card-name">INPUT_COUNT</div>
+      <div class="block-card-desc">Bounds on number of inputs in the spending transaction. Min/max range enforcement for input consolidation control.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+
+    <a href="output-count.html" class="block-card">
+      <div class="block-card-code">0x0804</div>
+      <div class="block-card-name">OUTPUT_COUNT</div>
+      <div class="block-card-desc">Bounds on number of outputs in the spending transaction. Controls fan-out and prevents excessive output creation.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+
+    <a href="relative-value.html" class="block-card">
+      <div class="block-card-code">0x0805</div>
+      <div class="block-card-name">RELATIVE_VALUE</div>
+      <div class="block-card-desc">Anti-siphon ratio enforcement. Ensures output value maintains a minimum ratio to input value. Uses integer ratio with overflow protection.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+
+    <a href="accumulator.html" class="block-card">
+      <div class="block-card-code">0x0806</div>
+      <div class="block-card-name">ACCUMULATOR</div>
+      <div class="block-card-desc">Merkle set membership proof. Verifies that a value belongs to a committed set using sorted-pair Merkle proofs.</div>
+      <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

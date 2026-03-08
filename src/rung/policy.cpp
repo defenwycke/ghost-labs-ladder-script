@@ -11,7 +11,7 @@
 
 namespace rung {
 
-bool IsPhase1BlockType(uint16_t block_type)
+bool IsBaseBlockType(uint16_t block_type)
 {
     switch (static_cast<RungBlockType>(block_type)) {
     case RungBlockType::SIG:
@@ -24,13 +24,17 @@ bool IsPhase1BlockType(uint16_t block_type)
     case RungBlockType::HASH_PREIMAGE:
     case RungBlockType::HASH160_PREIMAGE:
     case RungBlockType::TAGGED_HASH:
+    // Compound family (collapsed multi-block patterns)
+    case RungBlockType::TIMELOCKED_SIG:
+    case RungBlockType::HTLC:
+    case RungBlockType::HASH_SIG:
         return true;
     default:
         return false;
     }
 }
 
-bool IsPhase2BlockType(uint16_t block_type)
+bool IsCovenantBlockType(uint16_t block_type)
 {
     switch (static_cast<RungBlockType>(block_type)) {
     case RungBlockType::CTV:
@@ -42,13 +46,20 @@ bool IsPhase2BlockType(uint16_t block_type)
     case RungBlockType::ANCHOR_RESERVE:
     case RungBlockType::ANCHOR_SEAL:
     case RungBlockType::ANCHOR_ORACLE:
+    // Governance family (transaction-level constraints)
+    case RungBlockType::EPOCH_GATE:
+    case RungBlockType::WEIGHT_LIMIT:
+    case RungBlockType::INPUT_COUNT:
+    case RungBlockType::OUTPUT_COUNT:
+    case RungBlockType::RELATIVE_VALUE:
+    case RungBlockType::ACCUMULATOR:
         return true;
     default:
         return false;
     }
 }
 
-bool IsPhase3BlockType(uint16_t block_type)
+bool IsStatefulBlockType(uint16_t block_type)
 {
     switch (static_cast<RungBlockType>(block_type)) {
     case RungBlockType::RECURSE_SAME:
