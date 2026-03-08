@@ -192,6 +192,19 @@ The Programmable Logic Controller family brings industrial automation concepts t
 | `0x0671` | RATE_LIMIT | NUMERIC(max_per_window) + NUMERIC(window_blocks) + NUMERIC(current_count) | Rate limiter. SATISFIED when current_count < max_per_window. |
 | `0x0681` | COSIGN | HASH256(conditions_hash) | Co-spend contact. SATISFIED when another input in the same transaction has rung conditions whose serialized hash matches conditions_hash. The evaluator skips the current input index when scanning. |
 
+#### Compound Family (0x0700–0x07FF)
+
+Compound blocks collapse common multi-block patterns into a single block, reducing wire size and simplifying construction. Each compound block evaluates its component conditions in order — all must pass.
+
+| Code | Name | Required Fields | Description |
+|------|------|----------------|-------------|
+| `0x0701` | TIMELOCKED_SIG | PUBKEY_COMMIT (condition) + PUBKEY + SIGNATURE (witness) + NUMERIC(csv_blocks) | SIG + CSV combined. Verify signature, then check relative timelock. |
+| `0x0702` | HTLC | HASH256 (condition) + PREIMAGE (witness) + NUMERIC(csv_blocks) + PUBKEY_COMMIT (condition) + PUBKEY + SIGNATURE (witness) | Hash + Timelock + Sig. Atomic swap / Lightning HTLC pattern. |
+| `0x0703` | HASH_SIG | HASH256 (condition) + PREIMAGE (witness) + PUBKEY_COMMIT (condition) + PUBKEY + SIGNATURE (witness) | HASH_PREIMAGE + SIG combined. Atomic swap claim. |
+| `0x0704` | PTLC | 2*PUBKEY_COMMIT (condition) + 2*PUBKEY (witness) + SIGNATURE (witness) + NUMERIC(csv_blocks) | ADAPTOR_SIG + CSV combined. Point-locked payment channel. First pubkey is signing key, second is adaptor point (32 bytes x-only). |
+| `0x0705` | CLTV_SIG | PUBKEY_COMMIT (condition) + PUBKEY + SIGNATURE (witness) + NUMERIC(cltv_height) | SIG + CLTV combined. Absolute-time locked payment. |
+| `0x0706` | TIMELOCKED_MULTISIG | NUMERIC(threshold) + N*PUBKEY_COMMIT (condition) + N*PUBKEY + M*SIGNATURE (witness) + NUMERIC(csv_blocks) | MULTISIG + CSV combined. Time-delayed M-of-N threshold signature. First NUMERIC is threshold, last NUMERIC is CSV timelock. |
+
 ### Coil Types
 
 The coil determines the output semantics of a ladder-locked UTXO. It is serialized after the rung data.

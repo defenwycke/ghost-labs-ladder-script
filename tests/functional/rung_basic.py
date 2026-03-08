@@ -223,6 +223,12 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_compound_htlc(node)
         self.test_compound_htlc_wrong_preimage(node)
 
+        # Compound block tests (CLTV_SIG, TIMELOCKED_MULTISIG)
+        self.test_compound_cltv_sig(node)
+        self.test_compound_cltv_sig_too_early(node)
+        self.test_compound_timelocked_multisig(node)
+        self.test_compound_timelocked_multisig_too_early(node)
+
     # =========================================================================
     # Helpers
     # =========================================================================
@@ -5863,6 +5869,192 @@ class LadderScriptBasicTest(BitcoinTestFramework):
 
         assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
         self.log.info("  HTLC wrong preimage correctly rejected!")
+
+    # =========================================================================
+    # CLTV_SIG and TIMELOCKED_MULTISIG compound block tests
+    # =========================================================================
+
+    def test_compound_cltv_sig(self, node):
+        """CLTV_SIG: single compound block = SIG + CLTV."""
+        self.log.info("Testing CLTV_SIG compound block...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+        # Use current height + 10 as CLTV target
+        current_height = node.getblockcount()
+        cltv_height = current_height + 10
+
+        conditions = [{"blocks": [
+            {"type": "CLTV_SIG", "fields": [
+                {"type": "PUBKEY", "hex": pubkey_hex},
+                {"type": "NUMERIC", "hex": numeric_hex(cltv_height)},
+            ]},
+        ]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  CLTV_SIG output: {txid}:{vout}")
+
+        # Mine past the CLTV height
+        blocks_needed = cltv_height - node.getblockcount() + 1
+        if blocks_needed > 0:
+            self.generate(node, blocks_needed)
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout, "locktime": cltv_height}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "CLTV_SIG", "privkey": privkey_wif},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info(f"  CLTV_SIG spend confirmed: {spend_txid[:16]}...")
+
+    def test_compound_cltv_sig_too_early(self, node):
+        """CLTV_SIG: CLTV not yet reached — should be rejected."""
+        self.log.info("Testing CLTV_SIG too early (negative)...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+        # Set CLTV far in the future
+        cltv_height = node.getblockcount() + 1000
+
+        conditions = [{"blocks": [
+            {"type": "CLTV_SIG", "fields": [
+                {"type": "PUBKEY", "hex": pubkey_hex},
+                {"type": "NUMERIC", "hex": numeric_hex(cltv_height)},
+            ]},
+        ]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout, "locktime": cltv_height}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "CLTV_SIG", "privkey": privkey_wif},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
+        self.log.info("  CLTV_SIG too early correctly rejected!")
+
+    def test_compound_timelocked_multisig(self, node):
+        """TIMELOCKED_MULTISIG: 2-of-3 + CSV."""
+        self.log.info("Testing TIMELOCKED_MULTISIG compound block...")
+
+        privkey_wif1, pubkey_hex1 = make_keypair()
+        privkey_wif2, pubkey_hex2 = make_keypair()
+        _privkey_wif3, pubkey_hex3 = make_keypair()
+        csv_blocks = 10
+
+        conditions = [{"blocks": [
+            {"type": "TIMELOCKED_MULTISIG", "fields": [
+                {"type": "NUMERIC", "hex": numeric_hex(2)},      # threshold M=2
+                {"type": "PUBKEY", "hex": pubkey_hex1},
+                {"type": "PUBKEY", "hex": pubkey_hex2},
+                {"type": "PUBKEY", "hex": pubkey_hex3},
+                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},  # CSV timelock
+            ]},
+        ]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  TIMELOCKED_MULTISIG output: {txid}:{vout}")
+
+        # Mine for CSV maturity
+        self.generate(node, csv_blocks)
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "TIMELOCKED_MULTISIG", "privkeys": [privkey_wif1, privkey_wif2]},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info(f"  TIMELOCKED_MULTISIG spend confirmed: {spend_txid[:16]}...")
+
+    def test_compound_timelocked_multisig_too_early(self, node):
+        """TIMELOCKED_MULTISIG: CSV not yet matured — should be rejected."""
+        self.log.info("Testing TIMELOCKED_MULTISIG too early (negative)...")
+
+        privkey_wif1, pubkey_hex1 = make_keypair()
+        privkey_wif2, pubkey_hex2 = make_keypair()
+        _privkey_wif3, pubkey_hex3 = make_keypair()
+        csv_blocks = 50
+
+        conditions = [{"blocks": [
+            {"type": "TIMELOCKED_MULTISIG", "fields": [
+                {"type": "NUMERIC", "hex": numeric_hex(2)},
+                {"type": "PUBKEY", "hex": pubkey_hex1},
+                {"type": "PUBKEY", "hex": pubkey_hex2},
+                {"type": "PUBKEY", "hex": pubkey_hex3},
+                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
+            ]},
+        ]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        # Do NOT mine enough blocks
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "TIMELOCKED_MULTISIG", "privkeys": [privkey_wif1, privkey_wif2]},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
+        self.log.info("  TIMELOCKED_MULTISIG too early correctly rejected!")
 
 
 if __name__ == '__main__':

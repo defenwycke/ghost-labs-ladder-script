@@ -838,6 +838,9 @@
             <span class="family-block">TIMELOCKED_SIG</span>
             <span class="family-block">HTLC</span>
             <span class="family-block">HASH_SIG</span>
+            <span class="family-block">PTLC</span>
+            <span class="family-block">CLTV_SIG</span>
+            <span class="family-block">TIMELOCKED_MULTISIG</span>
           </div>
         </div>
         <div class="family-card">
@@ -953,7 +956,7 @@
         </div>
         <div class="use-case">
           <div class="use-case-title">Compound Wire Savings</div>
-          <div class="use-case-desc">HTLC collapses hash + timelock + signature into one block, saving 16 bytes per instance. TIMELOCKED_SIG and HASH_SIG each save 8 bytes. Common patterns get cheaper without new evaluation logic.</div>
+          <div class="use-case-desc">HTLC collapses hash + timelock + signature into one block, saving 16 bytes per instance. TIMELOCKED_SIG, HASH_SIG, CLTV_SIG each save 8 bytes. PTLC collapses adaptor sig + CSV for payment channels. TIMELOCKED_MULTISIG collapses M-of-N + CSV for penalty branches and vault recovery.</div>
           <div class="use-case-tag">Compound Family</div>
         </div>
         <div class="use-case">

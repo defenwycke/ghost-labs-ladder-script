@@ -28,6 +28,9 @@ bool IsBaseBlockType(uint16_t block_type)
     case RungBlockType::TIMELOCKED_SIG:
     case RungBlockType::HTLC:
     case RungBlockType::HASH_SIG:
+    case RungBlockType::PTLC:
+    case RungBlockType::CLTV_SIG:
+    case RungBlockType::TIMELOCKED_MULTISIG:
         return true;
     default:
         return false;

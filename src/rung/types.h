@@ -65,6 +65,9 @@ enum class RungBlockType : uint16_t {
     TIMELOCKED_SIG   = 0x0701, //!< SIG + CSV combined: pubkey + sig + block-height timelock
     HTLC             = 0x0702, //!< Hash + Timelock + Sig: atomic swap / Lightning HTLC
     HASH_SIG         = 0x0703, //!< HASH_PREIMAGE + SIG combined: atomic swap claim
+    PTLC             = 0x0704, //!< ADAPTOR_SIG + CSV combined: point-locked payment channel
+    CLTV_SIG         = 0x0705, //!< SIG + CLTV combined: absolute-time locked payment
+    TIMELOCKED_MULTISIG = 0x0706, //!< MULTISIG + CSV combined: time-delayed M-of-N
 
     // Governance family (transaction-level constraints)
     EPOCH_GATE       = 0x0801, //!< Periodic spending window: spendable only in specific block epochs
@@ -164,6 +167,9 @@ inline bool IsKnownBlockType(uint16_t b)
     case RungBlockType::TIMELOCKED_SIG:
     case RungBlockType::HTLC:
     case RungBlockType::HASH_SIG:
+    case RungBlockType::PTLC:
+    case RungBlockType::CLTV_SIG:
+    case RungBlockType::TIMELOCKED_MULTISIG:
     // Governance family
     case RungBlockType::EPOCH_GATE:
     case RungBlockType::WEIGHT_LIMIT:
@@ -265,6 +271,9 @@ inline std::string BlockTypeName(RungBlockType type)
     case RungBlockType::TIMELOCKED_SIG:   return "TIMELOCKED_SIG";
     case RungBlockType::HTLC:             return "HTLC";
     case RungBlockType::HASH_SIG:         return "HASH_SIG";
+    case RungBlockType::PTLC:             return "PTLC";
+    case RungBlockType::CLTV_SIG:         return "CLTV_SIG";
+    case RungBlockType::TIMELOCKED_MULTISIG: return "TIMELOCKED_MULTISIG";
     case RungBlockType::EPOCH_GATE:       return "EPOCH_GATE";
     case RungBlockType::WEIGHT_LIMIT:     return "WEIGHT_LIMIT";
     case RungBlockType::INPUT_COUNT:      return "INPUT_COUNT";

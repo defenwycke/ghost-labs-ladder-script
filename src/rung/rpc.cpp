@@ -173,6 +173,9 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
     if (name == "TIMELOCKED_SIG")   { out = RungBlockType::TIMELOCKED_SIG; return true; }
     if (name == "HTLC")             { out = RungBlockType::HTLC; return true; }
     if (name == "HASH_SIG")         { out = RungBlockType::HASH_SIG; return true; }
+    if (name == "PTLC")             { out = RungBlockType::PTLC; return true; }
+    if (name == "CLTV_SIG")         { out = RungBlockType::CLTV_SIG; return true; }
+    if (name == "TIMELOCKED_MULTISIG") { out = RungBlockType::TIMELOCKED_MULTISIG; return true; }
     // Covenant family
     if (name == "CTV")              { out = RungBlockType::CTV; return true; }
     if (name == "VAULT_LOCK")       { out = RungBlockType::VAULT_LOCK; return true; }
@@ -1097,6 +1100,87 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Schnorr signing failed");
         }
         block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+        break;
+    }
+    case RungBlockType::PTLC: {
+        // Compound ADAPTOR_SIG + CSV: adaptor sign, CSV from conditions
+        if (block_spec.exists("privkey")) {
+            std::string wif = block_spec["privkey"].get_str();
+            CKey privkey = DecodeSecret(wif);
+            if (!privkey.IsValid()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+            }
+            uint256 sighash;
+            if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
+            }
+            if (block_spec.exists("adaptor_secret")) {
+                auto secret_bytes = ParseHex(block_spec["adaptor_secret"].get_str());
+                if (secret_bytes.size() != 32) {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "adaptor_secret must be 32 bytes hex");
+                }
+                std::vector<uint8_t> sig_out(64);
+                if (!rung::CreateAdaptedSignature(privkey, sighash, secret_bytes, sig_out)) {
+                    throw JSONRPCError(RPC_INTERNAL_ERROR, "PTLC adapted signing failed");
+                }
+                block.fields.push_back({RungDataType::SIGNATURE, sig_out});
+            } else {
+                unsigned char sig_buf[64];
+                uint256 aux_rand = GetRandHash();
+                if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                    throw JSONRPCError(RPC_INTERNAL_ERROR, "PTLC Schnorr signing failed");
+                }
+                block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+            }
+        }
+        break;
+    }
+    case RungBlockType::CLTV_SIG: {
+        // Compound SIG + CLTV: sign like SIG, CLTV from conditions
+        std::string wif = block_spec["privkey"].get_str();
+        CKey privkey = DecodeSecret(wif);
+        if (!privkey.IsValid()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+        }
+        uint256 sighash;
+        if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
+        }
+        CPubKey pubkey = privkey.GetPubKey();
+        block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
+        unsigned char sig_buf[64];
+        uint256 aux_rand = GetRandHash();
+        if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Schnorr signing failed");
+        }
+        block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+        break;
+    }
+    case RungBlockType::TIMELOCKED_MULTISIG: {
+        // Compound MULTISIG + CSV: sign like MULTISIG, CSV from conditions
+        const UniValue& privkeys_arr = block_spec["privkeys"].get_array();
+        if (privkeys_arr.empty()) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "TIMELOCKED_MULTISIG requires at least one privkey");
+        }
+
+        uint256 sighash;
+        if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
+        }
+
+        for (size_t s = 0; s < privkeys_arr.size(); ++s) {
+            CKey privkey = DecodeSecret(privkeys_arr[s].get_str());
+            if (!privkey.IsValid()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid TIMELOCKED_MULTISIG private key");
+            }
+
+            unsigned char sig_buf[64];
+            uint256 aux_rand = GetRandHash();
+            if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "TIMELOCKED_MULTISIG Schnorr signing failed");
+            }
+            block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+        }
         break;
     }
     default:

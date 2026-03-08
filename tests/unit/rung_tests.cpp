@@ -4753,6 +4753,222 @@ BOOST_AUTO_TEST_CASE(hash_sig_bad_hash)
 }
 
 // ============================================================================
+// PTLC compound block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(ptlc_satisfied)
+{
+    // PTLC with passing adaptor sig and CSV
+    RungBlock block;
+    block.type = RungBlockType::PTLC;
+    // Two pubkeys: signing key + adaptor point (32 bytes x-only)
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    std::vector<uint8_t> adaptor_point(32, 0xDD);
+    block.fields.push_back({RungDataType::PUBKEY, adaptor_point});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalPTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(ptlc_sig_fails)
+{
+    // PTLC: adaptor sig verification fails
+    RungBlock block;
+    block.type = RungBlockType::PTLC;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    std::vector<uint8_t> adaptor_point(32, 0xDD);
+    block.fields.push_back({RungDataType::PUBKEY, adaptor_point});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalPTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(ptlc_csv_fails)
+{
+    // PTLC: sig passes but CSV fails
+    RungBlock block;
+    block.type = RungBlockType::PTLC;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    std::vector<uint8_t> adaptor_point(32, 0xDD);
+    block.fields.push_back({RungDataType::PUBKEY, adaptor_point});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = false;
+    ScriptExecutionData execdata;
+    auto result = EvalPTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(ptlc_missing_adaptor_point)
+{
+    // PTLC with only one pubkey → ERROR
+    RungBlock block;
+    block.type = RungBlockType::PTLC;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalPTLCBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::ERROR);
+}
+
+// ============================================================================
+// CLTV_SIG compound block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(cltv_sig_satisfied)
+{
+    // CLTV_SIG with passing sig and CLTV
+    RungBlock block;
+    block.type = RungBlockType::CLTV_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(500000)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.locktime_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalCLTVSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(cltv_sig_locktime_fails)
+{
+    // Sig passes but CLTV fails
+    RungBlock block;
+    block.type = RungBlockType::CLTV_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(500000)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.locktime_result = false;
+    ScriptExecutionData execdata;
+    auto result = EvalCLTVSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(cltv_sig_sig_fails)
+{
+    // CLTV passes but sig fails
+    RungBlock block;
+    block.type = RungBlockType::CLTV_SIG;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(500000)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+    checker.locktime_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalCLTVSigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+// ============================================================================
+// TIMELOCKED_MULTISIG compound block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(timelocked_multisig_satisfied)
+{
+    // 2-of-3 multisig + CSV, both pass
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});   // threshold M=2
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});      // pubkey 1
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});      // pubkey 2
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});      // pubkey 3
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});  // sig 1
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});  // sig 2
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)}); // CSV timelock
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(timelocked_multisig_csv_fails)
+{
+    // Multisig passes but CSV fails
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = false;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(timelocked_multisig_insufficient_sigs)
+{
+    // Only 1 sig for threshold=2 → UNSATISFIED
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});  // only 1 sig
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(timelocked_multisig_missing_csv_numeric)
+{
+    // Only one NUMERIC (threshold) without CSV → ERROR
+    RungBlock block;
+    block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+    checker.sequence_result = true;
+    ScriptExecutionData execdata;
+    auto result = EvalTimelockedMultisigBlock(block, checker, SigVersion::LADDER, execdata);
+    BOOST_CHECK(result == EvalResult::ERROR);
+}
+
+// ============================================================================
 // Governance block tests
 // ============================================================================
 
@@ -5005,6 +5221,9 @@ BOOST_AUTO_TEST_CASE(compound_block_types_recognized)
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::TIMELOCKED_SIG)));
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::HTLC)));
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::HASH_SIG)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::PTLC)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::CLTV_SIG)));
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::TIMELOCKED_MULTISIG)));
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::EPOCH_GATE)));
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::WEIGHT_LIMIT)));
     BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::INPUT_COUNT)));
@@ -5038,6 +5257,59 @@ BOOST_AUTO_TEST_CASE(compound_serialize_roundtrip)
     BOOST_CHECK_EQUAL(decoded.rungs[0].blocks.size(), 1u);
     BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::HTLC);
     BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 5u);
+}
+
+BOOST_AUTO_TEST_CASE(new_compound_serialize_roundtrip)
+{
+    // Roundtrip all three new compound types
+    LadderWitness ladder;
+
+    // PTLC rung
+    Rung rung1;
+    RungBlock ptlc_block;
+    ptlc_block.type = RungBlockType::PTLC;
+    ptlc_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});          // signing key
+    ptlc_block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(32, 0xDD)}); // adaptor point
+    ptlc_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    ptlc_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    rung1.blocks.push_back(std::move(ptlc_block));
+    ladder.rungs.push_back(std::move(rung1));
+
+    // CLTV_SIG rung
+    Rung rung2;
+    RungBlock cltv_sig_block;
+    cltv_sig_block.type = RungBlockType::CLTV_SIG;
+    cltv_sig_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    cltv_sig_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    cltv_sig_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(500000)});
+    rung2.blocks.push_back(std::move(cltv_sig_block));
+    ladder.rungs.push_back(std::move(rung2));
+
+    // TIMELOCKED_MULTISIG rung
+    Rung rung3;
+    RungBlock tms_block;
+    tms_block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    tms_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});      // threshold
+    tms_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    tms_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    tms_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    tms_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    tms_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    tms_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});    // CSV
+    rung3.blocks.push_back(std::move(tms_block));
+    ladder.rungs.push_back(std::move(rung3));
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK_EQUAL(decoded.rungs.size(), 3u);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::PTLC);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 4u);
+    BOOST_CHECK(decoded.rungs[1].blocks[0].type == RungBlockType::CLTV_SIG);
+    BOOST_CHECK_EQUAL(decoded.rungs[1].blocks[0].fields.size(), 3u);
+    BOOST_CHECK(decoded.rungs[2].blocks[0].type == RungBlockType::TIMELOCKED_MULTISIG);
+    BOOST_CHECK_EQUAL(decoded.rungs[2].blocks[0].fields.size(), 7u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

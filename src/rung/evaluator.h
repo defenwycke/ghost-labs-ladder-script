@@ -133,6 +133,9 @@ EvalResult EvalCosignBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalTimelockedSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalHTLCBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalHashSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalPTLCBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalCLTVSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalTimelockedMultisigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 
 // Governance evaluators (transaction-level constraints)
 EvalResult EvalEpochGateBlock(const RungBlock& block, const RungEvalContext& ctx);
