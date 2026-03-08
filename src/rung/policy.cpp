@@ -7,6 +7,8 @@
 #include <rung/serialize.h>
 #include <rung/types.h>
 
+#include <algorithm>
+
 namespace rung {
 
 bool IsPhase1BlockType(uint16_t block_type)
@@ -148,6 +150,83 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
             }
         }
 
+        // Validate relay limits
+        if (ladder.relays.size() > MAX_RELAYS) {
+            reason = "rung-too-many-relays: " + std::to_string(ladder.relays.size());
+            return false;
+        }
+
+        for (size_t rl = 0; rl < ladder.relays.size(); ++rl) {
+            const auto& relay = ladder.relays[rl];
+            if (relay.blocks.empty()) {
+                reason = "rung-relay-empty-blocks";
+                return false;
+            }
+            if (relay.blocks.size() > MAX_BLOCKS_PER_RUNG) {
+                reason = "rung-relay-too-many-blocks";
+                return false;
+            }
+            if (relay.relay_refs.size() > MAX_REQUIRES) {
+                reason = "rung-relay-too-many-requires";
+                return false;
+            }
+            for (uint16_t req : relay.relay_refs) {
+                if (req >= rl) {
+                    reason = "rung-relay-forward-reference";
+                    return false;
+                }
+            }
+            for (const auto& block : relay.blocks) {
+                uint16_t btype = static_cast<uint16_t>(block.type);
+                if (!IsKnownBlockType(btype)) {
+                    reason = "rung-relay-unknown-block-type";
+                    return false;
+                }
+                // Count preimage blocks in relays too
+                if (block.type == RungBlockType::HASH_PREIMAGE ||
+                    block.type == RungBlockType::HASH160_PREIMAGE ||
+                    block.type == RungBlockType::TAGGED_HASH) {
+                    preimage_block_count++;
+                }
+                for (const auto& field : block.fields) {
+                    std::string field_reason;
+                    if (!field.IsValid(field_reason)) {
+                        reason = "rung-relay-invalid-field: " + field_reason;
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Validate rung relay_refs
+        for (const auto& rung : ladder.rungs) {
+            if (rung.relay_refs.size() > MAX_REQUIRES) {
+                reason = "rung-too-many-requires";
+                return false;
+            }
+            for (uint16_t req : rung.relay_refs) {
+                if (req >= ladder.relays.size()) {
+                    reason = "rung-requires-invalid-relay-index";
+                    return false;
+                }
+            }
+        }
+
+        // Validate relay chain depth
+        if (!ladder.relays.empty()) {
+            // Compute transitive depth for each relay
+            std::vector<size_t> depths(ladder.relays.size(), 0);
+            for (size_t rl = 0; rl < ladder.relays.size(); ++rl) {
+                for (uint16_t req : ladder.relays[rl].relay_refs) {
+                    depths[rl] = std::max(depths[rl], depths[req] + 1);
+                }
+                if (depths[rl] > MAX_RELAY_DEPTH) {
+                    reason = "rung-relay-depth-exceeded: " + std::to_string(depths[rl]);
+                    return false;
+                }
+            }
+        }
+
         if (preimage_block_count > MAX_PREIMAGE_BLOCKS_PER_WITNESS) {
             reason = "rung-too-many-preimage-blocks: " + std::to_string(preimage_block_count);
             return false;
@@ -193,6 +272,77 @@ bool IsStandardRungOutput(const CScript& scriptPubKey, std::string& reason)
                     reason = "rung-output-invalid-field: " + field_reason;
                     return false;
                 }
+            }
+        }
+
+        // Validate rung relay_refs
+        if (rung.relay_refs.size() > MAX_REQUIRES) {
+            reason = "rung-output-too-many-requires";
+            return false;
+        }
+        for (uint16_t req : rung.relay_refs) {
+            if (req >= conditions.relays.size()) {
+                reason = "rung-output-requires-invalid-relay-index";
+                return false;
+            }
+        }
+    }
+
+    // Validate relays in conditions output
+    if (conditions.relays.size() > MAX_RELAYS) {
+        reason = "rung-output-too-many-relays";
+        return false;
+    }
+    for (size_t rl = 0; rl < conditions.relays.size(); ++rl) {
+        const auto& relay = conditions.relays[rl];
+        if (relay.blocks.empty()) {
+            reason = "rung-output-relay-empty-blocks";
+            return false;
+        }
+        if (relay.blocks.size() > MAX_BLOCKS_PER_RUNG) {
+            reason = "rung-output-relay-too-many-blocks";
+            return false;
+        }
+        if (relay.relay_refs.size() > MAX_REQUIRES) {
+            reason = "rung-output-relay-too-many-requires";
+            return false;
+        }
+        for (uint16_t req : relay.relay_refs) {
+            if (req >= rl) {
+                reason = "rung-output-relay-forward-reference";
+                return false;
+            }
+        }
+        for (const auto& block : relay.blocks) {
+            uint16_t btype = static_cast<uint16_t>(block.type);
+            if (!IsKnownBlockType(btype)) {
+                reason = "rung-output-relay-unknown-block-type";
+                return false;
+            }
+            for (const auto& field : block.fields) {
+                if (!IsConditionDataType(field.type)) {
+                    reason = "rung-output-relay-witness-only-field: " + DataTypeName(field.type);
+                    return false;
+                }
+                std::string field_reason;
+                if (!field.IsValid(field_reason)) {
+                    reason = "rung-output-relay-invalid-field: " + field_reason;
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Validate relay chain depth
+    if (!conditions.relays.empty()) {
+        std::vector<size_t> depths(conditions.relays.size(), 0);
+        for (size_t rl = 0; rl < conditions.relays.size(); ++rl) {
+            for (uint16_t req : conditions.relays[rl].relay_refs) {
+                depths[rl] = std::max(depths[rl], depths[req] + 1);
+            }
+            if (depths[rl] > MAX_RELAY_DEPTH) {
+                reason = "rung-output-relay-depth-exceeded";
+                return false;
             }
         }
     }

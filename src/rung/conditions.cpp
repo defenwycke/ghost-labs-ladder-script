@@ -60,8 +60,21 @@ bool DeserializeRungConditions(const CScript& scriptPubKey, RungConditions& out,
         }
     }
 
+    // Validate relay blocks: no witness-only fields in conditions
+    for (size_t i = 0; i < ladder.relays.size(); ++i) {
+        for (const auto& block : ladder.relays[i].blocks) {
+            for (const auto& field : block.fields) {
+                if (!IsConditionDataType(field.type)) {
+                    error = "relay " + std::to_string(i) + " contains witness-only data type: " + DataTypeName(field.type);
+                    return false;
+                }
+            }
+        }
+    }
+
     out.rungs = std::move(ladder.rungs);
     out.coil = std::move(ladder.coil);
+    out.relays = std::move(ladder.relays);
     return true;
 }
 
@@ -71,6 +84,7 @@ CScript SerializeRungConditions(const RungConditions& conditions)
     LadderWitness ladder;
     ladder.rungs = conditions.rungs;
     ladder.coil = conditions.coil;
+    ladder.relays = conditions.relays;
     auto bytes = SerializeLadderWitness(ladder);
 
     // Prepend the conditions prefix

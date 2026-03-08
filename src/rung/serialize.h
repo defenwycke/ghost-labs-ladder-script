@@ -27,6 +27,12 @@ static constexpr size_t MAX_LADDER_WITNESS_SIZE = 100000;
  *  TAGGED_HASH) per ladder witness. Limits user-chosen data to ~504 bytes
  *  (2 * 252 bytes PREIMAGE max) while covering all legitimate use cases. */
 static constexpr size_t MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2;
+/** Maximum number of relays per ladder witness. */
+static constexpr size_t MAX_RELAYS = 8;
+/** Maximum number of relay requirements per rung or relay. */
+static constexpr size_t MAX_REQUIRES = 8;
+/** Maximum transitive relay chain depth (relay requiring relay requiring relay...). */
+static constexpr size_t MAX_RELAY_DEPTH = 4;
 
 /** Deserialize a LadderWitness from raw witness bytes.
  *  Performs full type and size validation during deserialization.

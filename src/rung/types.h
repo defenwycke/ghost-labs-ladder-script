@@ -339,15 +339,26 @@ struct RungBlock {
 /** A single rung in a ladder. All blocks must be satisfied (AND logic). */
 struct Rung {
     std::vector<RungBlock> blocks;
-    uint8_t rung_id{0};   //!< Rung identifier within the ladder
+    uint8_t rung_id{0};                //!< Rung identifier within the ladder
+    std::vector<uint16_t> relay_refs;    //!< Indices into relay array that must be satisfied
+};
+
+/** A relay definition: blocks evaluated for cross-referencing, not tied to an output.
+ *  Relays enable AND composition across rungs and DRY condition reuse.
+ *  Forward-only indexing: relay N can only require relays 0..N-1 (no cycles). */
+struct Relay {
+    std::vector<RungBlock> blocks;
+    std::vector<uint16_t> relay_refs;    //!< Indices of other relays (must be < own index)
 };
 
 /** The complete ladder witness for one output.
  *  Rungs define input conditions (OR logic — first satisfied rung wins).
- *  Coil defines output semantics (destination, constraints). */
+ *  Coil defines output semantics (destination, constraints).
+ *  Relays are shared condition sets referenced via requires (AND composition). */
 struct LadderWitness {
     std::vector<Rung> rungs;     //!< Input condition rungs
     RungCoil coil;               //!< Output coil (per-output, not per-rung)
+    std::vector<Relay> relays;   //!< Relay definitions (shared across outputs)
 
     bool IsEmpty() const { return rungs.empty(); }
 };

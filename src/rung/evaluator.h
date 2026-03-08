@@ -136,14 +136,27 @@ EvalResult EvalBlock(const RungBlock& block,
                      ScriptExecutionData& execdata,
                      const RungEvalContext& ctx = {});
 
-/** Evaluate a single rung: all blocks must return SATISFIED (AND logic). */
+/** Evaluate all relays in order, caching results.
+ *  Relays are evaluated index 0 first; each relay checks its relay_refs
+ *  against already-cached results before evaluating its own blocks. */
+bool EvalRelays(const std::vector<Relay>& relays,
+                const BaseSignatureChecker& checker,
+                SigVersion sigversion,
+                ScriptExecutionData& execdata,
+                const RungEvalContext& ctx,
+                std::vector<EvalResult>& relay_results_out);
+
+/** Evaluate a single rung: all blocks must return SATISFIED (AND logic).
+ *  If relay_results is non-null, checks rung.relay_refs against relay results first. */
 EvalResult EvalRung(const Rung& rung,
                     const BaseSignatureChecker& checker,
                     SigVersion sigversion,
                     ScriptExecutionData& execdata,
-                    const RungEvalContext& ctx = {});
+                    const RungEvalContext& ctx = {},
+                    const std::vector<EvalResult>* relay_results = nullptr);
 
-/** Evaluate a complete ladder: first satisfied rung wins (OR logic). */
+/** Evaluate a complete ladder: first satisfied rung wins (OR logic).
+ *  Evaluates relays first, then passes results to each rung. */
 bool EvalLadder(const LadderWitness& ladder,
                 const BaseSignatureChecker& checker,
                 SigVersion sigversion,

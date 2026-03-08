@@ -1650,14 +1650,73 @@ EvalResult EvalBlock(const RungBlock& block,
     return ApplyInversion(raw, block.inverted);
 }
 
+bool EvalRelays(const std::vector<Relay>& relays,
+                const BaseSignatureChecker& checker,
+                SigVersion sigversion,
+                ScriptExecutionData& execdata,
+                const RungEvalContext& ctx,
+                std::vector<EvalResult>& relay_results_out)
+{
+    relay_results_out.resize(relays.size(), EvalResult::UNSATISFIED);
+
+    for (size_t i = 0; i < relays.size(); ++i) {
+        const auto& relay = relays[i];
+
+        // Check relay_refs: all required relays must be SATISFIED
+        bool requires_met = true;
+        for (uint16_t req : relay.relay_refs) {
+            if (req >= i || relay_results_out[req] != EvalResult::SATISFIED) {
+                requires_met = false;
+                break;
+            }
+        }
+
+        if (!requires_met) {
+            relay_results_out[i] = EvalResult::UNSATISFIED;
+            continue;
+        }
+
+        // Evaluate relay blocks (AND logic, same as a rung)
+        if (relay.blocks.empty()) {
+            relay_results_out[i] = EvalResult::ERROR;
+            return false;
+        }
+
+        EvalResult relay_result = EvalResult::SATISFIED;
+        for (const auto& block : relay.blocks) {
+            EvalResult result = EvalBlock(block, checker, sigversion, execdata, ctx);
+            if (result != EvalResult::SATISFIED) {
+                relay_result = result;
+                break;
+            }
+        }
+
+        if (relay_result == EvalResult::ERROR) {
+            return false;
+        }
+        relay_results_out[i] = relay_result;
+    }
+    return true;
+}
+
 EvalResult EvalRung(const Rung& rung,
                     const BaseSignatureChecker& checker,
                     SigVersion sigversion,
                     ScriptExecutionData& execdata,
-                    const RungEvalContext& ctx)
+                    const RungEvalContext& ctx,
+                    const std::vector<EvalResult>* relay_results)
 {
     if (rung.blocks.empty()) {
         return EvalResult::ERROR;
+    }
+
+    // Check relay_refs: all required relays must be SATISFIED
+    if (relay_results && !rung.relay_refs.empty()) {
+        for (uint16_t req : rung.relay_refs) {
+            if (req >= relay_results->size() || (*relay_results)[req] != EvalResult::SATISFIED) {
+                return EvalResult::UNSATISFIED;
+            }
+        }
     }
 
     for (const auto& block : rung.blocks) {
@@ -1679,9 +1738,18 @@ bool EvalLadder(const LadderWitness& ladder,
         return false;
     }
 
+    // Evaluate relays first, cache results
+    std::vector<EvalResult> relay_results;
+    if (!ladder.relays.empty()) {
+        if (!EvalRelays(ladder.relays, checker, sigversion, execdata, ctx, relay_results)) {
+            return false;
+        }
+    }
+
     // First satisfied rung wins (OR logic across rungs)
+    const std::vector<EvalResult>* relay_ptr = relay_results.empty() ? nullptr : &relay_results;
     for (const auto& rung : ladder.rungs) {
-        EvalResult result = EvalRung(rung, checker, sigversion, execdata, ctx);
+        EvalResult result = EvalRung(rung, checker, sigversion, execdata, ctx, relay_ptr);
         if (result == EvalResult::SATISFIED) {
             return true;
         }
@@ -1720,6 +1788,7 @@ static bool MergeConditionsAndWitness(const RungConditions& conditions,
 
         merged.rungs[r].blocks.resize(cond_rung.blocks.size());
         merged.rungs[r].rung_id = cond_rung.rung_id;
+        merged.rungs[r].relay_refs = cond_rung.relay_refs; // relay_refs come from conditions
 
         for (size_t b = 0; b < cond_rung.blocks.size(); ++b) {
             const auto& cond_block = cond_rung.blocks[b];
@@ -1741,6 +1810,46 @@ static bool MergeConditionsAndWitness(const RungConditions& conditions,
                                        wit_block.fields.begin(), wit_block.fields.end());
         }
     }
+
+    // Merge relays: conditions provide locks, witness provides keys
+    if (conditions.relays.size() != witness.relays.size()) {
+        error = "relay count mismatch: conditions=" + std::to_string(conditions.relays.size()) +
+                " witness=" + std::to_string(witness.relays.size());
+        return false;
+    }
+    merged.relays.resize(conditions.relays.size());
+    for (size_t rl = 0; rl < conditions.relays.size(); ++rl) {
+        const auto& cond_relay = conditions.relays[rl];
+        const auto& wit_relay = witness.relays[rl];
+
+        if (cond_relay.blocks.size() != wit_relay.blocks.size()) {
+            error = "block count mismatch in relay " + std::to_string(rl);
+            return false;
+        }
+
+        merged.relays[rl].blocks.resize(cond_relay.blocks.size());
+        merged.relays[rl].relay_refs = cond_relay.relay_refs; // relay_refs come from conditions
+
+        for (size_t b = 0; b < cond_relay.blocks.size(); ++b) {
+            const auto& cond_block = cond_relay.blocks[b];
+            const auto& wit_block = wit_relay.blocks[b];
+
+            if (cond_block.type != wit_block.type) {
+                error = "block type mismatch in relay " + std::to_string(rl) +
+                        " block " + std::to_string(b);
+                return false;
+            }
+
+            auto& merged_block = merged.relays[rl].blocks[b];
+            merged_block.type = cond_block.type;
+            merged_block.inverted = cond_block.inverted;
+            merged_block.fields.insert(merged_block.fields.end(),
+                                       cond_block.fields.begin(), cond_block.fields.end());
+            merged_block.fields.insert(merged_block.fields.end(),
+                                       wit_block.fields.begin(), wit_block.fields.end());
+        }
+    }
+
     return true;
 }
 

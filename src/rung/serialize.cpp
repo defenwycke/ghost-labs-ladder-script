@@ -213,6 +213,124 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
             }
         }
 
+        // Read relays (optional — backward compatible, 0 relays if EOF)
+        if (!ss.empty()) {
+            uint64_t n_relays = ReadCompactSize(ss);
+            if (n_relays > MAX_RELAYS) {
+                error = "too many relays: " + std::to_string(n_relays);
+                return false;
+            }
+
+            ladder_out.relays.resize(n_relays);
+            for (uint64_t rl = 0; rl < n_relays; ++rl) {
+                // Read relay blocks (same format as rung blocks)
+                uint64_t n_rblocks = ReadCompactSize(ss);
+                if (n_rblocks == 0) {
+                    error = "relay " + std::to_string(rl) + " has zero blocks";
+                    return false;
+                }
+                if (n_rblocks > MAX_BLOCKS_PER_RUNG) {
+                    error = "relay " + std::to_string(rl) + " has too many blocks: " + std::to_string(n_rblocks);
+                    return false;
+                }
+
+                ladder_out.relays[rl].blocks.resize(n_rblocks);
+                for (uint64_t rb = 0; rb < n_rblocks; ++rb) {
+                    uint8_t rlo, rhi;
+                    ss >> rlo >> rhi;
+                    uint16_t rblock_type = static_cast<uint16_t>(rlo) | (static_cast<uint16_t>(rhi) << 8);
+                    if (!IsKnownBlockType(rblock_type)) {
+                        error = "unknown relay block type: 0x" + HexStr(std::vector<uint8_t>{rlo, rhi});
+                        return false;
+                    }
+                    ladder_out.relays[rl].blocks[rb].type = static_cast<RungBlockType>(rblock_type);
+
+                    uint8_t rinv;
+                    ss >> rinv;
+                    if (rinv > 0x01) {
+                        error = "invalid relay inverted flag";
+                        return false;
+                    }
+                    ladder_out.relays[rl].blocks[rb].inverted = (rinv == 0x01);
+
+                    uint64_t rn_fields = ReadCompactSize(ss);
+                    if (rn_fields > MAX_FIELDS_PER_BLOCK) {
+                        error = "relay block has too many fields: " + std::to_string(rn_fields);
+                        return false;
+                    }
+                    ladder_out.relays[rl].blocks[rb].fields.resize(rn_fields);
+                    for (uint64_t rf = 0; rf < rn_fields; ++rf) {
+                        uint8_t rdt;
+                        ss >> rdt;
+                        if (!IsKnownDataType(rdt)) {
+                            error = "unknown relay data type: 0x" + HexStr(std::span<const uint8_t>{&rdt, 1});
+                            return false;
+                        }
+                        RungDataType rdtype = static_cast<RungDataType>(rdt);
+                        uint64_t rdl = ReadCompactSize(ss);
+                        size_t rmin = FieldMinSize(rdtype);
+                        size_t rmax = FieldMaxSize(rdtype);
+                        if (rdl < rmin || rdl > rmax) {
+                            error = DataTypeName(rdtype) + " size out of range in relay";
+                            return false;
+                        }
+                        ladder_out.relays[rl].blocks[rb].fields[rf].type = rdtype;
+                        ladder_out.relays[rl].blocks[rb].fields[rf].data.resize(rdl);
+                        if (rdl > 0) {
+                            ss.read(MakeWritableByteSpan(ladder_out.relays[rl].blocks[rb].fields[rf].data));
+                        }
+                        std::string rfield_reason;
+                        if (!ladder_out.relays[rl].blocks[rb].fields[rf].IsValid(rfield_reason)) {
+                            error = rfield_reason;
+                            return false;
+                        }
+                    }
+                }
+
+                // Read relay relay_refs (indices of other relays)
+                uint64_t n_relay_reqs = ReadCompactSize(ss);
+                if (n_relay_reqs > MAX_REQUIRES) {
+                    error = "relay " + std::to_string(rl) + " has too many relay_refs";
+                    return false;
+                }
+                ladder_out.relays[rl].relay_refs.resize(n_relay_reqs);
+                for (uint64_t rr = 0; rr < n_relay_reqs; ++rr) {
+                    uint64_t req_idx = ReadCompactSize(ss);
+                    if (req_idx >= rl) {
+                        error = "relay " + std::to_string(rl) + " requires forward/self reference: " + std::to_string(req_idx);
+                        return false;
+                    }
+                    ladder_out.relays[rl].relay_refs[rr] = static_cast<uint16_t>(req_idx);
+                }
+            }
+
+            // Read per-rung relay_refs
+            if (!ss.empty()) {
+                uint64_t n_rung_reqs = ReadCompactSize(ss);
+                if (n_rung_reqs != ladder_out.rungs.size()) {
+                    error = "rung relay_refs count mismatch: " + std::to_string(n_rung_reqs) +
+                            " vs " + std::to_string(ladder_out.rungs.size()) + " rungs";
+                    return false;
+                }
+                for (uint64_t rq = 0; rq < n_rung_reqs; ++rq) {
+                    uint64_t n_reqs = ReadCompactSize(ss);
+                    if (n_reqs > MAX_REQUIRES) {
+                        error = "rung " + std::to_string(rq) + " has too many relay_refs";
+                        return false;
+                    }
+                    ladder_out.rungs[rq].relay_refs.resize(n_reqs);
+                    for (uint64_t ri = 0; ri < n_reqs; ++ri) {
+                        uint64_t req_idx = ReadCompactSize(ss);
+                        if (req_idx >= ladder_out.relays.size()) {
+                            error = "rung " + std::to_string(rq) + " relay_refs invalid relay index: " + std::to_string(req_idx);
+                            return false;
+                        }
+                        ladder_out.rungs[rq].relay_refs[ri] = static_cast<uint16_t>(req_idx);
+                    }
+                }
+            }
+        }
+
         // Reject trailing bytes — no extra data allowed
         if (!ss.empty()) {
             error = "trailing bytes in ladder witness";
@@ -280,6 +398,49 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder)
                 if (!cfield.data.empty()) {
                     ss.write(MakeByteSpan(cfield.data));
                 }
+            }
+        }
+    }
+
+    // Write relays (only if any relays or rung relay_refs exist)
+    bool has_relay_refs = !ladder.relays.empty();
+    if (!has_relay_refs) {
+        for (const auto& rung : ladder.rungs) {
+            if (!rung.relay_refs.empty()) { has_relay_refs = true; break; }
+        }
+    }
+
+    if (has_relay_refs) {
+        WriteCompactSize(ss, ladder.relays.size());
+        for (const auto& relay : ladder.relays) {
+            WriteCompactSize(ss, relay.blocks.size());
+            for (const auto& block : relay.blocks) {
+                uint16_t btype = static_cast<uint16_t>(block.type);
+                ss << static_cast<uint8_t>(btype & 0xFF);
+                ss << static_cast<uint8_t>((btype >> 8) & 0xFF);
+                ss << static_cast<uint8_t>(block.inverted ? 0x01 : 0x00);
+                WriteCompactSize(ss, block.fields.size());
+                for (const auto& field : block.fields) {
+                    ss << static_cast<uint8_t>(field.type);
+                    WriteCompactSize(ss, field.data.size());
+                    if (!field.data.empty()) {
+                        ss.write(MakeByteSpan(field.data));
+                    }
+                }
+            }
+            // Write relay relay_refs
+            WriteCompactSize(ss, relay.relay_refs.size());
+            for (uint16_t req : relay.relay_refs) {
+                WriteCompactSize(ss, req);
+            }
+        }
+
+        // Write per-rung relay_refs
+        WriteCompactSize(ss, ladder.rungs.size());
+        for (const auto& rung : ladder.rungs) {
+            WriteCompactSize(ss, rung.relay_refs.size());
+            for (uint16_t req : rung.relay_refs) {
+                WriteCompactSize(ss, req);
             }
         }
     }

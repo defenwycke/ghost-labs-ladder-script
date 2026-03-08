@@ -28,6 +28,7 @@ static constexpr uint8_t RUNG_CONDITIONS_PREFIX = 0xc1;
 struct RungConditions {
     std::vector<Rung> rungs;
     RungCoil coil;               //!< Output coil (per-output, serialized with conditions)
+    std::vector<Relay> relays;   //!< Relay definitions (shared condition sets)
 
     bool IsEmpty() const { return rungs.empty(); }
 };

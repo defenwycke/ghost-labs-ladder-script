@@ -4180,4 +4180,427 @@ BOOST_AUTO_TEST_CASE(spam_embed_fake_pubkey_commit_unrecoverable)
     BOOST_CHECK(result == EvalResult::UNSATISFIED);
 }
 
+// ============================================================================
+// Relay tests
+// ============================================================================
+
+// Helper: build a simple relay with one SIG block (condition-side fields only)
+static Relay MakeCondRelay(const std::vector<uint16_t>& reqs = {})
+{
+    Relay relay;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(MakePubkey())});
+    relay.blocks.push_back(block);
+    relay.relay_refs = reqs;
+    return relay;
+}
+
+// Helper: build a relay with merged fields (condition + witness) for evaluation
+static Relay MakeEvalRelay(bool valid_sig = true, const std::vector<uint16_t>& reqs = {})
+{
+    Relay relay;
+    RungBlock block;
+    block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(valid_sig ? 64 : 63)});
+    relay.blocks.push_back(block);
+    relay.relay_refs = reqs;
+    return relay;
+}
+
+BOOST_AUTO_TEST_CASE(relay_serialize_roundtrip)
+{
+    LadderWitness ladder;
+
+    // One rung with a SIG block
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    b.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(b);
+    rung.relay_refs = {0}; // requires relay 0
+    ladder.rungs.push_back(rung);
+
+    // Two relays: relay 1 requires relay 0
+    Relay r0;
+    RungBlock rb0;
+    rb0.type = RungBlockType::CSV;
+    rb0.fields.push_back({RungDataType::NUMERIC, {0x10, 0x00, 0x00, 0x00}});
+    r0.blocks.push_back(rb0);
+    ladder.relays.push_back(r0);
+
+    Relay r1;
+    RungBlock rb1;
+    rb1.type = RungBlockType::HASH_PREIMAGE;
+    rb1.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    rb1.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xDD)});
+    r1.blocks.push_back(rb1);
+    r1.relay_refs = {0};
+    ladder.relays.push_back(r1);
+
+    // Serialize
+    auto bytes = SerializeLadderWitness(ladder);
+    BOOST_CHECK(!bytes.empty());
+
+    // Deserialize
+    LadderWitness decoded;
+    std::string error;
+    bool ok = DeserializeLadderWitness(bytes, decoded, error);
+    BOOST_CHECK_MESSAGE(ok, "roundtrip failed: " + error);
+
+    // Verify structure
+    BOOST_CHECK_EQUAL(decoded.relays.size(), 2u);
+    BOOST_CHECK_EQUAL(decoded.relays[0].blocks.size(), 1u);
+    BOOST_CHECK(decoded.relays[0].blocks[0].type == RungBlockType::CSV);
+    BOOST_CHECK(decoded.relays[0].relay_refs.empty());
+    BOOST_CHECK_EQUAL(decoded.relays[1].blocks.size(), 1u);
+    BOOST_CHECK(decoded.relays[1].blocks[0].type == RungBlockType::HASH_PREIMAGE);
+    BOOST_CHECK_EQUAL(decoded.relays[1].relay_refs.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded.relays[1].relay_refs[0], 0u);
+
+    // Verify rung requires survived roundtrip
+    BOOST_CHECK_EQUAL(decoded.rungs[0].relay_refs.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].relay_refs[0], 0u);
+}
+
+BOOST_AUTO_TEST_CASE(relay_forward_reference_rejected)
+{
+    LadderWitness ladder;
+
+    // One rung
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    b.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(b);
+    ladder.rungs.push_back(rung);
+
+    // Relay 0 requires relay 1 (forward reference — invalid)
+    Relay r0;
+    RungBlock rb;
+    rb.type = RungBlockType::CSV;
+    rb.fields.push_back({RungDataType::NUMERIC, {0x10, 0x00, 0x00, 0x00}});
+    r0.blocks.push_back(rb);
+    r0.relay_refs = {1};
+    ladder.relays.push_back(r0);
+
+    Relay r1;
+    r1.blocks.push_back(rb);
+    ladder.relays.push_back(r1);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    bool ok = DeserializeLadderWitness(bytes, decoded, error);
+    BOOST_CHECK(!ok);
+    BOOST_CHECK(error.find("forward") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(relay_self_reference_rejected)
+{
+    LadderWitness ladder;
+
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    b.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(b);
+    ladder.rungs.push_back(rung);
+
+    // Relay 0 requires itself (index 0 >= own index 0)
+    Relay r0;
+    RungBlock rb;
+    rb.type = RungBlockType::CSV;
+    rb.fields.push_back({RungDataType::NUMERIC, {0x10, 0x00, 0x00, 0x00}});
+    r0.blocks.push_back(rb);
+    r0.relay_refs = {0};
+    ladder.relays.push_back(r0);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    bool ok = DeserializeLadderWitness(bytes, decoded, error);
+    BOOST_CHECK(!ok);
+    BOOST_CHECK(error.find("forward") != std::string::npos || error.find("self") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(relay_rung_requires_invalid_index)
+{
+    LadderWitness ladder;
+
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    b.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.relay_refs = {5}; // relay index 5 doesn't exist
+    rung.blocks.push_back(b);
+    ladder.rungs.push_back(rung);
+
+    // One relay
+    Relay r0;
+    RungBlock rb;
+    rb.type = RungBlockType::CSV;
+    rb.fields.push_back({RungDataType::NUMERIC, {0x10, 0x00, 0x00, 0x00}});
+    r0.blocks.push_back(rb);
+    ladder.relays.push_back(r0);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    bool ok = DeserializeLadderWitness(bytes, decoded, error);
+    BOOST_CHECK(!ok);
+    BOOST_CHECK(error.find("invalid relay index") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(relay_eval_satisfied)
+{
+    // Relay with CSV block, rung requires it — both pass
+    MockSignatureChecker checker;
+    checker.sequence_result = true;
+
+    LadderWitness ladder;
+
+    // Relay 0: CSV 144 (satisfied via mock)
+    Relay r0;
+    RungBlock rb;
+    rb.type = RungBlockType::CSV;
+    rb.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r0.blocks.push_back(rb);
+    ladder.relays.push_back(r0);
+
+    // Rung 0: requires relay 0, has CSV 144 block
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::CSV;
+    b.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    rung.blocks.push_back(b);
+    rung.relay_refs = {0};
+    ladder.rungs.push_back(rung);
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    BOOST_CHECK(EvalLadder(ladder, checker, SigVersion::LADDER, execdata, ctx));
+}
+
+BOOST_AUTO_TEST_CASE(relay_eval_unsatisfied_blocks_rung)
+{
+    // Relay fails (sequence_result=false) — rung should fail even though rung's own blocks pass
+    MockSignatureChecker checker;
+    checker.sequence_result = false;
+
+    LadderWitness ladder;
+
+    // Relay 0: CSV 144 (will fail — mock returns false)
+    Relay r0;
+    RungBlock rb;
+    rb.type = RungBlockType::CSV;
+    rb.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r0.blocks.push_back(rb);
+    ladder.relays.push_back(r0);
+
+    // Rung requires relay 0, but has a hash preimage block that would pass on its own
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::HASH_PREIMAGE;
+    auto preimage = std::vector<uint8_t>(32, 0xDD);
+    CSHA256 hasher;
+    hasher.Write(preimage.data(), preimage.size());
+    std::vector<uint8_t> hash(32);
+    hasher.Finalize(hash.data());
+    b.fields.push_back({RungDataType::HASH256, hash});
+    b.fields.push_back({RungDataType::PREIMAGE, preimage});
+    rung.blocks.push_back(b);
+    rung.relay_refs = {0};
+    ladder.rungs.push_back(rung);
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    BOOST_CHECK(!EvalLadder(ladder, checker, SigVersion::LADDER, execdata, ctx));
+}
+
+BOOST_AUTO_TEST_CASE(relay_chain_satisfied)
+{
+    // Relay 0: CSV 144. Relay 1: requires [0], CSV 144. Rung: requires [1].
+    MockSignatureChecker checker;
+    checker.sequence_result = true;
+
+    LadderWitness ladder;
+
+    Relay r0;
+    RungBlock rb0;
+    rb0.type = RungBlockType::CSV;
+    rb0.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r0.blocks.push_back(rb0);
+    ladder.relays.push_back(r0);
+
+    Relay r1;
+    RungBlock rb1;
+    rb1.type = RungBlockType::CSV;
+    rb1.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r1.blocks.push_back(rb1);
+    r1.relay_refs = {0};
+    ladder.relays.push_back(r1);
+
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::CSV;
+    b.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    rung.blocks.push_back(b);
+    rung.relay_refs = {1};
+    ladder.rungs.push_back(rung);
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    BOOST_CHECK(EvalLadder(ladder, checker, SigVersion::LADDER, execdata, ctx));
+}
+
+BOOST_AUTO_TEST_CASE(relay_chain_broken)
+{
+    // Relay 0: CSV 144 (fails). Relay 1: requires [0]. Rung: requires [1].
+    MockSignatureChecker checker;
+    checker.sequence_result = false;
+
+    LadderWitness ladder;
+
+    Relay r0;
+    RungBlock rb0;
+    rb0.type = RungBlockType::CSV;
+    rb0.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r0.blocks.push_back(rb0);
+    ladder.relays.push_back(r0);
+
+    Relay r1;
+    RungBlock rb1;
+    rb1.type = RungBlockType::CSV;
+    rb1.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    r1.blocks.push_back(rb1);
+    r1.relay_refs = {0};
+    ladder.relays.push_back(r1);
+
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::CSV;
+    b.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
+    rung.blocks.push_back(b);
+    rung.relay_refs = {1};
+    ladder.rungs.push_back(rung);
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    BOOST_CHECK(!EvalLadder(ladder, checker, SigVersion::LADDER, execdata, ctx));
+}
+
+BOOST_AUTO_TEST_CASE(relay_backward_compat)
+{
+    // Old-format witness (no relays) should deserialize with empty relays
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    b.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(b);
+    ladder.rungs.push_back(rung);
+    // No relays, no requires
+
+    auto bytes = SerializeLadderWitness(ladder);
+
+    LadderWitness decoded;
+    std::string error;
+    bool ok = DeserializeLadderWitness(bytes, decoded, error);
+    BOOST_CHECK_MESSAGE(ok, "backward compat failed: " + error);
+    BOOST_CHECK(decoded.relays.empty());
+    BOOST_CHECK(decoded.rungs[0].relay_refs.empty());
+}
+
+BOOST_AUTO_TEST_CASE(relay_conditions_reject_witness_fields)
+{
+    // Relay with SIGNATURE field in conditions — should be rejected
+    RungConditions conditions;
+    Rung rung;
+    RungBlock b;
+    b.type = RungBlockType::SIG;
+    b.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(MakePubkey())});
+    rung.blocks.push_back(b);
+    conditions.rungs.push_back(rung);
+
+    Relay relay;
+    RungBlock rb;
+    rb.type = RungBlockType::SIG;
+    rb.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)}); // witness-only!
+    relay.blocks.push_back(rb);
+    conditions.relays.push_back(relay);
+
+    CScript script = SerializeRungConditions(conditions);
+
+    RungConditions decoded;
+    std::string error;
+    bool ok = DeserializeRungConditions(script, decoded, error);
+    BOOST_CHECK(!ok);
+    BOOST_CHECK(error.find("witness-only") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(relay_merge_conditions_witness)
+{
+    // Conditions: relay with PUBKEY_COMMIT. Witness: relay with PUBKEY + SIG.
+    // Merge should produce combined fields.
+    RungConditions conditions;
+    Rung cond_rung;
+    RungBlock cb;
+    cb.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    cb.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    cond_rung.blocks.push_back(cb);
+    cond_rung.relay_refs = {0};
+    conditions.rungs.push_back(cond_rung);
+
+    Relay cond_relay;
+    RungBlock crb;
+    crb.type = RungBlockType::SIG;
+    crb.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    cond_relay.blocks.push_back(crb);
+    conditions.relays.push_back(cond_relay);
+
+    LadderWitness witness;
+    Rung wit_rung;
+    RungBlock wb;
+    wb.type = RungBlockType::SIG;
+    wb.fields.push_back({RungDataType::PUBKEY, pk});
+    wb.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    wit_rung.blocks.push_back(wb);
+    witness.rungs.push_back(wit_rung);
+
+    Relay wit_relay;
+    RungBlock wrb;
+    wrb.type = RungBlockType::SIG;
+    wrb.fields.push_back({RungDataType::PUBKEY, pk});
+    wrb.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    wit_relay.blocks.push_back(wrb);
+    witness.relays.push_back(wit_relay);
+
+    // Serialize conditions side
+    CScript script = SerializeRungConditions(conditions);
+    RungConditions decoded_cond;
+    std::string cond_error;
+    BOOST_CHECK(DeserializeRungConditions(script, decoded_cond, cond_error));
+    BOOST_CHECK_EQUAL(decoded_cond.relays.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].relay_refs.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].relay_refs[0], 0u);
+
+    // Verify relay has condition-only field
+    BOOST_CHECK_EQUAL(decoded_cond.relays[0].blocks[0].fields.size(), 1u);
+    BOOST_CHECK(decoded_cond.relays[0].blocks[0].fields[0].type == RungDataType::PUBKEY_COMMIT);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
