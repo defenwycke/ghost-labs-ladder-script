@@ -1,7 +1,7 @@
 ```
 BIP: XXXX
 Layer: Consensus (soft fork)
-Title: Ladder Script -- Typed Structured Transaction Conditions
+Title: Ladder Script — Typed Structured Transaction Conditions
 Author: Bitcoin Ghost
 Status: Draft
 Type: Standards Track
@@ -10,7 +10,7 @@ Created: 2026-03-06
 
 ## Abstract
 
-Ladder Script introduces transaction version 4 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organized as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system covers signatures, timelocks, hashes, covenants, anchors, recursion, and programmable logic controllers, all activated as a single deployment.
+Ladder Script introduces transaction version 4 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organised as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type; no arbitrary data pushes are possible. The system covers signatures, timelocks, hashes, covenants, anchors, recursion, and programmable logic controllers, all activated as a single deployment.
 
 ## Motivation
 
@@ -56,7 +56,7 @@ The prefix bytes `0xc1` and `0xc2` were chosen after rigorous collision analysis
 
 **Input (unlocking side):**
 
-The first element of the segregated witness stack for each v4 input is a serialized `LadderWitness`. For `0xC1` outputs, this contains the same rung/block layout as the conditions plus SIGNATURE and PREIMAGE fields. For `0xC2` (MLSC) outputs, the witness additionally contains the revealed rung conditions, Merkle proof hashes, and coil data.
+The first element of the segregated witness stack for each v4 input is a serialised `LadderWitness`. For `0xC1` outputs, this contains the same rung/block layout as the conditions plus SIGNATURE and PREIMAGE fields. For `0xC2` (MLSC) outputs, the witness additionally contains the revealed rung conditions, Merkle proof hashes, and coil data.
 
 **Evaluation entry point:**
 
@@ -71,29 +71,29 @@ All multi-byte integers are encoded as Bitcoin compact-size varints unless other
 ```
 LADDER WITNESS / RUNG CONDITIONS:
 
-[n_rungs: varint]                         -- number of rungs (0 = template mode, 1..MAX_RUNGS = normal)
+[n_rungs: varint]                         — number of rungs (0 = template mode, 1..MAX_RUNGS = normal)
   for each rung:
-    [n_blocks: varint]                    -- number of blocks in this rung (1..MAX_BLOCKS_PER_RUNG)
+    [n_blocks: varint]                    — number of blocks in this rung (1..MAX_BLOCKS_PER_RUNG)
       for each block:
-        <block encoding>                  -- micro-header or escape (see below)
-[coil_type: uint8_t]                      -- RungCoilType enum
-[attestation: uint8_t]                    -- RungAttestationMode enum
-[scheme: uint8_t]                         -- RungScheme enum
-[address_len: varint]                     -- length of destination address (0 = none)
-[address: bytes]                          -- raw scriptPubKey bytes
-[n_coil_conditions: varint]               -- number of coil condition rungs (0 = none)
+        <block encoding>                  — micro-header or escape (see below)
+[coil_type: uint8_t]                      — RungCoilType enum
+[attestation: uint8_t]                    — RungAttestationMode enum
+[scheme: uint8_t]                         — RungScheme enum
+[address_len: varint]                     — length of destination address (0 = none)
+[address: bytes]                          — raw scriptPubKey bytes
+[n_coil_conditions: varint]               — number of coil condition rungs (0 = none)
   for each coil condition rung:
     [n_blocks: varint]
       for each block:
-        <block encoding>                  -- same encoding as input blocks
-[n_relays: varint]                        -- number of relay definitions (0 = none)
+        <block encoding>                  — same encoding as input blocks
+[n_relays: varint]                        — number of relay definitions (0 = none)
   for each relay:
-    [n_requirements: varint]              -- number of required input indices
+    [n_requirements: varint]              — number of required input indices
       for each requirement:
-        [input_index: uint16_t LE]        -- required co-spend input index
+        [input_index: uint16_t LE]        — required co-spend input index
     [n_blocks: varint]
       for each block:
-        <block encoding>                  -- relay condition blocks
+        <block encoding>                  — relay condition blocks
 ```
 
 #### Block Encoding: Micro-Headers
@@ -147,15 +147,15 @@ Fields within a block are encoded in one of two modes:
 [n_fields: varint]
   for each field:
     [data_type: uint8_t]
-    <field data>                          -- encoding depends on type (see below)
+    <field data>                          — encoding depends on type (see below)
 ```
 
 **Implicit fields** (used with micro-headers when implicit layout matches):
 ```
--- n_fields is omitted (count known from layout)
--- data_type bytes are omitted (types known from layout)
+— n_fields is omitted (count known from layout)
+— data_type bytes are omitted (types known from layout)
   for each field:
-    <field data>                          -- encoding depends on type (see below)
+    <field data>                          — encoding depends on type (see below)
 ```
 
 **Per-type field data encoding:**
@@ -198,15 +198,15 @@ When `n_rungs = 0` in a conditions script, the output uses **template inheritanc
 ```
 TEMPLATE REFERENCE (n_rungs = 0):
 
-[n_rungs: varint = 0]                    -- signals template mode
-[input_index: varint]                    -- which input's conditions to inherit
-[n_diffs: varint]                        -- number of field-level patches
+[n_rungs: varint = 0]                    — signals template mode
+[input_index: varint]                    — which input's conditions to inherit
+[n_diffs: varint]                        — number of field-level patches
   for each diff:
-    [rung_index: varint]                 -- target rung
-    [block_index: varint]               -- target block within rung
-    [field_index: varint]               -- target field within block
-    [data_type: uint8_t]                -- replacement field type
-    <field data>                        -- encoded per type (NUMERIC = varint, others = length-prefixed)
+    [rung_index: varint]                 — target rung
+    [block_index: varint]               — target block within rung
+    [field_index: varint]               — target field within block
+    [data_type: uint8_t]                — replacement field type
+    <field data>                        — encoded per type (NUMERIC = varint, others = length-prefixed)
 ```
 
 Template resolution rules:
@@ -223,17 +223,17 @@ When `n_rungs = 0` in a ladder witness (the input's witness stack element), the 
 ```
 DIFF WITNESS (n_rungs = 0 in witness):
 
-[n_rungs: varint = 0]                    -- signals diff witness mode
-[input_index: varint]                    -- source input to inherit from
-[n_diffs: varint]                        -- number of field-level diffs
+[n_rungs: varint = 0]                    — signals diff witness mode
+[input_index: varint]                    — source input to inherit from
+[n_diffs: varint]                        — number of field-level diffs
   for each diff:
-    [rung_index: varint]                 -- target rung
-    [block_index: varint]               -- target block within rung
-    [field_index: varint]               -- target field within block
-    [data_type: uint8_t]                -- replacement field type
-    <field data>                        -- encoded per type
-[coil]                                   -- fresh coil (never inherited)
-                                         -- no relays section (inherited from source)
+    [rung_index: varint]                 — target rung
+    [block_index: varint]               — target block within rung
+    [field_index: varint]               — target field within block
+    [data_type: uint8_t]                — replacement field type
+    <field data>                        — encoded per type
+[coil]                                   — fresh coil (never inherited)
+                                         — no relays section (inherited from source)
 ```
 
 Diff witness resolution rules:
@@ -283,7 +283,7 @@ Data type validity is checked by `IsKnownDataType()`. Unknown data type codes ca
 
 ### Block Types
 
-Block types are organized into numbered families. Each block type evaluates a single spending condition. The block type is encoded as a `uint16_t` (little-endian) on the wire.
+Block types are organised into numbered families. Each block type evaluates a single spending condition. The block type is encoded as a `uint16_t` (little-endian) on the wire.
 
 #### Signature, Timelock, and Hash (0x0001-0x02FF)
 
@@ -372,11 +372,11 @@ The Programmable Logic Controller family brings industrial automation concepts t
 | `0x0651` | SEQUENCER | NUMERIC(current_step) + NUMERIC(total_steps) | Step sequencer. SATISFIED when current_step < total_steps. Total must be non-zero. |
 | `0x0661` | ONE_SHOT | HASH256(id) + NUMERIC(window) [+ NUMERIC(state)] | One-shot activation window. SATISFIED when state is zero (not yet fired) or absent. Once fired, permanently unsatisfied. |
 | `0x0671` | RATE_LIMIT | NUMERIC(max_per_window) + NUMERIC(window_blocks) + NUMERIC(current_count) | Rate limiter. SATISFIED when current_count < max_per_window. |
-| `0x0681` | COSIGN | HASH256(conditions_hash) | Co-spend contact. SATISFIED when another input in the same transaction has rung conditions whose serialized hash matches conditions_hash. The evaluator skips the current input index when scanning. |
+| `0x0681` | COSIGN | HASH256(conditions_hash) | Co-spend contact. SATISFIED when another input in the same transaction has rung conditions whose serialised hash matches conditions_hash. The evaluator skips the current input index when scanning. |
 
 ### Coil Types
 
-The coil determines the output semantics of a ladder-locked UTXO. It is serialized after the rung data.
+The coil determines the output semantics of a ladder-locked UTXO. It is serialised after the rung data.
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -414,11 +414,11 @@ The PUBKEY_COMMIT mechanism enables commit-reveal PQ migration: a conditions out
 
 Ladder evaluation follows a strict three-level logic:
 
-**Level 1 -- Ladder (OR):** Rungs are evaluated in order. The first rung that returns SATISFIED terminates evaluation with success. If all rungs return UNSATISFIED, the ladder fails. If any rung returns ERROR, the entire transaction is invalid (consensus failure).
+**Level 1, Ladder (OR):** Rungs are evaluated in order. The first rung that returns SATISFIED terminates evaluation with success. If all rungs return UNSATISFIED, the ladder fails. If any rung returns ERROR, the entire transaction is invalid (consensus failure).
 
-**Level 2 -- Rung (AND):** All blocks within a rung must return SATISFIED for the rung to be SATISFIED. Evaluation short-circuits on the first UNSATISFIED or ERROR result.
+**Level 2, Rung (AND):** All blocks within a rung must return SATISFIED for the rung to be SATISFIED. Evaluation short-circuits on the first UNSATISFIED or ERROR result.
 
-**Level 3 -- Block Inversion:** Each block has an `inverted` flag. When set:
+**Level 3, Block Inversion:** Each block has an `inverted` flag. When set:
 - SATISFIED becomes UNSATISFIED
 - UNSATISFIED becomes SATISFIED
 - ERROR remains ERROR (never inverted)
@@ -438,21 +438,21 @@ hash_type          = uint8 (SIGHASH_DEFAULT=0, ALL=1, NONE=2, SINGLE=3, ANYONECA
 tx_version         = int32
 tx_locktime        = uint32
 
--- Unless ANYONECANPAY:
+— Unless ANYONECANPAY:
 prevouts_hash      = SHA256(all input prevouts)
 amounts_hash       = SHA256(all spent output amounts)
 sequences_hash     = SHA256(all input sequences)
 
--- If SIGHASH_ALL (or DEFAULT):
+— If SIGHASH_ALL (or DEFAULT):
 outputs_hash       = SHA256(all outputs)
 
 spend_type         = 0x00 (uint8, always 0 for ladder)
 
--- Input-specific:
+— Input-specific:
   If ANYONECANPAY: prevout + spent_output + sequence
   Else: input_index (uint32)
 
--- If SIGHASH_SINGLE:
+— If SIGHASH_SINGLE:
 output_hash        = SHA256(output at input_index)
 
 conditions_hash    = SHA256(serialized rung conditions from spent output)
@@ -471,7 +471,7 @@ The following limits are enforced at the policy (mempool) layer. Consensus enfor
 | MAX_RUNGS | 16 | Maximum rungs per ladder witness. Prevents combinatorial explosion in evaluation. |
 | MAX_BLOCKS_PER_RUNG | 8 | Maximum blocks per rung. Limits AND-condition depth. |
 | MAX_FIELDS_PER_BLOCK | 16 | Maximum typed fields per block. Sufficient for 16-of-16 multisig. |
-| MAX_LADDER_WITNESS_SIZE | 10,000 bytes | Maximum total serialized witness size. Accommodates Dilithium3 signatures (3,293 bytes) with headroom for multi-block rungs. |
+| MAX_LADDER_WITNESS_SIZE | 10,000 bytes | Maximum total serialised witness size. Accommodates Dilithium3 signatures (3,293 bytes) with headroom for multi-block rungs. |
 
 Policy additionally restricts:
 - All block types are standard upon activation.
@@ -495,17 +495,17 @@ Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encodin
 
 The following RPCs are provided for wallet and application integration:
 
-- `encodeladderaddress` -- Encode serialized rung conditions as a `rung1`-prefixed Bech32m address.
-- `decodeladderaddress` -- Decode a `rung1`-prefixed Bech32m address back to raw conditions hex.
-- `createrung` -- Create a rung conditions structure from a JSON description of blocks and fields.
-- `decoderung` -- Decode a hex-encoded rung conditions structure to human-readable JSON.
-- `validateladder` -- Validate a raw v4 RUNG_TX transaction's ladder witnesses against its spent outputs.
-- `createrungtx` -- Create an unsigned v4 RUNG_TX transaction with rung condition outputs.
-- `signrungtx` -- Sign a v4 RUNG_TX transaction's inputs given private keys and spent output information.
-- `computectvhash` -- Compute the BIP-119 CTV template hash for a v4 RUNG_TX transaction at a given input index.
-- `pqkeygen` -- Generate a post-quantum keypair for a specified scheme.
-- `pqpubkeycommit` -- Compute the SHA-256 PUBKEY_COMMIT for a given public key.
-- `extractadaptorsecret` -- Extract the adaptor secret from a pre-signature and adapted signature pair.
+- `encodeladderaddress` — Encode serialised rung conditions as a `rung1`-prefixed Bech32m address.
+- `decodeladderaddress` — Decode a `rung1`-prefixed Bech32m address back to raw conditions hex.
+- `createrung` — Create a rung conditions structure from a JSON description of blocks and fields.
+- `decoderung` — Decode a hex-encoded rung conditions structure to human-readable JSON.
+- `validateladder` — Validate a raw v4 RUNG_TX transaction's ladder witnesses against its spent outputs.
+- `createrungtx` — Create an unsigned v4 RUNG_TX transaction with rung condition outputs.
+- `signrungtx` — Sign a v4 RUNG_TX transaction's inputs given private keys and spent output information.
+- `computectvhash` — Compute the BIP-119 CTV template hash for a v4 RUNG_TX transaction at a given input index.
+- `pqkeygen` — Generate a post-quantum keypair for a specified scheme.
+- `pqpubkeycommit` — Compute the SHA-256 PUBKEY_COMMIT for a given public key.
+- `extractadaptorsecret` — Extract the adaptor secret from a pre-signature and adapted signature pair.
 
 ## Rationale
 
@@ -525,7 +525,7 @@ The following RPCs are provided for wallet and application integration:
 
 **PLC block types.** The Programmable Logic Controller family (hysteresis, timers, latches, counters, comparators, sequencers) is borrowed from industrial automation where these primitives have decades of proven reliability. They enable stateful transaction logic (e.g., rate-limited withdrawals, multi-step approval processes, time-delayed state machines) without requiring a general-purpose virtual machine.
 
-**Conditions hash in sighash.** Including the SHA-256 hash of the serialized locking conditions in the sighash computation prevents signature reuse across different ladder outputs that happen to use the same key. This is analogous to BIP-341's tapleaf hash commitment.
+**Conditions hash in sighash.** Including the SHA-256 hash of the serialised locking conditions in the sighash computation prevents signature reuse across different ladder outputs that happen to use the same key. This is analogous to BIP-341's tapleaf hash commitment.
 
 **Policy vs. consensus limits.** MAX_RUNGS, MAX_BLOCKS_PER_RUNG, and MAX_FIELDS_PER_BLOCK are enforced at both policy and consensus layers. The MAX_LADDER_WITNESS_SIZE limit at 10,000 bytes accommodates post-quantum signatures (Dilithium3 at 3,293 bytes) with headroom for multi-block rungs while preventing witness bloat attacks.
 
@@ -588,7 +588,7 @@ The implementation includes comprehensive test coverage across two layers:
 - Micro-header roundtrips for all known block types
 - Implicit field encoding in CONDITIONS and WITNESS contexts
 - Template inheritance serialization, resolution, and diff application
-- Cross-phase integration (multi-block, multi-rung optimized roundtrips)
+- Cross-phase integration (multi-block, multi-rung optimised roundtrips)
 
 **Functional tests** (`test/functional/rung_basic.py`): 115 end-to-end test scenarios covering:
 - RPC interface for rung creation, decoding, and validation
@@ -618,7 +618,7 @@ The COSIGN block type (0x0681) creates a transaction-level dependency: a child U
 
 This is a mempool-level nuisance, not a consensus vulnerability. No funds can be stolen. The attack is bounded by the anchor's own spending conditions:
 
-- **Signature protection.** Production anchors should include a SIG block, preventing unauthorized spending entirely.
+- **Signature protection.** Production anchors should include a SIG block, preventing unauthorised spending entirely.
 - **RECURSE_SAME re-encumbrance.** Anchors using RECURSE_SAME require the spending transaction to create a new output with identical conditions. The attacker creates a new anchor at their own expense; the defender uses the new anchor in their next transaction.
 - **Fee asymmetry.** The attacker pays fees per griefing attempt. The defender's cost is updating a single outpoint reference.
 

@@ -35,7 +35,7 @@ DIFF_WITNESS:
   [address: bytes]
   [n_coil_conditions: varint]
   [coil condition rungs...]
-  -- no relays section (inherited from source) --
+  — no relays section (inherited from source) —
 ```
 
 Minimum size with no diffs: ~8 bytes header + coil overhead.
@@ -72,7 +72,7 @@ struct LadderWitness {
 };
 ```
 
-## Deserialization (serialize.cpp)
+## Deserialisation (serialize.cpp)
 
 In `DeserializeLadderWitness`, replace the `n_rungs == 0` error:
 
@@ -106,7 +106,7 @@ if (n_rungs == 0) {
 }
 ```
 
-## Serialization (serialize.cpp)
+## Serialisation (serialize.cpp)
 
 In `SerializeLadderWitness`, add path for witness references:
 
@@ -140,16 +140,16 @@ bool ResolveWitnessReference(LadderWitness& witness,
 
 Steps:
 1. Validate `input_index < nIn` (forward-only, prevents cycles)
-2. Deserialize `tx.vin[input_index].scriptWitness.stack[0]` as LadderWitness
+2. Deserialise `tx.vin[input_index].scriptWitness.stack[0]` as LadderWitness
 3. Reject if source is itself a witness reference (no chaining)
 4. Copy source's `rungs` and `relays` into `witness`
 5. Apply diffs: bounds check indices, enforce type match
-6. Keep witness's own coil (already populated from deserialization)
+6. Keep witness's own coil (already populated from deserialisation)
 7. Clear `witness_ref`
 
 ## Integration into VerifyRungTx (evaluator.cpp)
 
-After existing witness deserialization (line ~2518):
+After existing witness deserialisation (line ~2518):
 
 ```cpp
 if (witness_ladder.IsWitnessRef()) {
@@ -176,7 +176,7 @@ if (witness_ladder.IsWitnessRef()) {
 ## Policy Updates (policy.cpp)
 
 `IsStandardRungTx` updated to:
-- Recognize diff witness format (n_rungs == 0 with valid reference)
+- Recognise diff witness format (n_rungs == 0 with valid reference)
 - Apply same field/size limits to diffs
 - Validate forward-only and no-chaining at relay time
 
@@ -184,7 +184,7 @@ if (witness_ladder.IsWitnessRef()) {
 
 | # | Test | Purpose |
 |---|------|---------|
-| 1 | `diff_witness_basic_roundtrip` | Serialize/deserialize, no diffs, fresh coil |
+| 1 | `diff_witness_basic_roundtrip` | Serialise/deserialise, no diffs, fresh coil |
 | 2 | `diff_witness_with_sig_diff` | Replace only signature field |
 | 3 | `diff_witness_resolution` | Full resolve from source witness |
 | 4 | `diff_witness_fresh_coil` | Verify inherited rungs but own coil/address |
@@ -204,7 +204,7 @@ if (witness_ladder.IsWitnessRef()) {
 | `types.h` | WitnessDiff, WitnessReference, witness_ref on LadderWitness |
 | `serialize.cpp` | Diff witness deserialize/serialize paths |
 | `evaluator.cpp` | ResolveWitnessReference + call site in VerifyRungTx |
-| `policy.cpp` | Recognize diff witness in standardness checks |
+| `policy.cpp` | Recognise diff witness in standardness checks |
 | `rung_tests.cpp` | 12 new tests |
 | `rpc.cpp` | Display diff witness in decoderungwitness |
 

@@ -1035,45 +1035,6 @@ body {
   margin-right: 4px;
 }
 
-/* Trend Chart */
-.trend-chart {
-  padding: 10px;
-}
-.trend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.trend-label {
-  font-size: 9px;
-  color: var(--text-secondary);
-  width: 60px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.trend-bar-container {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 32px;
-}
-.trend-bar {
-  flex: 1;
-  background: var(--amber-dim);
-  min-width: 4px;
-  transition: height 0.3s, background 0.3s;
-}
-.trend-bar.current {
-  background: var(--amber);
-  box-shadow: 0 0 6px var(--amber-glow);
-}
-.trend-bar.zero {
-  background: var(--border);
-  height: 2px !important;
-}
-
 /* Simulation Controls */
 .sim-controls {
   padding: 10px;
@@ -2758,9 +2719,25 @@ function evaluateBlock(block, simState) {
       result = outAmt <= max ? 'satisfied' : 'unsatisfied';
       break;
     }
+    case 'CTV': {
+      const tmplHash = (v.template_hash || '').trim();
+      if (!tmplHash) { result = 'unsatisfied'; break; }
+      result = simState.knownTemplates?.has(tmplHash) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'VAULT_LOCK': {
+      // Vault requires the vault key to be available
+      const keyOk = v.pubkey ? simState.availableKeys?.has(v.pubkey) : false;
+      result = keyOk ? 'satisfied' : 'unsatisfied';
+      break;
+    }
+    case 'COSIGN': {
+      const condHash = (v.conditions_hash || '').trim();
+      if (!condHash) { result = 'unsatisfied'; break; }
+      result = simState.knownTemplates?.has(condHash) ? 'satisfied' : 'unsatisfied';
+      break;
+    }
     // Structural blocks: always satisfied in simulation
-    case 'CTV':
-    case 'VAULT_LOCK':
     case 'RECURSE_SAME':
     case 'RECURSE_MODIFIED':
     case 'RECURSE_UNTIL':
@@ -2773,7 +2750,6 @@ function evaluateBlock(block, simState) {
     case 'ANCHOR_RESERVE':
     case 'ANCHOR_SEAL':
     case 'ANCHOR_ORACLE':
-    case 'COSIGN':
       result = 'satisfied';
       break;
     // Compound blocks: combine evaluation of their sub-components
@@ -2830,9 +2806,12 @@ function evaluateBlock(block, simState) {
       break;
     }
     case 'WEIGHT_LIMIT': {
-      // Sim doesn't have tx weight — use rough estimate from tx totals
       const maxWeight = parseInt(v.max_weight) || 0;
-      result = maxWeight > 0 ? 'satisfied' : 'unsatisfied'; // structural in sim
+      // Rough weight estimate: 10.5 bytes per input, 31 bytes per output, 10.5 overhead (×4 for WU)
+      const inputs = simState.inputCount || 1;
+      const outputs = simState.outputCount || 1;
+      const estWeight = Math.ceil((inputs * 68 + outputs * 31 + 10.5) * 4);
+      result = (maxWeight > 0 && estWeight <= maxWeight) ? 'satisfied' : 'unsatisfied';
       break;
     }
     case 'INPUT_COUNT': {
@@ -2857,9 +2836,12 @@ function evaluateBlock(block, simState) {
       result = (output * den >= input * num) ? 'satisfied' : 'unsatisfied';
       break;
     }
-    case 'ACCUMULATOR':
-      result = 'satisfied'; // structural in sim — Merkle proof verification
+    case 'ACCUMULATOR': {
+      const rootHash = (v.merkle_root || '').trim();
+      if (!rootHash) { result = 'unsatisfied'; break; }
+      result = simState.knownRoots?.has(rootHash) ? 'satisfied' : 'unsatisfied';
       break;
+    }
     default:
       result = 'unknown';
   }
@@ -5065,6 +5047,14 @@ function SimulationPanel({ simState, onSimChange }) {
         <input className="sim-input" type="number" value={simState.csvBlocks} onChange={e => onSimChange('csvBlocks', parseInt(e.target.value) || 0)} />
       </div>
       <div className="sim-row">
+        <span className="sim-label">CSV Seconds</span>
+        <input className="sim-input" type="number" value={simState.csvSeconds} onChange={e => onSimChange('csvSeconds', parseInt(e.target.value) || 0)} />
+      </div>
+      <div className="sim-row">
+        <span className="sim-label">Median Time</span>
+        <input className="sim-input" type="number" value={simState.medianTime} onChange={e => onSimChange('medianTime', parseInt(e.target.value) || 0)} />
+      </div>
+      <div className="sim-row">
         <span className="sim-label">Input (sats)</span>
         <input className="sim-input" type="number" value={simState.inputAmount} onChange={e => onSimChange('inputAmount', parseInt(e.target.value) || 0)} />
       </div>
@@ -5116,6 +5106,48 @@ function SimulationPanel({ simState, onSimChange }) {
           const preimages = new Set(raw.split('\n').map(k => k.trim()).filter(Boolean));
           onSimChange('_preimagesRaw', raw);
           onSimChange('knownPreimages', preimages);
+        }}
+      />
+
+      <div className="prop-section-title" style={{ marginTop: 12, marginBottom: 8 }}>KNOWN TEMPLATES</div>
+      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6 }}>
+        Template hashes for CTV and COSIGN blocks, one per line.
+      </div>
+      <textarea
+        style={{
+          width: '100%', height: 40, resize: 'vertical',
+          fontFamily: 'var(--font-mono)', fontSize: 10,
+          background: 'var(--bg-primary)', color: 'var(--text-primary)',
+          border: '1px solid var(--border)', padding: 4, outline: 'none'
+        }}
+        value={simState._templatesRaw || ''}
+        placeholder="abcd1234..."
+        onChange={e => {
+          const raw = e.target.value;
+          const templates = new Set(raw.split('\n').map(k => k.trim()).filter(Boolean));
+          onSimChange('_templatesRaw', raw);
+          onSimChange('knownTemplates', templates);
+        }}
+      />
+
+      <div className="prop-section-title" style={{ marginTop: 12, marginBottom: 8 }}>KNOWN ROOTS</div>
+      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6 }}>
+        Accumulator root hashes for ACCUMULATOR blocks, one per line.
+      </div>
+      <textarea
+        style={{
+          width: '100%', height: 40, resize: 'vertical',
+          fontFamily: 'var(--font-mono)', fontSize: 10,
+          background: 'var(--bg-primary)', color: 'var(--text-primary)',
+          border: '1px solid var(--border)', padding: 4, outline: 'none'
+        }}
+        value={simState._rootsRaw || ''}
+        placeholder="ff00ee11..."
+        onChange={e => {
+          const raw = e.target.value;
+          const roots = new Set(raw.split('\n').map(k => k.trim()).filter(Boolean));
+          onSimChange('_rootsRaw', raw);
+          onSimChange('knownRoots', roots);
         }}
       />
     </div>
@@ -5226,99 +5258,6 @@ function RegisterTable({ rungs, simMode, simState }) {
           </table>
         </div>
       )}
-    </div>
-  );
-}
-
-function TrendChart({ rungs }) {
-  // Generate mock covenant replay data from counter/timer blocks
-  const trends = useMemo(() => {
-    const items = [];
-    rungs.forEach((rung, ri) => {
-      rung.blocks.forEach((block, bi) => {
-        const v = block.values;
-        let data = null;
-        const tag = `R${String(ri).padStart(3,'0')}.B${bi}`;
-
-        switch (block.type) {
-          case 'COUNTER_DOWN': {
-            const start = parseInt(v.count) || 5;
-            data = { label: `${tag} CTR↓`, values: [] };
-            for (let i = 0; i <= start; i++) data.values.push(start - i);
-            break;
-          }
-          case 'COUNTER_UP': {
-            const target = parseInt(v.target) || 5;
-            data = { label: `${tag} CTR↑`, values: [] };
-            for (let i = 0; i <= target; i++) data.values.push(i);
-            break;
-          }
-          case 'COUNTER_PRESET': {
-            const preset = parseInt(v.preset) || 5;
-            const current = parseInt(v.current) || 0;
-            data = { label: `${tag} CTR_P`, values: [] };
-            for (let i = current; i <= preset; i++) data.values.push(i);
-            break;
-          }
-          case 'TIMER_CONTINUOUS': {
-            const target = parseInt(v.target) || 10;
-            data = { label: `${tag} TMR`, values: [] };
-            for (let i = 0; i <= target; i++) data.values.push(i);
-            break;
-          }
-          case 'TIMER_OFF_DELAY': {
-            const start = parseInt(v.remaining) || 5;
-            data = { label: `${tag} TMR↓`, values: [] };
-            for (let i = start; i >= 0; i--) data.values.push(i);
-            break;
-          }
-          case 'SEQUENCER': {
-            const total = parseInt(v.total) || 5;
-            data = { label: `${tag} SEQ`, values: [] };
-            for (let i = 0; i < total; i++) data.values.push(i);
-            break;
-          }
-        }
-        if (data) items.push(data);
-      });
-    });
-    return items;
-  }, [rungs]);
-
-  if (trends.length === 0) {
-    return (
-      <div className="trend-chart">
-        <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: 20 }}>
-          Add counters, timers, or sequencers to see covenant replay trends
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="trend-chart">
-      <div className="prop-section-title" style={{ marginBottom: 8 }}>COVENANT REPLAY</div>
-      {trends.map((trend, ti) => {
-        const maxVal = Math.max(...trend.values, 1);
-        return (
-          <div key={ti} className="trend-row">
-            <span className="trend-label">{trend.label}</span>
-            <div className="trend-bar-container">
-              {trend.values.map((val, vi) => (
-                <div
-                  key={vi}
-                  className={`trend-bar ${vi === trend.values.length - 1 ? 'current' : ''} ${val === 0 ? 'zero' : ''}`}
-                  style={{ height: `${Math.max((val / maxVal) * 32, 2)}px` }}
-                  title={`Spend ${vi + 1}: ${val}`}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 4, textAlign: 'right' }}>
-        ← Spend history →
-      </div>
     </div>
   );
 }
@@ -6744,8 +6683,12 @@ function App() {
     medianTime: 0,
     availableKeys: new Set(),
     knownPreimages: new Set(),
+    knownTemplates: new Set(),
+    knownRoots: new Set(),
     _keysRaw: '',
     _preimagesRaw: '',
+    _templatesRaw: '',
+    _rootsRaw: '',
   });
 
   // Interactive sim: forced block states and spent tracking
@@ -7850,7 +7793,6 @@ ${ladderRows.map(r => `
             {!isSimMode && <button className={`panel-tab ${rightTab === 'tx' ? 'active' : ''}`} onClick={() => setRightTab('tx')}>TX</button>}
             {isSimMode && <button className={`panel-tab ${rightTab === 'simulate' ? 'active' : ''}`} onClick={() => setRightTab('simulate')}>CONTEXT</button>}
             <button className={`panel-tab ${rightTab === 'json' ? 'active' : ''}`} onClick={() => setRightTab('json')}>RPC</button>
-            <button className={`panel-tab ${rightTab === 'trend' ? 'active' : ''}`} onClick={() => setRightTab('trend')}>TREND</button>
           </div>
           <div className="panel-content">
             {!isSimMode && rightTab === 'properties' && selectedInputId ? (
@@ -7952,9 +7894,6 @@ ${ladderRows.map(r => `
                   <div className="json-output" style={{ flex: 1 }}>{jsonOutput}</div>
                 )}
               </div>
-            )}
-            {rightTab === 'trend' && (
-              <TrendChart rungs={rungs} />
             )}
           </div>
         </div>

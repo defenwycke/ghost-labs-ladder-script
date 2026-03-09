@@ -73,7 +73,7 @@ return ERROR
 |-----------|--------|
 | Valid signature verifies against PUBKEY | SATISFIED |
 | Signature does not verify | UNSATISFIED |
-| Missing required fields, invalid PUBKEY_COMMIT, or unrecognized signature size | ERROR |
+| Missing required fields, invalid PUBKEY_COMMIT, or unrecognised signature size | ERROR |
 
 **Context requirements:** BaseSignatureChecker, SigVersion, ScriptExecutionData. No
 RungEvalContext fields needed.
@@ -738,7 +738,7 @@ templates.
 
 **Purpose:** Two-path vault construction. A recovery key can sweep funds immediately
 (cold sweep). A hot key can spend only after a CSV delay has elapsed. This provides a
-cancellation window for unauthorized hot-key spends.
+cancellation window for unauthorised hot-key spends.
 
 **Fields:**
 
@@ -1125,7 +1125,7 @@ return SATISFIED
 
 ## Recursion Family
 
-Recursion blocks enforce output condition continuity -- the spending transaction's
+Recursion blocks enforce output condition continuity: the spending transaction's
 outputs must carry forward the same (or specifically mutated) rung conditions as the
 input. This creates covenant chains where UTXOs are re-encumbered across multiple
 spends.
@@ -1165,7 +1165,7 @@ return SATISFIED  // no context to verify against
 | Condition | Result |
 |-----------|--------|
 | Output conditions identical to input conditions | SATISFIED |
-| Output conditions differ or cannot be deserialized | UNSATISFIED |
+| Output conditions differ or cannot be deserialised | UNSATISFIED |
 | max_depth <= 0 | UNSATISFIED |
 | Missing NUMERIC | ERROR |
 
@@ -1776,7 +1776,7 @@ enforce state transition from 0 to 1 in the output.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Setter key (authorized to set the latch) |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Setter key (authorised to set the latch) |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | State (0=unset, 1=set). If absent, structural-only mode returns SATISFIED. |
 
 **Evaluation logic:**
@@ -1925,7 +1925,7 @@ return UNSATISFIED  // countdown done
 }
 ```
 
-**Common patterns:** Limited-use authorization tokens. Countdown to unlock. Similar to
+**Common patterns:** Limited-use authorisation tokens. Countdown to unlock. Similar to
 RECURSE_COUNT but operates as a PLC contact for complex ladder logic.
 
 ---
@@ -1990,7 +1990,7 @@ return UNSATISFIED
 **Family:** PLC
 
 **Purpose:** Up counter with target. SATISFIED while current < target (still counting
-up). UNSATISFIED when current >= target. Requires a PUBKEY for authorization.
+up). UNSATISFIED when current >= target. Requires a PUBKEY for authorisation.
 
 **Fields:**
 
@@ -2038,8 +2038,8 @@ return UNSATISFIED
 
 0 of 10 events counted.
 
-**Common patterns:** Event counting with authorization. Similar to COUNTER_PRESET but
-with a PUBKEY requirement for spending authorization.
+**Common patterns:** Event counting with authorisation. Similar to COUNTER_PRESET but
+with a PUBKEY requirement for spending authorisation.
 
 ---
 
@@ -2214,7 +2214,7 @@ return UNSATISFIED                // already fired
 }
 ```
 
-**Common patterns:** Single-use spending authorization. Emergency kill switches. One-
+**Common patterns:** Single-use spending authorisation. Emergency kill switches. One-
 time claim tickets.
 
 ---
@@ -2331,7 +2331,7 @@ return UNSATISFIED
 ```
 
 **Common patterns:** Atomic multi-UTXO operations. Paired-UTXO spending policies.
-Authorization tokens that must be co-spent with a target UTXO.
+Authorisation tokens that must be co-spent with a target UTXO.
 
 ---
 
@@ -2989,7 +2989,7 @@ return UNSATISFIED
 ```
 
 **Common patterns:** Allowlist/blocklist enforcement. Scalable whitelist covenants.
-Commitment set proofs. Accumulator-based spending authorization.
+Commitment set proofs. Accumulator-based spending authorisation.
 
 ---
 

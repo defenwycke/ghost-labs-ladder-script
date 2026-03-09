@@ -23,7 +23,7 @@ Micro-header slot: `0x03` (shift ADAPTOR_SIG from slot 0x02 to keep Signature fa
 
 **Actually:** Current micro-header table has ADAPTOR_SIG at slot 0x02. MUSIG_THRESHOLD takes slot 0x03. Slots 0x03-0x06 are currently Timelock family (CSV, CSV_TIME, CLTV, CLTV_TIME) which shift to 0x04-0x07. All subsequent slots shift by 1.
 
-**Simpler approach:** Don't shift anything. Append MUSIG_THRESHOLD at the end of the currently-used slots. Slot 0x33 (first unused). Micro-header table order doesn't need to match enum order — it's just a lookup table. This avoids breaking existing serialized data.
+**Simpler approach:** Don't shift anything. Append MUSIG_THRESHOLD at the end of the currently-used slots. Slot 0x33 (first unused). Micro-header table order doesn't need to match enum order — it's just a lookup table. This avoids breaking existing serialised data.
 
 **Decision: Use slot 0x33.** No existing slots change. No serialization breakage.
 
@@ -250,7 +250,7 @@ For tests 1-3, we need a valid Schnorr keypair to sign against. The existing tes
 - IsKnownBlockType: new case, no existing case changed
 - IsBaseBlockType: new case, no existing case changed
 - Serialization: existing serialize/deserialize paths handle any known block type — adding a new known type just works
-- Existing tests: unaffected (no existing behavior changes)
+- Existing tests: unaffected (no existing behaviour changes)
 - Wire format: old nodes reject unknown block type 0x0004 (expected for new features)
 
 ## Savings Summary

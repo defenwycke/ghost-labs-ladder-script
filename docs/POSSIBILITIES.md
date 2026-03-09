@@ -1,6 +1,6 @@
 # Building with Ladder Script: Patterns and Possibilities
 
-Ladder Script's 52 block types across 9 families compose into an enormous design space. Because evaluation follows simple AND/OR logic -- all blocks in a rung must pass, first satisfied rung wins -- complex spending policies emerge from combining simple primitives. This document explores what can be built.
+Ladder Script's 52 block types across 9 families compose into an enormous design space. Because evaluation follows simple AND/OR logic (all blocks in a rung must pass, first satisfied rung wins), complex spending policies emerge from combining simple primitives. This document explores what can be built.
 
 Each pattern below lists the specific blocks involved, explains why the combination works, and notes practical considerations. Where rung numbers are shown, Rung 0 is tried first and evaluation short-circuits on the first satisfied rung.
 
@@ -18,7 +18,7 @@ The simplest meaningful Ladder Script UTXO. A single rung requires both a valid 
 Rung 0: SIG(owner_key) + CLTV(height=900000)
 ```
 
-This is not a social contract or a multisig quorum -- it is a consensus-enforced "do not touch" mechanism. The owner's key is necessary but not sufficient. Use cases: saving discipline, scheduled payments, time-locked escrow deposits.
+This is not a social contract or a multisig quorum; it is a consensus-enforced "do not touch" mechanism. The owner's key is necessary but not sufficient. Use cases: saving discipline, scheduled payments, time-locked escrow deposits.
 
 **Practical note:** The compound block `CLTV_SIG` (0x0705) encodes this exact pattern in a single block, saving ~8 bytes of wire overhead. For UTXOs that will sit untouched for months, this is negligible. For high-volume protocols creating thousands of timelocked outputs, the compound form adds up.
 
@@ -35,9 +35,9 @@ Rung 1: SIG(heir) + CLTV(current_height + 52560)
 
 The owner can spend at any time with a 1-day relative delay. The heir can only spend after approximately one year (~52,560 blocks). The owner periodically spends the UTXO to themselves, re-creating it with an updated CLTV height on Rung 1. Each refresh pushes the heir's access window another year into the future.
 
-If the owner stops refreshing -- because they lost access, became incapacitated, or died -- the CLTV clock eventually expires and the heir gains access.
+If the owner stops refreshing (because they lost access, became incapacitated, or died), the CLTV clock eventually expires and the heir gains access.
 
-**Why this works:** CSV on Rung 0 provides a small delay that prevents instant drain if the owner's key is compromised (giving time to detect and react). CLTV on Rung 1 is absolute, so it does not reset when the UTXO is spent and re-created -- the owner must explicitly set a new future height each refresh. The heir's key is never exposed on-chain until needed.
+**Why this works:** CSV on Rung 0 provides a small delay that prevents instant drain if the owner's key is compromised (giving time to detect and react). CLTV on Rung 1 is absolute, so it does not reset when the UTXO is spent and re-created, so the owner must explicitly set a new future height each refresh. The heir's key is never exposed on-chain until needed.
 
 **Practical note:** The compound block `TIMELOCKED_SIG` (0x0701) can replace `SIG + CSV` on Rung 0. For the heir's rung, `CLTV_SIG` (0x0705) encodes `SIG + CLTV` in one block.
 
@@ -83,11 +83,11 @@ This is self-enforced dollar-cost averaging. The owner decides *when* to spend (
 Rung 0: HYSTERESIS_FEE(high=20, low=1) + SIG(owner)
 ```
 
-The UTXO can only move when the spending transaction's fee rate falls between 1 and 20 sat/vB. During fee spikes (common during congestion events), the UTXO is consensus-locked -- no signature can override this.
+The UTXO can only move when the spending transaction's fee rate falls between 1 and 20 sat/vB. During fee spikes (common during congestion events), the UTXO is consensus-locked. No signature can override this.
 
 This prevents accidental high-fee spends during mempool congestion, protects against fee-sniping attacks on covenant chains, and is useful for automated systems (DCA bots, scheduled payouts) that should pause rather than overpay.
 
-**Why this works:** `HYSTERESIS_FEE` computes the actual fee rate of the spending transaction (total input value minus total output value, divided by virtual size) and checks it against the band. This is a consensus check, not a policy check -- miners cannot include the transaction if the fee rate is outside the band.
+**Why this works:** `HYSTERESIS_FEE` computes the actual fee rate of the spending transaction (total input value minus total output value, divided by virtual size) and checks it against the band. This is a consensus check, not a policy check. Miners cannot include the transaction if the fee rate is outside the band.
 
 ---
 
@@ -102,9 +102,9 @@ Rung 0: MULTISIG(2-of-3, [CFO, CEO, Board]) + EPOCH_GATE(2016, 144) + WEIGHT_LIM
 Rung 1: SIG(recovery_key) + CSV(1008)
 ```
 
-Standard operations require 2-of-3 authorization, but only during the first 144 blocks (~1 day) of each 2016-block difficulty period (~2 weeks). Outside the spending window, even a valid 2-of-3 quorum cannot move funds. The `WEIGHT_LIMIT` prevents bloated transactions that could siphon value to fees.
+Standard operations require 2-of-3 authorisation, but only during the first 144 blocks (~1 day) of each 2016-block difficulty period (~2 weeks). Outside the spending window, even a valid 2-of-3 quorum cannot move funds. The `WEIGHT_LIMIT` prevents bloated transactions that could siphon value to fees.
 
-Rung 1 provides emergency recovery: a single recovery key (stored in a secure vault, hardware security module, or distributed via Shamir's Secret Sharing) can sweep funds after a 1-week delay. The delay gives the board time to detect unauthorized recovery attempts.
+Rung 1 provides emergency recovery: a single recovery key (stored in a secure vault, hardware security module, or distributed via Shamir's Secret Sharing) can sweep funds after a 1-week delay. The delay gives the board time to detect unauthorised recovery attempts.
 
 **Why this works:** `EPOCH_GATE` creates predictable spending windows that align with organizational governance cycles. `WEIGHT_LIMIT` caps transaction complexity, preventing a compromised signer from constructing a transaction that routes most value to miner fees. The OR logic between rungs means recovery is always available as a fallback.
 
@@ -147,7 +147,7 @@ Rung 0 is the voting path. Each board member spends the UTXO, which increments t
 
 Once `current >= preset` (3 votes reached), `COUNTER_PRESET` returns UNSATISFIED, locking out Rung 0. The system now falls through to Rung 1, where the treasurer can release funds (subject to a minimum amount check via `COMPARE`).
 
-**Why this works:** `COUNTER_PRESET` acts as a gate that closes when the target is reached. `RECURSE_MODIFIED` ensures the counter advances by exactly +1 per spend -- no skipping, no double-counting. The combination creates an on-chain quorum accumulator. Each "vote" is a real transaction, providing a permanent audit trail.
+**Why this works:** `COUNTER_PRESET` acts as a gate that closes when the target is reached. `RECURSE_MODIFIED` ensures the counter advances by exactly +1 per spend (no skipping, no double-counting). The combination creates an on-chain quorum accumulator. Each "vote" is a real transaction, providing a permanent audit trail.
 
 **Practical note:** Each vote costs a transaction fee. For small boards (3-7 members), this is negligible. For larger groups, consider `MUSIG_THRESHOLD` for off-chain signature aggregation with on-chain verification as a single Schnorr signature.
 
@@ -169,11 +169,11 @@ Three resolution paths, one UTXO:
 - **Rung 1 (buyer refund):** If the seller disappears, the buyer can reclaim after 144 blocks (~1 day). The delay prevents the buyer from racing the seller.
 - **Rung 2 (arbitration):** After a hard deadline, the arbitrator can adjudicate. The arbitrator has no power before the deadline and cannot collude with either party to bypass the happy path.
 
-**Why this works:** Rung evaluation order matters. The 2-of-2 multisig (Rung 0) is tried first and resolves instantly if both parties cooperate. The CSV delay on Rung 1 ensures the buyer cannot unilaterally refund before giving the seller time to fulfill. The CLTV on Rung 2 ensures the arbitrator only acts as a last resort after the deadline passes. Each party has exactly the power they need, no more.
+**Why this works:** Rung evaluation order matters. The 2-of-2 multisig (Rung 0) is tried first and resolves instantly if both parties cooperate. The CSV delay on Rung 1 ensures the buyer cannot unilaterally refund before giving the seller time to fulfil. The CLTV on Rung 2 ensures the arbitrator only acts as a last resort after the deadline passes. Each party has exactly the power they need, no more.
 
 ---
 
-### 2.5 Co-Spend Authorization
+### 2.5 Co-Spend Authorisation
 
 **Blocks:** `COSIGN` + `SIG` (single rung)
 
@@ -205,11 +205,11 @@ A single guardian UTXO can protect unlimited child UTXOs through `COSIGN` refere
 Rung 0: RECURSE_SAME(depth=1000) + MULTISIG(3-of-5, [key1..key5])
 ```
 
-Every spend must re-create the UTXO with identical conditions. The 3-of-5 governance structure is permanent -- it survives across spends. Funds can be withdrawn (the transaction can have additional outputs beyond the re-encumbered one), but the treasury itself persists.
+Every spend must re-create the UTXO with identical conditions. The 3-of-5 governance structure is permanent; it survives across spends. Funds can be withdrawn (the transaction can have additional outputs beyond the re-encumbered one), but the treasury itself persists.
 
 After 1000 spends, the covenant expires (`depth` reaches 0, `RECURSE_SAME` returns UNSATISFIED), and the remaining funds become freely spendable by the 3-of-5 quorum. Set depth to a large value (e.g., 100,000) for effectively permanent treasuries.
 
-**Why this works:** `RECURSE_SAME` compares the serialized conditions of the input being spent against the serialized conditions of the designated output. They must be byte-identical. The multisig quorum can spend value *from* the treasury but cannot change the rules *of* the treasury.
+**Why this works:** `RECURSE_SAME` compares the serialised conditions of the input being spent against the serialised conditions of the designated output. They must be byte-identical. The multisig quorum can spend value *from* the treasury but cannot change the rules *of* the treasury.
 
 **Practical note:** The depth counter decrements implicitly. Each spend reduces the effective remaining depth by 1. When building long-lived treasuries, choose a depth that exceeds your expected governance lifetime.
 
@@ -230,10 +230,10 @@ Rung 0: SEQUENCER(current=0, total=4) + LATCH_SET(initiator, state=0) + RECURSE_
 
 - **Step 0 (Initiation):** Sequencer at step 0. Latch unset (state=0), so `LATCH_SET` is SATISFIED. Spending this step sets the latch and advances to step 1.
 - **Step 1 (Review):** `TIMER_CONTINUOUS` accumulates blocks across spends. Each spend increments the timer until the target is reached.
-- **Step 2 (Approval):** `COUNTER_PRESET` collects authorization signatures. Each spend increments the counter.
+- **Step 2 (Approval):** `COUNTER_PRESET` collects authorisation signatures. Each spend increments the counter.
 - **Step 3 (Execution):** All gates passed. Funds released.
 
-Each step is a UTXO spend that advances the sequencer by exactly 1 (enforced by `RECURSE_MODIFIED`). The state machine cannot skip steps, cannot run backwards, and cannot be forked -- there is only one UTXO.
+Each step is a UTXO spend that advances the sequencer by exactly 1 (enforced by `RECURSE_MODIFIED`). The state machine cannot skip steps, cannot run backwards, and cannot be forked. There is only one UTXO.
 
 **Why this works:** `SEQUENCER` is SATISFIED when `0 <= current < total`, gating which step is active. `RECURSE_MODIFIED` enforces that exactly the specified NUMERIC fields change by exactly the specified deltas. All other fields must remain identical. This creates deterministic, verifiable state transitions.
 
@@ -312,7 +312,7 @@ The anchor's FALCON-512 signature provides quantum resistance. The children's Sc
 
 **Why this works:** `PUBKEY_COMMIT` stores only a 32-byte hash of the 897-byte FALCON-512 public key in the UTXO set. The full key is revealed only in the witness at spend time. This keeps the UTXO set compact. `RECURSE_SAME` ensures the anchor persists across spends without any modification.
 
-**Scaling:** One anchor can protect an unlimited number of child UTXOs. The anchor is spent and re-created in each transaction that spends a child, but the cost is amortized when batching multiple child spends.
+**Scaling:** One anchor can protect an unlimited number of child UTXOs. The anchor is spent and re-created in each transaction that spends a child, but the cost is amortised when batching multiple child spends.
 
 ---
 
@@ -325,7 +325,7 @@ Rung 0: SIG(SCHEME=SCHNORR, key=classical_key)
 Rung 1: SIG(SCHEME=FALCON512, key=pq_key) + PUBKEY_COMMIT(SHA256(pq_key))
 ```
 
-In normal operation, the user spends via Rung 0 with a fast, compact 64-byte Schnorr signature. If quantum computers emerge and threaten Schnorr, the user switches to Rung 1 with a FALCON-512 signature. No UTXO migration needed -- the PQ path is already baked in.
+In normal operation, the user spends via Rung 0 with a fast, compact 64-byte Schnorr signature. If quantum computers emerge and threaten Schnorr, the user switches to Rung 1 with a FALCON-512 signature. No UTXO migration needed; the PQ path is already baked in.
 
 **Why this matters:** Quantum migration in Bitcoin requires moving funds to new address types. With hybrid signing, the migration path is pre-committed at UTXO creation time. The user does not need to move funds under time pressure during a quantum emergency.
 
@@ -429,11 +429,11 @@ Rung 0: RECURSE_COUNT(4) + SIG(arbiter) + AMOUNT_LOCK(min=25000, max=25000)
 Rung 1: SIG(contractor) + CLTV(deadline_height)
 ```
 
-A 4-milestone escrow. The arbiter authorizes release of exactly 25,000 sats per milestone (enforced by `AMOUNT_LOCK`). After 4 releases, the `RECURSE_COUNT` reaches 0 and the covenant terminates.
+A 4-milestone escrow. The arbiter authorises release of exactly 25,000 sats per milestone (enforced by `AMOUNT_LOCK`). After 4 releases, the `RECURSE_COUNT` reaches 0 and the covenant terminates.
 
 Rung 1 is the contractor's safety net: if the client abandons the project, the contractor can claim all remaining funds after the deadline. This prevents funds from being locked forever in a stale escrow.
 
-**Why this works:** `AMOUNT_LOCK(25000, 25000)` constrains each milestone payment to an exact amount. `RECURSE_COUNT(4)` limits total milestones. The arbiter has authority only within these constraints -- they cannot release more than 25,000 per milestone or more than 4 milestones total. The contractor's CLTV fallback is a hard deadline that does not depend on anyone's cooperation.
+**Why this works:** `AMOUNT_LOCK(25000, 25000)` constrains each milestone payment to an exact amount. `RECURSE_COUNT(4)` limits total milestones. The arbiter has authority only within these constraints: they cannot release more than 25,000 per milestone or more than 4 milestones total. The contractor's CLTV fallback is a hard deadline that does not depend on anyone's cooperation.
 
 ---
 
@@ -448,7 +448,7 @@ Channel UTXO:
   Rung 0: ANCHOR_CHANNEL(local_key, remote_key, commitment=N) + MULTISIG(2-of-2, [local, remote])
 ```
 
-`ANCHOR_CHANNEL` (0x0502) records the channel's local key, remote key, and commitment number as parseable, typed metadata. The actual spending authorization is handled by the `MULTISIG`. The anchor data enables channel state to be read directly from the UTXO set without parsing opaque scripts.
+`ANCHOR_CHANNEL` (0x0502) records the channel's local key, remote key, and commitment number as parseable, typed metadata. The actual spending authorisation is handled by the `MULTISIG`. The anchor data enables channel state to be read directly from the UTXO set without parsing opaque scripts.
 
 For HTLC outputs within the channel, `COSIGN` links each HTLC UTXO back to the channel anchor, ensuring they can only be spent in the same transaction as the channel state update.
 
@@ -497,11 +497,11 @@ This is the foundation for Discreet Log Contracts (DLCs), prediction markets, an
 Rung 0: ANCHOR_SEAL(asset_id=H(document), state_hash=H(content_v1)) + SIG(notary)
 ```
 
-`ANCHOR_SEAL` (0x0505) records an asset identifier and a state transition hash as structured, typed metadata. The SIG ensures only the authorized notary can create the seal. Once confirmed, the blockchain provides an immutable timestamp proving that the document existed at a specific block height.
+`ANCHOR_SEAL` (0x0505) records an asset identifier and a state transition hash as structured, typed metadata. The SIG ensures only the authorised notary can create the seal. Once confirmed, the blockchain provides an immutable timestamp proving that the document existed at a specific block height.
 
 To update the document, spend the UTXO and create a new one with `ANCHOR_SEAL(asset_id=same, state_hash=H(content_v2))`. The chain of spends creates a verifiable document history.
 
-**Why this works:** Anchor blocks are structural metadata -- they contain typed fields that are parseable without understanding the full protocol. Any indexer can extract `ANCHOR_SEAL` data from the UTXO set to build a document registry. The `SIG` prevents unauthorized seals.
+**Why this works:** Anchor blocks are structural metadata: they contain typed fields that are parseable without understanding the full protocol. Any indexer can extract `ANCHOR_SEAL` data from the UTXO set to build a document registry. The `SIG` prevents unauthorised seals.
 
 ---
 
@@ -536,13 +536,13 @@ Rung 0: EPOCH_GATE(2016, 144) + MULTISIG(3-of-5, [keys]) + WEIGHT_LIMIT(100000) 
 Four simultaneous constraints, all enforced by consensus:
 
 1. **Temporal:** Spending only during the first 144 blocks (~1 day) of each 2016-block difficulty epoch (~2 weeks).
-2. **Authorization:** 3-of-5 multisig quorum.
+2. **Authorisation:** 3-of-5 multisig quorum.
 3. **Structural:** Transaction weight capped at 100,000 WU, preventing bloated fee-siphon transactions.
 4. **Fan control:** 1-3 outputs only, preventing value fragmentation.
 
 No single key compromise can drain funds outside the spending window. Even a compromised 3-of-5 quorum must wait for the next window and is constrained to small, simple transactions.
 
-**Why stacking constraints works:** AND logic within a rung means *every* block must be SATISFIED. An attacker who compromises the keys still cannot spend outside the epoch window. An attacker who somehow bypasses the epoch gate still needs 3-of-5 signatures. The constraints are independent and compose multiplicatively -- each one narrows the attack surface.
+**Why stacking constraints works:** AND logic within a rung means *every* block must be SATISFIED. An attacker who compromises the keys still cannot spend outside the epoch window. An attacker who somehow bypasses the epoch gate still needs 3-of-5 signatures. The constraints are independent and compose multiplicatively; each one narrows the attack surface.
 
 ---
 
@@ -596,7 +596,7 @@ This creates sybil-resistant, time-bounded governance. Dust UTXOs cannot vote. W
 
 ## 8. Privacy and Efficiency
 
-### 8.1 MLSC (Merkelized Ladder Script Conditions)
+### 8.1 MLSC (Merkelised Ladder Script Conditions)
 
 Any of the patterns above can be deployed using the `0xC2` MLSC output format. Instead of storing full conditions in the scriptPubKey, only a 32-byte Merkle root is published. At spend time, the witness reveals only the exercised rung plus a Merkle proof.
 
@@ -626,7 +626,7 @@ Replace multi-block patterns with single compound blocks for reduced wire overhe
 
 These savings seem small individually. They compound across protocols. A Lightning node managing 10,000 channels with 2 HTLC outputs each saves ~320 KB of witness data. At scale, this reduces bandwidth, storage, and fee costs.
 
-**When to use compound blocks:** Always, for the 6 supported patterns. There is no downside -- the evaluation semantics are identical, and the wire encoding is strictly smaller.
+**When to use compound blocks:** Always, for the 6 supported patterns. There is no downside. The evaluation semantics are identical, and the wire encoding is strictly smaller.
 
 ---
 
@@ -649,17 +649,17 @@ When a transaction spends multiple UTXOs with similar conditions (common in cove
 
 The real power is composition. Each pattern above is a building block. A single UTXO can combine primitives from every family:
 
-- **Identity** -- who can spend: `SIG`, `MULTISIG`, `MUSIG_THRESHOLD`, `ADAPTOR_SIG`
-- **Time** -- when they can spend: `CSV`, `CLTV`, `CSV_TIME`, `CLTV_TIME`, `EPOCH_GATE`
-- **Knowledge** -- what they must prove: `HASH_PREIMAGE`, `HASH160_PREIMAGE`, `TAGGED_HASH`
-- **Value** -- how much can move: `AMOUNT_LOCK`, `RELATIVE_VALUE`, `HYSTERESIS_VALUE`, `HYSTERESIS_FEE`, `RATE_LIMIT`, `COMPARE`
-- **Structure** -- what the transaction looks like: `INPUT_COUNT`, `OUTPUT_COUNT`, `WEIGHT_LIMIT`, `CTV`
-- **State** -- what has happened before: `LATCH_SET`, `LATCH_RESET`, `COUNTER_DOWN`, `COUNTER_UP`, `COUNTER_PRESET`, `SEQUENCER`, `TIMER_CONTINUOUS`, `TIMER_OFF_DELAY`, `ONE_SHOT`
-- **Recursion** -- what comes next: `RECURSE_SAME`, `RECURSE_MODIFIED`, `RECURSE_UNTIL`, `RECURSE_COUNT`, `RECURSE_SPLIT`, `RECURSE_DECAY`
-- **Coordination** -- what else must be true: `COSIGN`, `ACCUMULATOR`, `VAULT_LOCK`
-- **Metadata** -- what protocols can parse: `ANCHOR`, `ANCHOR_CHANNEL`, `ANCHOR_POOL`, `ANCHOR_RESERVE`, `ANCHOR_SEAL`, `ANCHOR_ORACLE`
-- **Privacy** -- what remains hidden: MLSC (`0xC2`), compound blocks, diff witnesses
+- **Identity** (who can spend): `SIG`, `MULTISIG`, `MUSIG_THRESHOLD`, `ADAPTOR_SIG`
+- **Time** (when they can spend): `CSV`, `CLTV`, `CSV_TIME`, `CLTV_TIME`, `EPOCH_GATE`
+- **Knowledge** (what they must prove): `HASH_PREIMAGE`, `HASH160_PREIMAGE`, `TAGGED_HASH`
+- **Value** (how much can move): `AMOUNT_LOCK`, `RELATIVE_VALUE`, `HYSTERESIS_VALUE`, `HYSTERESIS_FEE`, `RATE_LIMIT`, `COMPARE`
+- **Structure** (what the transaction looks like): `INPUT_COUNT`, `OUTPUT_COUNT`, `WEIGHT_LIMIT`, `CTV`
+- **State** (what has happened before): `LATCH_SET`, `LATCH_RESET`, `COUNTER_DOWN`, `COUNTER_UP`, `COUNTER_PRESET`, `SEQUENCER`, `TIMER_CONTINUOUS`, `TIMER_OFF_DELAY`, `ONE_SHOT`
+- **Recursion** (what comes next): `RECURSE_SAME`, `RECURSE_MODIFIED`, `RECURSE_UNTIL`, `RECURSE_COUNT`, `RECURSE_SPLIT`, `RECURSE_DECAY`
+- **Coordination** (what else must be true): `COSIGN`, `ACCUMULATOR`, `VAULT_LOCK`
+- **Metadata** (what protocols can parse): `ANCHOR`, `ANCHOR_CHANNEL`, `ANCHOR_POOL`, `ANCHOR_RESERVE`, `ANCHOR_SEAL`, `ANCHOR_ORACLE`
+- **Privacy** (what remains hidden): MLSC (`0xC2`), compound blocks, diff witnesses
 
-With AND within rungs and OR across rungs, any boolean combination of these primitives is expressible. Multiple rungs create fallback paths. Block inversion (the `inverted` flag on any block) creates ceiling guards -- a block that must *not* be satisfied. Recursion creates persistent state machines. Compound blocks and diff witnesses keep it efficient. MLSC keeps it private.
+With AND within rungs and OR across rungs, any boolean combination of these primitives is expressible. Multiple rungs create fallback paths. Block inversion (the `inverted` flag on any block) creates ceiling guards (a block that must *not* be satisfied). Recursion creates persistent state machines. Compound blocks and diff witnesses keep it efficient. MLSC keeps it private.
 
 The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 52 typed blocks, AND/OR logic, and the expressiveness that emerges from their combination.

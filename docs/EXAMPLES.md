@@ -1,4 +1,4 @@
-# Ladder Script -- Worked Examples
+# Ladder Script: Worked Examples
 
 This document presents detailed, end-to-end examples of Ladder Script transactions.
 Each example includes the scenario rationale, an ASCII ladder diagram showing the
@@ -77,14 +77,14 @@ To spend, the witness must contain a valid Schnorr signature for that public key
 
 1. The node receives a spending transaction referencing this UTXO.
 2. The scriptPubKey begins with `0xc1` (RUNG_CONDITIONS_PREFIX), so the node
-   deserializes it as rung conditions rather than interpreting Bitcoin Script.
+   deserialises it as rung conditions rather than interpreting Bitcoin Script.
 3. The evaluator calls `EvalLadder`, which iterates over rungs in order.
 4. **Rung 0**: Contains one block of type `SIG` (0x0001).
    - `EvalSigBlock` extracts the PUBKEY field from the conditions.
    - The witness provides a SIGNATURE field.
    - The evaluator computes `SignatureHashLadder` (tagged hash: `"LadderSighash"`),
      which commits to the transaction version, locktime, prevouts, amounts,
-     sequences, outputs, input index, and the serialized conditions hash.
+     sequences, outputs, input index, and the serialised conditions hash.
    - Schnorr signature verification is performed against the pubkey.
    - Result: **SATISFIED**.
 5. All blocks in rung 0 are SATISFIED, so the rung passes.
@@ -173,7 +173,7 @@ Note: The NUMERIC field `50cd0000` is 52560 encoded as a 4-byte little-endian in
 
 ### Evaluation Walkthrough
 
-**Path A -- Normal spend (rung 0):**
+**Path A (normal spend, rung 0):**
 
 1. The witness contains 2 signatures and identifies rung 0.
 2. `EvalMultisigBlock` reads the threshold (NUMERIC field: 2) and the 3 PUBKEY fields.
@@ -181,7 +181,7 @@ Note: The NUMERIC field `50cd0000` is 52560 encoded as a 4-byte little-endian in
 4. If 2 or more signatures verify, result: **SATISFIED**.
 5. Rung 0 passes. Transaction is valid.
 
-**Path B -- Recovery spend (rung 1):**
+**Path B (recovery spend, rung 1):**
 
 1. The witness contains 1 signature and identifies rung 1.
 2. `EvalCSVBlock` reads the NUMERIC field (52,560 blocks) and checks the input's
@@ -269,7 +269,7 @@ R001 +--[ CSV: 144 blocks ]---[ SIG: 03f9e8...c1b0 ]-----------( )--+
 
 ### Evaluation Walkthrough
 
-**Path A -- Alice claims (rung 0):**
+**Path A (Alice claims, rung 0):**
 
 1. Alice's witness provides a PREIMAGE field and a SIGNATURE field.
 2. `EvalHashPreimageBlock`: computes `SHA256(preimage)` and compares it to the
@@ -279,7 +279,7 @@ R001 +--[ CSV: 144 blocks ]---[ SIG: 03f9e8...c1b0 ]-----------( )--+
    - Valid: **SATISFIED**.
 4. Both blocks pass (AND). Rung 0 wins. Alice receives the funds.
 
-**Path B -- Bob refunds (rung 1):**
+**Path B (Bob refunds, rung 1):**
 
 1. Bob's witness provides a SIGNATURE field and identifies rung 1.
 2. `EvalCSVBlock`: checks nSequence >= 144 blocks relative to the UTXO's
@@ -359,7 +359,7 @@ R000 +--[ SIG: 02a1b2...f0a1 ]---[ RECURSE_COUNT: 3 ]---------( R )--+
 2. `EvalRecurseCountBlock` reads the count value (3). Since count > 0, the
    block enforces that the spending transaction's output contains identical
    conditions with count decremented to 2.
-3. The evaluator compares the output's serialized conditions against the input's
+3. The evaluator compares the output's serialised conditions against the input's
    conditions, verifying that only the RECURSE_COUNT NUMERIC field changed and
    that the new value is exactly `input_count - 1`.
 4. Result: **SATISFIED**. The output is now encumbered with count=2.
@@ -372,7 +372,7 @@ Same process. The output is re-encumbered with count=1.
 
 Same process. The output is re-encumbered with count=0.
 
-**Spend 4 (count 0 -- covenant terminates):**
+**Spend 4 (count 0, covenant terminates):**
 
 1. The vault key signs the spending transaction.
 2. `EvalRecurseCountBlock` reads the count value (0). Since count == 0, the
@@ -517,7 +517,7 @@ Spend 13: counter  0, rung 0 UNSATISFIED (COUNTER_DOWN at 0),
 
 A treasury covenant that only permits spending when the network fee rate is
 between 5 and 50 sat/vB. This prevents panic-spending during fee spikes and
-disincentivizes unnecessarily cheap transactions that might be vulnerable to
+disincentivises unnecessarily cheap transactions that might be vulnerable to
 replacement attacks.
 
 The UTXO contains: `SIG` + `HYSTERESIS_FEE(5, 50)` + `RECURSE_SAME`.
@@ -618,7 +618,7 @@ itself on every spend. Child UTXOs use lightweight Schnorr signatures but requir
 co-spending with the anchor, ensuring that no child can be spent without the
 anchor's PQ signature in the same transaction.
 
-This pattern amortizes the cost of PQ signatures: 1 anchor protects unlimited
+This pattern amortises the cost of PQ signatures: 1 anchor protects unlimited
 children. At 10 children per batch, witness data is 5.3x smaller than individual
 PQ signatures on each UTXO.
 
@@ -757,7 +757,7 @@ Both inputs valid. The anchor re-encumbers itself. The child's value is freed.
 ### Scenario
 
 A state machine where a control rung (rung 0) gates transitions on a separate
-state rung (rung 1). This pattern cleanly separates the authorization logic
+state rung (rung 1). This pattern cleanly separates the authorisation logic
 (who can trigger transitions) from the state storage (what step the machine is on).
 
 - **Rung 0**: `LATCH_SET(state=0)` + `RECURSE_MODIFIED(target=rung1, block0, param0, delta=+1)`
@@ -938,9 +938,9 @@ INPUT 1 (diff witness → inherits from input 0):
 
 ### Evaluation Walkthrough
 
-1. **Input 0** is deserialized as a normal ladder witness. The SIG block contains PUBKEY and SIGNATURE fields. `EvalBlock(SIG)` verifies the Schnorr signature against `LadderSighash(input_index=0)`. The rung is SATISFIED.
+1. **Input 0** is deserialised as a normal ladder witness. The SIG block contains PUBKEY and SIGNATURE fields. `EvalBlock(SIG)` verifies the Schnorr signature against `LadderSighash(input_index=0)`. The rung is SATISFIED.
 
-2. **Input 1** is deserialized. `n_rungs = 0` triggers diff witness mode:
+2. **Input 1** is deserialised. `n_rungs = 0` triggers diff witness mode:
    - `input_index = 0` → copy rungs and relays from input 0's witness.
    - One diff: replace `rungs[0].blocks[0].fields[1]` (SIGNATURE) with a fresh signature.
    - The coil is read fresh from the diff witness bytes.
@@ -963,7 +963,7 @@ Savings scale with witness complexity: a MULTISIG(3-of-5) witness saves ~60% per
 
 ## Summary of Evaluation Rules
 
-| Rule | Scope | Behavior |
+| Rule | Scope | Behaviour |
 |------|-------|----------|
 | AND | Within a rung | All blocks must be SATISFIED |
 | OR | Across rungs | First satisfied rung wins |

@@ -48,8 +48,8 @@ rung. The palette is locked (read-only).
 - Alt+click any block to cycle its forced state: AUTO → FORCED ON → FORCED OFF → AUTO.
 - The scan bar provides playback controls (reset, step back, play/pause, step forward)
   with adjustable speed from 100ms to 2000ms per step.
-- Blocks show pass/fail states with color highlighting: green for passed, red for
-  failed, amber for energized.
+- Blocks show pass/fail states with colour highlighting: green for passed, red for
+  failed, amber for energised.
 - When all blocks in a rung pass, an **EXECUTE** button appears on the coil. Clicking
   it marks the rung as SPENT.
 - The **Context** tab replaces the TX tab, showing simulation state variables: block
@@ -97,7 +97,7 @@ Submit transactions to Ghost signet via the RPC proxy. Provides:
 | Control | Description |
 |---------|-------------|
 | **− / level / +** | Zoom controls. Click the level display to reset to 100%. Mouse wheel also zooms (0.1 increments). Ctrl+wheel for fine zoom (0.05 steps). |
-| **⌂ Reset View** | Zoom to 100% and center the diagram. |
+| **⌂ Reset View** | Zoom to 100% and centre the diagram. |
 | **⫷ Justify Left** | Pack all blocks to the left of their rungs, removing gaps. |
 | **+ RUNG** | Add a new empty rung at the bottom. |
 | **CLEAR** | Delete all rungs. Prompts for confirmation. |
@@ -120,7 +120,7 @@ Submit transactions to Ghost signet via the RPC proxy. Provides:
 
 ## 3. Block Palette
 
-The palette is organized into families. Click any family header to collapse or expand
+The palette is organised into families. Click any family header to collapse or expand
 its section. Drag a block from the palette onto a rung slot or the "+ ADD RUNG" drop
 area to simultaneously create a rung and place the block.
 
@@ -242,16 +242,11 @@ Displays the current ladder as wire-format JSON in `createrungtx` format. This v
 updates live as the ladder is edited. Warnings are shown for unassigned outputs and
 configuration issues.
 
-In simulate mode, JSON entries are color-highlighted:
+In simulate mode, JSON entries are colour-highlighted:
 
 - Green: executed rung.
 - Red: blocked rung.
 - Amber: currently stepping.
-
-### 5.5 Trend Tab
-
-Displays a trend chart visualization of rung statistics over execution. Useful for
-observing patterns across repeated simulation runs.
 
 ---
 
@@ -263,7 +258,7 @@ observing patterns across repeated simulation runs.
 2. Press **▶** to auto-scan, or **⏩** to step one block at a time.
 3. Watch power flow left to right through each block. Each block lights green (passed)
    or red (failed) as it is evaluated.
-4. When all blocks in a rung pass, the coil energizes with an amber glow.
+4. When all blocks in a rung pass, the coil energises with an amber glow.
 5. The position indicator in the scan bar shows `R##.B#` for the current evaluation
    point, `R##.OUT` when evaluating a coil, or `COMPLETE` when the scan finishes.
 
@@ -271,7 +266,7 @@ observing patterns across repeated simulation runs.
 
 Alt+click any block to cycle through forced states:
 
-| State | Indicator | Behavior |
+| State | Indicator | Behaviour |
 |-------|-----------|----------|
 | **AUTO** | Default | Block evaluates normally based on its field values. |
 | **FORCED ON** | Green highlight | Block always returns SATISFIED regardless of fields. |
@@ -281,7 +276,7 @@ Use forced states to test alternative execution paths without modifying field va
 
 ### 6.3 Execute and Spend
 
-When a rung is fully energized (all blocks pass), an **EXECUTE** button appears on the
+When a rung is fully energised (all blocks pass), an **EXECUTE** button appears on the
 coil. Clicking EXECUTE marks the rung as SPENT, shown with a green "SPENT" indicator.
 
 Spending cascades: if a spent rung's inputs are shared with other rungs, those inputs
@@ -328,7 +323,7 @@ assignments. The current ladder is replaced.
 
 ### 8.2 Export JSON
 
-Click **COPY JSON** in the main header. The current ladder is serialized to
+Click **COPY JSON** in the main header. The current ladder is serialised to
 `createrungtx` wire format and copied to the clipboard. The RPC tab always shows the
 live JSON representation and can be used for manual inspection before copying.
 
@@ -402,7 +397,7 @@ The bottom bar displays contextual information that varies by mode:
 |---------|-------------|
 | **Rung count** | Number of rungs in the ladder, with the 16-rung maximum noted. |
 | **Block count** | Total blocks, with per-rung 8-block maximum noted. |
-| **Energized count** | (Simulate mode) Number of currently energized rungs. |
+| **Energised count** | (Simulate mode) Number of currently energised rungs. |
 | **Height display** | (Watch mode) Signet live height and local simulation height. |
 | **Warnings** | Alerts for unassigned rungs, missing OUTPUT_REF assignments, and other issues. |
 | **Tooltip toggle** | `? ON` / `? OFF` — enables or disables context-sensitive help tooltips on hover. |
@@ -414,10 +409,10 @@ The bottom bar displays contextual information that varies by mode:
 
 ### Block States
 
-| State | Color | Meaning |
+| State | Colour | Meaning |
 |-------|-------|---------|
-| Normal | Gray | De-energized, not yet evaluated. |
-| Energized | Amber | Condition satisfied during evaluation. |
+| Normal | Grey | De-energised, not yet evaluated. |
+| Energised | Amber | Condition satisfied during evaluation. |
 | Passed (step) | Green | Block passed during step-through simulation. |
 | Failed (step) | Red | Block failed during step-through simulation. |
 | Selected | White border | Currently selected for editing in the properties panel. |
@@ -426,19 +421,19 @@ The bottom bar displays contextual information that varies by mode:
 
 ### Wire States
 
-| State | Color | Meaning |
+| State | Colour | Meaning |
 |-------|-------|---------|
-| De-energized | Gray | No power flow through this segment. |
-| Energized | Amber | Power flowing through the wire. |
+| De-energised | Grey | No power flow through this segment. |
+| Energised | Amber | Power flowing through the wire. |
 | Stepping | Green | Currently being evaluated by the scanner. |
 
 ### Coil States
 
-| State | Color | Meaning |
+| State | Colour | Meaning |
 |-------|-------|---------|
-| Unassigned | Gray | No transaction output linked. |
+| Unassigned | Grey | No transaction output linked. |
 | TX assigned | Cyan | Linked to a specific transaction output. |
-| Energized | Amber glow | All blocks in the rung are satisfied. |
+| Energised | Amber glow | All blocks in the rung are satisfied. |
 | Relay | Dashed amber border | Internal reference coil (not a direct spend). |
 | Referenced | Green | Another rung references this coil as an input. |
 | Spent | Green "SPENT" label | Rung has been executed in simulation. |

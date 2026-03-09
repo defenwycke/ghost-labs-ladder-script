@@ -1,4 +1,4 @@
-# Ladder Script -- Frequently Asked Questions
+# Ladder Script: Frequently Asked Questions
 
 ---
 
@@ -8,12 +8,12 @@
 
 Ladder Script is a typed, structured transaction condition system for Bitcoin.
 It replaces Bitcoin Script's stack-based opcode interpreter with a declarative
-model where spending conditions are expressed as typed blocks organized into
-rungs -- borrowing the visual and logical structure of Programmable Logic
+model where spending conditions are expressed as typed blocks organised into
+rungs, borrowing the visual and logical structure of Programmable Logic
 Controller (PLC) ladder diagrams used in industrial automation.
 
-Each output's scriptPubKey contains serialized *conditions* (the locking side),
-and each input's witness contains serialized *attestations* (the unlocking side).
+Each output's scriptPubKey contains serialised *conditions* (the locking side),
+and each input's witness contains serialised *attestations* (the unlocking side).
 Both use the same wire format: rungs containing blocks containing typed fields.
 
 ### 2. Why not just use Bitcoin Script?
@@ -35,11 +35,11 @@ semantically typed, structurally bounded, and machine-verifiable.
 ### 3. What is the PLC analogy?
 
 In industrial automation, a Programmable Logic Controller (PLC) runs a
-continuous scan cycle over a *ladder diagram* -- a set of horizontal rungs
+continuous scan cycle over a *ladder diagram*: a set of horizontal rungs
 connecting a left power rail to a right power rail. Each rung contains
 *contacts* (input conditions) in series, and terminates at a *coil* (output
 action). Power flows left to right: if all contacts in a rung are closed,
-the coil energizes.
+the coil energises.
 
 Ladder Script maps this directly:
 
@@ -57,7 +57,7 @@ Ladder Script maps this directly:
 
 Ladder Script is designed as a soft fork. It uses transaction version 4 (v4)
 and two new scriptPubKey prefix bytes (`0xC1` for inline conditions, `0xC2` for
-Merkelized conditions) that do not conflict with any existing opcode or witness
+Merkelised conditions) that do not conflict with any existing opcode or witness
 version. Nodes that do not understand v4 transactions treat them as
 anyone-can-spend under the soft fork activation rules, while upgraded nodes
 enforce the full condition evaluation.
@@ -105,9 +105,9 @@ commits to:
 - Transaction version and locktime
 - Prevouts hash, amounts hash, sequences hash (unless ANYONECANPAY)
 - Outputs hash (unless SIGHASH_NONE)
-- Spend type (always 0 -- no annex or extensions)
+- Spend type (always 0; no annex or extensions)
 - Input-specific data (prevout or index)
-- **Conditions hash**: SHA-256 of the serialized rung conditions from the spent
+- **Conditions hash**: SHA-256 of the serialised rung conditions from the spent
   output's scriptPubKey
 
 The conditions hash is the key difference from BIP-341 Taproot sighash. It binds
@@ -118,10 +118,10 @@ condition substitution attacks.
 
 Ladder Script defines two output formats:
 
-- **`0xC1` — Inline Conditions.** The full serialized conditions follow the
+- **`0xC1` — Inline Conditions.** The full serialised conditions follow the
   prefix byte in the scriptPubKey. All conditions are visible in the UTXO set.
 
-- **`0xC2` — Merkelized Ladder Script Conditions (MLSC).** Only a 32-byte
+- **`0xC2` — Merkelised Ladder Script Conditions (MLSC).** Only a 32-byte
   Merkle root follows the prefix byte. The actual conditions are stored
   off-chain and revealed at spend time via a Merkle proof in the witness.
   This provides MAST-style privacy (unrevealed rungs stay hidden) and keeps
@@ -129,7 +129,7 @@ Ladder Script defines two output formats:
 
 Both prefixes were chosen to avoid collision with any existing OP_ opcode,
 witness version, or Taproot annex byte. The evaluator dispatches on the first
-byte to determine which deserialization path to use.
+byte to determine which deserialisation path to use.
 
 ### 10. What are the size limits?
 
@@ -137,8 +137,8 @@ byte to determine which deserialization path to use.
 |-------|-------|-------------|
 | Max rungs per ladder | 16 | Policy |
 | Max blocks per rung | 8 | Policy |
-| Max fields per block | 16 | Deserialization |
-| Max ladder witness size | 10,000 bytes | Deserialization |
+| Max fields per block | 16 | Deserialisation |
+| Max ladder witness size | 10,000 bytes | Deserialisation |
 | Max PUBKEY size | 2,048 bytes | Field validation |
 | Max SIGNATURE size | 50,000 bytes | Field validation |
 | Max PREIMAGE size | 252 bytes | Field validation |
@@ -164,18 +164,18 @@ Each output has a coil that determines what happens when a rung is satisfied:
 
 **Conditions** are the locking side. For `0xC1` outputs, conditions are stored
 inline in the scriptPubKey. For `0xC2` (MLSC) outputs, only a 32-byte Merkle
-root is in the scriptPubKey -- the actual conditions are revealed at spend time
+root is in the scriptPubKey; the actual conditions are revealed at spend time
 via a Merkle proof. Conditions contain only *condition data types*: PUBKEY,
 PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only
 types (SIGNATURE, PREIMAGE) are forbidden in conditions.
 
-The **witness** is the unlocking side -- stored in the transaction input's
+The **witness** is the unlocking side, stored in the transaction input's
 witness field. It contains the attestations: signatures, preimages, and other
 proof data needed to satisfy the conditions. For MLSC outputs, the witness
 also includes the revealed conditions and their Merkle proof.
 
-Both sides use the same serialization format (rungs, blocks, fields), but the
-conditions side is strictly a subset -- it defines what must be proven, not the
+Both sides use the same serialisation format (rungs, blocks, fields), but the
+conditions side is strictly a subset: it defines what must be proven, not the
 proofs themselves.
 
 ### 12a. What is a diff witness and when should I use one?
@@ -345,7 +345,7 @@ A latch has a state field (NUMERIC): 0 = unset, nonzero = set.
 
 - **LATCH_RESET**: Returns SATISFIED when state != 0. Resets the latch to 0.
 
-Latches are used for one-time authorization, state machine gating, and
+Latches are used for one-time authorisation, state machine gating, and
 preventing double-execution of covenant logic.
 
 ### 24. What is HYSTERESIS_FEE for?
@@ -377,7 +377,7 @@ with strict size limits and semantic validation:
    PREIMAGE) are blocked from conditions. Field sizes are validated against
    type-specific min/max bounds.
 2. **Serialization**: Structure limits (max rungs, blocks, fields) are enforced
-   during deserialization.
+   during deserialisation.
 3. **Policy**: Output validation rejects oversized structures before mempool
    admission.
 4. **Consensus**: Semantic validation at spend time rejects garbage operators,
@@ -391,7 +391,7 @@ with strict size limits and semantic validation:
 
 Unknown block types return `UNKNOWN_BLOCK_TYPE` from `EvalBlock`, which is
 treated as UNSATISFIED. This is a fail-closed design: if a node encounters a
-block type it does not recognize, it cannot satisfy it, and the rung fails.
+block type it does not recognise, it cannot satisfy it, and the rung fails.
 
 For forward compatibility with soft fork upgrades: a new block type can be
 added in a future activation. Pre-upgrade nodes will treat the unknown type
@@ -407,11 +407,11 @@ compatibility patterns.
 Ladder Script follows the fail-closed principle throughout:
 
 - Unknown block types: UNSATISFIED (not silently accepted).
-- Unknown data types: rejected at deserialization (not passed through).
+- Unknown data types: rejected at deserialisation (not passed through).
 - Missing fields: ERROR (consensus failure, not silent acceptance).
 - Deferred attestation: unconditionally returns false (`VerifyDeferredAttestation`
   is not yet supported and does not silently pass).
-- Out-of-range field sizes: rejected at deserialization.
+- Out-of-range field sizes: rejected at deserialisation.
 
 No ambiguous input can result in a transaction being accepted. Every path
 through the evaluator either explicitly validates or explicitly rejects.
@@ -431,7 +431,7 @@ Features include:
 - **Build Mode**: Drag blocks from a palette onto rungs, configure fields via
   a properties panel, define inputs/outputs, and generate `createrungtx` JSON.
 - **Simulate Mode**: Step through rung evaluation visually. Power flows left
-  to right through blocks. Click contacts to authorize them. Alt+click to
+  to right through blocks. Click contacts to authorise them. Alt+click to
   force-toggle blocks. Coils fire when all contacts pass.
 - **Watch Mode**: Mock UTXO monitoring with auto-incrementing block height
   and countdown timers for timelock blocks.
@@ -457,7 +457,7 @@ Features include:
    contains typed fields.
 
 2. **Submit via RPC**: `ghost-cli createrungtx '<json>'`
-   The node serializes the conditions, sets the scriptPubKey prefix to `0xC1`
+   The node serialises the conditions, sets the scriptPubKey prefix to `0xC1`
    (inline) or `0xC2` (MLSC with Merkle root), and returns a hex-encoded raw
    transaction.
 
@@ -472,7 +472,7 @@ JSON visually and displaying the resulting transaction structure.
 
 ---
 
-## MLSC (Merkelized Ladder Script Conditions)
+## MLSC (Merkelised Ladder Script Conditions)
 
 ### 31. What is MLSC?
 
@@ -502,13 +502,13 @@ Three reasons:
 
 For `0xC2` outputs, the sighash commits to the `conditions_root` directly
 (the 32-byte Merkle root from the scriptPubKey) rather than hashing the full
-serialized conditions. This means the sighash is the same size regardless of
+serialised conditions. This means the sighash is the same size regardless of
 ladder complexity, and the signer does not need access to unrevealed rungs.
 
 ### 34. Can data be embedded in MLSC outputs?
 
 Structurally, no useful data can be embedded. The UTXO stores only a 32-byte
-Merkle root -- there is nowhere to put arbitrary data. An attacker could create
+Merkle root, so there is nowhere to put arbitrary data. An attacker could create
 a valid-looking `0xC2` output with a fake root, but the conditions would never
 be spendable (no valid Merkle proof exists for conditions that weren't
 committed), making the funds permanently burned. The attacker pays for storage
@@ -522,7 +522,7 @@ they can never recover.
 
 Micro-headers are a wire format v3 optimization. Instead of encoding a block's
 type as a 2-byte `uint16_t`, frequently used blocks get a 1-byte *slot index*
-(0x00--0x33). All 52 current block types have assigned slots. The evaluator
+(0x00 to 0x33). All 52 current block types have assigned slots. The evaluator
 maps slot indices to full type codes via a compile-time lookup table.
 
 This saves 1 byte per block in the common case. Inverted blocks that have a
@@ -533,10 +533,10 @@ of encoding slot + inversion flag.
 
 When the evaluator knows a block's field layout at compile time (because the
 type is known from the micro-header), it can skip the field type byte during
-serialization. The field order is fixed by the block definition, so only the
+serialisation. The field order is fixed by the block definition, so only the
 field *data* is written. This saves 1 byte per field for known block types.
 
-### 37. How does context-aware serialization work?
+### 37. How does context-aware serialisation work?
 
 The wire format distinguishes between CONDITIONS context and WITNESS context.
 In CONDITIONS context, witness-only data types (SIGNATURE, PREIMAGE) are
@@ -566,7 +566,7 @@ with a single header, saving wire bytes. There are 6 compound types:
 
 Use compound blocks when the pattern matches exactly. HTLC is always better
 than HASH_PREIMAGE + CSV + SIG for atomic swaps. TIMELOCKED_SIG is always
-better than SIG + CSV for time-delayed authorization.
+better than SIG + CSV for time-delayed authorisation.
 
 Use separate blocks when you need different configuration (e.g., CSV on one
 rung but CLTV on another), when you want to invert individual blocks, or
@@ -579,7 +579,7 @@ when the compound doesn't match your exact pattern.
 ### 40. What are governance blocks?
 
 Governance blocks (0x08xx family) constrain the *structure* of the spending
-transaction rather than its *authorization*. They enforce spending windows,
+transaction rather than its *authorisation*. They enforce spending windows,
 transaction size limits, I/O fanout bounds, and value ratios:
 
 - **EPOCH_GATE** (0x0801): Only spendable during periodic windows (e.g.,
@@ -589,7 +589,7 @@ transaction size limits, I/O fanout bounds, and value ratios:
 - **OUTPUT_COUNT** (0x0804): Min/max number of outputs.
 - **RELATIVE_VALUE** (0x0805): Output must be >= a ratio of the input value
   (anti-siphon protection).
-- **ACCUMULATOR** (0x0806): Merkle set membership proof -- proves the
+- **ACCUMULATOR** (0x0806): Merkle set membership proof that proves the
   destination is in a pre-committed allowlist.
 
 ### 41. How does ACCUMULATOR work?

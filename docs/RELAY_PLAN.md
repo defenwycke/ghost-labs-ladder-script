@@ -161,7 +161,7 @@ bool EvalRelays(const std::vector<Relay>& relays,
 
 ### 6. Sighash
 
-No changes needed. Relays serialized in conditions are committed in the scriptPubKey and thus automatically included in `SignatureHashLadder`.
+No changes needed. Relays serialised in conditions are committed in the scriptPubKey and thus automatically included in `SignatureHashLadder`.
 
 ---
 

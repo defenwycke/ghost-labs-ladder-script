@@ -104,7 +104,7 @@ Block layout: [NUMERIC threshold] [PUBKEY key_1] ... [PUBKEY key_N] [SIGNATURE s
 
 **Implementation:** Uses `max(ctx.block_height, tx.nLockTime)` as effective height. When `nLockTime < LOCKTIME_THRESHOLD` (500,000,000), it is treated as a block height.
 
-**Rationale:** This follows the CLTV precedent exactly. CLTV (BIP-65) does not access the block height directly — it compares against `nLockTime`, and consensus rules ensure the transaction cannot be mined before that height. RECURSE_UNTIL uses the same mechanism. The spending transaction sets `nLockTime` to the current height (standard anti-fee-sniping behavior), and RECURSE_UNTIL compares against it. This avoids threading block height through the entire validation stack, which would touch consensus-critical Bitcoin Core code.
+**Rationale:** This follows the CLTV precedent exactly. CLTV (BIP-65) does not access the block height directly — it compares against `nLockTime`, and consensus rules ensure the transaction cannot be mined before that height. RECURSE_UNTIL uses the same mechanism. The spending transaction sets `nLockTime` to the current height (standard anti-fee-sniping behaviour), and RECURSE_UNTIL compares against it. This avoids threading block height through the entire validation stack, which would touch consensus-critical Bitcoin Core code.
 
 ---
 
@@ -181,7 +181,7 @@ RungConditions in scriptPubKey:
 
 **Transaction version:** `RUNG_TX_VERSION = 4`
 
-**Signature hash:** `SignatureHashLadder` using tagged hash `"LadderSighash"`, commits to serialized rung conditions from spent output. `SigVersion::LADDER = 4`.
+**Signature hash:** `SignatureHashLadder` using tagged hash `"LadderSighash"`, commits to serialised rung conditions from spent output. `SigVersion::LADDER = 4`.
 
 ---
 

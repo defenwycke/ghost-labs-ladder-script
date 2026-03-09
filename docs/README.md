@@ -4,7 +4,7 @@
 
 Ladder Script is a transaction condition system that replaces Bitcoin Script's
 stack-based opcode interpreter with a typed, structured, declarative model.
-Spending conditions are organized into rungs (AND-combined blocks) and ladders
+Spending conditions are organised into rungs (AND-combined blocks) and ladders
 (OR-combined rungs), following the visual and logical conventions of
 Programmable Logic Controller (PLC) ladder diagrams. Every byte in a Ladder
 Script transaction belongs to a known data type with enforced size constraints,
@@ -19,16 +19,16 @@ cryptography, and stateful smart contracts.
 | Document | Description |
 |----------|-------------|
 | [SUMMARY.md](SUMMARY.md) | One-page executive summary of Ladder Script's design and capabilities |
-| [WHITEPAPER.md](WHITEPAPER.md) | Vision, motivation, and architecture -- the case for structured conditions |
+| [WHITEPAPER.md](WHITEPAPER.md) | Vision, motivation, and architecture: the case for structured conditions |
 | [BIP-XXXX.md](BIP-XXXX.md) | Formal Bitcoin Improvement Proposal for v4 RUNG_TX transactions |
 | [SPECIFICATION.md](SPECIFICATION.md) | Complete technical specification: wire format, evaluation rules, sighash |
 | [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) | Block type reference with field layouts, evaluation semantics, and examples |
 | [GLOSSARY.md](GLOSSARY.md) | Terminology definitions for Ladder Script concepts |
 | [EXAMPLES.md](EXAMPLES.md) | Worked examples with ASCII diagrams, JSON wire format, and evaluation walkthroughs |
 | [INTEGRATION.md](INTEGRATION.md) | Bitcoin integration guide: consensus changes, script interpreter, mempool policy |
-| [MERKLE-UTXO-SPEC.md](MERKLE-UTXO-SPEC.md) | Merkelized Ladder Script Conditions (MLSC): Merkle root outputs, witness reveal, data embedding resistance |
+| [MERKLE-UTXO-SPEC.md](MERKLE-UTXO-SPEC.md) | Merkelised Ladder Script Conditions (MLSC): Merkle root outputs, witness reveal, data embedding resistance |
 | [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) | Activation strategy and deployment considerations |
-| [FAQ.md](FAQ.md) | Frequently asked questions organized by topic |
+| [FAQ.md](FAQ.md) | Frequently asked questions organised by topic |
 
 ---
 

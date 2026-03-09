@@ -238,7 +238,7 @@ EvalResult ApplyInversion(EvalResult raw, bool inverted) {
 }
 ```
 
-Wire format: `inverted` is serialized as 1 byte (0x00 = normal, 0x01 = inverted) immediately after `block_type`.
+Wire format: `inverted` is serialised as 1 byte (0x00 = normal, 0x01 = inverted) immediately after `block_type`.
 
 ### Core Data Structures
 

@@ -1,4 +1,4 @@
-# Ladder Script -- Bitcoin Integration Guide
+# Ladder Script: Bitcoin Integration Guide
 
 This document describes how Ladder Script integrates with the Bitcoin transaction model, consensus layer, mempool policy, and related subsystems.
 
@@ -36,7 +36,7 @@ Diff fields support either `"hex"` (raw replacement data) or `"privkey"` (auto-s
 
 ### 1.2 Witness Construction
 
-For each input, the witness stack contains a single element: the serialized `LadderWitness`. This witness provides the "unlocking" data -- signatures, preimages, and other witness-only fields -- that pairs with the conditions from the spent output.
+For each input, the witness stack contains a single element: the serialised `LadderWitness`. This witness provides the "unlocking" data (signatures, preimages, and other witness-only fields) that pairs with the conditions from the spent output.
 
 The witness structure mirrors the conditions: same number of rungs, same number of blocks per rung, same block types. The evaluator merges conditions and witness by concatenating their fields within each block.
 
@@ -68,7 +68,7 @@ if (ptxTo->version == CTransaction::RUNG_TX_VERSION) {
     if (rung::VerifyRungTx(*ptxTo, nIn, m_tx_out, nFlags, checker, *txdata, &error, m_block_height)) {
         return std::nullopt;  // Verification succeeded
     } else {
-        // Verification failed -- return script error
+        // Verification failed — return script error
     }
 }
 ```
@@ -79,10 +79,10 @@ This routing is the sole entry point for Ladder Script consensus validation. All
 
 When `PrecomputedTransactionData::Init()` detects a v4 transaction, it initializes ladder-specific caches:
 
-- `m_prevouts_single_hash` -- SHA256 of all input prevouts
-- `m_spent_amounts_single_hash` -- SHA256 of all spent amounts
-- `m_sequences_single_hash` -- SHA256 of all input sequence values
-- `m_outputs_single_hash` -- SHA256 of all outputs
+- `m_prevouts_single_hash` — SHA256 of all input prevouts
+- `m_spent_amounts_single_hash` — SHA256 of all spent amounts
+- `m_sequences_single_hash` — SHA256 of all input sequence values
+- `m_outputs_single_hash` — SHA256 of all outputs
 - `m_ladder_ready = true`
 
 The function returns immediately after setting these, skipping BIP-143 and BIP-341 cache initialization. The ladder caches are structurally identical to BIP-341 precomputed hashes but are separated by the `m_ladder_ready` flag.
@@ -134,7 +134,7 @@ A v4 transaction may also include non-conditions outputs:
 
 ### 4.1 Placement
 
-The ladder witness occupies `scriptWitness.stack[0]` -- the first (and typically only) element of the segregated witness stack. This is a single byte vector containing the serialized `LadderWitness`.
+The ladder witness occupies `scriptWitness.stack[0]`, the first (and typically only) element of the segregated witness stack. This is a single byte vector containing the serialised `LadderWitness`.
 
 ### 4.2 Conditions-Witness Merge
 
@@ -175,7 +175,7 @@ The sighash always commits to `conditions_hash = SHA256(serialized_conditions)`.
 
 1. Copy the conditions rungs into a `LadderWitness`.
 2. Serialize via `SerializeLadderWitness()`.
-3. Compute SHA256 of the serialized bytes.
+3. Compute SHA256 of the serialised bytes.
 
 This commitment binds the signature to the specific locking conditions, preventing signature reuse across outputs with different conditions.
 
@@ -277,7 +277,7 @@ Only condition data types are compared (PUBKEY, HASH256, etc.). Witness-only typ
 
 ### 8.1 Overview
 
-Ladder Script provides native post-quantum signature support through four NIST-standardized algorithms implemented by liboqs. PQ signatures are a first-class feature, not an extension: the same SIG and MULTISIG blocks handle both classical and PQ signatures via the SCHEME field.
+Ladder Script provides native post-quantum signature support through four NIST-standardised algorithms implemented by liboqs. PQ signatures are a first-class feature, not an extension: the same SIG and MULTISIG blocks handle both classical and PQ signatures via the SCHEME field.
 
 ### 8.2 PQ Key Generation
 
@@ -374,7 +374,7 @@ Available via the `verifyadaptorpresig` RPC.
 
 ### 9.5 ADAPTOR_SIG Block Evaluation
 
-The ADAPTOR_SIG block (0x0003) verifies the adapted signature at consensus time. The adapted signature is a valid BIP-340 signature against the signing key -- the evaluator does not need the adaptor point for verification. The adaptor point is stored in the conditions so that counterparties can verify the pre-signature off-chain and extract the secret after the adapted signature is published on-chain.
+The ADAPTOR_SIG block (0x0003) verifies the adapted signature at consensus time. The adapted signature is a valid BIP-340 signature against the signing key; the evaluator does not need the adaptor point for verification. The adaptor point is stored in the conditions so that counterparties can verify the pre-signature off-chain and extract the secret after the adapted signature is published on-chain.
 
 ---
 

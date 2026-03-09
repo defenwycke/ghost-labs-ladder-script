@@ -1,6 +1,6 @@
 # Ladder Script: A Typed, Structured Transaction Format for Bitcoin
 
-**Version 1.0 -- March 2026**
+**Version 1.0, March 2026**
 
 ---
 
@@ -8,7 +8,7 @@
 
 Ladder Script is a typed, structured transaction format for Bitcoin (transaction version 4) that replaces opcode-based scripting with a declarative block model inspired by industrial Programmable Logic Controllers (PLC). Every byte in a Ladder Script witness is typed. Every condition is a named block with validated fields. Evaluation follows deterministic ladder logic: AND within rungs, OR across rungs, first match wins.
 
-The design eliminates the classes of bugs inherent to stack-based scripting -- type confusion, push-data ambiguity, implicit coercion -- by requiring that all data conform to one of nine declared data types with enforced size constraints. Spending conditions are not computed; they are stated. The result is a transaction format that is auditable by inspection, verifiable in bounded time, and extensible without opcode proliferation.
+The design eliminates the classes of bugs inherent to stack-based scripting (type confusion, push-data ambiguity, implicit coercion) by requiring that all data conform to one of nine declared data types with enforced size constraints. Spending conditions are not computed; they are stated. The result is a transaction format that is auditable by inspection, verifiable in bounded time, and extensible without opcode proliferation.
 
 ---
 
@@ -28,9 +28,9 @@ Bitcoin Script is a stack-based, Forth-like language designed for simplicity. Th
 
 ### 1.2 The PLC Analogy
 
-Industrial control systems solved a parallel problem decades ago. Early relay logic was wired point-to-point -- fragile, difficult to audit, and resistant to modification. The Programmable Logic Controller replaced relay wiring with structured programs organized as **ladder diagrams**: horizontal rungs, each containing a series of conditions (contacts) that must all be satisfied for the output (coil) to energize.
+Industrial control systems solved a parallel problem decades ago. Early relay logic was wired point-to-point: fragile, difficult to audit, and resistant to modification. The Programmable Logic Controller replaced relay wiring with structured programs organised as **ladder diagrams**: horizontal rungs, each containing a series of conditions (contacts) that must all be satisfied for the output (coil) to energise.
 
-The properties that made ladder logic successful in safety-critical industrial environments are precisely those needed in a transaction authorization language:
+The properties that made ladder logic successful in safety-critical industrial environments are precisely those needed in a transaction authorisation language:
 
 - **Declarative.** Conditions are stated, not computed. A rung says "key A AND timelock B AND hash C," not "push A, check sig, push B, check sequence, push C, hash, equal."
 - **Deterministic.** Evaluation is bounded. There are no loops, no recursion in evaluation, no data-dependent branching.
@@ -41,7 +41,7 @@ Ladder Script brings this philosophy to Bitcoin transactions.
 ### 1.3 Goals
 
 1. Replace untyped stack operations with typed, validated data fields.
-2. Replace opcodes with named function blocks organized in a declarative hierarchy.
+2. Replace opcodes with named function blocks organised in a declarative hierarchy.
 3. Provide a single extensible framework that subsumes the functionality of OP_CTV, OP_VAULT, OP_CAT, and other pending proposals as individual block types within a unified system.
 4. Enable post-quantum cryptographic signatures without protocol-level changes.
 5. Eliminate the ability to embed arbitrary untyped data in transaction witnesses.
@@ -82,7 +82,7 @@ This makes Ladder Script programs amenable to static analysis. The set of condit
 
 ### 2.4 Block Type Families
 
-Block types are organized into nine families:
+Block types are organised into nine families:
 
 - **Signature, Timelock, and Hash** (0x0001--0x02FF): Core spending primitives covering the functionality of existing Bitcoin Script.
 - **Covenant and Anchor** (0x0300--0x05FF): Output constraints, L2 integration, and protocol-specific UTXO tagging.
@@ -94,7 +94,7 @@ All block types are activated as a single deployment and are standard upon activ
 
 ### 2.5 Forward Compatibility
 
-Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing an unknown block type will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognize all block types.
+Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing an unknown block type will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognise all block types.
 
 ---
 
@@ -104,9 +104,9 @@ Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is trea
 
 Ladder Script transactions use **transaction version 4** (`RUNG_TX_VERSION = 4`). This cleanly separates Ladder Script transactions from legacy (version 1) and SegWit/Taproot (version 2) transactions at the protocol level.
 
-**Output (locking side):** The scriptPubKey of a version 4 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (SIGNATURE, PREIMAGE) are prohibited in conditions.
+**Output (locking side):** The scriptPubKey of a version 4 output begins with the prefix byte `0xc1`, followed by the serialised `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (SIGNATURE, PREIMAGE) are prohibited in conditions.
 
-**Witness (unlocking side):** The witness for a version 4 input contains a serialized `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
+**Witness (unlocking side):** The witness for a version 4 input contains a serialised `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
 
 **Evaluation:** The `VerifyRungTx` entry point deserializes both structures, merges them field-by-field, and invokes `EvalLadder` on the merged result. The merge requires structural correspondence: same number of rungs, same number of blocks per rung, and matching block types.
 
@@ -154,7 +154,7 @@ Each output carries a `RungCoil` that determines unlock semantics:
 
 | Coil Type | Code | Semantics |
 |-----------|------|-----------|
-| UNLOCK | 0x01 | Standard spend -- the output is consumed |
+| UNLOCK | 0x01 | Standard spend; the output is consumed |
 | UNLOCK_TO | 0x02 | Spend to a specific destination address |
 | COVENANT | 0x03 | Constrains the structure of the spending transaction |
 
@@ -162,7 +162,7 @@ Each output carries a `RungCoil` that determines unlock semantics:
 
 Each coil specifies an attestation mode that determines how signatures are provided:
 
-| Mode | Code | Behavior |
+| Mode | Code | Behaviour |
 |------|------|----------|
 | INLINE | 0x01 | Signatures are provided inline in the witness fields |
 | AGGREGATE | 0x02 | A single block-level aggregate signature covers multiple spends |
@@ -270,7 +270,7 @@ Typed metadata blocks for layer-2 protocols and external systems.
 
 **ANCHOR_RESERVE (0x0504):** Guardian set reserve anchor.
 
-**ANCHOR_SEAL (0x0505):** Data seal anchor for timestamping and notarization.
+**ANCHOR_SEAL (0x0505):** Data seal anchor for timestamping and notarisation.
 
 **ANCHOR_ORACLE (0x0506):** Oracle data feed anchor.
 
@@ -333,7 +333,7 @@ The PUBKEY data type supports sizes up to 2,048 bytes, and the SIGNATURE data ty
 
 Post-quantum public keys are large. A FALCON-512 public key is 897 bytes, which would significantly increase UTXO set size if stored in full. Ladder Script addresses this with the PUBKEY_COMMIT data type: a 32-byte SHA-256 commitment to the full public key.
 
-The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This reduces UTXO overhead from 897 bytes to 32 bytes per post-quantum output -- a 96% reduction.
+The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This reduces UTXO overhead from 897 bytes to 32 bytes per post-quantum output, a 96% reduction.
 
 ### 5.3 The COSIGN Guardian Pattern
 
@@ -357,7 +357,7 @@ A RECURSE_SAME block constrains the spending transaction to include an output wi
 
 ### 6.2 State Mutations (RECURSE_MODIFIED)
 
-RECURSE_MODIFIED permits exactly one field to change between the input conditions and the required output conditions. The evaluator compares all condition-type fields between input and output, verifying that at most one field differs. This enables state machines: a counter, a timestamp, a threshold -- any single parameter can advance per transaction while all other conditions remain fixed.
+RECURSE_MODIFIED permits exactly one field to change between the input conditions and the required output conditions. The evaluator compares all condition-type fields between input and output, verifying that at most one field differs. This enables state machines: a counter, a timestamp, a threshold. Any single parameter can advance per transaction while all other conditions remain fixed.
 
 ### 6.3 Countdown Termination (RECURSE_COUNT)
 
@@ -400,7 +400,7 @@ These limits are sufficient for any practical spending condition while preventin
 
 ### 7.4 Economic Disincentive
 
-Because every field must conform to a data type that has semantic meaning in the evaluation model, embedding arbitrary data requires encoding it as valid-looking typed fields (e.g., as PUBKEY or HASH256 data). Such fields, if used in conditions, create cryptographically unspendable outputs -- the "data" would need to be a valid public key or hash with a known preimage. Funds locked to such outputs are permanently burned. This creates a direct economic cost for data embedding that scales with the amount of data stored.
+Because every field must conform to a data type that has semantic meaning in the evaluation model, embedding arbitrary data requires encoding it as valid-looking typed fields (e.g., as PUBKEY or HASH256 data). Such fields, if used in conditions, create cryptographically unspendable outputs; the "data" would need to be a valid public key or hash with a known preimage. Funds locked to such outputs are permanently burned. This creates a direct economic cost for data embedding that scales with the amount of data stored.
 
 ---
 
@@ -416,7 +416,7 @@ OP_CAT proposes byte concatenation to enable computed scripts. Ladder Script eli
 
 ### 8.3 vs Simplicity
 
-Simplicity and Ladder Script share the goal of replacing Bitcoin Script with a more structured, verifiable alternative. They differ in approach: Simplicity uses combinators and a type-theoretic foundation suitable for formal verification; Ladder Script uses named blocks and a PLC-inspired evaluation model optimized for auditability and industrial deployment patterns. Simplicity is a general-purpose combinator language; Ladder Script is a domain-specific block library with fixed evaluation semantics.
+Simplicity and Ladder Script share the goal of replacing Bitcoin Script with a more structured, verifiable alternative. They differ in approach: Simplicity uses combinators and a type-theoretic foundation suitable for formal verification; Ladder Script uses named blocks and a PLC-inspired evaluation model optimised for auditability and industrial deployment patterns. Simplicity is a general-purpose combinator language; Ladder Script is a domain-specific block library with fixed evaluation semantics.
 
 ### 8.4 vs Bitcoin Script
 
@@ -455,13 +455,13 @@ The Ladder Script sighash (`SignatureHashLadder`) uses a BIP-340 tagged hash wit
 - Prevouts hash, amounts hash, and sequences hash (unless ANYONECANPAY)
 - Outputs hash (unless SIGHASH_NONE)
 - Input-specific data (prevout or index)
-- **Conditions hash**: the SHA-256 hash of the serialized rung conditions from the spent output
+- **Conditions hash**: the SHA-256 hash of the serialised rung conditions from the spent output
 
 The inclusion of the conditions hash in the sighash means that a signature is bound to the specific conditions it satisfies. A valid signature for one set of conditions cannot be replayed against a different set, even if the pubkey and amounts are identical.
 
 ### 9.4 Inversion Safety
 
-The `ApplyInversion` function preserves ERROR status: inverting an ERROR still returns ERROR. This prevents an attacker from using the inversion flag to bypass error detection. The `UNKNOWN_BLOCK_TYPE` result, when inverted, becomes SATISFIED -- this is intentional, as it allows conditions to express "NOT (some future condition)" patterns while maintaining forward compatibility.
+The `ApplyInversion` function preserves ERROR status: inverting an ERROR still returns ERROR. This prevents an attacker from using the inversion flag to bypass error detection. The `UNKNOWN_BLOCK_TYPE` result, when inverted, becomes SATISFIED. This is intentional, as it allows conditions to express "NOT (some future condition)" patterns while maintaining forward compatibility.
 
 ### 9.5 Merge Validation
 
@@ -473,7 +473,7 @@ The `MergeConditionsAndWitness` function performs strict structural validation b
 
 Ladder Script replaces Bitcoin's untyped, imperative scripting model with a typed, declarative block system that draws on decades of industrial control system design. By requiring every byte to be typed, every condition to be named, and every evaluation to be deterministic, Ladder Script eliminates the classes of ambiguity and complexity that have constrained Bitcoin's programmability.
 
-The 52 block types across nine families -- signature, timelock, hash, covenant, recursion, anchor, PLC, compound, and governance -- provide a comprehensive vocabulary for transaction authorization. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
+The 52 block types across nine families (signature, timelock, hash, covenant, recursion, anchor, PLC, compound, and governance) provide a comprehensive vocabulary for transaction authorisation. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
 
 All block types activate simultaneously as a single deployment. Forward compatibility ensures that transactions using future block types are structurally valid even to nodes that do not yet implement those types.
 
@@ -484,7 +484,7 @@ The design is implemented in Bitcoin Ghost's fork of Bitcoin Core, with 185 unit
 ## References
 
 1. Bitcoin Script reference, Bitcoin Wiki.
-2. IEC 61131-3: Programmable Controllers -- Programming Languages (Ladder Diagram).
+2. IEC 61131-3: Programmable Controllers, Programming Languages (Ladder Diagram).
 3. BIP-119: CHECKTEMPLATEVERIFY (Jeremy Rubin).
 4. BIP-340: Schnorr Signatures for secp256k1.
 5. BIP-341: Taproot: SegWit version 1 spending rules.

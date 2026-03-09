@@ -14,20 +14,20 @@ Ladder Script is a typed, structured transaction format for Bitcoin that replace
 ## Block Type Families
 
 | Family | Range | Block Types | Purpose |
-|--------|-------|-------------|---------|
-| Signature | 0x0001--0x00FF | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD | Identity verification |
-| Timelock | 0x0100--0x01FF | CSV, CSV_TIME, CLTV, CLTV_TIME | Temporal constraints |
-| Hash | 0x0200--0x02FF | HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH | Knowledge proofs |
-| Covenant | 0x0300--0x03FF | CTV, VAULT_LOCK, AMOUNT_LOCK | Output constraints |
-| Recursion | 0x0400--0x04FF | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | Self-referential conditions |
-| Anchor | 0x0500--0x05FF | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE | Typed L2 metadata |
-| PLC | 0x0600--0x06FF | HYSTERESIS, TIMER, LATCH, COUNTER, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN | State machines |
-| Compound | 0x0700--0x07FF | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG | Wire-optimized patterns |
-| Governance | 0x0800--0x08FF | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR | Transaction constraints |
+|––––|–––-|––––––-|––––-|
+| Signature | 0x0001–0x00FF | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD | Identity verification |
+| Timelock | 0x0100–0x01FF | CSV, CSV_TIME, CLTV, CLTV_TIME | Temporal constraints |
+| Hash | 0x0200–0x02FF | HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH | Knowledge proofs |
+| Covenant | 0x0300–0x03FF | CTV, VAULT_LOCK, AMOUNT_LOCK | Output constraints |
+| Recursion | 0x0400–0x04FF | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | Self-referential conditions |
+| Anchor | 0x0500–0x05FF | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE | Typed L2 metadata |
+| PLC | 0x0600–0x06FF | HYSTERESIS, TIMER, LATCH, COUNTER, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN | State machines |
+| Compound | 0x0700–0x07FF | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG | Wire-optimised patterns |
+| Governance | 0x0800–0x08FF | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR | Transaction constraints |
 
 ## Transaction Format
 
-A version 4 transaction output uses one of two formats: `0xC1` (inline conditions) stores full serialized rung conditions directly, while `0xC2` (MLSC — Merkelized Ladder Script Conditions) stores only a 32-byte Merkle root, deferring all conditions to the spending witness. MLSC outputs reduce UTXO entries to a fixed 40 bytes regardless of script complexity, eliminate data embedding (fake conditions are never revealed on-chain), and provide MAST privacy (unused spending paths remain hidden). The Merkle tree uses BIP-341-style tagged hashes ("LadderLeaf" / "LadderInternal") for domain separation.
+A version 4 transaction output uses one of two formats: `0xC1` (inline conditions) stores full serialised rung conditions directly, while `0xC2` (MLSC — Merkelised Ladder Script Conditions) stores only a 32-byte Merkle root, deferring all conditions to the spending witness. MLSC outputs reduce UTXO entries to a fixed 40 bytes regardless of script complexity, eliminate data embedding (fake conditions are never revealed on-chain), and provide MAST privacy (unused spending paths remain hidden). The Merkle tree uses BIP-341-style tagged hashes ("LadderLeaf" / "LadderInternal") for domain separation.
 
 At verification time, conditions and witness are merged field-by-field — the conditions provide key commitments (PUBKEY_COMMIT), hashes, and parameters; the witness provides public keys, signatures, and preimages. The merged structure is evaluated by the three-level dispatch: `EvalLadder` (OR across rungs), `EvalRung` (AND within a rung), `EvalBlock` (type-specific logic). The sighash uses a tagged hash ("LadderSighash") that commits to the conditions hash (or Merkle root for MLSC), binding signatures to the exact conditions they satisfy.
 
@@ -37,4 +37,4 @@ Ladder Script supports four post-quantum signature schemes (FALCON-512, FALCON-1
 
 ## Implementation Status
 
-Ladder Script is implemented in the `src/rung/` directory of ghost-core (Bitcoin Ghost's fork of Bitcoin Core). The implementation comprises 10 source files: type definitions, serialization, conditions, evaluation for all block types, sighash computation, PQ verification, adaptor signatures, aggregate proofs, and policy enforcement. The wire format supports two inheritance mechanisms: template inheritance (conditions-side, §3.5) and diff witness (witness-side, §3.6), which together reduce wire overhead by up to 93% for repeated conditions and 28%+ for repeated witnesses in multi-input transactions. The test suite includes 288 unit tests (`src/test/rung_tests.cpp`) and 117 functional test scenarios (`test/functional/rung_basic.py`) covering serialization round-trips, field validation, all block evaluators, PQ signature verification, covenant evaluation, diff witness resolution, and full transaction verification through the node's mempool acceptance path.
+Ladder Script is implemented in the `src/rung/` directory of ghost-core (Bitcoin Ghost's fork of Bitcoin Core). The implementation comprises 10 source files: type definitions, serialisation, conditions, evaluation for all block types, sighash computation, PQ verification, adaptor signatures, aggregate proofs, and policy enforcement. The wire format supports two inheritance mechanisms: template inheritance (conditions-side, §3.5) and diff witness (witness-side, §3.6), which together reduce wire overhead by up to 93% for repeated conditions and 28%+ for repeated witnesses in multi-input transactions. The test suite includes 303 unit tests (`src/test/rung_tests.cpp`) and 190 functional test scenarios (`test/functional/rung_basic.py`) covering serialisation round-trips, field validation, all block evaluators, PQ signature verification, covenant evaluation, diff witness resolution, and full transaction verification through the node's mempool acceptance path.

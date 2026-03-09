@@ -1,23 +1,23 @@
-# Ladder Script -- Technical Specification
+# Ladder Script: Technical Specification
 
 **Version:** 3 (wire format v3)
 **Transaction version:** 4 (`RUNG_TX_VERSION`)
-**Status:** Implemented -- all block types consensus-standard
+**Status:** Implemented; all block types consensus-standard
 
 ---
 
 ## 1. Overview
 
-Ladder Script is a structured, typed transaction verification system for Bitcoin Ghost. It replaces Bitcoin Script's stack-based opcode model with a declarative model of typed function blocks organized into rungs.
+Ladder Script is a structured, typed transaction verification system for Bitcoin Ghost. It replaces Bitcoin Script's stack-based opcode model with a declarative model of typed function blocks organised into rungs.
 
 A version 4 transaction (`RUNG_TX`) uses Ladder Script for both locking (output conditions) and unlocking (input witness). The system provides:
 
-- **Typed data fields** -- every byte in a Ladder Script witness belongs to a declared data type with enforced size constraints. No arbitrary data pushes are possible.
-- **Function blocks** -- each block evaluates a single spending condition (signature check, timelock, hash preimage, covenant, etc.).
-- **AND/OR composition** -- blocks within a rung are combined with AND logic; rungs within a ladder are combined with OR logic (first satisfied rung wins).
-- **Inversion** -- any block can be inverted, flipping SATISFIED to UNSATISFIED and vice versa.
-- **Coil metadata** -- per-output semantics (unlock, unlock-to-destination, covenant) with attestation mode and signature scheme selection.
-- **Post-quantum readiness** -- native support for FALCON-512, FALCON-1024, and Dilithium3 via liboqs.
+- **Typed data fields:** every byte in a Ladder Script witness belongs to a declared data type with enforced size constraints. No arbitrary data pushes are possible.
+- **Function blocks:** each block evaluates a single spending condition (signature check, timelock, hash preimage, covenant, etc.).
+- **AND/OR composition:** blocks within a rung are combined with AND logic; rungs within a ladder are combined with OR logic (first satisfied rung wins).
+- **Inversion:** any block can be inverted, flipping SATISFIED to UNSATISFIED and vice versa.
+- **Coil metadata:** per-output semantics (unlock, unlock-to-destination, covenant) with attestation mode and signature scheme selection.
+- **Post-quantum readiness:** native support for FALCON-512, FALCON-1024, and Dilithium3 via liboqs.
 
 ---
 
@@ -29,7 +29,7 @@ The top-level witness structure for one input.
 
 ```
 struct LadderWitness {
-    rungs:  Vec<Rung>     // Input condition rungs (OR logic -- first satisfied wins)
+    rungs:  Vec<Rung>     // Input condition rungs (OR logic — first satisfied wins)
     coil:   RungCoil      // Output coil (per-output metadata)
 }
 ```
@@ -110,7 +110,7 @@ All multi-byte integers are little-endian. Variable-length counts use Bitcoin's 
       (same block encoding)
 ```
 
-Trailing bytes after the complete structure are rejected. The maximum total serialized size is 10,000 bytes (`MAX_LADDER_WITNESS_SIZE`).
+Trailing bytes after the complete structure are rejected. The maximum total serialised size is 10,000 bytes (`MAX_LADDER_WITNESS_SIZE`).
 
 ### 3.2 Block Encoding: Micro-Headers
 
@@ -149,7 +149,7 @@ Per-type field data encoding:
 
 | Data Type | Encoding |
 |-----------|----------|
-| NUMERIC (0x08) | `CompactSize(value)` -- varint encodes the value directly, not a length prefix. Deserialized to 4-byte LE in memory. |
+| NUMERIC (0x08) | `CompactSize(value)`, varint encodes the value directly, not a length prefix. Deserialized to 4-byte LE in memory. |
 | PUBKEY_COMMIT (0x02) | `CompactSize(32)` + 32 bytes |
 | HASH256 (0x03) | `CompactSize(32)` + 32 bytes |
 | HASH160 (0x04) | `CompactSize(20)` + 20 bytes |
@@ -161,7 +161,7 @@ Per-type field data encoding:
 
 ### 3.4 Implicit Field Layouts
 
-For common block types, the field count and per-field type bytes are implicit. The serializer checks `MatchesImplicitLayout()` -- if the block's fields match the expected layout for the current context, implicit encoding is used.
+For common block types, the field count and per-field type bytes are implicit. The serializer checks `MatchesImplicitLayout()`; if the block's fields match the expected layout for the current context, implicit encoding is used.
 
 Example layouts:
 
@@ -266,7 +266,7 @@ Two output formats are supported:
 [0xc1] [serialized RungConditions]
 ```
 
-The prefix byte `0xc1` (`RUNG_CONDITIONS_PREFIX`) identifies the script as inline Ladder Script conditions. The serialized conditions use the same wire format as a `LadderWitness` (Section 3), but **only condition data types are permitted**. The witness-only types SIGNATURE (`0x06`) and PREIMAGE (`0x05`) must not appear in conditions.
+The prefix byte `0xc1` (`RUNG_CONDITIONS_PREFIX`) identifies the script as inline Ladder Script conditions. The serialised conditions use the same wire format as a `LadderWitness` (Section 3), but **only condition data types are permitted**. The witness-only types SIGNATURE (`0x06`) and PREIMAGE (`0x05`) must not appear in conditions.
 
 Deserialization strips the `0xc1` prefix and decodes the remainder as a `LadderWitness`, then validates that no witness-only fields are present.
 
@@ -320,7 +320,7 @@ Every field in a Ladder Script witness or condition must be one of the following
 
 ## 6. Block Types
 
-Block types are encoded as `uint16_t` little-endian. They are organized into ranges by family.
+Block types are encoded as `uint16_t` little-endian. They are organised into ranges by family.
 
 ### 6.1 Signature Family (0x0001--0x00FF)
 
@@ -328,74 +328,74 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 |------|------|----------------|-----------------|
 | `0x0001` | SIG | PUBKEY, SIGNATURE | PUBKEY_COMMIT, SCHEME |
 | `0x0002` | MULTISIG | NUMERIC (threshold M), N x PUBKEY, M x SIGNATURE | SCHEME |
-| `0x0003` | ADAPTOR_SIG | 2 x PUBKEY (signing_key, adaptor_point), SIGNATURE | -- |
-| `0x0004` | MUSIG_THRESHOLD | PUBKEY_COMMIT (aggregate key hash), 2 x NUMERIC (M, N), PUBKEY, SIGNATURE | -- |
+| `0x0003` | ADAPTOR_SIG | 2 x PUBKEY (signing_key, adaptor_point), SIGNATURE | — |
+| `0x0004` | MUSIG_THRESHOLD | PUBKEY_COMMIT (aggregate key hash), 2 x NUMERIC (M, N), PUBKEY, SIGNATURE | — |
 
 ### 6.2 Timelock Family (0x0100--0x01FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0101` | CSV | NUMERIC (sequence value) | -- |
-| `0x0102` | CSV_TIME | NUMERIC (sequence value) | -- |
-| `0x0103` | CLTV | NUMERIC (locktime value) | -- |
-| `0x0104` | CLTV_TIME | NUMERIC (locktime value) | -- |
+| `0x0101` | CSV | NUMERIC (sequence value) | — |
+| `0x0102` | CSV_TIME | NUMERIC (sequence value) | — |
+| `0x0103` | CLTV | NUMERIC (locktime value) | — |
+| `0x0104` | CLTV_TIME | NUMERIC (locktime value) | — |
 
 ### 6.3 Hash Family (0x0200--0x02FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0201` | HASH_PREIMAGE | HASH256, PREIMAGE | -- |
-| `0x0202` | HASH160_PREIMAGE | HASH160, PREIMAGE | -- |
-| `0x0203` | TAGGED_HASH | 2 x HASH256 (tag_hash, expected_hash), PREIMAGE | -- |
+| `0x0201` | HASH_PREIMAGE | HASH256, PREIMAGE | — |
+| `0x0202` | HASH160_PREIMAGE | HASH160, PREIMAGE | — |
+| `0x0203` | TAGGED_HASH | 2 x HASH256 (tag_hash, expected_hash), PREIMAGE | — |
 
 ### 6.4 Covenant Family (0x0300--0x03FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0301` | CTV | HASH256 (template hash) | -- |
-| `0x0302` | VAULT_LOCK | 2 x PUBKEY (recovery_key, hot_key), SIGNATURE, NUMERIC (hot_delay) | -- |
-| `0x0303` | AMOUNT_LOCK | 2 x NUMERIC (min_sats, max_sats) | -- |
+| `0x0301` | CTV | HASH256 (template hash) | — |
+| `0x0302` | VAULT_LOCK | 2 x PUBKEY (recovery_key, hot_key), SIGNATURE, NUMERIC (hot_delay) | — |
+| `0x0303` | AMOUNT_LOCK | 2 x NUMERIC (min_sats, max_sats) | — |
 
 ### 6.5 Anchor/L2 Family (0x0500--0x05FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0501` | ANCHOR | >= 1 typed field (any) | -- |
+| `0x0501` | ANCHOR | >= 1 typed field (any) | — |
 | `0x0502` | ANCHOR_CHANNEL | 2 x PUBKEY (local_key, remote_key) | NUMERIC (commitment_number) |
 | `0x0503` | ANCHOR_POOL | HASH256 (vtxo_tree_root) | NUMERIC (participant_count) |
-| `0x0504` | ANCHOR_RESERVE | 2 x NUMERIC (threshold_n, threshold_m), HASH256 (guardian_set_hash) | -- |
-| `0x0505` | ANCHOR_SEAL | 2 x HASH256 (asset_id, state_transition) | -- |
+| `0x0504` | ANCHOR_RESERVE | 2 x NUMERIC (threshold_n, threshold_m), HASH256 (guardian_set_hash) | — |
+| `0x0505` | ANCHOR_SEAL | 2 x HASH256 (asset_id, state_transition) | — |
 | `0x0506` | ANCHOR_ORACLE | PUBKEY (oracle_key) | NUMERIC (outcome_count) |
 
 ### 6.6 Recursion Family (0x0400--0x04FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0401` | RECURSE_SAME | NUMERIC (max_depth) | -- |
-| `0x0402` | RECURSE_MODIFIED | >= 4 x NUMERIC (see Section 7 for format) | -- |
-| `0x0403` | RECURSE_UNTIL | NUMERIC (until_height) | -- |
-| `0x0404` | RECURSE_COUNT | NUMERIC (count) | -- |
-| `0x0405` | RECURSE_SPLIT | 2 x NUMERIC (max_splits, min_split_sats) | -- |
-| `0x0406` | RECURSE_DECAY | >= 4 x NUMERIC (same format as RECURSE_MODIFIED) | -- |
+| `0x0401` | RECURSE_SAME | NUMERIC (max_depth) | — |
+| `0x0402` | RECURSE_MODIFIED | >= 4 x NUMERIC (see Section 7 for format) | — |
+| `0x0403` | RECURSE_UNTIL | NUMERIC (until_height) | — |
+| `0x0404` | RECURSE_COUNT | NUMERIC (count) | — |
+| `0x0405` | RECURSE_SPLIT | 2 x NUMERIC (max_splits, min_split_sats) | — |
+| `0x0406` | RECURSE_DECAY | >= 4 x NUMERIC (same format as RECURSE_MODIFIED) | — |
 
 ### 6.7 PLC Family (0x0600--0x06FF)
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0601` | HYSTERESIS_FEE | 2 x NUMERIC (high_sat_vb, low_sat_vb) | -- |
-| `0x0602` | HYSTERESIS_VALUE | 2 x NUMERIC (high_sats, low_sats) | -- |
-| `0x0611` | TIMER_CONTINUOUS | 2 x NUMERIC (accumulated, target) | -- |
-| `0x0612` | TIMER_OFF_DELAY | NUMERIC (remaining) | -- |
-| `0x0621` | LATCH_SET | PUBKEY (setter_key), NUMERIC (state) | -- |
-| `0x0622` | LATCH_RESET | PUBKEY (resetter_key), 2 x NUMERIC (state, delay_blocks) | -- |
-| `0x0631` | COUNTER_DOWN | PUBKEY (event_signer), NUMERIC (count) | -- |
-| `0x0632` | COUNTER_PRESET | 2 x NUMERIC (current, preset) | -- |
-| `0x0633` | COUNTER_UP | PUBKEY (event_signer), 2 x NUMERIC (current, target) | -- |
-| `0x0641` | COMPARE | 2-3 x NUMERIC (operator, value_b [, value_c]) | -- |
-| `0x0651` | SEQUENCER | 2 x NUMERIC (current_step, total_steps) | -- |
-| `0x0661` | ONE_SHOT | NUMERIC (state), HASH256 (commitment) | -- |
-| `0x0671` | RATE_LIMIT | 3 x NUMERIC (max_per_block, accumulation_cap, refill_blocks) | -- |
-| `0x0681` | COSIGN | HASH256 (conditions_hash) | -- |
+| `0x0601` | HYSTERESIS_FEE | 2 x NUMERIC (high_sat_vb, low_sat_vb) | — |
+| `0x0602` | HYSTERESIS_VALUE | 2 x NUMERIC (high_sats, low_sats) | — |
+| `0x0611` | TIMER_CONTINUOUS | 2 x NUMERIC (accumulated, target) | — |
+| `0x0612` | TIMER_OFF_DELAY | NUMERIC (remaining) | — |
+| `0x0621` | LATCH_SET | PUBKEY (setter_key), NUMERIC (state) | — |
+| `0x0622` | LATCH_RESET | PUBKEY (resetter_key), 2 x NUMERIC (state, delay_blocks) | — |
+| `0x0631` | COUNTER_DOWN | PUBKEY (event_signer), NUMERIC (count) | — |
+| `0x0632` | COUNTER_PRESET | 2 x NUMERIC (current, preset) | — |
+| `0x0633` | COUNTER_UP | PUBKEY (event_signer), 2 x NUMERIC (current, target) | — |
+| `0x0641` | COMPARE | 2-3 x NUMERIC (operator, value_b [, value_c]) | — |
+| `0x0651` | SEQUENCER | 2 x NUMERIC (current_step, total_steps) | — |
+| `0x0661` | ONE_SHOT | NUMERIC (state), HASH256 (commitment) | — |
+| `0x0671` | RATE_LIMIT | 3 x NUMERIC (max_per_block, accumulation_cap, refill_blocks) | — |
+| `0x0681` | COSIGN | HASH256 (conditions_hash) | — |
 
 ### 6.8 Compound Family (0x0700--0x07FF)
 
@@ -412,12 +412,12 @@ Block types are encoded as `uint16_t` little-endian. They are organized into ran
 
 | Code | Name | Required Fields | Optional Fields |
 |------|------|----------------|-----------------|
-| `0x0801` | EPOCH_GATE | 2 x NUMERIC (epoch_size, window_size) | -- |
-| `0x0802` | WEIGHT_LIMIT | NUMERIC (max_weight) | -- |
-| `0x0803` | INPUT_COUNT | 2 x NUMERIC (min_inputs, max_inputs) | -- |
-| `0x0804` | OUTPUT_COUNT | 2 x NUMERIC (min_outputs, max_outputs) | -- |
-| `0x0805` | RELATIVE_VALUE | 2 x NUMERIC (numerator, denominator) | -- |
-| `0x0806` | ACCUMULATOR | >= 3 x HASH256 (root, proof siblings, leaf) | -- |
+| `0x0801` | EPOCH_GATE | 2 x NUMERIC (epoch_size, window_size) | — |
+| `0x0802` | WEIGHT_LIMIT | NUMERIC (max_weight) | — |
+| `0x0803` | INPUT_COUNT | 2 x NUMERIC (min_inputs, max_inputs) | — |
+| `0x0804` | OUTPUT_COUNT | 2 x NUMERIC (min_outputs, max_outputs) | — |
+| `0x0805` | RELATIVE_VALUE | 2 x NUMERIC (numerator, denominator) | — |
+| `0x0806` | ACCUMULATOR | >= 3 x HASH256 (root, proof siblings, leaf) | — |
 
 ---
 
@@ -619,7 +619,7 @@ Identical logic to CLTV. The distinction is semantic: the NUMERIC value should e
 **Evaluation:**
 
 1. If the block has no fields, return ERROR.
-2. Return SATISFIED. (Generic anchor -- structural validation only.)
+2. Return SATISFIED. (Generic anchor; structural validation only.)
 
 ### 7.17 ANCHOR_CHANNEL (0x0502)
 
@@ -738,7 +738,7 @@ FOR EACH mutation (4 NUMERICs per mutation starting at index 2):
 **Evaluation:**
 
 1. Read count. If negative, return ERROR.
-2. If count == 0, return SATISFIED (countdown complete -- covenant terminates).
+2. If count == 0, return SATISFIED (countdown complete, covenant terminates).
 3. If count > 0: verify the spending output contains a RECURSE_COUNT block with count == (input count - 1).
 4. Return UNSATISFIED if the decremented count is not found.
 
@@ -927,7 +927,7 @@ Uses the same mutation parsing and verification as RECURSE_MODIFIED, but **negat
 
 ### 7.41 COSIGN (0x0681)
 
-**Required fields:** HASH256 (conditions_hash -- SHA256 of the required co-spent scriptPubKey)
+**Required fields:** HASH256 (conditions_hash, the SHA256 of the required co-spent scriptPubKey)
 **Context requirements:** `RungEvalContext.tx`, `RungEvalContext.spent_outputs`, `RungEvalContext.input_index`
 
 **Evaluation:**
@@ -1121,7 +1121,7 @@ The sighash commits to the following data in order:
 | input nSequence | uint32_t | Only if ANYONECANPAY |
 | input index | uint32_t | Unless ANYONECANPAY |
 | single output hash | SHA256 of tx.vout[nIn] | Only if SINGLE |
-| conditions_hash | SHA256 of serialized conditions | Always |
+| conditions_hash | SHA256 of serialised conditions | Always |
 
 ### 8.3 Hash Types
 
@@ -1152,10 +1152,10 @@ For `0xC2` (MLSC) outputs, the conditions_hash is the `conditions_root` directly
 
 The `PrecomputedTransactionData` structure has a `m_ladder_ready` flag. When a v4 transaction is initialized, the following hashes are precomputed:
 
-- `m_prevouts_single_hash` -- SHA256 of all prevouts
-- `m_spent_amounts_single_hash` -- SHA256 of all spent amounts
-- `m_sequences_single_hash` -- SHA256 of all sequences
-- `m_outputs_single_hash` -- SHA256 of all outputs
+- `m_prevouts_single_hash`: SHA256 of all prevouts
+- `m_spent_amounts_single_hash`: SHA256 of all spent amounts
+- `m_sequences_single_hash`: SHA256 of all sequences
+- `m_outputs_single_hash`: SHA256 of all outputs
 
 These are the same hashes used by BIP-341 but computed in the ladder initialization path.
 
@@ -1237,7 +1237,7 @@ Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encodin
 
 ### 14.1 Encoding
 
-Given a conditions byte vector (the serialized `RungConditions` without the `0xc1` prefix):
+Given a conditions byte vector (the serialised `RungConditions` without the `0xc1` prefix):
 
 1. Convert the conditions bytes to 5-bit groups using the Bech32 base conversion.
 2. Encode with `bech32::Encode(bech32::Encoding::BECH32M, "rung", data)`.
@@ -1254,7 +1254,7 @@ The resulting address has the format `rung1<bech32m-data>`.
 
 ### 14.3 Character Limit
 
-The `RUNG_ADDRESS` character limit of 500 accommodates the variable-length nature of serialized rung conditions. Simple conditions (e.g., a single SIG block) produce short addresses; complex multi-rung conditions with PQ keys produce longer addresses.
+The `RUNG_ADDRESS` character limit of 500 accommodates the variable-length nature of serialised rung conditions. Simple conditions (e.g., a single SIG block) produce short addresses; complex multi-rung conditions with PQ keys produce longer addresses.
 
 ### 14.4 Script Detection
 
@@ -1281,7 +1281,7 @@ All Ladder Script RPCs are registered under the `"rung"` category.
 encodeladderaddress "conditions_hex"
 ```
 
-Encode serialized rung conditions as a `rung1`-prefixed Bech32m address. The conditions hex is the raw conditions bytes (without the `0xc1` prefix). Returns the encoded address string.
+Encode serialised rung conditions as a `rung1`-prefixed Bech32m address. The conditions hex is the raw conditions bytes (without the `0xc1` prefix). Returns the encoded address string.
 
 ### 15.2 decodeladderaddress
 
@@ -1297,7 +1297,7 @@ Decode a `rung1`-prefixed Bech32m address back to its raw conditions hex. Return
 decoderung "hex"
 ```
 
-Decode a serialized ladder witness from hex and return its typed structure as JSON. Includes rung/block/field breakdown with type names, hex data, sizes, coil metadata, and coil conditions.
+Decode a serialised ladder witness from hex and return its typed structure as JSON. Includes rung/block/field breakdown with type names, hex data, sizes, coil metadata, and coil conditions.
 
 ### 15.4 createrung
 
@@ -1305,7 +1305,7 @@ Decode a serialized ladder witness from hex and return its typed structure as JS
 createrung [{"blocks": [{"type": "SIG", "inverted": false, "fields": [{"type": "PUBKEY", "hex": "03..."}]}]}]
 ```
 
-Create a serialized ladder witness from a JSON specification. Returns the serialized ladder witness as hex. Accepts an array of rungs, each containing an array of blocks with typed fields.
+Create a serialised ladder witness from a JSON specification. Returns the serialised ladder witness as hex. Accepts an array of rungs, each containing an array of blocks with typed fields.
 
 ### 15.5 createrungtx
 

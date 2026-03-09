@@ -27,17 +27,17 @@ enables cross-chain atomic operations.
 
 A partial Schnorr signature that cannot verify on its own but becomes a valid signature
 once the adaptor secret is applied. In Ladder Script, the ADAPTOR_SIG block (0x0003)
-expects the fully adapted signature in the witness -- it verifies as a standard Schnorr
+expects the fully adapted signature in the witness; it verifies as a standard Schnorr
 signature against the signing key. The adaptor point is committed in the conditions to
 prove the protocol structure.
 
 ### Aggregate Signature
 
 A single Schnorr signature produced by a MuSig2 or FROST threshold signing ceremony
-that represents the combined authorization of M-of-N signers. In Ladder Script, the
+that represents the combined authorisation of M-of-N signers. In Ladder Script, the
 MUSIG_THRESHOLD block (0x0004) validates the aggregate signature against the aggregate
 public key using standard Schnorr verification. The threshold ceremony is entirely
-off-chain -- on-chain, the spend is indistinguishable from a single-sig SIG block.
+off-chain. On-chain, the spend is indistinguishable from a single-sig SIG block.
 
 ### AND Logic
 
@@ -70,7 +70,7 @@ See **RungBlockType**.
 
 The output terminal of a rung, represented by the `RungCoil` struct. In the PLC (ladder
 diagram) analogy, the coil sits at the right end of a rung and determines what action
-occurs when the rung is energized (all contacts/blocks are satisfied). Every
+occurs when the rung is energised (all contacts/blocks are satisfied). Every
 `LadderWitness` and `RungConditions` has exactly one coil.
 
 The coil contains:
@@ -94,10 +94,10 @@ An enum (`RungCoilType`, `uint8_t`) that determines the unlock semantics of a ru
 ### Condition
 
 A spending requirement embedded in a v4 output's scriptPubKey. Conditions are the
-"locking" side of Ladder Script -- they specify what must be satisfied to spend the
+"locking" side of Ladder Script: they specify what must be satisfied to spend the
 UTXO. Conditions contain only condition data types (PUBKEY, PUBKEY_COMMIT, HASH256,
 HASH160, NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (SIGNATURE,
-PREIMAGE). Serialized with the `RUNG_CONDITIONS_PREFIX` (0xc1) byte.
+PREIMAGE). Serialised with the `RUNG_CONDITIONS_PREFIX` (0xc1) byte.
 
 ### Contact
 
@@ -132,13 +132,13 @@ identical between input and output conditions.
 
 ### Diff Witness
 
-A witness that inherits its rung and relay structure from another input's witness within the same transaction, providing only field-level diffs and a fresh coil. Triggered when `n_rungs = 0` in the witness deserialization. The witness-side counterpart to Template Inheritance.
+A witness that inherits its rung and relay structure from another input's witness within the same transaction, providing only field-level diffs and a fresh coil. Triggered when `n_rungs = 0` in the witness deserialisation. The witness-side counterpart to Template Inheritance.
 
-### Energized
+### Energised
 
 A rung or block that evaluates to SATISFIED. In PLC ladder diagram terminology, current
 flows through the rung from the left power rail to the right power rail (coil), meaning
-all contacts (blocks) are closed (satisfied). An energized rung activates its coil,
+all contacts (blocks) are closed (satisfied). An energised rung activates its coil,
 which determines the unlock action.
 
 ### EvalResult
@@ -148,8 +148,8 @@ The evaluation result enum returned by block and rung evaluators. Four values:
 - **SATISFIED:** All conditions are met. The block or rung passes.
 - **UNSATISFIED:** Conditions are valid but not met. The block or rung fails.
 - **ERROR:** The block is malformed (missing required fields, invalid data). This is a
-  consensus failure -- the transaction is invalid.
-- **UNKNOWN_BLOCK_TYPE:** The block type code is not recognized. Treated as UNSATISFIED
+  consensus failure; the transaction is invalid.
+- **UNKNOWN_BLOCK_TYPE:** The block type code is not recognised. Treated as UNSATISFIED
   for forward compatibility (allows future soft-fork activation of new block types).
   When inverted, UNKNOWN_BLOCK_TYPE becomes SATISFIED.
 
@@ -196,9 +196,9 @@ sighash commits to:
 - Transaction version and locktime
 - Prevouts hash, amounts hash, sequences hash (unless ANYONECANPAY)
 - Outputs hash (unless SIGHASH_NONE)
-- Spend type (always 0 for ladder -- no annex or extensions)
+- Spend type (always 0 for ladder; no annex or extensions)
 - Input-specific data (prevout or index)
-- Conditions hash (SHA-256 of serialized rung conditions for `0xC1` outputs, or the
+- Conditions hash (SHA-256 of serialised rung conditions for `0xC1` outputs, or the
   conditions root directly for `0xC2` MLSC outputs)
 - Output for SIGHASH_SINGLE
 
@@ -243,7 +243,7 @@ For a tree with M leaves (padded to the next power of 2), the proof contains at 
 bottom-up using `TaggedHash("LadderInternal", min(A,B) || max(A,B))` at each level and
 checks the result against the UTXO's conditions root.
 
-### MLSC (Merkelized Ladder Script Conditions)
+### MLSC (Merkelised Ladder Script Conditions)
 
 An output format (`0xC2` prefix) that stores only a 32-byte Merkle root instead of full
 inline conditions. The complete conditions are revealed at spend time in the witness,
@@ -390,20 +390,20 @@ partition the type space by family:
 
 The conditions embedded in a v4 output's scriptPubKey. Represented by the
 `RungConditions` struct, which mirrors the `LadderWitness` structure but contains only
-condition data types (no SIGNATURE or PREIMAGE). Serialized with the
+condition data types (no SIGNATURE or PREIMAGE). Serialised with the
 `RUNG_CONDITIONS_PREFIX` (0xc1) byte as the first byte of the scriptPubKey.
 
 Contains:
 - `rungs`: Vector of `Rung` objects with condition-only fields
 - `coil`: Output coil with attestation mode, scheme, address, and coil conditions
 
-At spend time, conditions are deserialized from the spent output and merged with the
+At spend time, conditions are deserialised from the spent output and merged with the
 witness from the spending input before evaluation.
 
 ### RungDataType
 
 An enum (`uint8_t`) specifying the type of data in a field. Every byte in a Ladder
-Script witness belongs to one of these types -- no arbitrary data pushes are possible.
+Script witness belongs to one of these types; no arbitrary data pushes are possible.
 Nine types are defined:
 
 | Code | Name | Size Range | Description |
@@ -467,24 +467,24 @@ SIGHASH_ANYONECANPAY modifier (0x80).
 
 ### Spent
 
-A rung that has been executed on-chain -- its conditions were satisfied in a confirmed
+A rung that has been executed on-chain. Its conditions were satisfied in a confirmed
 transaction. In the context of recursion blocks, "spent" refers to the input side of a
 covenant chain: the input UTXO's conditions were satisfied, and the output UTXO
 carries forward the (possibly mutated) conditions for the next spend.
 
 ### Wire Format
 
-The serialized byte representation of Ladder Script structures. The wire format is used
+The serialised byte representation of Ladder Script structures. The wire format is used
 for both scriptPubKey conditions (prefixed with 0xc1) and witness data. Key properties:
 
 - Block types: 2 bytes, little-endian (uint16_t)
 - Data types: 1 byte (uint8_t)
 - Field data: length-prefixed (varint length followed by raw bytes)
-- All data must belong to a known RungDataType -- no arbitrary pushes
-- Conditions and witness share the same serialization format but differ in which data
+- All data must belong to a known RungDataType; no arbitrary pushes
+- Conditions and witness share the same serialisation format but differ in which data
   types are permitted
 
-Serialization is handled by `src/rung/serialize.cpp`. Deserialization validates field
+Serialization is handled by `src/rung/serialize.cpp`. Deserialisation validates field
 sizes against type constraints and rejects unknown types.
 
 ### Witness Reference
