@@ -122,7 +122,7 @@ Each block begins with a single header byte:
 | `0x80` | Escape to full header: followed by `[block_type: uint16_t LE]` + `[n_fields: varint]` (inverted=false) |
 | `0x81` | Escape to full header with inverted=true: followed by `[block_type: uint16_t LE]` + `[n_fields: varint]` |
 
-All 51 current block types fit in micro-header slots 0x00--0x32. Inverted blocks that have a micro-header slot use `0x81` escape + type instead of slot + inversion byte.
+All 52 current block types fit in micro-header slots 0x00--0x33. Inverted blocks that have a micro-header slot use `0x81` escape + type instead of slot + inversion byte.
 
 When a block uses a micro-header AND has an implicit field table for the current serialization context, field count and per-field type bytes are omitted entirely (see Section 3.4).
 

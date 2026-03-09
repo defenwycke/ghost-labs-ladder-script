@@ -106,7 +106,7 @@ Each block begins with a single byte that determines the encoding mode:
 | `0x80` | Escape | Followed by `type(uint16_t LE)`; inverted = false |
 | `0x81` | Escape + inverted | Followed by `type(uint16_t LE)`; inverted = true |
 
-The micro-header lookup table maps 128 slot indices to block type values. All 51 current block types have assigned slots:
+The micro-header lookup table maps 128 slot indices to block type values. All 52 current block types have assigned slots:
 
 | Slot | Block Type | Slot | Block Type | Slot | Block Type |
 |------|------------|------|------------|------|------------|
@@ -553,7 +553,7 @@ The reference implementation is located in the `src/rung/` directory of ghost-co
 | `types.h` / `types.cpp` | Core type definitions: `RungBlockType`, `RungDataType`, `RungCoilType`, `RungAttestationMode`, `RungScheme`, and all struct definitions. |
 | `conditions.h` / `conditions.cpp` | Conditions (locking side): `RungConditions`, serialization to/from `CScript` with `0xc1` prefix, condition data type validation, template inheritance resolution. |
 | `serialize.h` / `serialize.cpp` | Wire format v3 serialization/deserialization with micro-headers, implicit fields, varint NUMERIC, and context-aware encoding. Policy limit constants. |
-| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 51 block types. Rung AND logic, ladder OR logic, inversion. `VerifyRungTx` entry point. `LadderSignatureChecker` for Schnorr/PQ signature verification. |
+| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 52 block types. Rung AND logic, ladder OR logic, inversion. `VerifyRungTx` entry point. `LadderSignatureChecker` for Schnorr/PQ signature verification. |
 | `sighash.h` / `sighash.cpp` | `SignatureHashLadder` tagged hash computation. |
 | `policy.h` / `policy.cpp` | Mempool policy enforcement: `IsStandardRungTx`, `IsStandardRungOutput`. |
 | `aggregate.h` / `aggregate.cpp` | Block-level signature aggregation and deferred attestation. |
@@ -567,7 +567,7 @@ The implementation includes comprehensive test coverage across two layers:
 
 **Unit tests** (`src/test/rung_tests.cpp`): 268 test cases covering:
 - Field validation for all 9 data types with boundary conditions
-- Serialization round-trips for all 51 block types
+- Serialization round-trips for all 52 block types
 - Deserialization rejection of malformed inputs (empty, truncated, trailing bytes, oversized, unknown types)
 - Block evaluation for all block types
 - Inversion logic including ERROR non-inversion

@@ -240,6 +240,9 @@
     .example-block.cov { color: #5bcd5b; border-color: #2d852d; }
     .example-block.rec { color: #cd8f5b; border-color: #856a2d; }
     .example-block.plc { color: #b55bcd; border-color: #6a2d85; }
+    .example-block.compound { color: #f59e0b; border-color: #b27308; }
+    .example-block.gov { color: #8b5cf6; border-color: #5b3aad; }
+    .example-block.anchor { color: #888888; border-color: #555555; }
     .example-coil { font-size: 8px; font-family: var(--font-engine); color: #555; flex-shrink: 0; }
 
     /* Footer */
@@ -1041,6 +1044,36 @@
           <div class="use-case-desc">EPOCH_GATE restricts spending to periodic windows. WEIGHT_LIMIT caps transaction size. INPUT_COUNT and OUTPUT_COUNT bound I/O fanout. RELATIVE_VALUE prevents fee siphoning. ACCUMULATOR proves Merkle set membership.</div>
           <div class="use-case-tag">Governance Family</div>
         </div>
+        <div class="use-case">
+          <div class="use-case-title">Timer-Controlled Access</div>
+          <div class="use-case-desc">TIMER_CONTINUOUS requires N consecutive blocks of activity before authorization. TIMER_OFF_DELAY holds spending rights for a grace period after a trigger expires. Together they implement watchdog patterns and supervised custody.</div>
+          <div class="use-case-tag">PLC Family</div>
+        </div>
+        <div class="use-case">
+          <div class="use-case-title">Approval Accumulators</div>
+          <div class="use-case-desc">COUNTER_PRESET accumulates approvals from independent parties. Each approval increments via RECURSE_MODIFIED. Once the preset count is reached, funds release. Unlike MULTISIG, approvals can arrive in separate transactions.</div>
+          <div class="use-case-tag">PLC Family</div>
+        </div>
+        <div class="use-case">
+          <div class="use-case-title">Value-Band Spending</div>
+          <div class="use-case-desc">HYSTERESIS_VALUE constrains output values to a band [low, high]. Prevents both dust outputs and excessive single-spend withdrawals. Useful for corporate disbursement policies and regulated fund flows.</div>
+          <div class="use-case-tag">PLC Family</div>
+        </div>
+        <div class="use-case">
+          <div class="use-case-title">Calendar-Dated Unlocks</div>
+          <div class="use-case-desc">CLTV_TIME locks funds until a specific Unix timestamp rather than a block height. Ideal for grant agreements, employment vesting, and financial contracts with real-world calendar deadlines.</div>
+          <div class="use-case-tag">Timelock Family</div>
+        </div>
+        <div class="use-case">
+          <div class="use-case-title">Tagged Hash Attestation</div>
+          <div class="use-case-desc">TAGGED_HASH enables BIP-340 domain-separated hash verification. Oracles, price feeds, and external data sources commit using tagged hashes, ensuring domain isolation and preventing cross-protocol replay.</div>
+          <div class="use-case-tag">Hash Family</div>
+        </div>
+        <div class="use-case">
+          <div class="use-case-title">Time-Bounded Recursion</div>
+          <div class="use-case-desc">RECURSE_UNTIL terminates recursive covenants at a specific block height, providing a hard lifetime bound. Unlike RECURSE_COUNT which counts spends, RECURSE_UNTIL anchors termination to consensus time.</div>
+          <div class="use-case-tag">Recursion Family</div>
+        </div>
       </div>
     </div>
   </section>
@@ -1504,6 +1537,22 @@
         </a>
 
         <a href="ladder-engine.html?example=13" class="example-card">
+          <div class="example-title">BLOCK-HEIGHT TIMELOCK + COMPARE</div>
+          <div class="example-desc">Funds locked until block 900,000. After unlock, output amount must exceed 10,000 sats. CLTV + COMPARE combo.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">SPEND</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block time">CLTV</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block plc">COMPARE</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=14" class="example-card">
           <div class="example-title">COUNTER-UP SUBSCRIPTION</div>
           <div class="example-desc">Recurring subscription: counter increments each payment (max 24). Amount-locked to fixed payment size. Auto-renews via recursion.</div>
           <div class="example-rungs">
@@ -1536,7 +1585,7 @@
           </div>
         </a>
 
-        <a href="ladder-engine.html?example=14" class="example-card">
+        <a href="ladder-engine.html?example=15" class="example-card">
           <div class="example-title">QUANTUM-SAFE VAULT</div>
           <div class="example-desc">Post-quantum vault using FALCON-512 hot spend and Dilithium3 cold recovery after 1-year CSV. Hybrid classical+PQ path.</div>
           <div class="example-rungs">
@@ -1567,7 +1616,7 @@
           </div>
         </a>
 
-        <a href="ladder-engine.html?example=15" class="example-card">
+        <a href="ladder-engine.html?example=16" class="example-card">
           <div class="example-title">QUANTUM VAULT + CHILDREN</div>
           <div class="example-desc">PQ-secured parent vault that splits into child UTXOs via RECURSE_SPLIT. Each child inherits Falcon-512 protection.</div>
           <div class="example-rungs">
@@ -1602,22 +1651,6 @@
               <div class="example-rail"></div><div class="example-wire"></div>
               <div class="example-block time">CSV</div><div class="example-wire"></div>
               <div class="example-block sig">DILITHIUM</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=16" class="example-card">
-          <div class="example-title">BLOCK-HEIGHT TIMELOCK + COMPARE</div>
-          <div class="example-desc">Funds locked until block 900,000. After unlock, output amount must exceed 10,000 sats. CLTV + COMPARE combo.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CLTV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">COMPARE</div><div class="example-wire"></div>
               <div class="example-coil">( UNLOCK )</div>
               <div class="example-wire"></div><div class="example-rail"></div>
             </div>
@@ -1728,6 +1761,219 @@
               <div class="example-rung-label">COLD</div>
               <div class="example-rail"></div><div class="example-wire"></div>
               <div class="example-block time">CSV</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=22" class="example-card">
+          <div class="example-title">HTLC COMPACT SWAP</div>
+          <div class="example-desc">Atomic swap using the HTLC compound block &mdash; hash + timelock + sig in a single block. Saves 16 bytes over decomposed blocks.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">CLAIM</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block compound">HTLC</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">REFUND</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block compound">TL_SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=23" class="example-card">
+          <div class="example-title">HASH_SIG ATOMIC CLAIM</div>
+          <div class="example-desc">Preimage reveal + signature in one compound block. Ideal for atomic swap claim paths with hash verification and authorization together.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">CLAIM</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block compound">HASH_SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">REFUND</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block time">CSV</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=24" class="example-card">
+          <div class="example-title">GOVERNANCE-GATED TREASURY</div>
+          <div class="example-desc">Treasury restricted by governance: spending windows, I/O fanout limits, weight cap, and anti-siphon ratio enforcement.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">GOVERNED</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block gov">EPOCH</div><div class="example-wire"></div>
+              <div class="example-block gov">IN_COUNT</div><div class="example-wire"></div>
+              <div class="example-block gov">OUT_COUNT</div><div class="example-wire"></div>
+              <div class="example-block gov">WT_LIMIT</div><div class="example-wire"></div>
+              <div class="example-block gov">REL_VAL</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">OVERRIDE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=25" class="example-card">
+          <div class="example-title">ACCUMULATOR ALLOWLIST</div>
+          <div class="example-desc">Merkle set membership proof. Destination must be in a pre-committed allowlist. Combines with SIG and AMOUNT_LOCK for full access control.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">SEND</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block gov">ACCUM</div><div class="example-wire"></div>
+              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">ADMIN</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=26" class="example-card">
+          <div class="example-title">CLTV_TIME CALENDAR LOCK</div>
+          <div class="example-desc">Date-locked payment using absolute Unix timestamp. Funds locked until January 1, 2027. HASH160 preimage adds shared-secret gate.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">UNLOCK</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block time">CLTV_TIME</div><div class="example-wire"></div>
+              <div class="example-block hash">HASH160</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">CANCEL</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=27" class="example-card">
+          <div class="example-title">TIMER WATCHDOG</div>
+          <div class="example-desc">Continuous timer requires N consecutive blocks of activity. Off-delay holds authorization after trigger. Tagged hash proves attestation.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">ACTIVE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block plc">TMR_CONT</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block hash">TAGGED</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">HELD</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block plc">TMR_OFF</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">EMERG</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block time">CSV</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=28" class="example-card">
+          <div class="example-title">PRESET COUNTER BOARD VOTE</div>
+          <div class="example-desc">Multi-party approval accumulator. Counter tracks board approvals; once preset reached, funds release. Value band limits payout size.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">APPROVE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block plc">CTR_PRE</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block plc">HYST_VAL</div><div class="example-wire"></div>
+              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">EXECUTE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block plc">CTR_PRE</div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">CANCEL</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+          </div>
+        </a>
+
+        <a href="ladder-engine.html?example=29" class="example-card">
+          <div class="example-title">ANCHORED CHANNEL + RECURSE_UNTIL</div>
+          <div class="example-desc">Lightning channel with anchor binding and recursive state until target block height. Bounds protocol lifetime on-chain.</div>
+          <div class="example-rungs">
+            <div class="example-rung">
+              <div class="example-rung-label">COOP</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">MUSIG_THR</div><div class="example-wire"></div>
+              <div class="example-block anchor">A_CHAN</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">UPDATE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block sig">SIG</div><div class="example-wire"></div>
+              <div class="example-block anchor">A_CHAN</div><div class="example-wire"></div>
+              <div class="example-block rec">REC_UNTIL</div><div class="example-wire"></div>
+              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
+              <div class="example-coil">( UNLOCK )</div>
+              <div class="example-wire"></div><div class="example-rail"></div>
+            </div>
+            <div class="example-rung">
+              <div class="example-rung-label">EXPIRE</div>
+              <div class="example-rail"></div><div class="example-wire"></div>
+              <div class="example-block time">CLTV</div><div class="example-wire"></div>
               <div class="example-block sig">SIG</div><div class="example-wire"></div>
               <div class="example-coil">( UNLOCK )</div>
               <div class="example-wire"></div><div class="example-rail"></div>

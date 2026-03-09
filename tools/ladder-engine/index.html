@@ -5874,6 +5874,202 @@ const EXAMPLES = [
     ],
     inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
   },
+
+  {
+    title: 'HTLC COMPACT SWAP',
+    desc: 'Atomic swap using the HTLC compound block — hash + timelock + sig in a single block. Saves 16 bytes over decomposed blocks.',
+    tags: [['HTLC', 'compound'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'CLAIM', blocks: [
+        { type: 'HTLC', values: { hash: FAKE.hash1, pubkey: FAKE.pk1, blocks: '144' } },
+      ], output: { name: 'ALICE_CLAIM', type: 'standard' } },
+      { label: 'REFUND', blocks: [
+        { type: 'TIMELOCKED_SIG', values: { pubkey: FAKE.pk2, blocks: '288' } },
+      ], output: { name: 'BOB_REFUND', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 2 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 1000000 },
+      { address: FAKE.addr2, amount: 990000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'HASH_SIG ATOMIC CLAIM',
+    desc: 'Preimage reveal + signature in one compound block. Ideal for atomic swap claim paths where you need hash verification and authorization together.',
+    tags: [['HASH_SIG', 'compound'], ['CSV', 'time'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'CLAIM', blocks: [
+        { type: 'HASH_SIG', values: { hash: FAKE.hash2, pubkey: FAKE.pk1 } },
+      ], output: { name: 'CLAIM_OUTPUT', type: 'standard' } },
+      { label: 'REFUND', blocks: [
+        { type: 'CSV', values: { blocks: '432' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'REFUND_OUTPUT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 3 }],
+    txOutputs: [
+      { address: FAKE.addr3, amount: 500000 },
+      { address: FAKE.addr4, amount: 490000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'GOVERNANCE-GATED TREASURY',
+    desc: 'Treasury output restricted by governance constraints. Spending windows, I/O fanout limits, weight cap, and anti-siphon ratio enforcement.',
+    tags: [['EPOCH', 'gov'], ['IN_COUNT', 'gov'], ['OUT_COUNT', 'gov'], ['WT_LIMIT', 'gov'], ['REL_VAL', 'gov'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'GOVERNED', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'EPOCH_GATE', values: { epoch_size: '2016', window_size: '144' } },
+        { type: 'INPUT_COUNT', values: { min: '1', max: '3' } },
+        { type: 'OUTPUT_COUNT', values: { min: '1', max: '2' } },
+        { type: 'WEIGHT_LIMIT', values: { max_weight: '400000' } },
+        { type: 'RELATIVE_VALUE', values: { numerator: '9', denominator: '10' } },
+      ], output: { name: 'GOVERNED_SPEND', type: 'standard' } },
+      { label: 'OVERRIDE', blocks: [
+        { type: 'MULTISIG', values: { threshold: '3', pubkeys: `${FAKE.pk1}, ${FAKE.pk2}, ${FAKE.pk3}, ${FAKE.pk4}` } },
+      ], output: { name: 'BOARD_OVERRIDE', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid3, vout: 1 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 9000000 },
+      { address: FAKE.addr5, amount: 950000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'ACCUMULATOR ALLOWLIST',
+    desc: 'Merkle set membership proof. Spending transaction must prove the destination is in a pre-committed allowlist. Combines with SIG and AMOUNT_LOCK for full access control.',
+    tags: [['ACCUM', 'gov'], ['SIG', 'sig'], ['AMT_LOCK', 'cov']],
+    rungs: [
+      { label: 'SEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'ACCUMULATOR', values: { merkle_root: FAKE.hash3 } },
+        { type: 'AMOUNT_LOCK', values: { min: '10000', max: '5000000' } },
+      ], output: { name: 'ALLOWLISTED', type: 'standard' } },
+      { label: 'ADMIN', blocks: [
+        { type: 'MULTISIG', values: { threshold: '2', pubkeys: `${FAKE.pk2}, ${FAKE.pk3}, ${FAKE.pk4}` } },
+      ], output: { name: 'ADMIN_SWEEP', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid4, vout: 1 }],
+    txOutputs: [
+      { address: FAKE.addr2, amount: 2500000 },
+      { address: FAKE.addr6, amount: 7000000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'CLTV_TIME CALENDAR LOCK',
+    desc: 'Date-locked payment using absolute Unix timestamp. Funds cannot move until January 1, 2027. HASH160 preimage adds a shared-secret gate.',
+    tags: [['CLTV_TIME', 'time'], ['HASH160', 'hash'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'UNLOCK', blocks: [
+        { type: 'CLTV_TIME', values: { timestamp: '1798761600' } },
+        { type: 'HASH160_PREIMAGE', values: { hash: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'DATE_UNLOCK', type: 'standard' } },
+      { label: 'CANCEL', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+        { type: 'SIG', values: { pubkey: FAKE.pk3 } },
+      ], output: { name: 'CANCEL_LOCK', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 1 }],
+    txOutputs: [
+      { address: FAKE.addr3, amount: 3000000 },
+      { address: FAKE.addr4, amount: 2980000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'TIMER WATCHDOG',
+    desc: 'Continuous timer requires N consecutive blocks of activity. Off-delay timer holds authorization after trigger expires. Tagged hash proves domain-separated attestation.',
+    tags: [['TMR_CONT', 'plc'], ['TMR_OFF', 'plc'], ['TAGGED', 'hash'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'ACTIVE', blocks: [
+        { type: 'TIMER_CONTINUOUS', values: { accumulated: '0', target: '144' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'TAGGED_HASH', values: { tag: FAKE.hash3, hash: FAKE.hash4 } },
+      ], output: { name: 'WATCHDOG_OK', type: 'standard' } },
+      { label: 'HELD', blocks: [
+        { type: 'TIMER_OFF_DELAY', values: { remaining: '72' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'HOLD_WINDOW', type: 'standard' } },
+      { label: 'EMERG', blocks: [
+        { type: 'CSV', values: { blocks: '1008' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'TIMEOUT_SWEEP', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 2 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 800000 },
+      { address: FAKE.addr5, amount: 700000 },
+      { address: FAKE.addr6, amount: 500000 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+
+  {
+    title: 'PRESET COUNTER BOARD VOTE',
+    desc: 'Multi-party approval accumulator. Counter tracks board approvals; once preset (3) is reached, funds release. Hysteresis value band limits payout size.',
+    tags: [['CTR_PRE', 'plc'], ['HYST_VAL', 'plc'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'APPROVE', blocks: [
+        { type: 'COUNTER_PRESET', values: { current: '0', preset: '3' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'HYSTERESIS_VALUE', values: { high_sats: '5000000', low_sats: '100000' } },
+        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '0', param_idx: '0', delta: '1' } },
+      ], output: { name: 'VOTE_CAST', type: 'standard' } },
+      { label: 'EXECUTE', blocks: [
+        { type: 'COUNTER_PRESET', values: { current: '3', preset: '3' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'RELEASE', type: 'standard' } },
+      { label: 'CANCEL', blocks: [
+        { type: 'MULTISIG', values: { threshold: '3', pubkeys: `${FAKE.pk1}, ${FAKE.pk2}, ${FAKE.pk3}, ${FAKE.pk4}` } },
+      ], output: { name: 'CANCEL_VOTE', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid3, vout: 3 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 4500000 },
+      { address: FAKE.addr3, amount: 500000 },
+      { address: FAKE.addr5, amount: 5000000 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+
+  {
+    title: 'ANCHORED CHANNEL + RECURSE_UNTIL',
+    desc: 'Lightning channel with anchor binding and recursive state until target block height. Channel anchor tags the commitment; RECURSE_UNTIL bounds the protocol lifetime.',
+    tags: [['A_CHAN', 'anchor'], ['REC_UNTIL', 'rec'], ['MUSIG_THR', 'sig']],
+    rungs: [
+      { label: 'COOP', blocks: [
+        { type: 'MUSIG_THRESHOLD', values: { agg_pubkey: FAKE.pk1, threshold: '2', group_size: '2' } },
+        { type: 'ANCHOR_CHANNEL', values: { commitment: FAKE.hash1 } },
+      ], output: { name: 'COOP_CLOSE', type: 'standard' } },
+      { label: 'UPDATE', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+        { type: 'ANCHOR_CHANNEL', values: { commitment: FAKE.hash2 } },
+        { type: 'RECURSE_UNTIL', values: { target_height: '950000' } },
+        { type: 'RECURSE_MODIFIED', values: { rung_idx: '1', block_idx: '1', param_idx: '0', delta: '0' } },
+      ], output: { name: 'STATE_UPDATE', type: 'standard' } },
+      { label: 'EXPIRE', blocks: [
+        { type: 'CLTV', values: { height: '950000' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk3 } },
+      ], output: { name: 'CHANNEL_EXPIRE', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid4, vout: 2 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 3000000 },
+      { address: FAKE.addr2, amount: 2000000 },
+      { address: FAKE.addr4, amount: 5000000 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
 ];
 
 function ExamplesModal({ onClose, onLoad }) {

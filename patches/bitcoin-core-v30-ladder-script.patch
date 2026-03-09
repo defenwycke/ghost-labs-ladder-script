@@ -283,26 +283,6 @@ index 286ac5e..3103fa8 100644
                      if((out.scriptPubKey.IsUnspendable() || !out.scriptPubKey.HasValidOps()) && out.nValue > max_burn_amount) {
                          throw JSONRPCTransactionError(TransactionError::MAX_BURN_EXCEEDED);
                      }
-diff --git a/ghost-core/src/rpc/register.h b/ghost-core/src/rpc/register.h
-index fdc3336..6ed2c6d 100644
---- a/ghost-core/src/rpc/register.h
-+++ b/ghost-core/src/rpc/register.h
-@@ -23,6 +23,7 @@ void RegisterSignMessageRPCCommands(CRPCTable&);
- void RegisterSignerRPCCommands(CRPCTable &tableRPC);
- void RegisterTxoutProofRPCCommands(CRPCTable&);
- void RegisterHazeRPCCommands(CRPCTable&);
-+void RegisterRungRPCCommands(CRPCTable&);  // LADDER SCRIPT
- 
- static inline void RegisterAllCoreRPCCommands(CRPCTable &t)
- {
-@@ -40,6 +41,7 @@ static inline void RegisterAllCoreRPCCommands(CRPCTable &t)
- #endif // ENABLE_EXTERNAL_SIGNER
-     RegisterTxoutProofRPCCommands(t);
-     RegisterHazeRPCCommands(t);
-+    RegisterRungRPCCommands(t);  // LADDER SCRIPT
- }
- 
- #endif // BITCOIN_RPC_REGISTER_H
 diff --git a/ghost-core/src/rpc/util.cpp b/ghost-core/src/rpc/util.cpp
 index d2a2949..ce49d09 100644
 --- a/ghost-core/src/rpc/util.cpp
@@ -391,21 +371,6 @@ index fadc042..1fd91b8 100644
          case SCRIPT_ERR_UNKNOWN_ERROR:
          case SCRIPT_ERR_ERROR_COUNT:
          default: break;
-diff --git a/ghost-core/src/script/script_error.h b/ghost-core/src/script/script_error.h
-index 44e68fe..36cafa7 100644
---- a/ghost-core/src/script/script_error.h
-+++ b/ghost-core/src/script/script_error.h
-@@ -82,6 +82,10 @@ typedef enum ScriptError_t
-     SCRIPT_ERR_OP_CODESEPARATOR,
-     SCRIPT_ERR_SIG_FINDANDDELETE,
- 
-+    /* Ladder Script */
-+    SCRIPT_ERR_LADDER_INVALID_WITNESS,
-+    SCRIPT_ERR_LADDER_EVAL_FALSE,
-+
-     SCRIPT_ERR_ERROR_COUNT
- } ScriptError;
- 
 diff --git a/ghost-core/src/script/solver.cpp b/ghost-core/src/script/solver.cpp
 index 783baf0..0b87e33 100644
 --- a/ghost-core/src/script/solver.cpp
@@ -455,18 +420,6 @@ index 72d81a4..6552f36 100644
    sanity_tests.cpp
    scheduler_tests.cpp
    script_assets_tests.cpp
-diff --git a/ghost-core/src/test/fuzz/CMakeLists.txt b/ghost-core/src/test/fuzz/CMakeLists.txt
-index 4d649a7..e54f388 100644
---- a/ghost-core/src/test/fuzz/CMakeLists.txt
-+++ b/ghost-core/src/test/fuzz/CMakeLists.txt
-@@ -98,6 +98,7 @@ add_executable(fuzz
-   rbf.cpp
-   rolling_bloom_filter.cpp
-   rpc.cpp
-+  rung_deserialize.cpp
-   script.cpp
-   script_assets_test_minimizer.cpp
-   script_descriptor_cache.cpp
 diff --git a/ghost-core/src/validation.cpp b/ghost-core/src/validation.cpp
 index 8190e9c..f0fd526 100644
 --- a/ghost-core/src/validation.cpp
@@ -498,45 +451,3 @@ index 8190e9c..f0fd526 100644
      if (VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *m_signature_cache, *txdata), &error)) {
          return std::nullopt;
      } else {
-diff --git a/ghost-core/src/validation.h b/ghost-core/src/validation.h
-index f82a657..f4a6217 100644
---- a/ghost-core/src/validation.h
-+++ b/ghost-core/src/validation.h
-@@ -342,10 +342,11 @@ private:
-     bool cacheStore;
-     PrecomputedTransactionData *txdata;
-     SignatureCache* m_signature_cache;
-+    int32_t m_block_height{0};
- 
- public:
--    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, SignatureCache& signature_cache, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) :
--        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), txdata(txdataIn), m_signature_cache(&signature_cache) { }
-+    CScriptCheck(const CTxOut& outIn, const CTransaction& txToIn, SignatureCache& signature_cache, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn, int32_t block_height = 0) :
-+        m_tx_out(outIn), ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), txdata(txdataIn), m_signature_cache(&signature_cache), m_block_height(block_height) { }
- 
-     CScriptCheck(const CScriptCheck&) = delete;
-     CScriptCheck& operator=(const CScriptCheck&) = delete;
-diff --git a/ghost-core/src/wallet/feebumper.h b/ghost-core/src/wallet/feebumper.h
-index 7b56cb7..791610a 100644
---- a/ghost-core/src/wallet/feebumper.h
-+++ b/ghost-core/src/wallet/feebumper.h
-@@ -92,6 +92,7 @@ public:
-             break;
-         case SigVersion::TAPROOT:
-         case SigVersion::TAPSCRIPT:
-+        case SigVersion::LADDER: // LADDER SCRIPT: not used in wallet fee bumping
-             assert(false);
-         }
-     }
-diff --git a/ghost-core/src/wallet/rpc/addresses.cpp b/ghost-core/src/wallet/rpc/addresses.cpp
-index 320562c..aae74d8 100644
---- a/ghost-core/src/wallet/rpc/addresses.cpp
-+++ b/ghost-core/src/wallet/rpc/addresses.cpp
-@@ -352,6 +352,7 @@ public:
-     UniValue operator()(const PayToAnchor& id) const { return UniValue(UniValue::VOBJ); }
-     UniValue operator()(const WitnessUnknown& id) const { return UniValue(UniValue::VOBJ); }
-     UniValue operator()(const SilentPaymentDestination& sp) const { return UniValue(UniValue::VOBJ); }
-+    UniValue operator()(const LadderDestination& ld) const { return UniValue(UniValue::VOBJ); }
- };
- 
- static UniValue DescribeWalletAddress(const CWallet& wallet, const CTxDestination& dest)
