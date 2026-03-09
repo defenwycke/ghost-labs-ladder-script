@@ -56,10 +56,11 @@ Ladder Script maps this directly:
 ### 4. Is this a hard fork or soft fork?
 
 Ladder Script is designed as a soft fork. It uses transaction version 4 (v4)
-and a new scriptPubKey prefix byte (`0xc1`) that does not conflict with any
-existing opcode or witness version. Nodes that do not understand v4 transactions
-treat them as anyone-can-spend under the soft fork activation rules, while
-upgraded nodes enforce the full condition evaluation.
+and two new scriptPubKey prefix bytes (`0xC1` for inline conditions, `0xC2` for
+Merkelized conditions) that do not conflict with any existing opcode or witness
+version. Nodes that do not understand v4 transactions treat them as
+anyone-can-spend under the soft fork activation rules, while upgraded nodes
+enforce the full condition evaluation.
 
 ### 5. What transaction version does Ladder Script use?
 
@@ -113,15 +114,22 @@ The conditions hash is the key difference from BIP-341 Taproot sighash. It binds
 the signature to the exact set of conditions being satisfied, preventing
 condition substitution attacks.
 
-### 9. What is the 0xc1 prefix?
+### 9. What are the output format prefixes?
 
-The byte `0xc1` (hex) is the RUNG_CONDITIONS_PREFIX. It is the first byte of
-every v4 output scriptPubKey that contains Ladder Script conditions. The
-evaluator uses this prefix to quickly identify rung-encumbered outputs without
-parsing the full script.
+Ladder Script defines two output formats:
 
-The value `0xc1` was chosen because it does not collide with any existing OP_
-opcode prefix, witness version, or Taproot annex byte.
+- **`0xC1` — Inline Conditions.** The full serialized conditions follow the
+  prefix byte in the scriptPubKey. All conditions are visible in the UTXO set.
+
+- **`0xC2` — Merkelized Ladder Script Conditions (MLSC).** Only a 32-byte
+  Merkle root follows the prefix byte. The actual conditions are stored
+  off-chain and revealed at spend time via a Merkle proof in the witness.
+  This provides MAST-style privacy (unrevealed rungs stay hidden) and keeps
+  the UTXO set compact.
+
+Both prefixes were chosen to avoid collision with any existing OP_ opcode,
+witness version, or Taproot annex byte. The evaluator dispatches on the first
+byte to determine which deserialization path to use.
 
 ### 10. What are the size limits?
 
@@ -154,24 +162,27 @@ Each output has a coil that determines what happens when a rung is satisfied:
 
 ### 12. What is the difference between conditions and witness?
 
-**Conditions** are the locking side -- stored in the output's scriptPubKey
-(prefixed with `0xc1`). They contain only *condition data types*: PUBKEY,
+**Conditions** are the locking side. For `0xC1` outputs, conditions are stored
+inline in the scriptPubKey. For `0xC2` (MLSC) outputs, only a 32-byte Merkle
+root is in the scriptPubKey -- the actual conditions are revealed at spend time
+via a Merkle proof. Conditions contain only *condition data types*: PUBKEY,
 PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only
 types (SIGNATURE, PREIMAGE) are forbidden in conditions.
 
 The **witness** is the unlocking side -- stored in the transaction input's
 witness field. It contains the attestations: signatures, preimages, and other
-proof data needed to satisfy the conditions.
+proof data needed to satisfy the conditions. For MLSC outputs, the witness
+also includes the revealed conditions and their Merkle proof.
 
 Both sides use the same serialization format (rungs, blocks, fields), but the
 conditions side is strictly a subset -- it defines what must be proven, not the
 proofs themselves.
 
-### What is a diff witness and when should I use one?
+### 12a. What is a diff witness and when should I use one?
 
 A diff witness allows one input's witness to inherit its structure from another input in the same transaction. Instead of serializing a full witness for every input, you provide only the fields that differ (typically just signatures, since each input has a unique sighash). Use diff witnesses when a transaction spends multiple UTXOs with identical or similar conditions using the same keys — batch consolidation, covenant chain spends, and MULTISIG batches all benefit. The wire savings scale with witness complexity: a simple SIG witness saves ~28%, while a 3-of-5 MULTISIG witness saves ~60% per inherited input.
 
-### Can diff witnesses be chained?
+### 12b. Can diff witnesses be chained?
 
 No. A diff witness can only reference a full (non-diff) witness. The source input must have a standard witness with `n_rungs > 0`. This prevents circular dependencies and keeps resolution to a single level of indirection. If you need three identical inputs, inputs 1 and 2 can both reference input 0, but input 2 cannot reference input 1 if input 1 is itself a diff witness.
 
@@ -423,7 +434,7 @@ Features include:
   force-toggle blocks. Coils fire when all contacts pass.
 - **Watch Mode**: Mock UTXO monitoring with auto-incrementing block height
   and countdown timers for timelock blocks.
-- **Examples Library**: 18 pre-built examples covering all major patterns.
+- **Examples Library**: 30 pre-built examples covering all major patterns.
 - **Import/Export**: Load and save `createrungtx` JSON.
 
 ### 29. What RPCs are available?
@@ -445,8 +456,9 @@ Features include:
    contains typed fields.
 
 2. **Submit via RPC**: `ghost-cli createrungtx '<json>'`
-   The node serializes the conditions, sets the scriptPubKey prefix to `0xc1`,
-   and returns a hex-encoded raw transaction.
+   The node serializes the conditions, sets the scriptPubKey prefix to `0xC1`
+   (inline) or `0xC2` (MLSC with Merkle root), and returns a hex-encoded raw
+   transaction.
 
 3. **Sign via RPC**: `ghost-cli signrungtx '<hex>' '<options>'`
    The node computes the LadderSighash and produces the appropriate signature
@@ -456,3 +468,159 @@ Features include:
 
 The Ladder Engine tool automates steps 1-2 by generating the `createrungtx`
 JSON visually and displaying the resulting transaction structure.
+
+---
+
+## MLSC (Merkelized Ladder Script Conditions)
+
+### 31. What is MLSC?
+
+MLSC is the `0xC2` output format. Instead of storing full conditions inline,
+the scriptPubKey contains only `0xC2` + a 32-byte Merkle root. The root is
+computed from the ladder's rungs using BIP-341-style tagged hashing:
+
+- **Leaf:** `TaggedHash("LadderLeaf", SerializeRung(rung[i]))`
+- **Internal:** `TaggedHash("LadderInternal", min(A,B) || max(A,B))`
+
+At spend time, the witness includes the revealed rung(s) and a Merkle proof.
+Unrevealed rungs remain hidden, providing MAST-style privacy.
+
+### 32. Why use MLSC instead of inline conditions?
+
+Three reasons:
+
+1. **Privacy.** Only the executed rung is revealed. Recovery paths, emergency
+   keys, and alternative spending conditions stay hidden if never used.
+2. **UTXO set efficiency.** Every output is exactly 34 bytes (`0xC2` + 32-byte
+   root) regardless of how complex the conditions are. A 16-rung ladder with
+   8 blocks each takes the same UTXO space as a single SIG block.
+3. **Spam resistance.** Since the UTXO set never contains conditions, there is
+   no space for free-form data embedding in the persistent state.
+
+### 33. How does the sighash work for MLSC?
+
+For `0xC2` outputs, the sighash commits to the `conditions_root` directly
+(the 32-byte Merkle root from the scriptPubKey) rather than hashing the full
+serialized conditions. This means the sighash is the same size regardless of
+ladder complexity, and the signer does not need access to unrevealed rungs.
+
+### 34. Can data be embedded in MLSC outputs?
+
+Structurally, no useful data can be embedded. The UTXO stores only a 32-byte
+Merkle root -- there is nowhere to put arbitrary data. An attacker could create
+a valid-looking `0xC2` output with a fake root, but the conditions would never
+be spendable (no valid Merkle proof exists for conditions that weren't
+committed), making the funds permanently burned. The attacker pays for storage
+they can never recover.
+
+---
+
+## Wire Format
+
+### 35. What are micro-headers?
+
+Micro-headers are a wire format v3 optimization. Instead of encoding a block's
+type as a 2-byte `uint16_t`, frequently used blocks get a 1-byte *slot index*
+(0x00--0x33). All 52 current block types have assigned slots. The evaluator
+maps slot indices to full type codes via a compile-time lookup table.
+
+This saves 1 byte per block in the common case. Inverted blocks that have a
+micro-header slot use the `0x81` escape byte followed by the type code instead
+of encoding slot + inversion flag.
+
+### 36. What are implicit fields?
+
+When the evaluator knows a block's field layout at compile time (because the
+type is known from the micro-header), it can skip the field type byte during
+serialization. The field order is fixed by the block definition, so only the
+field *data* is written. This saves 1 byte per field for known block types.
+
+### 37. How does context-aware serialization work?
+
+The wire format distinguishes between CONDITIONS context and WITNESS context.
+In CONDITIONS context, witness-only data types (SIGNATURE, PREIMAGE) are
+forbidden. In WITNESS context, condition-only types may be omitted if they
+can be inferred from the corresponding conditions. This eliminates redundant
+data in the witness without ambiguity.
+
+---
+
+## Compound Blocks
+
+### 38. What are compound blocks?
+
+Compound blocks combine two or more primitive operations into a single block
+with a single header, saving wire bytes. There are 6 compound types:
+
+| Compound Block | Replaces | Savings |
+|----------------|----------|---------|
+| HTLC (0x0702) | HASH_PREIMAGE + CSV + SIG | ~16 bytes |
+| TIMELOCKED_SIG (0x0701) | SIG + CSV | ~8 bytes |
+| HASH_SIG (0x0703) | HASH_PREIMAGE + SIG | ~8 bytes |
+| PTLC (0x0704) | ADAPTOR_SIG + CSV | ~8 bytes |
+| CLTV_SIG (0x0705) | SIG + CLTV | ~8 bytes |
+| TIMELOCKED_MULTISIG (0x0706) | MULTISIG + CSV | ~8 bytes |
+
+### 39. When should I use a compound block vs. separate blocks?
+
+Use compound blocks when the pattern matches exactly. HTLC is always better
+than HASH_PREIMAGE + CSV + SIG for atomic swaps. TIMELOCKED_SIG is always
+better than SIG + CSV for time-delayed authorization.
+
+Use separate blocks when you need different configuration (e.g., CSV on one
+rung but CLTV on another), when you want to invert individual blocks, or
+when the compound doesn't match your exact pattern.
+
+---
+
+## Governance Blocks
+
+### 40. What are governance blocks?
+
+Governance blocks (0x08xx family) constrain the *structure* of the spending
+transaction rather than its *authorization*. They enforce spending windows,
+transaction size limits, I/O fanout bounds, and value ratios:
+
+- **EPOCH_GATE** (0x0801): Only spendable during periodic windows (e.g.,
+  first 144 blocks of every 2016-block epoch).
+- **WEIGHT_LIMIT** (0x0802): Maximum transaction weight in weight units.
+- **INPUT_COUNT** (0x0803): Min/max number of inputs.
+- **OUTPUT_COUNT** (0x0804): Min/max number of outputs.
+- **RELATIVE_VALUE** (0x0805): Output must be >= a ratio of the input value
+  (anti-siphon protection).
+- **ACCUMULATOR** (0x0806): Merkle set membership proof -- proves the
+  destination is in a pre-committed allowlist.
+
+### 41. How does ACCUMULATOR work?
+
+ACCUMULATOR stores a Merkle root in the conditions. At spend time, the
+witness provides a leaf value and a Merkle proof. The evaluator recomputes
+the root from the proof and checks it matches. This enables allowlists,
+blocklists, and set membership verification without storing the full set
+on-chain.
+
+---
+
+## Anchor Blocks
+
+### 42. What are anchor blocks?
+
+Anchor blocks (0x05xx family) are data-tagging blocks that commit metadata
+to a UTXO without affecting spendability. They always return SATISFIED
+(they are informational, not restrictive). There are 6 anchor types:
+
+- **ANCHOR** (0x0501): Generic 32-byte data commitment.
+- **ANCHOR_CHANNEL** (0x0502): Lightning channel commitment binding.
+- **ANCHOR_POOL** (0x0503): Pool / VTXO tree root.
+- **ANCHOR_RESERVE** (0x0504): N-of-M guardian reserve set commitment.
+- **ANCHOR_SEAL** (0x0505): Permanent, immutable data seal.
+- **ANCHOR_ORACLE** (0x0506): Oracle attestation key binding.
+
+### 43. Why use anchor blocks instead of OP_RETURN?
+
+Anchor blocks are semantically typed and structurally validated. An
+ANCHOR_CHANNEL carries a 32-byte commitment that parsers can identify by
+type code without guessing the data format. OP_RETURN data is opaque and
+requires application-layer conventions to interpret. Anchor blocks also
+live inside the conditions structure, so they benefit from the same size
+limits, type validation, and MLSC privacy as all other blocks.
