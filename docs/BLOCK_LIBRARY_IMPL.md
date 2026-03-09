@@ -729,7 +729,7 @@ All block type enum values. Unrecognised blocks return `UNSATISFIED` — forward
 | `0x0805` | `RELATIVE_VALUE` | Governance | Output/input value ratio enforcement |
 | `0x0806` | `ACCUMULATOR` | Governance | Merkle set membership proof |
 
-**Total: 48 block types across 9 families.**
+**Total: 52 block types across 9 families.**
 
 ---
 

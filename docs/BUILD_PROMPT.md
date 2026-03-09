@@ -1,6 +1,6 @@
 # Claude Code Prompt: Ladder Script — Ghost Core Implementation v2
 
-> **Note:** This document is a historical build prompt. References to "phases" below reflect the original incremental build strategy used during development. All 48 block types across 9 families are now fully implemented and activate in a single soft fork. See [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) for the current activation strategy.
+> **Note:** This document is a historical build prompt. References to "phases" below reflect the original incremental build strategy used during development. All 52 block types across 9 families are now fully implemented and activate in a single soft fork. See [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) for the current activation strategy.
 
 ---
 
@@ -94,7 +94,7 @@ enum class RungDataType : uint8_t {
     HASH256       = 0x03,  // exactly 32 bytes — SHA-256 hash
     HASH160       = 0x04,  // exactly 20 bytes — HASH160
     PREIMAGE      = 0x05,  // max 32 bytes — hash preimage reveal
-    SIGNATURE     = 0x06,  // max 144 bytes — classical signature (Schnorr=64B, ECDSA/DER=~73B)
+    SIGNATURE     = 0x06,  // max 50,000 bytes — PQ signatures (SPHINCS_SHA ~7,856B, Dilithium3 ~3,293B)
     SPEND_INDEX   = 0x07,  // exactly 4 bytes — reserved for Phase 4 AGGREGATE mode
     NUMERIC       = 0x08,  // max 4 bytes — timelock values, thresholds, counts
     SCHEME        = 0x09,  // exactly 1 byte — signature scheme enum value
@@ -107,7 +107,7 @@ static const std::map<RungDataType, std::pair<size_t,size_t>> RUNG_TYPE_LIMITS =
     {RungDataType::HASH256,       {32, 32}},
     {RungDataType::HASH160,       {20, 20}},
     {RungDataType::PREIMAGE,      {1,  32}},
-    {RungDataType::SIGNATURE,     {1,  144}},
+    {RungDataType::SIGNATURE,     {1,  50000}},
     {RungDataType::SPEND_INDEX,   {4,  4}},
     {RungDataType::NUMERIC,       {1,  4}},
     {RungDataType::SCHEME,        {1,  1}},

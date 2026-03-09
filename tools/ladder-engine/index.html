@@ -2340,9 +2340,10 @@ const BLOCK_FAMILIES = [
         { name: 'current', dataType: 'NUMERIC', label: 'Current', placeholder: '0' },
         { name: 'target', dataType: 'NUMERIC', label: 'Target', placeholder: '10' }
       ]},
-      { type: 'COMPARE', label: 'COMPARE', desc: 'Comparator — EQ, GT, LT, GTE, LTE, IN_RANGE', fields: [
+      { type: 'COMPARE', label: 'COMPARE', desc: 'Comparator — EQ, NEQ, GT, LT, GTE, LTE, IN_RANGE', fields: [
         { name: 'operator', dataType: 'NUMERIC', label: 'Op (1-7)', placeholder: '1' },
-        { name: 'value_b', dataType: 'NUMERIC', label: 'Value B', placeholder: '5000' }
+        { name: 'value_b', dataType: 'NUMERIC', label: 'Value B', placeholder: '5000' },
+        { name: 'value_c', dataType: 'NUMERIC', label: 'Value C (IN_RANGE upper)', placeholder: '10000' }
       ]},
       { type: 'SEQUENCER', label: 'SEQ', desc: 'Step sequencer — current step vs total', fields: [
         { name: 'current', dataType: 'NUMERIC', label: 'Current Step', placeholder: '0' },
@@ -2548,6 +2549,7 @@ const SCHEME_TYPES = [
   { value: 'FALCON512', label: 'FALCON-512 (PQ)' },
   { value: 'FALCON1024', label: 'FALCON-1024 (PQ)' },
   { value: 'DILITHIUM3', label: 'DILITHIUM3 (PQ)' },
+  { value: 'SPHINCS_SHA', label: 'SPHINCS+-SHA2 (PQ)' },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -2709,6 +2711,11 @@ function evaluateBlock(block, simState) {
         case 4: result = amt < val ? 'satisfied' : 'unsatisfied'; break;
         case 5: result = amt >= val ? 'satisfied' : 'unsatisfied'; break;
         case 6: result = amt <= val ? 'satisfied' : 'unsatisfied'; break;
+        case 7: {
+          const valC = parseInt(v.value_c) || 0;
+          result = (amt >= val && amt <= valC) ? 'satisfied' : 'unsatisfied';
+          break;
+        }
         default: result = 'unknown';
       }
       break;
@@ -2890,7 +2897,7 @@ function exportBlockFields(block) {
     } else if (f.dataType === 'HASH160') {
       fields.push({ type: 'HASH160', hex: val });
     } else if (f.dataType === 'SCHEME' && val) {
-      const schemeMap = { FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12' };
+      const schemeMap = { FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
       fields.push({ type: 'SCHEME', hex: schemeMap[val] || '00' });
     }
   });
@@ -3630,6 +3637,7 @@ function BlockModal({ block, onChange, onClose, rungs }) {
                       <option value="FALCON512">FALCON-512 (PQ)</option>
                       <option value="FALCON1024">FALCON-1024 (PQ)</option>
                       <option value="DILITHIUM3">DILITHIUM3 (PQ)</option>
+                      <option value="SPHINCS_SHA">SPHINCS+-SHA2 (PQ)</option>
                     </select>
                   </div>
                 );
@@ -4339,6 +4347,7 @@ function PropertiesPanel({ block, onChange, rungs, onExpand }) {
                     <option value="FALCON512">FALCON-512 (PQ)</option>
                     <option value="FALCON1024">FALCON-1024 (PQ)</option>
                     <option value="DILITHIUM3">DILITHIUM3 (PQ)</option>
+                    <option value="SPHINCS_SHA">SPHINCS+-SHA2 (PQ)</option>
                   </select>
                 </div>
               );
@@ -5194,7 +5203,8 @@ function RegisterTable({ rungs, simMode, simState }) {
           case 'HYSTERESIS_FEE': value = `${v.low_sat_vb || '0'}-${v.high_sat_vb || '?'} sat/vB`; break;
           case 'COMPARE': {
             const ops = {1:'EQ',2:'NEQ',3:'GT',4:'LT',5:'GTE',6:'LTE',7:'RANGE'};
-            value = `${ops[parseInt(v.operator)] || '?'} ${v.value_b || '?'}`;
+            const opNum = parseInt(v.operator);
+            value = opNum === 7 ? `${v.value_b || '?'}–${v.value_c || '?'}` : `${ops[opNum] || '?'} ${v.value_b || '?'}`;
             break;
           }
           default:

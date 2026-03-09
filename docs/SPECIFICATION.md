@@ -305,7 +305,7 @@ Every field in a Ladder Script witness or condition must be one of the following
 | `0x03` | HASH256 | 32 | 32 | Yes | Yes | SHA-256 hash digest |
 | `0x04` | HASH160 | 20 | 20 | Yes | Yes | RIPEMD160(SHA256()) hash digest |
 | `0x05` | PREIMAGE | 1 | 252 | No | Yes | Hash preimage (witness-only) |
-| `0x06` | SIGNATURE | 1 | 5,000 | No | Yes | Signature bytes (witness-only) |
+| `0x06` | SIGNATURE | 1 | 50,000 | No | Yes | Signature bytes (witness-only) |
 | `0x07` | SPEND_INDEX | 4 | 4 | Yes | Yes | Spend index reference (uint32 LE) |
 | `0x08` | NUMERIC | 1 | 4 | Yes | Yes | Numeric value. Wire: varint `CompactSize(value)`. Memory: 4-byte unsigned LE. |
 | `0x09` | SCHEME | 1 | 1 | Yes | Yes | Signature scheme selector byte |
