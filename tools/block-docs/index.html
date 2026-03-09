@@ -199,79 +199,29 @@
 
 <!-- Covenant Family -->
 <div class="family-section">
-  <h2 class="family-title family-covenant">Covenant Family — 0x0300</h2>
+  <h2 class="family-title family-covenant">Covenant Family — 0x0400</h2>
   <p class="intro-text">Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself. They enable pre-committed transaction templates, tiered vault custody, and output value restrictions &mdash; capabilities that have no direct Tapscript equivalent.</p>
 
   <div class="index-grid">
     <a href="ctv.html" class="block-card">
-      <div class="block-card-code">0x0301</div>
+      <div class="block-card-code">0x0401</div>
       <div class="block-card-name">CTV</div>
       <div class="block-card-desc">CheckTemplateVerify (BIP-119). Verifies spending transaction matches a committed template hash covering version, locktime, outputs, and input index.</div>
       <div class="block-card-badge badge-covenant">Covenant</div>
     </a>
 
     <a href="vault-lock.html" class="block-card">
-      <div class="block-card-code">0x0302</div>
+      <div class="block-card-code">0x0402</div>
       <div class="block-card-name">VAULT_LOCK</div>
       <div class="block-card-desc">Two-path vault with recovery key (immediate) and hot key (CSV-delayed). Combines custody tiering and time-delayed authorization.</div>
       <div class="block-card-badge badge-covenant">Covenant</div>
     </a>
 
     <a href="amount-lock.html" class="block-card">
-      <div class="block-card-code">0x0303</div>
+      <div class="block-card-code">0x0403</div>
       <div class="block-card-name">AMOUNT_LOCK</div>
       <div class="block-card-desc">Output amount range check. Verifies min_sats &le; output_amount &le; max_sats. Prevents dust and enforces spending caps.</div>
       <div class="block-card-badge badge-covenant">Covenant</div>
-    </a>
-  </div>
-</div>
-
-<!-- Recursion Family -->
-<div class="family-section">
-  <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
-  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
-
-  <div class="index-grid">
-    <a href="recurse-same.html" class="block-card">
-      <div class="block-card-code">0x0401</div>
-      <div class="block-card-name">RECURSE_SAME</div>
-      <div class="block-card-desc">Enforces that an output recreates the identical covenant. The spent conditions must appear verbatim in the spending transaction's output.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-modified.html" class="block-card">
-      <div class="block-card-code">0x0402</div>
-      <div class="block-card-name">RECURSE_MODIFIED</div>
-      <div class="block-card-desc">Recursive covenant with allowed field mutations. Specifies which fields may change between iterations while enforcing structural identity.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-until.html" class="block-card">
-      <div class="block-card-code">0x0403</div>
-      <div class="block-card-name">RECURSE_UNTIL</div>
-      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-count.html" class="block-card">
-      <div class="block-card-code">0x0404</div>
-      <div class="block-card-name">RECURSE_COUNT</div>
-      <div class="block-card-desc">Count-limited recursion. Commits to a maximum iteration count; each spend decrements the counter. Terminates at zero.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-split.html" class="block-card">
-      <div class="block-card-code">0x0405</div>
-      <div class="block-card-name">RECURSE_SPLIT</div>
-      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-decay.html" class="block-card">
-      <div class="block-card-code">0x0406</div>
-      <div class="block-card-name">RECURSE_DECAY</div>
-      <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
     </a>
   </div>
 </div>
@@ -326,6 +276,56 @@
   </div>
 </div>
 
+<!-- Recursion Family -->
+<div class="family-section">
+  <h2 class="family-title family-recursion">Recursion Family — 0x0300</h2>
+  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
+
+  <div class="index-grid">
+    <a href="recurse-same.html" class="block-card">
+      <div class="block-card-code">0x0301</div>
+      <div class="block-card-name">RECURSE_SAME</div>
+      <div class="block-card-desc">Enforces that an output recreates the identical covenant. The spent conditions must appear verbatim in the spending transaction's output.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-modified.html" class="block-card">
+      <div class="block-card-code">0x0302</div>
+      <div class="block-card-name">RECURSE_MODIFIED</div>
+      <div class="block-card-desc">Recursive covenant with allowed field mutations. Specifies which fields may change between iterations while enforcing structural identity.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-until.html" class="block-card">
+      <div class="block-card-code">0x0303</div>
+      <div class="block-card-name">RECURSE_UNTIL</div>
+      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-count.html" class="block-card">
+      <div class="block-card-code">0x0304</div>
+      <div class="block-card-name">RECURSE_COUNT</div>
+      <div class="block-card-desc">Count-limited recursion. Commits to a maximum iteration count; each spend decrements the counter. Terminates at zero.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-split.html" class="block-card">
+      <div class="block-card-code">0x0305</div>
+      <div class="block-card-name">RECURSE_SPLIT</div>
+      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-decay.html" class="block-card">
+      <div class="block-card-code">0x0306</div>
+      <div class="block-card-name">RECURSE_DECAY</div>
+      <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+  </div>
+</div>
+
 <!-- PLC Family -->
 <div class="family-section">
   <h2 class="family-title family-plc">PLC Family — 0x0600</h2>
@@ -347,86 +347,86 @@
     </a>
 
     <a href="timer-continuous.html" class="block-card">
-      <div class="block-card-code">0x0611</div>
+      <div class="block-card-code">0x0603</div>
       <div class="block-card-name">TIMER_CONTINUOUS</div>
       <div class="block-card-desc">Continuous on-delay timer. Starts counting from UTXO confirmation; spending allowed only after the preset duration elapses continuously.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="timer-off-delay.html" class="block-card">
-      <div class="block-card-code">0x0612</div>
+      <div class="block-card-code">0x0604</div>
       <div class="block-card-name">TIMER_OFF_DELAY</div>
       <div class="block-card-desc">Off-delay timer. Allows spending during a window after a trigger event, then locks. Used for time-limited withdrawal windows.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="latch-set.html" class="block-card">
-      <div class="block-card-code">0x0621</div>
+      <div class="block-card-code">0x0605</div>
       <div class="block-card-name">LATCH_SET</div>
       <div class="block-card-desc">Set-dominant latch. Once set by a trigger condition, remains set permanently. Creates irreversible state transitions in covenant logic.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="latch-reset.html" class="block-card">
-      <div class="block-card-code">0x0622</div>
+      <div class="block-card-code">0x0606</div>
       <div class="block-card-name">LATCH_RESET</div>
       <div class="block-card-desc">Reset-dominant latch. Default state is set; a trigger condition resets it permanently. Inverse of LATCH_SET for complementary logic.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="counter-down.html" class="block-card">
-      <div class="block-card-code">0x0631</div>
+      <div class="block-card-code">0x0607</div>
       <div class="block-card-name">COUNTER_DOWN</div>
       <div class="block-card-desc">Down counter. Starts at a preset value and decrements each recursive spend. Triggers when count reaches zero. Used for N-spend limits.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="counter-preset.html" class="block-card">
-      <div class="block-card-code">0x0632</div>
+      <div class="block-card-code">0x0608</div>
       <div class="block-card-name">COUNTER_PRESET</div>
       <div class="block-card-desc">Preset counter with configurable target. Counts up from zero; triggers when count reaches preset value. Reset on trigger.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="counter-up.html" class="block-card">
-      <div class="block-card-code">0x0633</div>
+      <div class="block-card-code">0x0609</div>
       <div class="block-card-name">COUNTER_UP</div>
       <div class="block-card-desc">Up counter. Increments each recursive spend with no upper bound. Used for tracking spend count in stateful covenants.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="compare.html" class="block-card">
-      <div class="block-card-code">0x0641</div>
+      <div class="block-card-code">0x060A</div>
       <div class="block-card-name">COMPARE</div>
       <div class="block-card-desc">Numeric comparator. Compares two values with configurable operator (EQ, NE, LT, LE, GT, GE). Used for conditional branching in covenant logic.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="sequencer.html" class="block-card">
-      <div class="block-card-code">0x0651</div>
+      <div class="block-card-code">0x060B</div>
       <div class="block-card-name">SEQUENCER</div>
       <div class="block-card-desc">Step sequencer. Advances through a committed sequence of states, one step per recursive spend. Enforces ordered multi-phase spending policies.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="one-shot.html" class="block-card">
-      <div class="block-card-code">0x0661</div>
+      <div class="block-card-code">0x060C</div>
       <div class="block-card-name">ONE_SHOT</div>
       <div class="block-card-desc">Single-pulse trigger. Allows exactly one spend, then permanently disables. The simplest state machine — a one-time authorization token.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="rate-limit.html" class="block-card">
-      <div class="block-card-code">0x0671</div>
+      <div class="block-card-code">0x060D</div>
       <div class="block-card-name">RATE_LIMIT</div>
       <div class="block-card-desc">Spend rate limiter. Enforces a maximum number of spends within a block-height window. Combines counter logic with temporal constraints.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
     <a href="cosign.html" class="block-card">
-      <div class="block-card-code">0x0681</div>
+      <div class="block-card-code">0x060E</div>
       <div class="block-card-name">COSIGN</div>
-      <div class="block-card-desc">Co-spend contact. Requires another input in the same transaction to have a spent output whose scriptPubKey hash matches the committed HASH256.</div>
+      <div class="block-card-desc">Co-signing gate. Requires an additional signature from a committed co-signer key before the primary spending condition is evaluated.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
   </div>

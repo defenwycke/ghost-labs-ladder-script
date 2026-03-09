@@ -19,11 +19,11 @@
 <div class="doc-content">
 
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0302 &middot; COVENANT FAMILY</div>
+  <div class="block-type-code">TYPE 0x0402 &middot; COVENANT FAMILY</div>
   <h1 class="block-title">VAULT_LOCK</h1>
   <p class="block-subtitle">Two-path vault with recovery key and hot key. The recovery key (cold sweep) can sign immediately with no delay. The hot key requires a CSV delay before spending is valid. Combines custody tiering and time-delayed authorization in a single block.</p>
   <span class="block-family-badge badge-covenant">Covenant</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Not Invertible</span>
 </div>
 
 <!-- Diagram -->
@@ -77,7 +77,7 @@
   <div class="section-label">Wire Format Breakdown</div>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0302</span>
+      <span class="wire-segment wire-type">0x0402</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
       <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 34B</span>
@@ -86,7 +86,7 @@
       <span class="wire-bytes">Conditions &asymp; 78 bytes</span>
     </div>
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0302</span>
+      <span class="wire-segment wire-type">0x0402</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
       <span class="wire-segment wire-field-pubkey">PUBKEY &middot; 35B</span>

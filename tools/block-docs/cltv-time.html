@@ -19,11 +19,10 @@
 <div class="doc-content">
 
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0104 &middot; TIMELOCK FAMILY</div>
+  <div class="block-type-code">TYPE 0x0202 &middot; TIMELOCK FAMILY</div>
   <h1 class="block-title">CLTV_TIME</h1>
   <p class="block-subtitle">Absolute timelock in Unix time (BIP 65). Transaction cannot be included until Unix timestamp reaches the specified value. Values &ge; 500,000,000 are interpreted as timestamps.</p>
   <span class="block-family-badge" style="color:#39a5b7;border-color:#39a5b740">Timelock</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
 </div>
 
 <!-- Diagram -->
@@ -71,14 +70,14 @@
   <div class="section-label">Wire Format Breakdown</div>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0104</span>
+      <span class="wire-segment wire-type">0x0202</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">1</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-bytes">Conditions = 4 + 5 = 9 bytes</span>
     </div>
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0104</span>
+      <span class="wire-segment wire-type">0x0202</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">0</span>
       <span class="wire-bytes">Witness = 4 bytes (empty block)</span>

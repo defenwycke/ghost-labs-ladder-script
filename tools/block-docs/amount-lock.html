@@ -19,7 +19,7 @@
 <div class="doc-content">
 
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0303 &middot; COVENANT FAMILY</div>
+  <div class="block-type-code">TYPE 0x0403 &middot; COVENANT FAMILY</div>
   <h1 class="block-title">AMOUNT_LOCK</h1>
   <p class="block-subtitle">Output amount range check. Verifies that the output value falls within a committed minimum and maximum range: min_sats &le; output_amount &le; max_sats. No witness data required &mdash; the output amount is read directly from the transaction context.</p>
   <span class="block-family-badge badge-covenant">Covenant</span>
@@ -75,7 +75,7 @@
   <div class="section-label">Wire Format Breakdown</div>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0303</span>
+      <span class="wire-segment wire-type">0x0403</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
@@ -83,7 +83,7 @@
       <span class="wire-bytes">Conditions = 14 bytes</span>
     </div>
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0303</span>
+      <span class="wire-segment wire-type">0x0403</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">0</span>
       <span class="wire-bytes">Witness = 4 bytes (empty block)</span>
@@ -173,7 +173,7 @@
 
 <div class="doc-nav">
   <a href="vault-lock.html">&larr; VAULT_LOCK</a>
-  <a href="recurse-same.html">RECURSE_SAME &rarr;</a>
+  <a href="anchor.html">ANCHOR &rarr;</a>
 </div>
 
 </div>

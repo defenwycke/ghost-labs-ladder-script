@@ -19,11 +19,11 @@
 <div class="doc-content">
 
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0632 &middot; PLC FAMILY</div>
+  <div class="block-type-code">TYPE 0x0608 &middot; PLC FAMILY</div>
   <h1 class="block-title">COUNTER_PRESET</h1>
   <p class="block-subtitle">Preset counter. SATISFIED while the current count is still below the preset target (accumulating). Becomes UNSATISFIED once the current count reaches or exceeds the preset value. No Tapscript equivalent exists.</p>
   <span class="block-family-badge badge-plc">PLC</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Not Invertible</span>
 </div>
 
 <!-- Diagram -->
@@ -66,7 +66,7 @@
   <div class="section-label">Wire Format Breakdown</div>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0632</span>
+      <span class="wire-segment wire-type">0x0608</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
@@ -74,7 +74,7 @@
       <span class="wire-bytes">Conditions = 14 bytes</span>
     </div>
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0632</span>
+      <span class="wire-segment wire-type">0x0608</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">0</span>
       <span class="wire-bytes">Witness = 4 bytes (empty block)</span>

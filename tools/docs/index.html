@@ -291,7 +291,7 @@
       <a href="#README" class="sidebar-link" data-doc="README.md" data-title="README">README</a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-label">Block Reference</div>
-      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 48 Blocks</a>
+      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 51 Blocks</a>
     </aside>
 
     <main class="content">
@@ -397,6 +397,9 @@
           { code: '0x0701', name: 'TIMELOCKED_SIG', file: 'timelocked-sig', desc: 'Signature verification with relative timelock in a single block. Replaces SIG + CSV.' },
           { code: '0x0702', name: 'HTLC', file: 'htlc', desc: 'Hash Time Locked Contract \u2014 hash preimage + timelock + signature in one block.' },
           { code: '0x0703', name: 'HASH_SIG', file: 'hash-sig', desc: 'Hash preimage verification combined with signature check.' },
+          { code: '0x0704', name: 'PTLC', file: 'ptlc', desc: 'Point Time Locked Contract \u2014 adaptor point, relative timelock, and signature in one block.' },
+          { code: '0x0705', name: 'CLTV_SIG', file: 'cltv-sig', desc: 'Signature verification with absolute timelock. Replaces SIG + CLTV.' },
+          { code: '0x0706', name: 'TIMELOCKED_MULTISIG', file: 'timelocked-multisig', desc: 'M-of-N threshold signatures with relative timelock. Replaces MULTISIG + CSV.' },
         ]
       },
       {
@@ -415,7 +418,7 @@
 
     function renderBlockIndex() {
       let html = '<h1 style="font-size:32px;font-weight:800;color:var(--white);margin-bottom:8px;">Block Reference</h1>';
-      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 48 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
+      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 51 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
 
       for (const family of BLOCK_FAMILIES) {
         html += `<div class="family-section">`;

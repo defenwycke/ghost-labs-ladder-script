@@ -20,11 +20,10 @@
 
 <!-- Title -->
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0202 &middot; HASH FAMILY</div>
+  <div class="block-type-code">TYPE 0x0302 &middot; HASH FAMILY</div>
   <h1 class="block-title">HASH160_PREIMAGE</h1>
   <p class="block-subtitle">RIPEMD160(SHA-256) hash preimage verification. Uses the same double-hash as Bitcoin addresses for compact 20-byte hash commitments.</p>
   <span class="block-family-badge badge-hash">Hash</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -90,7 +89,7 @@
   <p class="section-text" style="margin-bottom:16px">Conditions side (in scriptPubKey):</p>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0202</span>
+      <span class="wire-segment wire-type">0x0302</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">1</span>
       <span class="wire-segment wire-field-hash" style="min-width:140px">HASH160 &middot; 20B</span>
@@ -101,7 +100,7 @@
   <p class="section-text" style="margin-bottom:16px">Witness side (in input witness):</p>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0202</span>
+      <span class="wire-segment wire-type">0x0302</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">1</span>
       <span class="wire-segment wire-field-pre" style="min-width:140px">PREIMAGE &middot; 32B</span>

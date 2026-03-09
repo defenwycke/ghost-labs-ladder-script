@@ -20,11 +20,10 @@
 
 <!-- Title -->
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0203 &middot; HASH FAMILY</div>
+  <div class="block-type-code">TYPE 0x0303 &middot; HASH FAMILY</div>
   <h1 class="block-title">TAGGED_HASH</h1>
   <p class="block-subtitle">BIP-340 tagged hash verification. Computes SHA256(SHA256(tag) || SHA256(tag) || preimage) and compares to an expected hash. The tag_hash field IS SHA256(tag) already.</p>
   <span class="block-family-badge badge-hash">Hash</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -101,7 +100,7 @@
   <p class="section-text" style="margin-bottom:16px">Conditions side (in scriptPubKey):</p>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0203</span>
+      <span class="wire-segment wire-type">0x0303</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
       <span class="wire-segment wire-field-hash" style="min-width:150px">HASH256[0] &middot; 32B</span>
@@ -113,7 +112,7 @@
   <p class="section-text" style="margin-bottom:16px">Witness side (in input witness):</p>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0203</span>
+      <span class="wire-segment wire-type">0x0303</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">1</span>
       <span class="wire-segment wire-field-pre" style="min-width:140px">PREIMAGE &middot; 32B</span>

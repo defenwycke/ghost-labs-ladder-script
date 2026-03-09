@@ -19,11 +19,11 @@
 <div class="doc-content">
 
 <div class="block-title-section">
-  <div class="block-type-code">TYPE 0x0301 &middot; COVENANT FAMILY</div>
+  <div class="block-type-code">TYPE 0x0401 &middot; COVENANT FAMILY</div>
   <h1 class="block-title">CTV</h1>
   <p class="block-subtitle">CheckTemplateVerify (BIP-119). Verifies the spending transaction matches a committed template hash. The template hash covers version, locktime, scriptSigs hash, input count, sequences hash, output count, outputs hash, and input index. No witness data required &mdash; the template is computed directly from the transaction.</p>
   <span class="block-family-badge badge-covenant">Covenant</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Not Invertible</span>
 </div>
 
 <!-- Diagram -->
@@ -63,14 +63,14 @@
   <div class="section-label">Wire Format Breakdown</div>
   <div class="wire-breakdown">
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0301</span>
+      <span class="wire-segment wire-type">0x0401</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">1</span>
       <span class="wire-segment wire-field-hash">HASH256 &middot; 34B</span>
       <span class="wire-bytes">Conditions = 38 bytes</span>
     </div>
     <div class="wire-row">
-      <span class="wire-segment wire-type">0x0301</span>
+      <span class="wire-segment wire-type">0x0401</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">0</span>
       <span class="wire-bytes">Witness = 4 bytes (empty block)</span>
