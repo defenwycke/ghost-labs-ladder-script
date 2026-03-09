@@ -130,9 +130,9 @@ opcode prefix, witness version, or Taproot annex byte.
 | Max rungs per ladder | 16 | Policy |
 | Max blocks per rung | 8 | Policy |
 | Max fields per block | 16 | Deserialization |
-| Max ladder witness size | 100,000 bytes | Deserialization |
+| Max ladder witness size | 10,000 bytes | Deserialization |
 | Max PUBKEY size | 2,048 bytes | Field validation |
-| Max SIGNATURE size | 50,000 bytes | Field validation |
+| Max SIGNATURE size | 5,000 bytes | Field validation |
 | Max PREIMAGE size | 252 bytes | Field validation |
 | HASH256 size | Exactly 32 bytes | Field validation |
 | HASH160 size | Exactly 20 bytes | Field validation |
@@ -155,11 +155,9 @@ Each output has a coil that determines what happens when a rung is satisfied:
 ### 12. What is the difference between conditions and witness?
 
 **Conditions** are the locking side -- stored in the output's scriptPubKey
-(prefixed with `0xc1`). They contain only *condition data types*: PUBKEY_COMMIT,
-HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only types (PUBKEY,
-SIGNATURE, PREIMAGE) are forbidden in conditions. Blocks that reference public
-keys use PUBKEY_COMMIT (SHA-256 hash of the key) in conditions; the raw PUBKEY
-is provided in the witness at spend time.
+(prefixed with `0xc1`). They contain only *condition data types*: PUBKEY,
+PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX. Witness-only
+types (SIGNATURE, PREIMAGE) are forbidden in conditions.
 
 The **witness** is the unlocking side -- stored in the transaction input's
 witness field. It contains the attestations: signatures, preimages, and other
@@ -168,6 +166,14 @@ proof data needed to satisfy the conditions.
 Both sides use the same serialization format (rungs, blocks, fields), but the
 conditions side is strictly a subset -- it defines what must be proven, not the
 proofs themselves.
+
+### What is a diff witness and when should I use one?
+
+A diff witness allows one input's witness to inherit its structure from another input in the same transaction. Instead of serializing a full witness for every input, you provide only the fields that differ (typically just signatures, since each input has a unique sighash). Use diff witnesses when a transaction spends multiple UTXOs with identical or similar conditions using the same keys — batch consolidation, covenant chain spends, and MULTISIG batches all benefit. The wire savings scale with witness complexity: a simple SIG witness saves ~28%, while a 3-of-5 MULTISIG witness saves ~60% per inherited input.
+
+### Can diff witnesses be chained?
+
+No. A diff witness can only reference a full (non-diff) witness. The source input must have a standard witness with `n_rungs > 0`. This prevents circular dependencies and keeps resolution to a single level of indirection. If you need three identical inputs, inputs 1 and 2 can both reference input 0, but input 2 cannot reference input 1 if input 1 is itself a diff witness.
 
 ---
 
@@ -229,7 +235,7 @@ multi-mutation format.
 
 ### 17. Which PQ algorithms are supported?
 
-Ladder Script supports four post-quantum signature schemes, identified by the
+Ladder Script supports three post-quantum signature schemes, identified by the
 SCHEME data type:
 
 | Scheme | Byte | Public Key Size | Signature Size |
@@ -237,7 +243,6 @@ SCHEME data type:
 | FALCON-512 | 0x10 | 897 bytes | ~690 bytes |
 | FALCON-1024 | 0x11 | 1,793 bytes | ~1,330 bytes |
 | Dilithium3 | 0x12 | 1,952 bytes | 3,293 bytes |
-| SPHINCS+-SHA2-256f | 0x13 | 32 bytes | 49,216 bytes |
 
 Classical schemes are also supported: Schnorr (0x01) and ECDSA (0x02).
 
@@ -280,7 +285,6 @@ at any future time can reference the same anchor hash.
 | FALCON-512 | 897 bytes | 32 bytes | 865 bytes (96%) |
 | FALCON-1024 | 1,793 bytes | 32 bytes | 1,761 bytes (98%) |
 | Dilithium3 | 1,952 bytes | 32 bytes | 1,920 bytes (98%) |
-| SPHINCS+ | 32 bytes | 32 bytes | 0 bytes (already 32B) |
 
 The savings apply per UTXO in the UTXO set. The full key must still be provided
 in the witness at spend time, but witness data is prunable and does not
@@ -353,35 +357,23 @@ Use cases:
 
 ### 25. Can arbitrary data be stored in Ladder Script?
 
-No. Ladder Script eliminates arbitrary data embedding through cryptographic
-binding on both sides of a transaction.
+No. Ladder Script's typed field system makes arbitrary data embedding
+impractical. Every byte in a rung transaction must conform to a known data type
+with strict size limits and semantic validation:
 
-**Conditions (UTXO set — permanent storage):** Raw public keys (PUBKEY) are
-not permitted. All key references use PUBKEY_COMMIT — the SHA-256 hash of the
-key. The remaining condition types (HASH256, HASH160, NUMERIC, SCHEME,
-SPEND_INDEX) are either hash outputs (computationally impossible to choose —
-would require a SHA-256 preimage attack) or small bounded integers. There are
-zero user-chosen bytes in conditions.
-
-**Witness (prunable):** Every witness field is cryptographically bound to a
-condition:
-
-- **PUBKEY**: Must hash to a specific PUBKEY_COMMIT in conditions. Attacker
-  cannot substitute arbitrary bytes — SHA-256(fake_key) would not match the
-  commitment.
-- **SIGNATURE**: Must cryptographically verify against the committed key for
-  the specific transaction sighash. The bytes are determined by the private
-  key and message, not freely chosen.
-- **PREIMAGE**: Must hash to a specific HASH256 or HASH160 in conditions.
-  Limited to 252 bytes, and a maximum of 2 preimage-bearing blocks per
-  witness (policy). This is the one field with user-chosen content, retained
-  for HTLC compatibility. ADAPTOR_SIG provides a spam-free alternative for
-  the same use cases.
-
-The total embeddable data in a Ladder Script transaction is limited to a few
-bits of grindable entropy in signature nonces and small bounded NUMERIC values.
-This is comparable to the information encodable in output amounts on any
-Bitcoin transaction — an irreducible minimum, not a data channel.
+1. **RPC layer**: Unknown data types are rejected. Witness-only types (SIGNATURE,
+   PREIMAGE) are blocked from conditions. Field sizes are validated against
+   type-specific min/max bounds.
+2. **Serialization**: Structure limits (max rungs, blocks, fields) are enforced
+   during deserialization.
+3. **Policy**: Output validation rejects oversized structures before mempool
+   admission.
+4. **Consensus**: Semantic validation at spend time rejects garbage operators,
+   wrong preimages, and mismatched keys.
+5. **Economic**: Even if structurally valid data gets into a UTXO (e.g., a
+   PUBKEY field with non-key bytes), the funds are burned because no valid
+   signature can be produced for a nonsense key. The attacker pays for storage
+   they can never recover.
 
 ### 26. What happens with unknown block types?
 
@@ -440,7 +432,7 @@ Features include:
 |-----|---------|
 | `createrungtx` | Create a v4 RUNG_TX transaction from JSON conditions |
 | `signrungtx` | Sign a v4 transaction (Schnorr, ECDSA, or PQ) |
-| `decoderung` | Decode and display a v4 transaction's conditions and witness |
+| `decoderungtx` | Decode and display a v4 transaction's conditions and witness |
 | `generatepqkeypair` | Generate a post-quantum keypair (FALCON512, etc.) |
 | `pqpubkeycommit` | Compute SHA-256 commitment for a PQ public key |
 | `extractadaptorsecret` | Extract adaptor secret from adapted/pre-signatures |

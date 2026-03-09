@@ -16,12 +16,20 @@ namespace rung {
 
 const HashWriter HASHER_LADDERSIGHASH{TaggedHash("LadderSighash")};
 
-/** Compute SHA256 of serialized rung conditions. */
+/** Compute the conditions commitment for sighash.
+ *  For MLSC outputs: use conditions_root directly (already commits to all data via Merkle tree).
+ *  For legacy 0xC1 outputs: SHA256 of serialized conditions (original behavior). */
 static uint256 HashRungConditions(const RungConditions& conditions)
 {
+    // MLSC: conditions_root is the commitment — use it directly
+    if (conditions.conditions_root.has_value()) {
+        return *conditions.conditions_root;
+    }
+
+    // Legacy: hash the serialized conditions
     LadderWitness ladder;
     ladder.rungs = conditions.rungs;
-    auto bytes = SerializeLadderWitness(ladder);
+    auto bytes = SerializeLadderWitness(ladder, SerializationContext::CONDITIONS);
 
     HashWriter ss{};
     ss.write(MakeByteSpan(bytes));

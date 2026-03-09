@@ -31,22 +31,13 @@ expects the fully adapted signature in the witness -- it verifies as a standard 
 signature against the signing key. The adaptor point is committed in the conditions to
 prove the protocol structure.
 
-### Anchor
+### Aggregate Signature
 
-A block family (0x0500-0x05FF) that commits to external state references, bridging on-chain
-UTXOs to off-chain protocols and external data sources. Six anchor types are defined:
-
-- **ANCHOR (0x0501):** Generic anchor point. Commits to one or more typed fields.
-- **ANCHOR_CHANNEL (0x0502):** Payment channel anchor. Commits to a channel ID and
-  sequence number for state binding.
-- **ANCHOR_POOL (0x0503):** Liquidity pool anchor. Binds the UTXO to a specific pool
-  structure.
-- **ANCHOR_RESERVE (0x0504):** Reserve proof anchor. Commits to a minimum reserve
-  amount for off-chain balance proofs.
-- **ANCHOR_SEAL (0x0505):** Tamper-evident seal. Single-use commitment for client-side
-  validation.
-- **ANCHOR_ORACLE (0x0506):** Oracle attestation anchor. Requires a signed attestation
-  from a committed oracle key.
+A single Schnorr signature produced by a MuSig2 or FROST threshold signing ceremony
+that represents the combined authorization of M-of-N signers. In Ladder Script, the
+MUSIG_THRESHOLD block (0x0004) validates the aggregate signature against the aggregate
+public key using standard Schnorr verification. The threshold ceremony is entirely
+off-chain -- on-chain, the spend is indistinguishable from a single-sig SIG block.
 
 ### AND Logic
 
@@ -100,47 +91,13 @@ An enum (`RungCoilType`, `uint8_t`) that determines the unlock semantics of a ru
 - **COVENANT (0x03):** The coil constrains the spending transaction's output structure.
   Used with recursion and CTV blocks to enforce output conditions.
 
-In the Ladder Engine visual tool, additional coil types are available for cross-rung
-composition within the diagram:
-
-- **RELAY:** Sets an internal flag that other rungs can read via relay contacts. The rung
-  does not produce a TX output -- it is an intermediate logic signal.
-- **LATCH:** Sets a persistent flag that remains active once set. Other rungs can read the
-  latch state via contacts.
-- **UNLATCH:** Clears a previously set latch flag.
-- **SIGNAL:** Emits a named signal that downstream rungs can reference. Used for multi-stage
-  approval patterns.
-
-These relay coil types are evaluated top-to-bottom within the ladder diagram. Circular
-dependencies are not permitted. Relay coils compile to multi-rung conditions in the wire
-format -- they are a visual composition tool, not separate consensus-level coil types.
-
-### Compound Block
-
-A block from the Compound family (0x0700-0x07FF) that collapses common multi-block
-patterns into a single block, reducing wire overhead by eliminating duplicate block
-headers. Three compound blocks are defined:
-
-- **TIMELOCKED_SIG (0x0701):** Signature verification with relative timelock. Replaces
-  the SIG + CSV two-block pattern, saving 8 bytes on wire.
-- **HTLC (0x0702):** Hash Time Locked Contract. Combines hash preimage verification,
-  relative timelock, and signature check. Replaces the HASH_PREIMAGE + CSV + SIG
-  three-block pattern, saving 16 bytes.
-- **HASH_SIG (0x0703):** Hash preimage verification combined with signature check.
-  Replaces the HASH_PREIMAGE + SIG two-block pattern, saving 8 bytes.
-
-Each compound block performs the evaluation of its constituent blocks in sequence. All
-sub-checks must pass for the compound block to return SATISFIED.
-
 ### Condition
 
 A spending requirement embedded in a v4 output's scriptPubKey. Conditions are the
 "locking" side of Ladder Script -- they specify what must be satisfied to spend the
-UTXO. Conditions contain only condition data types (PUBKEY_COMMIT, HASH256, HASH160,
-NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (PUBKEY, SIGNATURE,
-PREIMAGE). Blocks that reference public keys use PUBKEY_COMMIT (SHA-256 hash) in
-conditions; the raw PUBKEY is provided in the witness. Serialized with the
-`RUNG_CONDITIONS_PREFIX` (0xc1) byte.
+UTXO. Conditions contain only condition data types (PUBKEY, PUBKEY_COMMIT, HASH256,
+HASH160, NUMERIC, SCHEME, SPEND_INDEX) and never contain witness-only types (SIGNATURE,
+PREIMAGE). Serialized with the `RUNG_CONDITIONS_PREFIX` (0xc1) byte.
 
 ### Contact
 
@@ -173,6 +130,10 @@ in a covenant spend. The enforcement rule is:
 Only NUMERIC fields may be targeted by delta mutations. All other fields must remain
 identical between input and output conditions.
 
+### Diff Witness
+
+A witness that inherits its rung and relay structure from another input's witness within the same transaction, providing only field-level diffs and a fresh coil. Triggered when `n_rungs = 0` in the witness deserialization. The witness-side counterpart to Template Inheritance.
+
 ### Energized
 
 A rung or block that evaluates to SATISFIED. In PLC ladder diagram terminology, current
@@ -202,27 +163,6 @@ The OR evaluation strategy across rungs. The evaluator iterates rungs in order a
 returns true as soon as one rung evaluates to SATISFIED. Remaining rungs are not
 evaluated. This means the first satisfied rung determines the spend path. Defined in
 `EvalLadder()`.
-
-### Governance Block
-
-A block from the Governance family (0x0800-0x08FF) that enforces transaction-level
-constraints by inspecting the spending transaction's structure, weight, input/output
-counts, and value ratios. These constraints have no Tapscript equivalent. Six governance
-blocks are defined:
-
-- **EPOCH_GATE (0x0801):** Periodic spending windows using block height modular
-  arithmetic. Allows spending only during specific portions of each epoch.
-- **WEIGHT_LIMIT (0x0802):** Maximum transaction weight constraint. Prevents the UTXO
-  from being spent in oversized transactions.
-- **INPUT_COUNT (0x0803):** Min/max bounds on the number of inputs in the spending
-  transaction.
-- **OUTPUT_COUNT (0x0804):** Min/max bounds on the number of outputs in the spending
-  transaction.
-- **RELATIVE_VALUE (0x0805):** Anti-siphon ratio enforcement. Ensures output value
-  maintains a minimum ratio to input value using integer numerator/denominator with
-  overflow protection.
-- **ACCUMULATOR (0x0806):** Merkle set membership proof. Verifies that a value belongs
-  to a committed set using sorted-pair Merkle proofs with root update.
 
 ### Inversion
 
@@ -276,6 +216,14 @@ The witness is merged with the conditions (from the spent output's scriptPubKey)
 evaluation. The merge combines condition fields (locks) with witness fields (keys) into
 a unified structure that the evaluator processes.
 
+### MUSIG_THRESHOLD
+
+A Signature family block type (0x0004) for MuSig2/FROST aggregate threshold signatures.
+Conditions contain a PUBKEY_COMMIT (aggregate key hash) and two NUMERIC fields (threshold
+M and group size N, for policy/display). The witness contains the aggregate PUBKEY and
+aggregate SIGNATURE. On-chain, the spend is indistinguishable from a single-sig SIG
+block (~131 bytes regardless of M or N). Schnorr-only; no post-quantum path.
+
 ### Latch
 
 A PLC block implementing a bistable (set/reset) state element. Two complementary
@@ -320,12 +268,9 @@ are SATISFIED, activating the coil.
 ### PUBKEY_COMMIT
 
 A 32-byte SHA-256 hash commitment to a full public key, stored as RungDataType 0x02.
-PUBKEY_COMMIT is the standard way to reference public keys in conditions -- raw PUBKEY
-is witness-only (`IsConditionDataType(PUBKEY)` returns false). At spend time, the
-revealed PUBKEY in the witness must hash to this commitment. This eliminates
-user-chosen bytes from conditions (anti-spam) and provides key privacy in the
-scriptPubKey. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when
-building conditions.
+When present in a SIG block, the revealed PUBKEY in the witness must hash to this
+commitment. This allows conditions to commit to a key without revealing it until spend
+time, providing key privacy in the scriptPubKey.
 
 Verification: `SHA256(PUBKEY.data) == PUBKEY_COMMIT.data`.
 
@@ -351,19 +296,6 @@ that change over time through RECURSE_MODIFIED mutations. Examples include the
 `accumulated` field in TIMER_CONTINUOUS, the `state` field in LATCH_SET/LATCH_RESET,
 and the `current` field in COUNTER_UP/COUNTER_PRESET.
 
-### Relay Coil
-
-A visual composition mechanism in the Ladder Engine that enables cross-rung AND logic.
-A relay coil allows one rung to set an internal flag that another rung reads via a relay
-contact. This creates multi-condition approval patterns where Rung A must be satisfied
-before Rung B can proceed, even though they are separate evaluation paths.
-
-Four relay coil types are supported in the engine: RELAY (set/read flag), LATCH (set
-persistent flag), UNLATCH (clear latch), and SIGNAL (named signal). Relay coils are
-evaluated top-to-bottom; circular dependencies are rejected. In the wire format, relay
-patterns compile into multi-rung conditions on the same TX output -- they are a
-compositional tool, not separate consensus primitives.
-
 ### Rung
 
 A horizontal evaluation path in a ladder, represented by the `Rung` struct. Contains:
@@ -387,7 +319,7 @@ single spending condition. Represented by the `RungBlock` struct containing:
 ### RungBlockType
 
 An enum (`uint16_t`) identifying the type of a block. Encoded as 2 bytes (little-endian)
-in the wire format. 48 block types are defined across 9 families. The numeric ranges
+in the wire format. 39 block types are defined across 7 families. The numeric ranges
 partition the type space by family:
 
 | Range | Family |
@@ -399,14 +331,12 @@ partition the type space by family:
 | 0x0400-0x04FF | Recursion |
 | 0x0500-0x05FF | Anchor/L2 |
 | 0x0600-0x06FF | PLC |
-| 0x0700-0x07FF | Compound |
-| 0x0800-0x08FF | Governance |
 
 ### RungConditions
 
 The conditions embedded in a v4 output's scriptPubKey. Represented by the
 `RungConditions` struct, which mirrors the `LadderWitness` structure but contains only
-condition data types (no PUBKEY, SIGNATURE, or PREIMAGE). Serialized with the
+condition data types (no SIGNATURE or PREIMAGE). Serialized with the
 `RUNG_CONDITIONS_PREFIX` (0xc1) byte as the first byte of the scriptPubKey.
 
 Contains:
@@ -465,7 +395,6 @@ The signature algorithm used for verification, represented by the `RungScheme` e
 | 0x10 | FALCON512 | Post-quantum |
 | 0x11 | FALCON1024 | Post-quantum |
 | 0x12 | DILITHIUM3 | Post-quantum |
-| 0x13 | SPHINCS_SHA | Post-quantum |
 
 Classical schemes (codes < 0x10) are verified via the standard signature checker. Post-
 quantum schemes (codes >= 0x10) are routed through `VerifyPQSignature()`. The scheme
@@ -502,3 +431,7 @@ for both scriptPubKey conditions (prefixed with 0xc1) and witness data. Key prop
 
 Serialization is handled by `src/rung/serialize.cpp`. Deserialization validates field
 sizes against type constraints and rejects unknown types.
+
+### Witness Reference
+
+The compact wire encoding for a diff witness: a source input index, a list of field-level diffs, and a fresh coil. Resolves at evaluation time by copying the source witness and applying diffs.

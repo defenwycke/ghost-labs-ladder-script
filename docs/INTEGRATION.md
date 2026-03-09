@@ -12,11 +12,25 @@ A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`)
 
 1. **Select inputs.** Any UTXOs can be spent by a v4 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v4 rung conditions.
 
-2. **Define output conditions.** Each output's `scriptPubKey` is constructed as `0xc1 || serialized_conditions`. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX) may appear. PUBKEY, SIGNATURE, and PREIMAGE are forbidden in conditions. The `createrungtx` RPC auto-hashes PUBKEY to PUBKEY_COMMIT when building conditions -- users provide pubkey hex as before.
+2. **Define output conditions.** Each output's `scriptPubKey` is constructed as `0xc1 || serialized_conditions`. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX) may appear. SIGNATURE and PREIMAGE are forbidden in conditions.
 
 3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v4 transaction.
 
 4. **Sign the transaction.** Use the `signrungtx` RPC, which takes the unsigned transaction hex, an array of `{privkey, input_index}` pairs, and an array of spent outputs (needed for sighash computation). The RPC computes `LadderSighash` for each input and produces witness data.
+
+**Diff Witness Signing.** The `signrungtx` RPC supports a `diff_witness` signer format alongside the existing `privkey` (legacy) and `blocks` (new) formats:
+
+```json
+{"input": 1, "diff_witness": {
+    "source_input": 0,
+    "diffs": [
+        {"rung_index": 0, "block_index": 0, "field_index": 1,
+         "field": {"type": "SIGNATURE", "privkey": "cVt..."}}
+    ]
+}}
+```
+
+Diff fields support either `"hex"` (raw replacement data) or `"privkey"` (auto-sign for SIGNATURE fields, auto-derive for PUBKEY fields). The RPC constructs a `LadderWitness` with `witness_ref` set and serializes it.
 
 5. **Broadcast.** Submit via `sendrawtransaction`. The mempool validates the transaction through `IsStandardRungTx()` before acceptance.
 
@@ -25,6 +39,8 @@ A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`)
 For each input, the witness stack contains a single element: the serialized `LadderWitness`. This witness provides the "unlocking" data -- signatures, preimages, and other witness-only fields -- that pairs with the conditions from the spent output.
 
 The witness structure mirrors the conditions: same number of rungs, same number of blocks per rung, same block types. The evaluator merges conditions and witness by concatenating their fields within each block.
+
+**Diff Witness (Witness Inheritance).** When a transaction spends multiple inputs with identical conditions using the same keys, inputs after the first can use a *diff witness* instead of a full witness. The diff witness sets `n_rungs = 0` in the witness serialization, provides a `source_input` index pointing to an earlier input with a full witness, a list of field-level diffs (typically just fresh signatures), and a fresh coil. At evaluation time, `ResolveWitnessReference()` copies the source's rungs and relays and applies the diffs before proceeding through normal evaluation.
 
 ### 1.3 Validation
 
@@ -86,7 +102,7 @@ For non-LADDER sig versions, the checker falls through to the wrapped `BaseSigna
 A v4 rung conditions output has the following `scriptPubKey` format:
 
 ```
-[0xc1] [serialized conditions using ladder wire format v2]
+[0xc1] [serialized conditions using ladder wire format v3]
 ```
 
 The `0xc1` prefix byte is defined as `RUNG_CONDITIONS_PREFIX`. The function `IsRungConditionsScript()` performs a quick check: `scriptPubKey.size() >= 2 && scriptPubKey[0] == 0xc1`.
@@ -102,7 +118,7 @@ The `0xc1` prefix byte is defined as `RUNG_CONDITIONS_PREFIX`. The function `IsR
 
 1. Verify the `0xc1` prefix.
 2. Strip the prefix and deserialize as a `LadderWitness`.
-3. Validate that no witness-only data types (PUBKEY, SIGNATURE, PREIMAGE) appear in the conditions.
+3. Validate that no witness-only data types (SIGNATURE, PREIMAGE) appear in the conditions.
 
 ### 3.3 Non-Conditions Outputs
 
@@ -195,6 +211,8 @@ The mempool policy function `IsStandardRungTx()` validates v4 transactions befor
 - All block types must be known (`IsKnownBlockType()`).
 - All fields must pass `RungField::IsValid()` size/content checks.
 
+Diff witnesses pass mempool standardness checks. The `IsStandardRungTx()` function validates deserialization (which enforces field type restrictions and size limits) and then skips rung/relay validation since those structures are inherited at evaluation time.
+
 ### 6.2 IsStandardRungOutput()
 
 Validates a `0xc1`-prefixed `scriptPubKey`:
@@ -202,20 +220,12 @@ Validates a `0xc1`-prefixed `scriptPubKey`:
 - Must deserialize as valid `RungConditions`.
 - Maximum 16 rungs, 8 blocks per rung.
 - All block types must be known.
-- All fields must be condition-allowed data types (no PUBKEY, no SIGNATURE, no PREIMAGE).
+- All fields must be condition-allowed data types (no SIGNATURE, no PREIMAGE).
 - All fields must pass size validation.
 
-### 6.3 Family Classification
+### 6.3 Block Type Standardness
 
-The current policy implementation accepts all 48 known block types. Block types are categorized by family:
-
-- **Base** (0x0001--0x02FF): SIG, MULTISIG, ADAPTOR_SIG, CSV, CSV_TIME, CLTV, CLTV_TIME, HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH.
-- **Covenant + Anchor** (0x0300--0x05FF): CTV, VAULT_LOCK, AMOUNT_LOCK, ANCHOR_*.
-- **Recursion + PLC** (0x0400--0x06FF): RECURSE_*, HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN.
-- **Compound** (0x0700--0x07FF): TIMELOCKED_SIG, HTLC, HASH_SIG.
-- **Governance** (0x0800--0x08FF): EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR.
-
-The functions `IsBaseBlockType()`, `IsCovenantBlockType()`, and `IsStatefulBlockType()` classify blocks into these groups. These are available for future policy tightening where specific families could be made non-standard while remaining consensus-valid.
+All known block types are standard upon activation. The policy implementation accepts all block types across all families (Signature, Timelock, Hash, Covenant, Anchor, Recursion, and PLC).
 
 ---
 
@@ -259,7 +269,7 @@ A time-bounded covenant. Before `until_height`, the output must be re-encumbered
 
 The helper `FullConditionsEqual()` performs a deep structural comparison of two `RungConditions` objects. For mutated blocks, `VerifyMutatedConditions()` allows declared parameters to differ by the specified delta while requiring all other fields to match exactly.
 
-Only condition data types are compared (PUBKEY_COMMIT, HASH256, etc.). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are excluded from comparison since they are never present in conditions.
+Only condition data types are compared (PUBKEY, HASH256, etc.). Witness-only types are excluded from comparison since they are never present in conditions.
 
 ---
 

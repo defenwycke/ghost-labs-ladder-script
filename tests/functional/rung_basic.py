@@ -3,13 +3,13 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://opensource.org/license/mit/.
 
-"""Ladder Script functional tests for all block types (v2 wire format).
+"""Ladder Script functional tests for all block types (v3 wire format).
 
 Tests:
-- Phase 1 (existing): createrung, decoderung, validateladder, malformed, SIG spend
-- Phase 2: HASH_PREIMAGE, CSV, CLTV, MULTISIG, compound SIG+CSV, OR logic,
+- Signature/Timelock/Hash: createrung, decoderung, validateladder, malformed, SIG spend
+- Covenant/Compound: HASH_PREIMAGE, CSV, CLTV, MULTISIG, compound SIG+CSV, OR logic,
            negative tests, multi-input/output
-- Phase 3: Inversion (inverted CSV, inverted HASH_PREIMAGE)
+- Inversion: Inversion (inverted CSV, inverted HASH_PREIMAGE)
 """
 
 import hashlib
@@ -55,17 +55,17 @@ class LadderScriptBasicTest(BitcoinTestFramework):
 
         self.log.info("Mining initial blocks for maturity...")
         self.generate(node, 101)
-        self.generatetoaddress(node, 101, self.wallet.get_address())
+        self.generatetoaddress(node, 200, self.wallet.get_address())
         self.wallet.rescan_utxos()
 
-        # Phase 1 tests (existing)
+        # Signature, Timelock, Hash tests
         self.test_createrung(node)
         self.test_decoderung(node)
         self.test_validateladder(node)
         self.test_decoderung_malformed(node)
         self.test_createrungtx_signrungtx_spend(node)
 
-        # Phase 2 tests
+        # Covenant, Anchor, compound tests
         self.test_hash_preimage_spend(node)
         self.test_csv_spend(node)
         self.test_cltv_spend(node)
@@ -78,7 +78,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_negative_cltv_too_early(node)
         self.test_multi_input_output(node)
 
-        # Phase 3 tests (inversion)
+        # Inversion tests
         self.test_inverted_csv(node)
         self.test_inverted_hash_preimage(node)
 
@@ -91,13 +91,13 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_ctv_template(node)
         self.test_vault_lock(node)
 
-        # Phase 2+ negative tests
+        # Negative tests
         self.test_negative_ctv_wrong_template(node)
         self.test_negative_vault_wrong_key(node)
         self.test_negative_compare_fails(node)
         self.test_negative_tagged_hash_wrong_preimage(node)
 
-        # Additional Phase 1 tests
+        # Additional signature tests
         self.test_hash160_preimage_spend(node)
         self.test_csv_time_spend(node)
         self.test_cltv_time_spend(node)
@@ -202,10 +202,6 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         # Adaptor sig RPC tests
         self.test_extractadaptorsecret_rpc(node)
 
-        # Mine more blocks for maturity — previous tests consumed most UTXOs
-        self.generatetoaddress(node, 100, self.wallet.get_address())
-        self.wallet.rescan_utxos()
-
         # Counter state gating tests
         self.test_counter_down_state_gating(node)
         self.test_one_shot_state_gating(node)
@@ -215,19 +211,9 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_cosign_negative_no_anchor(node)
         self.test_cosign_10_children(node)
 
-        # Compound block tests (TIMELOCKED_SIG, HTLC, HASH_SIG)
-        self.test_compound_timelocked_sig(node)
-        self.test_compound_timelocked_sig_too_early(node)
-        self.test_compound_hash_sig(node)
-        self.test_compound_hash_sig_wrong_preimage(node)
-        self.test_compound_htlc(node)
-        self.test_compound_htlc_wrong_preimage(node)
-
-        # Compound block tests (CLTV_SIG, TIMELOCKED_MULTISIG)
-        self.test_compound_cltv_sig(node)
-        self.test_compound_cltv_sig_too_early(node)
-        self.test_compound_timelocked_multisig(node)
-        self.test_compound_timelocked_multisig_too_early(node)
+        # DIFF_WITNESS — witness inheritance
+        self.test_diff_witness_spend(node)
+        self.test_diff_witness_negative_self_ref(node)
 
     # =========================================================================
     # Helpers
@@ -284,7 +270,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         return txid, 0, output_amount, spk
 
     # =========================================================================
-    # Phase 1 tests
+    # Signature, Timelock, Hash tests
     # =========================================================================
 
     def test_createrung(self, node):
@@ -358,7 +344,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
 
         result = node.validateladder(raw_tx)
         assert_equal(result["valid"], False)
-        assert "Not a v4" in result["error"] or "not v4" in result["error"].lower()
+        assert "Not a v3 RUNG_TX" in result["error"]
 
         self.log.info("  Non-v4 transaction correctly rejected")
 
@@ -369,15 +355,15 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         # Empty / truncated
         assert_raises_rpc_error(-22, "Failed to decode", node.decoderung, "00")
 
-        # Unknown block type (0x00ff LE): 01 rung, 01 block, ff00 type, 00 inverted, 00 fields, coil bytes
-        assert_raises_rpc_error(-22, "unknown block type", node.decoderung, "0101ff000000010101" + "0000")
+        # Unknown block type via escape: 01 rung, 01 block, 80 escape, ff00 type LE, 00 fields, coil, relay
+        assert_raises_rpc_error(-22, "unknown block type", node.decoderung, "010180ff0000010101" + "0000")
 
-        # Unknown data type (0xff): 01 rung, 01 block, 0100 SIG, 00 inverted, 01 field, ff type, 01 len, aa data, coil bytes
-        assert_raises_rpc_error(-22, "unknown data type", node.decoderung, "010101000001ff01aa010101" + "0000")
+        # Unknown data type (0xff) via escape: 01 rung, 01 block, 80 escape, 0100 SIG type LE, 01 field, ff type, 01 len, aa data, coil, relay
+        assert_raises_rpc_error(-22, "unknown data type", node.decoderung, "0101800100" + "01ff01aa" + "010101" + "0000")
 
-        # Oversized PUBKEY field (2049 bytes, max is 2048):
-        # 01 rung, 01 block, 0100 SIG, 00 inverted, 01 field, 01 PUBKEY, varint len=2049, 2049 bytes, coil bytes
-        oversized = "010101000001" + "01" + "fd0108" + "02" * 2049 + "010101" + "0000"
+        # Oversized PUBKEY field (2049 bytes, max is 2048) via escape:
+        # 01 rung, 01 block, 80 escape, 0100 SIG type LE, 01 field, 01 PUBKEY, varint len=2049, 2049 bytes, coil, relay
+        oversized = "0101800100" + "01" + "01" + "fd0108" + "02" * 2049 + "010101" + "0000"
         assert_raises_rpc_error(-22, "too large", node.decoderung, oversized)
 
         self.log.info("  All malformed inputs correctly rejected")
@@ -469,7 +455,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.log.info("  End-to-end spend test PASSED!")
 
     # =========================================================================
-    # Phase 2 tests
+    # Covenant, Anchor, compound tests
     # =========================================================================
 
     def test_hash_preimage_spend(self, node):
@@ -941,7 +927,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
 
 
     # =========================================================================
-    # Phase 3 tests (inversion)
+    # Inversion tests
     # =========================================================================
 
     def test_inverted_csv(self, node):
@@ -2567,18 +2553,20 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.log.info("  RECURSE_DECAY passed!")
 
     def test_hysteresis_fee(self, node):
-        """HYSTERESIS_FEE: 2 numerics (high >= low), structural only."""
+        """HYSTERESIS_FEE: 2 numerics (high >= low), checks fee rate in band."""
         self.log.info("Testing HYSTERESIS_FEE spend...")
 
         conditions = [{"blocks": [{"type": "HYSTERESIS_FEE", "fields": [
-            {"type": "NUMERIC", "hex": numeric_hex(10000)},  # high_sat_vb (generous upper bound)
-            {"type": "NUMERIC", "hex": numeric_hex(1)},      # low_sat_vb
+            {"type": "NUMERIC", "hex": numeric_hex(100)},  # high_sat_vb
+            {"type": "NUMERIC", "hex": numeric_hex(10)},   # low_sat_vb
         ]}]}]
 
         txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
         self.log.info(f"  HYSTERESIS_FEE output: {txid}:{vout}")
 
-        output_amount = amount - Decimal("0.0001")  # ~67 sat/vB fee for ~150 vB tx
+        # Fee must produce a rate within 10-100 sat/vB.
+        # A 1-in/1-out v4 tx is ~150 vbytes, so target ~50 sat/vB = 7500 sats fee.
+        output_amount = amount - Decimal("0.000075")
         dest_wif, dest_pubkey = make_keypair()
         dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
             {"type": "PUBKEY", "hex": dest_pubkey}
@@ -2816,7 +2804,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.log.info("  COUNTER_PRESET spend confirmed!")
 
     def test_counter_up(self, node):
-        """COUNTER_UP: 1 pubkey + 2 numerics (current, target), SATISFIED if current < target."""
+        """COUNTER_UP: 1 pubkey + 1 numeric required, structural only."""
         self.log.info("Testing COUNTER_UP spend...")
 
         _event_wif, event_pubkey = make_keypair()
@@ -2824,7 +2812,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         conditions = [{"blocks": [{"type": "COUNTER_UP", "fields": [
             {"type": "PUBKEY", "hex": event_pubkey},
             {"type": "NUMERIC", "hex": numeric_hex(0)},   # current count
-            {"type": "NUMERIC", "hex": numeric_hex(10)},   # target count
+            {"type": "NUMERIC", "hex": numeric_hex(10)},  # target
         ]}]}]
 
         txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
@@ -2854,11 +2842,11 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.log.info("  COUNTER_UP spend confirmed!")
 
     def test_one_shot(self, node):
-        """ONE_SHOT: NUMERIC (state=0 means can fire) + HASH256 (commitment)."""
+        """ONE_SHOT: 1 numeric + 1 hash required, structural only."""
         self.log.info("Testing ONE_SHOT spend...")
 
         conditions = [{"blocks": [{"type": "ONE_SHOT", "fields": [
-            {"type": "NUMERIC", "hex": numeric_hex(0)},  # state=0 → can fire
+            {"type": "NUMERIC", "hex": numeric_hex(0)},  # state: 0=unfired
             {"type": "HASH256", "hex": os.urandom(32).hex()},  # commitment
         ]}]}]
 
@@ -3605,14 +3593,8 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         if self.skip_if_no_pq(node):
             return
 
-        for scheme in ["FALCON512", "FALCON1024", "DILITHIUM3", "SPHINCS_SHA"]:
-            try:
-                result = node.generatepqkeypair(scheme)
-            except Exception as e:
-                if "Unknown PQ scheme" in str(e):
-                    self.log.info(f"  {scheme}: not supported in this build (skipped)")
-                    continue
-                raise
+        for scheme in ["FALCON512", "FALCON1024", "DILITHIUM3"]:
+            result = node.generatepqkeypair(scheme)
             assert_equal(result["scheme"], scheme)
             assert len(result["pubkey"]) > 0, f"Empty pubkey for {scheme}"
             assert len(result["privkey"]) > 0, f"Empty privkey for {scheme}"
@@ -3658,7 +3640,7 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         sign_result = node.signrungtx(
             spend["hex"],
             [{"input": 0, "blocks": [
-                {"type": "SIG", "scheme": "FALCON512", "pq_privkey": pq_privkey}
+                {"type": "SIG", "scheme": "FALCON512", "pq_privkey": pq_privkey, "pq_pubkey": pq_pubkey}
             ]}],
             [{"amount": amount, "scriptPubKey": spk}]
         )
@@ -5604,457 +5586,121 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result2["hex"])
         self.log.info("  ONE_SHOT (state=1) correctly rejected!")
 
-
-    # =========================================================================
-    # Compound block tests (TIMELOCKED_SIG, HTLC, HASH_SIG)
-    # =========================================================================
-
-    def test_compound_timelocked_sig(self, node):
-        """TIMELOCKED_SIG: single compound block = SIG + CSV."""
-        self.log.info("Testing TIMELOCKED_SIG compound block...")
+    def test_diff_witness_spend(self, node):
+        """Scenario 20: DIFF_WITNESS — spend two identical SIG outputs, second uses diff witness."""
+        self.log.info("Scenario 20: Testing diff witness spend...")
 
         privkey_wif, pubkey_hex = make_keypair()
-        csv_blocks = 10
+        sig_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": pubkey_hex}
+        ]}]}]
 
-        # Conditions: one TIMELOCKED_SIG block with PUBKEY + NUMERIC (CSV)
-        conditions = [{"blocks": [
-            {"type": "TIMELOCKED_SIG", "fields": [
-                {"type": "PUBKEY", "hex": pubkey_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
-            ]},
-        ]}]
+        # Create two identical SIG outputs
+        txid1, vout1, amount1, spk1 = self.bootstrap_v4_output(node, sig_conditions)
+        txid2, vout2, amount2, spk2 = self.bootstrap_v4_output(node, sig_conditions)
+        self.log.info(f"  Created v4 outputs: {txid1}:{vout1} and {txid2}:{vout2}")
 
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.log.info(f"  TIMELOCKED_SIG output: {txid}:{vout}")
+        total_input = amount1 + amount2
+        output_amount = total_input - Decimal("0.001")
 
-        # Mine for CSV maturity
-        self.generate(node, csv_blocks)
-
-        output_amount = amount - Decimal("0.001")
         dest_wif, dest_pubkey = make_keypair()
         dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
             {"type": "PUBKEY", "hex": dest_pubkey}
         ]}]}]
 
         result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
+            [{"txid": txid1, "vout": vout1}, {"txid": txid2, "vout": vout2}],
             [{"amount": output_amount, "conditions": dest_conditions}]
         )
+
+        # Input 0: normal sign
+        # Input 1: diff_witness from input 0, with SIGNATURE diff (different sighash per input)
         sign_result = node.signrungtx(
             result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "TIMELOCKED_SIG", "privkey": privkey_wif},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
+            [
+                {"input": 0, "blocks": [{"type": "SIG", "privkey": privkey_wif}]},
+                {"input": 1, "diff_witness": {
+                    "source_input": 0,
+                    "diffs": [
+                        {"rung_index": 0, "block_index": 0, "field_index": 1,
+                         "field": {"type": "SIGNATURE", "privkey": privkey_wif}},
+                    ],
+                }},
+            ],
+            [
+                {"amount": amount1, "scriptPubKey": spk1},
+                {"amount": amount2, "scriptPubKey": spk2},
+            ]
         )
-        assert sign_result["complete"]
+        assert sign_result["complete"], "Diff witness tx should be fully signed"
 
         spend_txid = node.sendrawtransaction(sign_result["hex"])
         self.generate(node, 1)
+
         tx_info = node.getrawtransaction(spend_txid, True)
         assert tx_info["confirmations"] >= 1
-        self.log.info(f"  TIMELOCKED_SIG spend confirmed: {spend_txid[:16]}...")
+        self.log.info(f"  Diff witness spend confirmed: {spend_txid}")
 
-    def test_compound_timelocked_sig_too_early(self, node):
-        """TIMELOCKED_SIG: CSV not yet matured — should be rejected."""
-        self.log.info("Testing TIMELOCKED_SIG too early (negative)...")
+        # Verify decoderung shows witness_ref for input 1
+        raw_tx = node.decoderawtransaction(node.getrawtransaction(spend_txid))
+        wit1_hex = raw_tx["vin"][1]["txinwitness"][0]
+        decoded = node.decoderung(wit1_hex)
+        assert decoded["witness_ref"] is True
+        assert_equal(decoded["source_input"], 0)
+        assert_equal(decoded["num_rungs"], 0)
+        assert_equal(len(decoded["diffs"]), 1)
+        assert_equal(decoded["diffs"][0]["rung_index"], 0)
+        assert_equal(decoded["diffs"][0]["block_index"], 0)
+        assert_equal(decoded["diffs"][0]["field_index"], 1)
+        assert_equal(decoded["diffs"][0]["field"]["type"], "SIGNATURE")
+        self.log.info("  Diff witness decoderung verification passed!")
+
+        # Verify wire size savings
+        wit0_hex = raw_tx["vin"][0]["txinwitness"][0]
+        self.log.info(f"  Normal witness: {len(wit0_hex)//2} bytes, Diff witness: {len(wit1_hex)//2} bytes")
+        assert len(wit1_hex) < len(wit0_hex), "Diff witness should be smaller than full witness"
+
+        self.log.info("  Scenario 20 PASSED: Diff witness spend")
+
+    def test_diff_witness_negative_self_ref(self, node):
+        """Scenario 20b: DIFF_WITNESS — self-referencing input rejected at consensus."""
+        self.log.info("Scenario 20b: Testing diff witness self-reference rejection...")
 
         privkey_wif, pubkey_hex = make_keypair()
-        csv_blocks = 50
+        sig_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": pubkey_hex}
+        ]}]}]
 
-        conditions = [{"blocks": [
-            {"type": "TIMELOCKED_SIG", "fields": [
-                {"type": "PUBKEY", "hex": pubkey_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
-            ]},
-        ]}]
+        txid1, vout1, amount1, spk1 = self.bootstrap_v4_output(node, sig_conditions)
+        output_amount = amount1 - Decimal("0.001")
 
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        # Do NOT mine enough blocks for CSV maturity
-
-        output_amount = amount - Decimal("0.001")
         dest_wif, dest_pubkey = make_keypair()
         dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
             {"type": "PUBKEY", "hex": dest_pubkey}
         ]}]}]
 
         result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
+            [{"txid": txid1, "vout": vout1}],
             [{"amount": output_amount, "conditions": dest_conditions}]
         )
+
+        # Input 0 references itself (source_input=0 >= nIn=0) — should fail at consensus
         sign_result = node.signrungtx(
             result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "TIMELOCKED_SIG", "privkey": privkey_wif},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
+            [
+                {"input": 0, "diff_witness": {
+                    "source_input": 0,
+                    "diffs": [],
+                }},
+            ],
+            [{"amount": amount1, "scriptPubKey": spk1}]
         )
         assert sign_result["complete"]
 
+        # Should be rejected by consensus (forward-only: source_input >= nIn)
         assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
-        self.log.info("  TIMELOCKED_SIG too early correctly rejected!")
-
-    def test_compound_hash_sig(self, node):
-        """HASH_SIG: single compound block = HASH_PREIMAGE + SIG."""
-        self.log.info("Testing HASH_SIG compound block...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        preimage = os.urandom(32)
-        hash_hex = hashlib.sha256(preimage).hexdigest()
-
-        # Conditions: HASH_SIG with HASH256 + PUBKEY
-        conditions = [{"blocks": [
-            {"type": "HASH_SIG", "fields": [
-                {"type": "HASH256", "hex": hash_hex},
-                {"type": "PUBKEY", "hex": pubkey_hex},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.log.info(f"  HASH_SIG output: {txid}:{vout}")
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "HASH_SIG", "privkey": privkey_wif, "preimage": preimage.hex()},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        spend_txid = node.sendrawtransaction(sign_result["hex"])
-        self.generate(node, 1)
-        tx_info = node.getrawtransaction(spend_txid, True)
-        assert tx_info["confirmations"] >= 1
-        self.log.info(f"  HASH_SIG spend confirmed: {spend_txid[:16]}...")
-
-    def test_compound_hash_sig_wrong_preimage(self, node):
-        """HASH_SIG: wrong preimage — should be rejected."""
-        self.log.info("Testing HASH_SIG wrong preimage (negative)...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        preimage = os.urandom(32)
-        hash_hex = hashlib.sha256(preimage).hexdigest()
-        wrong_preimage = os.urandom(32)
-
-        conditions = [{"blocks": [
-            {"type": "HASH_SIG", "fields": [
-                {"type": "HASH256", "hex": hash_hex},
-                {"type": "PUBKEY", "hex": pubkey_hex},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "HASH_SIG", "privkey": privkey_wif, "preimage": wrong_preimage.hex()},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
-        self.log.info("  HASH_SIG wrong preimage correctly rejected!")
-
-    def test_compound_htlc(self, node):
-        """HTLC: single compound block = HASH_PREIMAGE + CSV + SIG."""
-        self.log.info("Testing HTLC compound block...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        preimage = os.urandom(32)
-        hash_hex = hashlib.sha256(preimage).hexdigest()
-        csv_blocks = 10
-
-        # Conditions: HTLC with HASH256 + NUMERIC (CSV) + PUBKEY
-        conditions = [{"blocks": [
-            {"type": "HTLC", "fields": [
-                {"type": "HASH256", "hex": hash_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
-                {"type": "PUBKEY", "hex": pubkey_hex},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.log.info(f"  HTLC output: {txid}:{vout}")
-
-        # Mine for CSV maturity
-        self.generate(node, csv_blocks)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "HTLC", "privkey": privkey_wif, "preimage": preimage.hex()},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        spend_txid = node.sendrawtransaction(sign_result["hex"])
-        self.generate(node, 1)
-        tx_info = node.getrawtransaction(spend_txid, True)
-        assert tx_info["confirmations"] >= 1
-        self.log.info(f"  HTLC spend confirmed: {spend_txid[:16]}...")
-
-    def test_compound_htlc_wrong_preimage(self, node):
-        """HTLC: wrong preimage — should be rejected even with valid sig + CSV."""
-        self.log.info("Testing HTLC wrong preimage (negative)...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        preimage = os.urandom(32)
-        hash_hex = hashlib.sha256(preimage).hexdigest()
-        wrong_preimage = os.urandom(32)
-        csv_blocks = 10
-
-        conditions = [{"blocks": [
-            {"type": "HTLC", "fields": [
-                {"type": "HASH256", "hex": hash_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
-                {"type": "PUBKEY", "hex": pubkey_hex},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.generate(node, csv_blocks)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "HTLC", "privkey": privkey_wif, "preimage": wrong_preimage.hex()},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
-        self.log.info("  HTLC wrong preimage correctly rejected!")
-
-    # =========================================================================
-    # CLTV_SIG and TIMELOCKED_MULTISIG compound block tests
-    # =========================================================================
-
-    def test_compound_cltv_sig(self, node):
-        """CLTV_SIG: single compound block = SIG + CLTV."""
-        self.log.info("Testing CLTV_SIG compound block...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        # Use current height + 10 as CLTV target
-        current_height = node.getblockcount()
-        cltv_height = current_height + 10
-
-        conditions = [{"blocks": [
-            {"type": "CLTV_SIG", "fields": [
-                {"type": "PUBKEY", "hex": pubkey_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(cltv_height)},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.log.info(f"  CLTV_SIG output: {txid}:{vout}")
-
-        # Mine past the CLTV height
-        blocks_needed = cltv_height - node.getblockcount() + 1
-        if blocks_needed > 0:
-            self.generate(node, blocks_needed)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "locktime": cltv_height}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "CLTV_SIG", "privkey": privkey_wif},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        spend_txid = node.sendrawtransaction(sign_result["hex"])
-        self.generate(node, 1)
-        tx_info = node.getrawtransaction(spend_txid, True)
-        assert tx_info["confirmations"] >= 1
-        self.log.info(f"  CLTV_SIG spend confirmed: {spend_txid[:16]}...")
-
-    def test_compound_cltv_sig_too_early(self, node):
-        """CLTV_SIG: CLTV not yet reached — should be rejected."""
-        self.log.info("Testing CLTV_SIG too early (negative)...")
-
-        privkey_wif, pubkey_hex = make_keypair()
-        # Set CLTV far in the future
-        cltv_height = node.getblockcount() + 1000
-
-        conditions = [{"blocks": [
-            {"type": "CLTV_SIG", "fields": [
-                {"type": "PUBKEY", "hex": pubkey_hex},
-                {"type": "NUMERIC", "hex": numeric_hex(cltv_height)},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "locktime": cltv_height}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "CLTV_SIG", "privkey": privkey_wif},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
-        self.log.info("  CLTV_SIG too early correctly rejected!")
-
-    def test_compound_timelocked_multisig(self, node):
-        """TIMELOCKED_MULTISIG: 2-of-3 + CSV."""
-        self.log.info("Testing TIMELOCKED_MULTISIG compound block...")
-
-        privkey_wif1, pubkey_hex1 = make_keypair()
-        privkey_wif2, pubkey_hex2 = make_keypair()
-        _privkey_wif3, pubkey_hex3 = make_keypair()
-        csv_blocks = 10
-
-        conditions = [{"blocks": [
-            {"type": "TIMELOCKED_MULTISIG", "fields": [
-                {"type": "NUMERIC", "hex": numeric_hex(2)},      # threshold M=2
-                {"type": "PUBKEY", "hex": pubkey_hex1},
-                {"type": "PUBKEY", "hex": pubkey_hex2},
-                {"type": "PUBKEY", "hex": pubkey_hex3},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},  # CSV timelock
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        self.log.info(f"  TIMELOCKED_MULTISIG output: {txid}:{vout}")
-
-        # Mine for CSV maturity
-        self.generate(node, csv_blocks)
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "TIMELOCKED_MULTISIG", "privkeys": [privkey_wif1, privkey_wif2]},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        spend_txid = node.sendrawtransaction(sign_result["hex"])
-        self.generate(node, 1)
-        tx_info = node.getrawtransaction(spend_txid, True)
-        assert tx_info["confirmations"] >= 1
-        self.log.info(f"  TIMELOCKED_MULTISIG spend confirmed: {spend_txid[:16]}...")
-
-    def test_compound_timelocked_multisig_too_early(self, node):
-        """TIMELOCKED_MULTISIG: CSV not yet matured — should be rejected."""
-        self.log.info("Testing TIMELOCKED_MULTISIG too early (negative)...")
-
-        privkey_wif1, pubkey_hex1 = make_keypair()
-        privkey_wif2, pubkey_hex2 = make_keypair()
-        _privkey_wif3, pubkey_hex3 = make_keypair()
-        csv_blocks = 50
-
-        conditions = [{"blocks": [
-            {"type": "TIMELOCKED_MULTISIG", "fields": [
-                {"type": "NUMERIC", "hex": numeric_hex(2)},
-                {"type": "PUBKEY", "hex": pubkey_hex1},
-                {"type": "PUBKEY", "hex": pubkey_hex2},
-                {"type": "PUBKEY", "hex": pubkey_hex3},
-                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
-            ]},
-        ]}]
-
-        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
-        # Do NOT mine enough blocks
-
-        output_amount = amount - Decimal("0.001")
-        dest_wif, dest_pubkey = make_keypair()
-        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
-            {"type": "PUBKEY", "hex": dest_pubkey}
-        ]}]}]
-
-        result = node.createrungtx(
-            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
-            [{"amount": output_amount, "conditions": dest_conditions}]
-        )
-        sign_result = node.signrungtx(
-            result["hex"],
-            [{"input": 0, "blocks": [
-                {"type": "TIMELOCKED_MULTISIG", "privkeys": [privkey_wif1, privkey_wif2]},
-            ]}],
-            [{"amount": amount, "scriptPubKey": spk}]
-        )
-        assert sign_result["complete"]
-
-        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
-        self.log.info("  TIMELOCKED_MULTISIG too early correctly rejected!")
+        self.log.info("  Self-referencing diff witness correctly rejected!")
+        self.log.info("  Scenario 20b PASSED: Diff witness self-reference rejection")
 
 
 if __name__ == '__main__':

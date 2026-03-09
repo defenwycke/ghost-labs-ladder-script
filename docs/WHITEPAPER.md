@@ -56,7 +56,7 @@ Every byte in a Ladder Script witness belongs to one of nine declared data types
 
 | Data Type | Code | Size (bytes) | Purpose |
 |-----------|------|-------------|---------|
-| PUBKEY | 0x01 | 1--2048 | Public key (compressed, x-only, or post-quantum). Witness only. |
+| PUBKEY | 0x01 | 1--2048 | Public key (compressed, x-only, or post-quantum) |
 | PUBKEY_COMMIT | 0x02 | 32 | SHA-256 commitment to a public key |
 | HASH256 | 0x03 | 32 | SHA-256 hash |
 | HASH160 | 0x04 | 20 | RIPEMD160(SHA-256) hash |
@@ -80,13 +80,21 @@ A Ladder Script output does not contain instructions. It contains conditions. Th
 
 This makes Ladder Script programs amenable to static analysis. The set of conditions required to spend an output can be enumerated by parsing the conditions structure. No execution or simulation is necessary.
 
-### 2.4 Family Classification
+### 2.4 Block Type Families
 
-Block types are organized into nine families based on their type code range. All 48 block types are consensus-valid and mempool-standard from activation. Family classification functions (`IsBaseBlockType`, `IsCovenantBlockType`, `IsStatefulBlockType`) exist for potential future policy differentiation, but currently all families are treated equally by the relay and mining policy.
+Block types are organized into nine families:
+
+- **Signature, Timelock, and Hash** (0x0001--0x02FF): Core spending primitives covering the functionality of existing Bitcoin Script.
+- **Covenant and Anchor** (0x0300--0x05FF): Output constraints, L2 integration, and protocol-specific UTXO tagging.
+- **Recursion and PLC** (0x0400--0x06FF): State machines, self-referential covenants, and advanced flow control.
+- **Compound** (0x0700--0x07FF): Multi-condition blocks combining signature, timelock, and hash checks in a single block (HTLC, PTLC, TIMELOCKED_SIG, CLTV_SIG, HASH_SIG, TIMELOCKED_MULTISIG).
+- **Governance** (0x0800--0x08FF): Transaction-level constraints (epoch gates, weight limits, input/output count bounds, relative value ratios, Merkle accumulator proofs).
+
+All block types are activated as a single deployment and are standard upon activation.
 
 ### 2.5 Forward Compatibility
 
-Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing a block type not yet recognized by the local node will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognize all block types.
+Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is treated as unsatisfied (not as an error). This means that a transaction containing an unknown block type will fail to spend but will not cause a consensus failure. Nodes running older software can validate the structural integrity of any Ladder Script transaction even if they do not recognize all block types.
 
 ---
 
@@ -96,7 +104,7 @@ Unknown block types return `UNKNOWN_BLOCK_TYPE` during evaluation, which is trea
 
 Ladder Script transactions use **transaction version 4** (`RUNG_TX_VERSION = 4`). This cleanly separates Ladder Script transactions from legacy (version 1) and SegWit/Taproot (version 2) transactions at the protocol level.
 
-**Output (locking side):** The scriptPubKey of a version 4 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (PUBKEY, SIGNATURE, PREIMAGE) are prohibited in conditions. Blocks that reference public keys use PUBKEY_COMMIT (a 32-byte SHA-256 hash) in conditions; the raw PUBKEY is provided in the witness at spend time.
+**Output (locking side):** The scriptPubKey of a version 4 output begins with the prefix byte `0xc1`, followed by the serialized `RungConditions` structure. Conditions contain only the "lock" data types (PUBKEY, PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX). Witness-only types (SIGNATURE, PREIMAGE) are prohibited in conditions.
 
 **Witness (unlocking side):** The witness for a version 4 input contains a serialized `LadderWitness` structure. This provides the "key" data (signatures, preimages) that satisfies the conditions in the spent output.
 
@@ -166,7 +174,7 @@ The AGGREGATE mode uses an `AggregateProof` structure containing pubkey commitme
 
 ## 4. Block Type System
 
-Ladder Script defines 48 block types across nine families. Each family occupies a dedicated range in the uint16_t block type space.
+Ladder Script defines 40 block types across seven families. Each family occupies a dedicated range in the uint16_t block type space.
 
 ### 4.1 Signature Family (0x0001--0x00FF)
 
@@ -274,7 +282,7 @@ Anchor blocks always evaluate to SATISFIED. They serve as typed, validated metad
 
 ### 5.1 Scheme-Based Routing
 
-Ladder Script's SCHEME data type enables transparent routing to post-quantum signature verification without any changes to the block type system. A SIG block containing a SCHEME field set to FALCON512 (0x10), FALCON1024 (0x11), DILITHIUM3 (0x12), or SPHINCS_SHA (0x13) is automatically routed to the post-quantum verifier.
+Ladder Script's SCHEME data type enables transparent routing to post-quantum signature verification without any changes to the block type system. A SIG block containing a SCHEME field set to FALCON512 (0x10), FALCON1024 (0x11), or DILITHIUM3 (0x12) is automatically routed to the post-quantum verifier.
 
 Supported schemes:
 
@@ -285,15 +293,14 @@ Supported schemes:
 | FALCON-512 | 0x10 | ~666 B | 897 B |
 | FALCON-1024 | 0x11 | ~1,280 B | 1,793 B |
 | Dilithium3 | 0x12 | 3,293 B | 1,952 B |
-| SPHINCS+-SHA2-256f | 0x13 | 49,216 B | 32 B |
 
-The PUBKEY data type supports sizes up to 2,048 bytes, and the SIGNATURE data type supports sizes up to 50,000 bytes, accommodating even the largest post-quantum signature schemes.
+The PUBKEY data type supports sizes up to 2,048 bytes, and the SIGNATURE data type supports sizes up to 5,000 bytes, accommodating all supported post-quantum signature schemes.
 
 ### 5.2 PUBKEY_COMMIT: Compact UTXO Commitments
 
-All public keys -- classical and post-quantum -- are referenced in conditions via the PUBKEY_COMMIT data type: a 32-byte SHA-256 commitment to the full public key. Raw PUBKEY is witness-only.
+Post-quantum public keys are large. A FALCON-512 public key is 897 bytes, which would significantly increase UTXO set size if stored in full. Ladder Script addresses this with the PUBKEY_COMMIT data type: a 32-byte SHA-256 commitment to the full public key.
 
-The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This eliminates user-chosen bytes from conditions (anti-spam) and is especially beneficial for PQ keys, reducing UTXO overhead from 897 bytes to 32 bytes per post-quantum output -- a 96% reduction. The `createrungtx` RPC auto-hashes any provided pubkey hex into PUBKEY_COMMIT when building conditions.
+The conditions (stored in the UTXO set) contain only the 32-byte PUBKEY_COMMIT. The full public key is revealed in the witness at spend time, where it is verified against the commitment before being used for signature verification. This reduces UTXO overhead from 897 bytes to 32 bytes per post-quantum output -- a 96% reduction.
 
 ### 5.3 The COSIGN Guardian Pattern
 
@@ -343,7 +350,7 @@ Every byte in a Ladder Script witness must belong to a typed field with validate
 
 ### 7.2 Witness-Only Types
 
-The PUBKEY, SIGNATURE, and PREIMAGE data types are prohibited in conditions (the locking side stored in the UTXO set). The function `IsConditionDataType()` enforces this distinction -- `IsConditionDataType(PUBKEY)` returns false. Blocks that need keys use PUBKEY_COMMIT (the SHA-256 hash of the key) in conditions. This ensures that conditions contain zero user-chosen bytes: every field is either a fixed-size hash digest or a small bounded numeric. Witness data is prunable and cryptographically bound to conditions.
+The SIGNATURE and PREIMAGE data types are prohibited in conditions (the locking side stored in the UTXO set). The function `IsConditionDataType()` enforces this distinction. This prevents using condition scripts as arbitrary data storage, since the only types allowed in conditions carry semantic meaning (keys, hashes, numeric parameters).
 
 ### 7.3 Structural Limits
 
@@ -354,13 +361,13 @@ Policy enforcement (`IsStandardRungTx`) imposes the following limits:
 | Rungs per input | 16 |
 | Blocks per rung | 8 |
 | Fields per block | 16 |
-| Total witness size | 100,000 bytes |
+| Total witness size | 10,000 bytes |
 
 These limits are sufficient for any practical spending condition while preventing pathological witness sizes.
 
 ### 7.4 Economic Disincentive
 
-Conditions contain zero user-chosen bytes. Every condition field is either a fixed-size hash digest (PUBKEY_COMMIT, HASH256, HASH160 -- outputs of SHA-256 or RIPEMD160, computationally impossible to choose freely) or a small bounded integer (NUMERIC, SCHEME, SPEND_INDEX). Raw public keys are witness-only and cryptographically bound to their PUBKEY_COMMIT in conditions. Witness preimage blocks are limited to 2 per witness (MAX_PREIMAGE_BLOCKS_PER_WITNESS). The total embeddable data is limited to a few bits of grindable entropy in signature nonces -- an irreducible minimum, not a data channel.
+Because every field must conform to a data type that has semantic meaning in the evaluation model, embedding arbitrary data requires encoding it as valid-looking typed fields (e.g., as PUBKEY or HASH256 data). Such fields, if used in conditions, create cryptographically unspendable outputs -- the "data" would need to be a valid public key or hash with a known preimage. Funds locked to such outputs are permanently burned. This creates a direct economic cost for data embedding that scales with the amount of data stored.
 
 ---
 
@@ -368,7 +375,7 @@ Conditions contain zero user-chosen bytes. Every condition field is either a fix
 
 ### 8.1 vs OP_CTV (BIP-119)
 
-OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 48. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, standardness tiers) that OP_CTV does not address.
+OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 40+. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, structured extensibility) that OP_CTV does not address.
 
 ### 8.2 vs OP_CAT
 
@@ -401,7 +408,7 @@ Ladder Script evaluation contains no loops, no recursion in the evaluator (recur
 
 Three mechanisms ensure that ambiguity defaults to rejection:
 
-1. **Unknown block types** return UNKNOWN_BLOCK_TYPE, which is treated as UNSATISFIED by the rung evaluator. An output containing an unrecognized block type cannot be spent by a node that does not implement it.
+1. **Unknown block types** return UNKNOWN_BLOCK_TYPE, which is treated as UNSATISFIED by the rung evaluator. An output containing an unknown block type cannot be spent by a node that does not implement it.
 
 2. **Deferred attestation** (`VerifyDeferredAttestation`) always returns false. This mode is defined for forward compatibility but is not activated.
 
@@ -433,9 +440,9 @@ The `MergeConditionsAndWitness` function performs strict structural validation b
 
 Ladder Script replaces Bitcoin's untyped, imperative scripting model with a typed, declarative block system that draws on decades of industrial control system design. By requiring every byte to be typed, every condition to be named, and every evaluation to be deterministic, Ladder Script eliminates the classes of ambiguity and complexity that have constrained Bitcoin's programmability.
 
-The 48 block types across nine families — signature, timelock, hash, covenant, recursion, anchor, PLC, compound, and governance — provide a comprehensive vocabulary for transaction authorization. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
+The 40 block types across seven families -- signature, timelock, hash, covenant, recursion, anchor, and PLC -- provide a comprehensive vocabulary for transaction authorization. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
 
-All block types activate together in a single soft fork. Forward compatibility ensures that transactions using future block types are structurally valid even to nodes that do not yet implement those types.
+All block types activate simultaneously as a single deployment. Forward compatibility ensures that transactions using future block types are structurally valid even to nodes that do not yet implement those types.
 
 The design is implemented in Bitcoin Ghost's fork of Bitcoin Core, with 185 unit tests and 19 functional test scenarios validating the complete evaluation pipeline.
 
@@ -449,4 +456,4 @@ The design is implemented in Bitcoin Ghost's fork of Bitcoin Core, with 185 unit
 4. BIP-340: Schnorr Signatures for secp256k1.
 5. BIP-341: Taproot: SegWit version 1 spending rules.
 6. BIP-68: Relative lock-time using consensus-enforced sequence numbers.
-7. NIST Post-Quantum Cryptography Standardization (FALCON, Dilithium, SPHINCS+).
+7. NIST Post-Quantum Cryptography Standardization (FALCON, Dilithium).

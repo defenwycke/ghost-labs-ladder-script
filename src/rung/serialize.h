@@ -34,22 +34,36 @@ static constexpr size_t MAX_REQUIRES = 8;
 /** Maximum transitive relay chain depth (relay requiring relay requiring relay...). */
 static constexpr size_t MAX_RELAY_DEPTH = 4;
 
+/** Serialization context — determines which implicit field table to use. */
+enum class SerializationContext : uint8_t {
+    WITNESS,     //!< Witness (spending) side — SIGNATURE, PREIMAGE allowed
+    CONDITIONS,  //!< Conditions (locking) side — only condition data types
+};
+
 /** Deserialize a LadderWitness from raw witness bytes.
  *  Performs full type and size validation during deserialization.
  *  Returns false with error message on any malformed data.
  *
- *  Wire format (v2):
+ *  Wire format (v3 — micro-header + varint NUMERIC + implicit fields):
  *    [n_rungs: varint]
  *    for each rung:
  *      [n_blocks: varint]
  *      for each block:
- *        [block_type: uint16_t LE]
- *        [inverted: uint8_t (0x00 or 0x01)]
- *        [n_fields: varint]
- *        for each field:
- *          [data_type: uint8_t]
- *          [data_len: varint]
- *          [data: bytes]
+ *        [micro_header: uint8_t]    -- 0x00-0x7F = lookup table index
+ *                                   -- 0x80 = escape (full header follows, not inverted)
+ *                                   -- 0x81 = escape (full header follows, inverted)
+ *        if escape: [block_type: uint16_t LE]
+ *        if micro-header with implicit field table for context:
+ *          -- field count and type bytes omitted
+ *          for each implicit field:
+ *            if NUMERIC: [value: CompactSize]
+ *            else: [data_len: CompactSize] [data: bytes]
+ *        else:
+ *          [n_fields: varint]
+ *          for each field:
+ *            [data_type: uint8_t]
+ *            if NUMERIC: [value: CompactSize]
+ *            else: [data_len: CompactSize] [data: bytes]
  *    [coil_type: uint8_t]
  *    [attestation: uint8_t]
  *    [scheme: uint8_t]
@@ -62,10 +76,26 @@ static constexpr size_t MAX_RELAY_DEPTH = 4;
  */
 bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
                               LadderWitness& ladder_out,
-                              std::string& error);
+                              std::string& error,
+                              SerializationContext ctx = SerializationContext::WITNESS);
 
 /** Serialize a LadderWitness to raw bytes. */
-std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder);
+std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
+                                             SerializationContext ctx = SerializationContext::WITNESS);
+
+/** Serialize a single rung's blocks + relay_refs to bytes (for MLSC Merkle leaf computation).
+ *  Format: CompactSize(n_blocks) + blocks + CompactSize(n_relay_refs) + relay_ref indices.
+ *  Uses the standard wire format (micro-headers + implicit fields) in the given context. */
+std::vector<uint8_t> SerializeRungBlocks(const Rung& rung, SerializationContext ctx);
+
+/** Serialize coil metadata to bytes (for MLSC Merkle leaf computation).
+ *  Format: coil_type(1) + attestation(1) + scheme(1) + address_len(varint) + address +
+ *          n_conditions(varint) + condition_rungs. */
+std::vector<uint8_t> SerializeCoilData(const RungCoil& coil);
+
+/** Serialize a relay's blocks + relay_refs to bytes (for MLSC Merkle leaf computation).
+ *  Format: CompactSize(n_blocks) + blocks + CompactSize(n_relay_refs) + relay_ref indices. */
+std::vector<uint8_t> SerializeRelayBlocks(const Relay& relay, SerializationContext ctx);
 
 } // namespace rung
 

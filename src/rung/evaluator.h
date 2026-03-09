@@ -92,6 +92,7 @@ EvalResult EvalCSVTimeBlock(const RungBlock& block, const BaseSignatureChecker& 
 EvalResult EvalCLTVBlock(const RungBlock& block, const BaseSignatureChecker& checker);
 EvalResult EvalCLTVTimeBlock(const RungBlock& block, const BaseSignatureChecker& checker);
 EvalResult EvalAdaptorSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalMusigThresholdBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalTaggedHashBlock(const RungBlock& block);
 
 // Covenant evaluators

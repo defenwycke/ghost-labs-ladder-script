@@ -27,6 +27,7 @@
 #include <univalue.h>
 
 #include <cstring>
+#include <set>
 
 using rung::RungBlockType;
 using rung::RungDataType;
@@ -40,6 +41,8 @@ using rung::RungCoil;
 using rung::RungCoilType;
 using rung::RungAttestationMode;
 using rung::RungScheme;
+using rung::WitnessReference;
+using rung::WitnessDiff;
 
 /** Convert blocks to JSON array (shared between input rungs and coil condition rungs). */
 static UniValue BlocksToJSON(const std::vector<RungBlock>& blocks)
@@ -122,7 +125,33 @@ static UniValue LadderWitnessToJSON(const LadderWitness& ladder)
 {
     UniValue result(UniValue::VOBJ);
 
-    // Relays (if any)
+    // Diff witness mode
+    if (ladder.IsWitnessRef()) {
+        const auto& ref = *ladder.witness_ref;
+        result.pushKV("witness_ref", true);
+        result.pushKV("source_input", static_cast<int>(ref.input_index));
+
+        UniValue diffs_arr(UniValue::VARR);
+        for (const auto& diff : ref.diffs) {
+            UniValue diff_obj(UniValue::VOBJ);
+            diff_obj.pushKV("rung_index", static_cast<int>(diff.rung_index));
+            diff_obj.pushKV("block_index", static_cast<int>(diff.block_index));
+            diff_obj.pushKV("field_index", static_cast<int>(diff.field_index));
+
+            UniValue field_obj(UniValue::VOBJ);
+            field_obj.pushKV("type", rung::DataTypeName(diff.new_field.type));
+            field_obj.pushKV("size", static_cast<int>(diff.new_field.data.size()));
+            field_obj.pushKV("hex", HexStr(diff.new_field.data));
+            diff_obj.pushKV("field", field_obj);
+
+            diffs_arr.push_back(diff_obj);
+        }
+        result.pushKV("diffs", diffs_arr);
+        result.pushKV("coil", CoilToJSON(ladder.coil));
+        return result;
+    }
+
+    // Normal witness mode
     if (!ladder.relays.empty()) {
         UniValue relays_arr(UniValue::VARR);
         for (size_t i = 0; i < ladder.relays.size(); ++i) {
@@ -160,6 +189,7 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
     if (name == "SIG")              { out = RungBlockType::SIG; return true; }
     if (name == "MULTISIG")         { out = RungBlockType::MULTISIG; return true; }
     if (name == "ADAPTOR_SIG")      { out = RungBlockType::ADAPTOR_SIG; return true; }
+    if (name == "MUSIG_THRESHOLD")  { out = RungBlockType::MUSIG_THRESHOLD; return true; }
     // Timelock family
     if (name == "CSV")              { out = RungBlockType::CSV; return true; }
     if (name == "CSV_TIME")         { out = RungBlockType::CSV_TIME; return true; }
@@ -340,8 +370,24 @@ static RPCHelpMan decoderung()
             {"hex", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The ladder witness in hex."},
         },
         RPCResult{RPCResult::Type::OBJ, "", "", {
-            {RPCResult::Type::NUM, "num_rungs", "Number of rungs in the ladder"},
-            {RPCResult::Type::ARR, "rungs", "The rungs",
+            {RPCResult::Type::NUM, "num_rungs", "Number of rungs (0 for diff witness)"},
+            {RPCResult::Type::BOOL, "witness_ref", /*optional=*/ true, "True if this is a diff witness reference"},
+            {RPCResult::Type::NUM, "source_input", /*optional=*/ true, "Source input index for diff witness"},
+            {RPCResult::Type::ARR, "diffs", /*optional=*/ true, "Field-level diffs applied to source witness",
+                {
+                    {RPCResult::Type::OBJ, "", "", {
+                        {RPCResult::Type::NUM, "rung_index", "Target rung index"},
+                        {RPCResult::Type::NUM, "block_index", "Target block index"},
+                        {RPCResult::Type::NUM, "field_index", "Target field index"},
+                        {RPCResult::Type::OBJ, "field", "Replacement field data",
+                            {
+                                {RPCResult::Type::STR, "type", "Data type name"},
+                                {RPCResult::Type::NUM, "size", "Field data size"},
+                                {RPCResult::Type::STR_HEX, "hex", "Field data hex"},
+                            }},
+                    }},
+                }},
+            {RPCResult::Type::ARR, "rungs", /*optional=*/ true, "The rungs (normal witness only)",
                 {
                     {RPCResult::Type::OBJ, "", "", {
                         {RPCResult::Type::NUM, "rung_index", "Rung index"},
@@ -700,6 +746,7 @@ static RPCHelpMan createrungtx()
                                     {"address", RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "Destination scriptPubKey hex"},
                                 },
                             },
+                            {"mlsc", RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Create MLSC output (0xC2 + Merkle root) instead of inline conditions"},
                         },
                     },
                 },
@@ -788,7 +835,14 @@ static RPCHelpMan createrungtx()
 
         CTxOut txout;
         txout.nValue = amount;
-        txout.scriptPubKey = rung::SerializeRungConditions(conditions);
+
+        // MLSC: compute Merkle root and create 0xC2 output
+        if (outp.exists("mlsc") && outp["mlsc"].get_bool()) {
+            uint256 root = rung::ComputeConditionsRoot(conditions);
+            txout.scriptPubKey = rung::CreateMLSCScript(root);
+        } else {
+            txout.scriptPubKey = rung::SerializeRungConditions(conditions);
+        }
         mtx.vout.push_back(txout);
     }
 
@@ -870,6 +924,10 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
         }
 
+        // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+        CPubKey pubkey = privkey.GetPubKey();
+        block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
+
         unsigned char sig_buf[64];
         uint256 aux_rand = GetRandHash();
         if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
@@ -904,6 +962,15 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
             }
 
+            // Include PQ PUBKEYs for PUBKEY_COMMIT resolution
+            if (block_spec.exists("pq_pubkeys")) {
+                const UniValue& pq_pubkeys_arr = block_spec["pq_pubkeys"].get_array();
+                for (size_t p = 0; p < pq_pubkeys_arr.size(); ++p) {
+                    auto pubkey_bytes = ParseHex(pq_pubkeys_arr[p].get_str());
+                    block.fields.push_back({RungDataType::PUBKEY, std::move(pubkey_bytes)});
+                }
+            }
+
             std::span<const uint8_t> msg{sighash.begin(), 32};
             for (size_t s = 0; s < pq_privkeys_arr.size(); ++s) {
                 auto pq_privkey = ParseHex(pq_privkeys_arr[s].get_str());
@@ -932,6 +999,10 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MULTISIG private key");
             }
 
+            // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
+
             unsigned char sig_buf[64];
             uint256 aux_rand = GetRandHash();
             if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
@@ -953,6 +1024,9 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
             }
+            // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
             if (block_spec.exists("adaptor_secret")) {
                 // Adapted signing: tweak the nonce by the adaptor secret
                 auto secret_bytes = ParseHex(block_spec["adaptor_secret"].get_str());
@@ -976,6 +1050,30 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         }
         break;
     }
+    case RungBlockType::MUSIG_THRESHOLD: {
+        // MuSig2/FROST aggregate threshold: single aggregate key + signature.
+        // From the node's perspective, identical to single-sig Schnorr.
+        if (block_spec.exists("privkey")) {
+            std::string wif = block_spec["privkey"].get_str();
+            CKey privkey = DecodeSecret(wif);
+            if (!privkey.IsValid()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+            }
+            uint256 sighash;
+            if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
+            }
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
+            unsigned char sig_buf[64];
+            uint256 aux_rand = GetRandHash();
+            if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Schnorr signing failed");
+            }
+            block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+        }
+        break;
+    }
     case RungBlockType::VAULT_LOCK: {
         // Vault lock: plain Schnorr signature from privkey
         if (block_spec.exists("privkey")) {
@@ -988,6 +1086,9 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
             }
+            // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
             unsigned char sig_buf[64];
             uint256 aux_rand = GetRandHash();
             if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
@@ -1114,6 +1215,9 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
             }
+            // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
             if (block_spec.exists("adaptor_secret")) {
                 auto secret_bytes = ParseHex(block_spec["adaptor_secret"].get_str());
                 if (secret_bytes.size() != 32) {
@@ -1173,6 +1277,10 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             if (!privkey.IsValid()) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid TIMELOCKED_MULTISIG private key");
             }
+
+            // Include PUBKEY for PUBKEY_COMMIT resolution by evaluator
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
 
             unsigned char sig_buf[64];
             uint256 aux_rand = GetRandHash();
@@ -1236,6 +1344,56 @@ static RPCHelpMan signrungtx()
                                                                 {{"key", RPCArg::Type::STR, RPCArg::Optional::NO, "A WIF key"}},
                                                             },
                                                             {"preimage", RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "Preimage hex"},
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            {"conditions", RPCArg::Type::ARR, RPCArg::Optional::OMITTED, "Full conditions (required for MLSC inputs — conditions are not on-chain). Same format as createrungtx output conditions.",
+                                {
+                                    {"rung", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A rung spec",
+                                        {
+                                            {"blocks", RPCArg::Type::ARR, RPCArg::Optional::NO, "Block specs (same format as createrungtx)",
+                                                {
+                                                    {"block", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A block spec",
+                                                        {
+                                                            {"type", RPCArg::Type::STR, RPCArg::Optional::NO, "Block type"},
+                                                            {"fields", RPCArg::Type::ARR, RPCArg::Optional::NO, "Field specs",
+                                                                {
+                                                                    {"field", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A field",
+                                                                        {
+                                                                            {"type", RPCArg::Type::STR, RPCArg::Optional::NO, "Data type"},
+                                                                            {"hex", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "Field data hex"},
+                                                                        },
+                                                                    },
+                                                                },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            {"diff_witness", RPCArg::Type::OBJ, RPCArg::Optional::OMITTED, "Diff witness: inherit from another input's witness with field-level diffs",
+                                {
+                                    {"source_input", RPCArg::Type::NUM, RPCArg::Optional::NO, "Source input index to inherit witness from"},
+                                    {"diffs", RPCArg::Type::ARR, RPCArg::Optional::OMITTED, "Field-level diffs to apply",
+                                        {
+                                            {"diff", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A field diff",
+                                                {
+                                                    {"rung_index", RPCArg::Type::NUM, RPCArg::Optional::NO, "Target rung index"},
+                                                    {"block_index", RPCArg::Type::NUM, RPCArg::Optional::NO, "Target block index"},
+                                                    {"field_index", RPCArg::Type::NUM, RPCArg::Optional::NO, "Target field index"},
+                                                    {"field", RPCArg::Type::OBJ, RPCArg::Optional::NO, "Replacement field",
+                                                        {
+                                                            {"type", RPCArg::Type::STR, RPCArg::Optional::NO, "Data type (SIGNATURE, PUBKEY, PREIMAGE, SCHEME)"},
+                                                            {"hex", RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "Field data hex (raw replacement)"},
+                                                            {"privkey", RPCArg::Type::STR, RPCArg::Optional::OMITTED, "WIF key (auto-sign for SIGNATURE, auto-derive for PUBKEY)"},
                                                         },
                                                     },
                                                 },
@@ -1316,10 +1474,31 @@ static RPCHelpMan signrungtx()
         // Determine conditions from spent output
         RungConditions conditions;
         std::string cond_error;
-        bool has_conditions = rung::DeserializeRungConditions(
-            spent_outputs[input_idx].scriptPubKey, conditions, cond_error);
-        if (!has_conditions) {
-            conditions = RungConditions{};
+        bool is_mlsc = rung::IsMLSCScript(spent_outputs[input_idx].scriptPubKey);
+        bool has_conditions = false;
+
+        if (is_mlsc) {
+            // MLSC: conditions must be provided by the signer (not on-chain)
+            if (!signer_obj.exists("conditions")) {
+                throw JSONRPCError(RPC_INVALID_PARAMETER,
+                    "MLSC input " + std::to_string(input_idx) +
+                    " requires 'conditions' array (conditions are not on-chain)");
+            }
+            UniValue coil_val = signer_obj.exists("coil") ? signer_obj["coil"] : UniValue();
+            UniValue relays_val2 = signer_obj.exists("relays") ? signer_obj["relays"] : UniValue();
+            conditions = ParseConditionsSpec(signer_obj["conditions"].get_array(), coil_val, relays_val2);
+
+            // Set the conditions_root from the spent output
+            uint256 root;
+            rung::GetMLSCRoot(spent_outputs[input_idx].scriptPubKey, root);
+            conditions.conditions_root = root;
+            has_conditions = true;
+        } else {
+            has_conditions = rung::DeserializeRungConditions(
+                spent_outputs[input_idx].scriptPubKey, conditions, cond_error);
+            if (!has_conditions) {
+                conditions = RungConditions{};
+            }
         }
 
         LadderWitness ladder;
@@ -1358,33 +1537,56 @@ static RPCHelpMan signrungtx()
             const UniValue& blocks_arr = signer_obj["blocks"].get_array();
 
             if (has_conditions) {
-                for (size_t r = 0; r < conditions.rungs.size(); ++r) {
-                    Rung wit_rung;
-                    unsigned int target_rung = 0;
-                    if (signer_obj.exists("rung")) {
-                        target_rung = signer_obj["rung"].getInt<unsigned int>();
-                    }
+                unsigned int target_rung = 0;
+                if (signer_obj.exists("rung")) {
+                    target_rung = signer_obj["rung"].getInt<unsigned int>();
+                }
 
-                    if (r == target_rung) {
-                        if (blocks_arr.size() != conditions.rungs[r].blocks.size()) {
-                            throw JSONRPCError(RPC_INVALID_PARAMETER,
-                                "blocks count (" + std::to_string(blocks_arr.size()) +
-                                ") must match conditions rung " + std::to_string(r) +
-                                " block count (" + std::to_string(conditions.rungs[r].blocks.size()) + ")");
-                        }
-                        for (size_t b = 0; b < blocks_arr.size(); ++b) {
-                            wit_rung.blocks.push_back(
-                                BuildWitnessBlock(blocks_arr[b], mtx, input_idx, txdata, conditions));
-                        }
-                    } else {
-                        // Dummy rung — correct types, empty fields
-                        for (const auto& cond_block : conditions.rungs[r].blocks) {
-                            RungBlock dummy;
-                            dummy.type = cond_block.type;
-                            wit_rung.blocks.push_back(std::move(dummy));
-                        }
+                if (is_mlsc) {
+                    // MLSC: build witness for only the target rung (1 rung in witness)
+                    if (target_rung >= conditions.rungs.size()) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                            "target rung " + std::to_string(target_rung) +
+                            " out of range (conditions have " + std::to_string(conditions.rungs.size()) + " rungs)");
+                    }
+                    if (blocks_arr.size() != conditions.rungs[target_rung].blocks.size()) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                            "blocks count (" + std::to_string(blocks_arr.size()) +
+                            ") must match conditions rung " + std::to_string(target_rung) +
+                            " block count (" + std::to_string(conditions.rungs[target_rung].blocks.size()) + ")");
+                    }
+                    Rung wit_rung;
+                    for (size_t b = 0; b < blocks_arr.size(); ++b) {
+                        wit_rung.blocks.push_back(
+                            BuildWitnessBlock(blocks_arr[b], mtx, input_idx, txdata, conditions));
                     }
                     ladder.rungs.push_back(std::move(wit_rung));
+                } else {
+                    // Legacy: build witness for all rungs (target gets real data, others get dummies)
+                    for (size_t r = 0; r < conditions.rungs.size(); ++r) {
+                        Rung wit_rung;
+
+                        if (r == target_rung) {
+                            if (blocks_arr.size() != conditions.rungs[r].blocks.size()) {
+                                throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                    "blocks count (" + std::to_string(blocks_arr.size()) +
+                                    ") must match conditions rung " + std::to_string(r) +
+                                    " block count (" + std::to_string(conditions.rungs[r].blocks.size()) + ")");
+                            }
+                            for (size_t b = 0; b < blocks_arr.size(); ++b) {
+                                wit_rung.blocks.push_back(
+                                    BuildWitnessBlock(blocks_arr[b], mtx, input_idx, txdata, conditions));
+                            }
+                        } else {
+                            // Dummy rung — correct types, empty fields
+                            for (const auto& cond_block : conditions.rungs[r].blocks) {
+                                RungBlock dummy;
+                                dummy.type = cond_block.type;
+                                wit_rung.blocks.push_back(std::move(dummy));
+                            }
+                        }
+                        ladder.rungs.push_back(std::move(wit_rung));
+                    }
                 }
             } else {
                 // Bootstrap spend
@@ -1395,13 +1597,79 @@ static RPCHelpMan signrungtx()
                 }
                 ladder.rungs.push_back(std::move(rung));
             }
+        } else if (signer_obj.exists("diff_witness")) {
+            // Diff witness mode: inherit from source input, apply diffs
+            const UniValue& dw_obj = signer_obj["diff_witness"].get_obj();
+            uint32_t source_input = dw_obj["source_input"].getInt<uint32_t>();
+
+            WitnessReference ref;
+            ref.input_index = source_input;
+
+            if (dw_obj.exists("diffs")) {
+                const UniValue& diffs_arr = dw_obj["diffs"].get_array();
+                for (size_t d = 0; d < diffs_arr.size(); ++d) {
+                    const UniValue& diff_obj = diffs_arr[d].get_obj();
+                    WitnessDiff wd;
+                    wd.rung_index = diff_obj["rung_index"].getInt<uint16_t>();
+                    wd.block_index = diff_obj["block_index"].getInt<uint16_t>();
+                    wd.field_index = diff_obj["field_index"].getInt<uint16_t>();
+
+                    const UniValue& field_obj = diff_obj["field"].get_obj();
+                    RungDataType dtype;
+                    if (!ParseDataType(field_obj["type"].get_str(), dtype)) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                            "Unknown diff field type: " + field_obj["type"].get_str());
+                    }
+
+                    if (field_obj.exists("privkey")) {
+                        CKey dkey = DecodeSecret(field_obj["privkey"].get_str());
+                        if (!dkey.IsValid()) {
+                            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                                "Invalid diff privkey at diff " + std::to_string(d));
+                        }
+                        if (dtype == RungDataType::SIGNATURE) {
+                            uint256 sighash;
+                            if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
+                                throw JSONRPCError(RPC_INTERNAL_ERROR,
+                                    "Failed to compute sighash for diff witness input " + std::to_string(input_idx));
+                            }
+                            unsigned char sig_buf[64];
+                            uint256 aux_rand = GetRandHash();
+                            if (!dkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                                throw JSONRPCError(RPC_INTERNAL_ERROR,
+                                    "Schnorr signing failed for diff witness input " + std::to_string(input_idx));
+                            }
+                            wd.new_field.type = RungDataType::SIGNATURE;
+                            wd.new_field.data.assign(sig_buf, sig_buf + 64);
+                        } else if (dtype == RungDataType::PUBKEY) {
+                            CPubKey pub = dkey.GetPubKey();
+                            wd.new_field.type = RungDataType::PUBKEY;
+                            wd.new_field.data.assign(pub.begin(), pub.end());
+                        } else {
+                            throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                "privkey auto-derive only supported for SIGNATURE and PUBKEY diff types");
+                        }
+                    } else if (field_obj.exists("hex")) {
+                        wd.new_field.type = dtype;
+                        wd.new_field.data = ParseHex(field_obj["hex"].get_str());
+                    } else {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                            "Diff field must have either 'hex' or 'privkey'");
+                    }
+
+                    ref.diffs.push_back(std::move(wd));
+                }
+            }
+
+            ladder.witness_ref = std::move(ref);
+            // Skip relay building — diff witnesses inherit relays from source
         } else {
             throw JSONRPCError(RPC_INVALID_PARAMETER,
-                "Signer entry must have either 'privkey' (legacy) or 'blocks' (new format)");
+                "Signer entry must have 'privkey' (legacy), 'blocks' (new format), or 'diff_witness'");
         }
 
-        // Build relay witnesses if conditions have relays
-        if (has_conditions && !conditions.relays.empty()) {
+        // Build relay witnesses if conditions have relays (skip for diff witness)
+        if (!ladder.IsWitnessRef() && has_conditions && !conditions.relays.empty()) {
             if (signer_obj.exists("relay_blocks")) {
                 const UniValue& relay_blocks_arr = signer_obj["relay_blocks"].get_array();
                 if (relay_blocks_arr.size() != conditions.relays.size()) {
@@ -1458,6 +1726,49 @@ static RPCHelpMan signrungtx()
         auto witness_bytes = rung::SerializeLadderWitness(ladder);
         mtx.vin[input_idx].scriptWitness.stack.clear();
         mtx.vin[input_idx].scriptWitness.stack.push_back(witness_bytes);
+
+        // MLSC: build and push Merkle proof as stack[1]
+        if (is_mlsc && has_conditions) {
+            unsigned int target_rung = 0;
+            if (signer_obj.exists("rung")) {
+                target_rung = signer_obj["rung"].getInt<unsigned int>();
+            }
+
+            rung::MLSCProof mlsc_proof;
+            mlsc_proof.total_rungs = static_cast<uint16_t>(conditions.rungs.size());
+            mlsc_proof.total_relays = static_cast<uint16_t>(conditions.relays.size());
+            mlsc_proof.rung_index = static_cast<uint16_t>(target_rung);
+            mlsc_proof.revealed_rung = conditions.rungs[target_rung];
+
+            // Reveal relays referenced by the target rung
+            for (uint16_t ref : conditions.rungs[target_rung].relay_refs) {
+                if (ref < conditions.relays.size()) {
+                    mlsc_proof.revealed_relays.push_back({ref, conditions.relays[ref]});
+                }
+            }
+
+            // Compute proof hashes for unrevealed leaves
+            // Leaf order: [rung_leaf[0..N-1], relay_leaf[0..M-1], coil_leaf]
+            std::set<uint16_t> revealed_relay_indices;
+            for (const auto& [idx, _] : mlsc_proof.revealed_relays) {
+                revealed_relay_indices.insert(idx);
+            }
+
+            for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
+                if (r != target_rung) {
+                    mlsc_proof.proof_hashes.push_back(rung::ComputeRungLeaf(conditions.rungs[r]));
+                }
+            }
+            for (uint16_t rl = 0; rl < conditions.relays.size(); ++rl) {
+                if (revealed_relay_indices.find(rl) == revealed_relay_indices.end()) {
+                    mlsc_proof.proof_hashes.push_back(rung::ComputeRelayLeaf(conditions.relays[rl]));
+                }
+            }
+            // Coil leaf is NOT a proof hash — it's computed from the witness coil
+
+            auto proof_bytes = rung::SerializeMLSCProof(mlsc_proof);
+            mtx.vin[input_idx].scriptWitness.stack.push_back(proof_bytes);
+        }
     }
 
     // Check if all inputs have witnesses

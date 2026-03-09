@@ -436,7 +436,7 @@ size limits and semantic validation. The following tests prove each defense laye
 | # | Attack Vector | Defense | Result |
 |---|--------------|---------|--------|
 | S1 | Arbitrary PREIMAGE | Hash preimage must match HASH256 in conditions | REJECTED at consensus |
-| S2 | Arbitrary PUBKEY bytes | IsConditionDataType(PUBKEY) = false; PUBKEY is witness-only | REJECTED at RPC |
+| S2 | Arbitrary PUBKEY bytes | UTXO created but cryptographically unspendable | Funds burned |
 | S3 | Garbage NUMERIC operator | RPC accepts (valid 4B field), evaluator rejects semantics at spend | REJECTED at consensus |
 | S4 | 5-byte NUMERIC | FieldMaxSize(NUMERIC) = 4 bytes | REJECTED at RPC |
 | S5 | Unknown data type | ParseDataType() rejects unknown names | REJECTED at RPC |
@@ -458,21 +458,20 @@ size limits and semantic validation. The following tests prove each defense laye
 3. **Policy**: Output validation rejects oversized structures before mempool
 4. **Consensus**: Semantic validation at spend time — garbage operators,
    wrong preimages, mismatched keys all produce UNSATISFIED/ERROR
-5. **Economic**: Conditions contain zero user-chosen bytes — every field is a
-   hash digest or bounded numeric. PUBKEY is witness-only (rejected from
-   conditions by `IsConditionDataType`). Even structurally valid witness data
-   costs real satoshis that are permanently burned if unusable.
+5. **Economic**: Even if structurally valid data gets into a UTXO (e.g.,
+   arbitrary PUBKEY), the funds are burned — the attacker pays for storage
+   they can never recover
 
 ### Maximum Data Capacity (theoretical upper bound)
 
 Even in the worst case where an attacker burns funds:
-- PUBKEY is witness-only (cannot appear in conditions); conditions use PUBKEY_COMMIT (32 B fixed)
+- Max PUBKEY: 2048 bytes per field, but must start with valid prefix (02/03/04)
 - Max NUMERIC: 4 bytes per field
 - Max fields/block: 16, max blocks/rung: 8, max rungs: 16
-- Condition fields are all fixed-size hashes (32 B PUBKEY_COMMIT, 32 B HASH256, 20 B HASH160)
-  or bounded numerics (1-4 B) — no variable-length user data in the UTXO set
-- Witness data is prunable and bounded by the 100KB witness limit and standard tx size limit,
-  and every byte costs real satoshis that are permanently burned.
+- Theoretical max: ~2048 × 16 × 8 × 16 ≈ 4MB per UTXO — but this exceeds
+  standard transaction size limits. In practice, the 100KB witness limit and
+  standard tx size limit cap actual data at far less, and every byte costs
+  real satoshis that are permanently burned.
 
 **Test methods:** `test_spam_*` (8 tests in `rung_basic.py`)
 
@@ -480,9 +479,8 @@ Even in the worst case where an attacker burns funds:
 
 ## Key Takeaways
 
-1. **PUBKEY_COMMIT** is used for all keys in conditions (not just PQ). PUBKEY is
-   witness-only. This keeps UTXO size constant at 32 bytes regardless of key type,
-   with zero security compromise — the full key is still required in the witness.
+1. **PUBKEY_COMMIT** reduces PQ UTXO footprint by 96% (897B → 32B) with zero
+   security compromise — the full key is still required for verification.
 
 2. **Multi-mutation RECURSE_MODIFIED** enables atomic state transitions across
    multiple parameters and rungs in a single spend. This is essential for
@@ -507,87 +505,6 @@ Even in the worst case where an attacker burns funds:
    data is 5.3x smaller than individual PQ signatures; at 100 children,
    12.1x smaller. This makes PQ protection practical today without waiting
    for signature aggregation schemes.
-
----
-
-## Ladder Engine — Visual Tool
-
-A single-page React application for building, simulating, and inspecting Ladder
-Script transactions. Located at `tools/ladder-engine/index.html`.
-
-### Features
-
-**Build Mode**
-- Block palette sidebar with all block types grouped by family (Signature,
-  Timelock, Hash, Covenant, Recursion, PLC)
-- Drag blocks onto rungs to construct conditions
-- PLC-style ladder view: power rails, contacts shown as input/block/coil notation,
-  rung numbering R000/R001
-- Properties panel for configuring block fields (pubkeys, thresholds, hashes, etc.)
-- TX panel for defining inputs, outputs, and locktime
-- Rung-to-output assignment via coil properties
-- Live `createrungtx` RPC JSON output with validation warnings
-
-**Simulate Mode**
-- Click rung label to begin step-through: green power flows left-to-right
-- Click each block contact to advance (authorize) — power propagates visually
-- Alt+click blocks to force-toggle: auto / forced-on / forced-off
-- Forced blocks auto-advance without requiring a click
-- Coil fires when all blocks pass — rung marked EXECUTED (green)
-- Double-spend prevention: executing a rung cascade-blocks other rungs sharing
-  the same TX inputs (marked BLOCKED in red)
-- Simulation context panel: set block height, fee rate, keys, preimages
-- RPC JSON panel highlights in sync with simulation — cursor tracks active block,
-  green for passed, red for failed
-- Register table shows all state values with energized/de-energized status
-- Play button scans all rungs sequentially; step buttons for manual advance
-
-**Watch Mode**
-- Mock UTXO monitoring with auto-incrementing block height
-- Countdown timers for timelock blocks
-
-**Additional**
-- 18 pre-built examples (P2PKH, multisig vault, HTLC, countdown vault,
-  state machine, DCA vault, PQ anchor, fee-gated treasury, etc.)
-- Import/export `createrungtx` JSON
-- Covenant replay trend chart showing counter/timer values over spend history
-- Tooltips toggle for contextual help throughout the UI
-- Print-friendly ladder diagram output
-
-### Block Types Supported
-
-| Family | Blocks |
-|--------|--------|
-| Signature | SIG, MULTISIG, ADAPTOR_SIG |
-| Timelock | CSV, CSV_TIME, CLTV, CLTV_TIME |
-| Hash | HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH |
-| Covenant | CTV, VAULT_LOCK, AMOUNT_LOCK |
-| Recursion | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY |
-| Anchor | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE |
-| PLC | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN |
-| Compound | TIMELOCKED_SIG, HTLC, HASH_SIG |
-| Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR |
-
-### Wire Format
-
-The tool exports `createrungtx` RPC JSON. Each rung maps to a condition entry
-within an output. Blocks within a rung are AND-combined; multiple rungs on the
-same output are OR-combined (first satisfied rung wins).
-
-```json
-{
-  "inputs": [{ "txid": "...", "vout": 0 }],
-  "outputs": [{
-    "amount": 0.001,
-    "conditions": [{
-      "blocks": [
-        { "type": "SIG", "fields": [{ "type": "PUBKEY", "hex": "02..." }] },
-        { "type": "CSV", "fields": [{ "type": "NUMERIC", "hex": "0a000000" }] }
-      ]
-    }]
-  }]
-}
-```
 
 ---
 

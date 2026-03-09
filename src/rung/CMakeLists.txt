@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://opensource.org/license/mit/.
 
-# Ghost Ladder Script: typed transaction format (v3 RUNG_TX).
+# Ghost Ladder Script: typed transaction format (v4 RUNG_TX).
 # Replaces raw Bitcoin Script opcodes with a typed schema where every
 # witness byte must conform to a typed field — no arbitrary data possible.
 

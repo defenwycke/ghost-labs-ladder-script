@@ -106,6 +106,10 @@
     </div>
   </nav>
 
-  <iframe src="ladder-engine/index.html" class="engine-frame" title="Ladder Script Engine"></iframe>
+  <iframe id="engine" class="engine-frame" title="Ladder Script Engine"></iframe>
+  <script>
+    var q = window.location.search;
+    document.getElementById('engine').src = 'ladder-engine/index.html' + (q ? q : '');
+  </script>
 </body>
 </html>

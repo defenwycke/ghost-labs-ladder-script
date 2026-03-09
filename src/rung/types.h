@@ -6,6 +6,7 @@
 #define BITCOIN_RUNG_TYPES_H
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@ enum class RungBlockType : uint16_t {
     SIG              = 0x0001, //!< Single signature verification
     MULTISIG         = 0x0002, //!< M-of-N threshold signature
     ADAPTOR_SIG      = 0x0003, //!< Adaptor signature verification
+    MUSIG_THRESHOLD  = 0x0004, //!< MuSig2/FROST aggregate threshold signature
 
     // Timelock family
     CSV              = 0x0101, //!< Relative timelock — block-height (BIP68 sequence)
@@ -121,6 +123,7 @@ inline bool IsKnownBlockType(uint16_t b)
     case RungBlockType::SIG:
     case RungBlockType::MULTISIG:
     case RungBlockType::ADAPTOR_SIG:
+    case RungBlockType::MUSIG_THRESHOLD:
     // Timelock
     case RungBlockType::CSV:
     case RungBlockType::CSV_TIME:
@@ -232,6 +235,7 @@ inline std::string BlockTypeName(RungBlockType type)
     case RungBlockType::SIG:              return "SIG";
     case RungBlockType::MULTISIG:         return "MULTISIG";
     case RungBlockType::ADAPTOR_SIG:      return "ADAPTOR_SIG";
+    case RungBlockType::MUSIG_THRESHOLD:  return "MUSIG_THRESHOLD";
     case RungBlockType::CSV:              return "CSV";
     case RungBlockType::CSV_TIME:         return "CSV_TIME";
     case RungBlockType::CLTV:             return "CLTV";
@@ -393,18 +397,384 @@ struct Relay {
     std::vector<uint16_t> relay_refs;    //!< Indices of other relays (must be < own index)
 };
 
+/** A single field-level diff in a witness reference. */
+struct WitnessDiff {
+    uint16_t rung_index;   //!< Which rung in the inherited witness
+    uint16_t block_index;  //!< Which block within that rung
+    uint16_t field_index;  //!< Which field within that block
+    RungField new_field;   //!< Replacement field data
+};
+
+/** Witness reference: rungs/relays inherited from another input's witness with diffs.
+ *  Coil is always provided fresh (never inherited — inheriting destination
+ *  addresses would be a dangerous footgun). */
+struct WitnessReference {
+    uint32_t input_index;               //!< Which input's witness to inherit rungs/relays from
+    std::vector<WitnessDiff> diffs;     //!< Field-level patches to apply after inheritance
+};
+
 /** The complete ladder witness for one output.
  *  Rungs define input conditions (OR logic — first satisfied rung wins).
  *  Coil defines output semantics (destination, constraints).
- *  Relays are shared condition sets referenced via requires (AND composition). */
+ *  Relays are shared condition sets referenced via requires (AND composition).
+ *
+ *  When witness_ref is set (n_rungs == 0 on wire), rungs and relays are
+ *  inherited from the referenced input's witness. Only diffs and a fresh
+ *  coil are provided. Resolution happens in VerifyRungTx. */
 struct LadderWitness {
     std::vector<Rung> rungs;     //!< Input condition rungs
     RungCoil coil;               //!< Output coil (per-output, not per-rung)
     std::vector<Relay> relays;   //!< Relay definitions (shared across outputs)
+    std::optional<WitnessReference> witness_ref; //!< Witness inheritance reference
 
-    bool IsEmpty() const { return rungs.empty(); }
+    bool IsEmpty() const { return rungs.empty() && !witness_ref.has_value(); }
+    bool IsWitnessRef() const { return witness_ref.has_value(); }
 };
+
+// ============================================================================
+// Micro-header lookup table (Phase 2: encoding optimization)
+// ============================================================================
+
+/** Number of micro-header slots (0x00-0x7F). */
+static constexpr size_t MICRO_HEADER_SLOTS = 128;
+/** Escape byte: full header follows (not inverted). */
+static constexpr uint8_t MICRO_HEADER_ESCAPE = 0x80;
+/** Escape byte: full header follows (inverted). */
+static constexpr uint8_t MICRO_HEADER_ESCAPE_INV = 0x81;
+
+/** Micro-header lookup table: maps slot index → RungBlockType.
+ *  Value 0xFFFF means the slot is unused. */
+inline constexpr uint16_t MICRO_HEADER_TABLE[MICRO_HEADER_SLOTS] = {
+    // Slot 0-2: Signature family
+    0x0001, // 0x00: SIG
+    0x0002, // 0x01: MULTISIG
+    0x0003, // 0x02: ADAPTOR_SIG
+    // Slot 3-6: Timelock family
+    0x0101, // 0x03: CSV
+    0x0102, // 0x04: CSV_TIME
+    0x0103, // 0x05: CLTV
+    0x0104, // 0x06: CLTV_TIME
+    // Slot 7-9: Hash family
+    0x0201, // 0x07: HASH_PREIMAGE
+    0x0202, // 0x08: HASH160_PREIMAGE
+    0x0203, // 0x09: TAGGED_HASH
+    // Slot 10-12: Covenant family
+    0x0301, // 0x0A: CTV
+    0x0302, // 0x0B: VAULT_LOCK
+    0x0303, // 0x0C: AMOUNT_LOCK
+    // Slot 13-18: Recursion family
+    0x0401, // 0x0D: RECURSE_SAME
+    0x0402, // 0x0E: RECURSE_MODIFIED
+    0x0403, // 0x0F: RECURSE_UNTIL
+    0x0404, // 0x10: RECURSE_COUNT
+    0x0405, // 0x11: RECURSE_SPLIT
+    0x0406, // 0x12: RECURSE_DECAY
+    // Slot 19-24: Anchor family
+    0x0501, // 0x13: ANCHOR
+    0x0502, // 0x14: ANCHOR_CHANNEL
+    0x0503, // 0x15: ANCHOR_POOL
+    0x0504, // 0x16: ANCHOR_RESERVE
+    0x0505, // 0x17: ANCHOR_SEAL
+    0x0506, // 0x18: ANCHOR_ORACLE
+    // Slot 25-38: PLC family
+    0x0601, // 0x19: HYSTERESIS_FEE
+    0x0602, // 0x1A: HYSTERESIS_VALUE
+    0x0611, // 0x1B: TIMER_CONTINUOUS
+    0x0612, // 0x1C: TIMER_OFF_DELAY
+    0x0621, // 0x1D: LATCH_SET
+    0x0622, // 0x1E: LATCH_RESET
+    0x0631, // 0x1F: COUNTER_DOWN
+    0x0632, // 0x20: COUNTER_PRESET
+    0x0633, // 0x21: COUNTER_UP
+    0x0641, // 0x22: COMPARE
+    0x0651, // 0x23: SEQUENCER
+    0x0661, // 0x24: ONE_SHOT
+    0x0671, // 0x25: RATE_LIMIT
+    0x0681, // 0x26: COSIGN
+    // Slot 39-44: Compound family
+    0x0701, // 0x27: TIMELOCKED_SIG
+    0x0702, // 0x28: HTLC
+    0x0703, // 0x29: HASH_SIG
+    0x0704, // 0x2A: PTLC
+    0x0705, // 0x2B: CLTV_SIG
+    0x0706, // 0x2C: TIMELOCKED_MULTISIG
+    // Slot 45-50: Governance family
+    0x0801, // 0x2D: EPOCH_GATE
+    0x0802, // 0x2E: WEIGHT_LIMIT
+    0x0803, // 0x2F: INPUT_COUNT
+    0x0804, // 0x30: OUTPUT_COUNT
+    0x0805, // 0x31: RELATIVE_VALUE
+    0x0806, // 0x32: ACCUMULATOR
+    // Slot 51: MUSIG_THRESHOLD
+    0x0004, // 0x33: MUSIG_THRESHOLD
+    // Remaining slots unused
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x34-0x3A
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x3B-0x3F
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x40-0x47
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x48-0x4F
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x50-0x57
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x58-0x5F
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x60-0x67
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x68-0x6F
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x70-0x77
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x78-0x7F
+};
+
+/** Reverse lookup: find micro-header slot index for a block type.
+ *  Returns -1 if the block type has no micro-header slot. */
+inline int MicroHeaderSlot(RungBlockType type)
+{
+    uint16_t val = static_cast<uint16_t>(type);
+    for (size_t i = 0; i < MICRO_HEADER_SLOTS; ++i) {
+        if (MICRO_HEADER_TABLE[i] == val) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+// ============================================================================
+// Implicit field tables (Phase 2: per-block-type fixed field layouts)
+// ============================================================================
+
+/** An entry in an implicit field table: data type + fixed size (0 = variable). */
+struct ImplicitFieldEntry {
+    RungDataType type;
+    uint16_t fixed_size; //!< 0 means variable-length (CompactSize prefix present)
+};
+
+/** Maximum implicit fields per block type per context. */
+static constexpr size_t MAX_IMPLICIT_FIELDS = 8;
+
+/** An implicit field layout for a block type in a given context. */
+struct ImplicitFieldLayout {
+    uint8_t count;                                  //!< Number of implicit fields (0 = no implicit table)
+    ImplicitFieldEntry fields[MAX_IMPLICIT_FIELDS]; //!< Field entries
+};
+
+/** Empty layout — no implicit fields, use explicit encoding. */
+inline constexpr ImplicitFieldLayout NO_IMPLICIT = {0, {}};
+
+// -- Conditions context implicit field layouts --
+
+/** SIG conditions: [PUBKEY_COMMIT(32), SCHEME(1)] */
+inline constexpr ImplicitFieldLayout SIG_CONDITIONS = {2, {
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::SCHEME, 1},
+}};
+
+/** CSV conditions: [NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CSV_CONDITIONS = {1, {
+    {RungDataType::NUMERIC, 0}, // varint encoding, variable
+}};
+
+/** CSV_TIME conditions: [NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CSV_TIME_CONDITIONS = CSV_CONDITIONS;
+
+/** CLTV conditions: [NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CLTV_CONDITIONS = CSV_CONDITIONS;
+
+/** CLTV_TIME conditions: [NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CLTV_TIME_CONDITIONS = CSV_CONDITIONS;
+
+/** HASH_PREIMAGE conditions: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout HASH_PREIMAGE_CONDITIONS = {1, {
+    {RungDataType::HASH256, 32},
+}};
+
+/** HASH160_PREIMAGE conditions: [HASH160(20)] */
+inline constexpr ImplicitFieldLayout HASH160_PREIMAGE_CONDITIONS = {1, {
+    {RungDataType::HASH160, 20},
+}};
+
+/** TAGGED_HASH conditions: [HASH256(32), HASH256(32)] */
+inline constexpr ImplicitFieldLayout TAGGED_HASH_CONDITIONS = {2, {
+    {RungDataType::HASH256, 32},
+    {RungDataType::HASH256, 32},
+}};
+
+/** CTV conditions: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout CTV_CONDITIONS = {1, {
+    {RungDataType::HASH256, 32},
+}};
+
+/** AMOUNT_LOCK conditions: [NUMERIC(varint), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout AMOUNT_LOCK_CONDITIONS = {2, {
+    {RungDataType::NUMERIC, 0},
+    {RungDataType::NUMERIC, 0},
+}};
+
+/** COSIGN conditions: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout COSIGN_CONDITIONS = {1, {
+    {RungDataType::HASH256, 32},
+}};
+
+/** TIMELOCKED_SIG conditions: [PUBKEY_COMMIT(32), SCHEME(1), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout TIMELOCKED_SIG_CONDITIONS = {3, {
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::SCHEME, 1},
+    {RungDataType::NUMERIC, 0},
+}};
+
+/** HTLC conditions: [PUBKEY_COMMIT(32), PUBKEY_COMMIT(32), HASH256(32), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout HTLC_CONDITIONS = {4, {
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::HASH256, 32},
+    {RungDataType::NUMERIC, 0},
+}};
+
+/** HASH_SIG conditions: [PUBKEY_COMMIT(32), HASH256(32), SCHEME(1)] */
+inline constexpr ImplicitFieldLayout HASH_SIG_CONDITIONS = {3, {
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::HASH256, 32},
+    {RungDataType::SCHEME, 1},
+}};
+
+/** CLTV_SIG conditions: [PUBKEY_COMMIT(32), SCHEME(1), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CLTV_SIG_CONDITIONS = TIMELOCKED_SIG_CONDITIONS;
+
+/** EPOCH_GATE conditions: [NUMERIC(varint), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout EPOCH_GATE_CONDITIONS = AMOUNT_LOCK_CONDITIONS;
+
+/** MUSIG_THRESHOLD conditions: [PUBKEY_COMMIT(32), NUMERIC(varint M), NUMERIC(varint N)] */
+inline constexpr ImplicitFieldLayout MUSIG_THRESHOLD_CONDITIONS = {3, {
+    {RungDataType::PUBKEY_COMMIT, 32},
+    {RungDataType::NUMERIC, 0},  // threshold M
+    {RungDataType::NUMERIC, 0},  // group size N
+}};
+
+/** ANCHOR_SEAL conditions: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout ANCHOR_SEAL_CONDITIONS = {1, {
+    {RungDataType::HASH256, 32},
+}};
+
+// -- Witness context implicit field layouts --
+
+/** SIG witness: [PUBKEY(var), SIGNATURE(var)] */
+inline constexpr ImplicitFieldLayout SIG_WITNESS = {2, {
+    {RungDataType::PUBKEY, 0},
+    {RungDataType::SIGNATURE, 0},
+}};
+
+/** CSV witness: [NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CSV_WITNESS = CSV_CONDITIONS;
+
+/** HASH_PREIMAGE witness: [HASH256(32), PREIMAGE(var)] */
+inline constexpr ImplicitFieldLayout HASH_PREIMAGE_WITNESS = {2, {
+    {RungDataType::HASH256, 32},
+    {RungDataType::PREIMAGE, 0},
+}};
+
+/** HASH160_PREIMAGE witness: [HASH160(20), PREIMAGE(var)] */
+inline constexpr ImplicitFieldLayout HASH160_PREIMAGE_WITNESS = {2, {
+    {RungDataType::HASH160, 20},
+    {RungDataType::PREIMAGE, 0},
+}};
+
+/** TAGGED_HASH witness: [HASH256(32), HASH256(32), PREIMAGE(var)] */
+inline constexpr ImplicitFieldLayout TAGGED_HASH_WITNESS = {3, {
+    {RungDataType::HASH256, 32},
+    {RungDataType::HASH256, 32},
+    {RungDataType::PREIMAGE, 0},
+}};
+
+/** CTV witness: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout CTV_WITNESS = CTV_CONDITIONS;
+
+/** COSIGN witness: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout COSIGN_WITNESS = COSIGN_CONDITIONS;
+
+/** TIMELOCKED_SIG witness: [PUBKEY(var), SIGNATURE(var), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout TIMELOCKED_SIG_WITNESS = {3, {
+    {RungDataType::PUBKEY, 0},
+    {RungDataType::SIGNATURE, 0},
+    {RungDataType::NUMERIC, 0},
+}};
+
+/** HTLC witness: [PUBKEY(var), SIGNATURE(var), PREIMAGE(var), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout HTLC_WITNESS = {4, {
+    {RungDataType::PUBKEY, 0},
+    {RungDataType::SIGNATURE, 0},
+    {RungDataType::PREIMAGE, 0},
+    {RungDataType::NUMERIC, 0},
+}};
+
+/** HASH_SIG witness: [PUBKEY(var), SIGNATURE(var), PREIMAGE(var)] */
+inline constexpr ImplicitFieldLayout HASH_SIG_WITNESS = {3, {
+    {RungDataType::PUBKEY, 0},
+    {RungDataType::SIGNATURE, 0},
+    {RungDataType::PREIMAGE, 0},
+}};
+
+/** MUSIG_THRESHOLD witness: [PUBKEY(var), SIGNATURE(var)] */
+inline constexpr ImplicitFieldLayout MUSIG_THRESHOLD_WITNESS = SIG_WITNESS;
+
+/** CLTV_SIG witness: [PUBKEY(var), SIGNATURE(var), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout CLTV_SIG_WITNESS = TIMELOCKED_SIG_WITNESS;
+
+/** Lookup implicit field layout for a block type and serialization context.
+ *  Returns NO_IMPLICIT if no implicit table exists. */
+inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t ctx)
+{
+    // ctx: 0 = WITNESS, 1 = CONDITIONS
+    if (ctx == 1) {
+        // CONDITIONS context
+        switch (type) {
+        case RungBlockType::SIG:              return SIG_CONDITIONS;
+        case RungBlockType::MUSIG_THRESHOLD:  return MUSIG_THRESHOLD_CONDITIONS;
+        case RungBlockType::CSV:              return CSV_CONDITIONS;
+        case RungBlockType::CSV_TIME:         return CSV_TIME_CONDITIONS;
+        case RungBlockType::CLTV:             return CLTV_CONDITIONS;
+        case RungBlockType::CLTV_TIME:        return CLTV_TIME_CONDITIONS;
+        case RungBlockType::HASH_PREIMAGE:    return HASH_PREIMAGE_CONDITIONS;
+        case RungBlockType::HASH160_PREIMAGE: return HASH160_PREIMAGE_CONDITIONS;
+        case RungBlockType::TAGGED_HASH:      return TAGGED_HASH_CONDITIONS;
+        case RungBlockType::CTV:              return CTV_CONDITIONS;
+        case RungBlockType::AMOUNT_LOCK:      return AMOUNT_LOCK_CONDITIONS;
+        case RungBlockType::COSIGN:           return COSIGN_CONDITIONS;
+        case RungBlockType::TIMELOCKED_SIG:   return TIMELOCKED_SIG_CONDITIONS;
+        case RungBlockType::HTLC:             return HTLC_CONDITIONS;
+        case RungBlockType::HASH_SIG:         return HASH_SIG_CONDITIONS;
+        case RungBlockType::CLTV_SIG:         return CLTV_SIG_CONDITIONS;
+        case RungBlockType::EPOCH_GATE:       return EPOCH_GATE_CONDITIONS;
+        case RungBlockType::ANCHOR_SEAL:      return ANCHOR_SEAL_CONDITIONS;
+        default: return NO_IMPLICIT;
+        }
+    } else {
+        // WITNESS context
+        switch (type) {
+        case RungBlockType::SIG:              return SIG_WITNESS;
+        case RungBlockType::MUSIG_THRESHOLD:  return MUSIG_THRESHOLD_WITNESS;
+        case RungBlockType::CSV:              return CSV_WITNESS;
+        case RungBlockType::CSV_TIME:         return CSV_WITNESS;
+        case RungBlockType::CLTV:             return CSV_WITNESS;
+        case RungBlockType::CLTV_TIME:        return CSV_WITNESS;
+        case RungBlockType::HASH_PREIMAGE:    return HASH_PREIMAGE_WITNESS;
+        case RungBlockType::HASH160_PREIMAGE: return HASH160_PREIMAGE_WITNESS;
+        case RungBlockType::TAGGED_HASH:      return TAGGED_HASH_WITNESS;
+        case RungBlockType::CTV:              return CTV_WITNESS;
+        case RungBlockType::COSIGN:           return COSIGN_WITNESS;
+        case RungBlockType::TIMELOCKED_SIG:   return TIMELOCKED_SIG_WITNESS;
+        case RungBlockType::HTLC:             return HTLC_WITNESS;
+        case RungBlockType::HASH_SIG:         return HASH_SIG_WITNESS;
+        case RungBlockType::CLTV_SIG:         return CLTV_SIG_WITNESS;
+        default: return NO_IMPLICIT;
+        }
+    }
+}
+
+/** Check whether a block's fields match its implicit layout exactly.
+ *  Returns true if the block can use implicit encoding (field count and types omitted). */
+inline bool MatchesImplicitLayout(const RungBlock& block, const ImplicitFieldLayout& layout)
+{
+    if (layout.count == 0) return false;
+    if (block.fields.size() != layout.count) return false;
+    for (uint8_t i = 0; i < layout.count; ++i) {
+        if (block.fields[i].type != layout.fields[i].type) return false;
+    }
+    return true;
+}
 
 } // namespace rung
 
 #endif // BITCOIN_RUNG_TYPES_H
+

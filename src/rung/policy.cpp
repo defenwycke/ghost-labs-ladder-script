@@ -17,6 +17,7 @@ bool IsBaseBlockType(uint16_t block_type)
     case RungBlockType::SIG:
     case RungBlockType::MULTISIG:
     case RungBlockType::ADAPTOR_SIG:
+    case RungBlockType::MUSIG_THRESHOLD:
     case RungBlockType::CSV:
     case RungBlockType::CSV_TIME:
     case RungBlockType::CLTV:
@@ -108,6 +109,10 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
                 return false;
             }
         }
+        // MLSC outputs (0xC2 + 32-byte root) are always standard
+        if (IsMLSCScript(scriptPubKey)) {
+            continue;
+        }
         // Allow non-conditions outputs (e.g., standard P2TR for change) during bootstrap
     }
 
@@ -125,6 +130,12 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
         if (!DeserializeLadderWitness(witness_bytes, ladder, deser_error)) {
             reason = "rung-invalid-witness: " + deser_error;
             return false;
+        }
+
+        // Diff witness: deserialization already validates field types and limits.
+        // Forward-only and no-chaining are consensus rules enforced at evaluation time.
+        if (ladder.IsWitnessRef()) {
+            continue;
         }
 
         if (ladder.rungs.size() > MAX_RUNGS) {

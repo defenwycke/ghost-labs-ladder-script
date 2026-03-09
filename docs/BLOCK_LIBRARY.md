@@ -1,15 +1,14 @@
 # Ladder Script Block Library
 
-Complete reference for all 48 Ladder Script block types. Each block evaluates a single
+Complete reference for all 52 Ladder Script block types. Each block evaluates a single
 spending condition within a rung. Blocks are combined with AND logic within a rung and
 OR logic across rungs (first satisfied rung wins).
 
-**Wire encoding:** Block types are encoded as `uint16_t` (little-endian, 2 bytes).
+**Wire encoding:** Block types use micro-header encoding (1-byte slot for known types,
+escape byte for others). See the wire format v3 specification.
 
 **Source of truth:** `src/rung/types.h` (type definitions), `src/rung/evaluator.cpp`
 (evaluation logic), `src/rung/evaluator.h` (`RungEvalContext` struct).
-
-**Visual reference:** See the [Block Reference](../tools/block-docs/index.html) for interactive diagrams, wire format visualizations, and worked examples for each block type.
 
 ---
 
@@ -32,6 +31,7 @@ OR logic across rungs (first satisfied rung wins).
 ### 1. SIG (0x0001)
 
 **Family:** Signature
+
 **Purpose:** Verify a single cryptographic signature against a public key. Supports
 Schnorr (BIP-340), ECDSA, and post-quantum schemes via the SCHEME field.
 
@@ -39,10 +39,10 @@ Schnorr (BIP-340), ECDSA, and post-quantum schemes via the SCHEME field.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | SHA-256 commitment to the public key. Stored in conditions. The witness PUBKEY must hash to this value. |
-| PUBKEY | PUBKEY (0x01) | 1-2048 B | Yes (witness) | Signing public key (32B x-only, 33B compressed, or PQ). Witness only; must hash to PUBKEY_COMMIT. |
-| SCHEME | SCHEME (0x09) | 1 B | No | Signature algorithm selector (SCHNORR=0x01, ECDSA=0x02, FALCON512=0x10, FALCON1024=0x11, DILITHIUM3=0x12, SPHINCS_SHA=0x13). If absent, determined by signature size. |
-| SIGNATURE | SIGNATURE (0x06) | 1-50000 B | Yes (witness) | The signature. Schnorr: 64-65 B. ECDSA: 8-72 B. PQ: up to 49216 B. |
+| PUBKEY | PUBKEY (0x01) | 1-2048 B | Yes | Signing public key (32B x-only, 33B compressed, or PQ) |
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x02) | 32 B | No | SHA-256 commitment to the public key. When present, PUBKEY must hash to this value. |
+| SCHEME | SCHEME (0x09) | 1 B | No | Signature algorithm selector (SCHNORR=0x01, ECDSA=0x02, FALCON512=0x10, FALCON1024=0x11, DILITHIUM3=0x12). If absent, determined by signature size. |
+| SIGNATURE | SIGNATURE (0x06) | 1-5000 B | Yes (witness) | The signature. Schnorr: 64-65 B. ECDSA: 8-72 B. PQ: up to ~3300 B. |
 
 **Evaluation logic:**
 
@@ -98,6 +98,7 @@ CLTV for timelocked spending paths. Combined with HASH_PREIMAGE for HTLC pattern
 ### 2. MULTISIG (0x0002)
 
 **Family:** Signature
+
 **Purpose:** M-of-N threshold signature verification. Requires M valid signatures from
 a set of N public keys, where each signature must correspond to a distinct key.
 
@@ -106,8 +107,7 @@ a set of N public keys, where each signature must correspond to a distinct key.
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | Threshold M (minimum valid signatures required) |
-| PUBKEY_COMMIT (x N) | PUBKEY_COMMIT (0x02) | 32 B each | Yes (condition) | N key commitments. Stored in conditions. Each witness PUBKEY must hash to its corresponding PUBKEY_COMMIT. |
-| PUBKEY (x N) | PUBKEY (0x01) | 1-2048 B each | Yes (witness) | N public keys. Witness only; each must hash to its corresponding PUBKEY_COMMIT. |
+| PUBKEY (x N) | PUBKEY (0x01) | 1-2048 B each | Yes | N public keys in the signing set |
 | SCHEME | SCHEME (0x09) | 1 B | No | Signature algorithm selector. Applies to all sigs uniformly. |
 | SIGNATURE (x M) | SIGNATURE (0x06) | 1-50000 B each | Yes (witness) | M signatures. Order need not match key order. |
 
@@ -116,11 +116,7 @@ a set of N public keys, where each signature must correspond to a distinct key.
 ```
 M = ReadNumeric(NUMERIC)
 if M <= 0: return ERROR
-commits = FindAllFields(PUBKEY_COMMIT)
-pubkeys = FindAllFields(PUBKEY)  // from witness
-if commits.size() != pubkeys.size(): return ERROR
-for i in 0..commits.size():
-    if SHA256(pubkeys[i]) != commits[i]: return UNSATISFIED
+pubkeys = FindAllFields(PUBKEY)
 sigs = FindAllFields(SIGNATURE)
 if pubkeys.empty() or M > pubkeys.size(): return ERROR
 if sigs.size() < M: return UNSATISFIED
@@ -177,6 +173,7 @@ recovery_key + CSV(144)).
 ### 3. ADAPTOR_SIG (0x0003)
 
 **Family:** Signature
+
 **Purpose:** Verify an adaptor signature for atomic swap and PTLC (point-timelocked
 contract) protocols. The adapted signature (with the adaptor secret already applied)
 verifies as a standard Schnorr signature against the signing key.
@@ -185,19 +182,15 @@ verifies as a standard Schnorr signature against the signing key.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | Signing key commitment. Stored in conditions. |
-| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x02) | 32 B | Yes (condition) | Adaptor point commitment. Stored in conditions. |
-| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Signing public key. Must hash to PUBKEY_COMMIT[0]. |
-| PUBKEY[1] | PUBKEY (0x01) | 32 B | Yes (witness) | Adaptor point (x-only, 32 bytes exactly). Must hash to PUBKEY_COMMIT[1]. |
+| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Signing public key |
+| PUBKEY[1] | PUBKEY (0x01) | 32 B | Yes | Adaptor point (x-only, 32 bytes exactly) |
 | SIGNATURE | SIGNATURE (0x06) | 64-65 B | Yes (witness) | The adapted signature (full Schnorr sig after secret application) |
 
 **Evaluation logic:**
 
 ```
-commits = FindAllFields(PUBKEY_COMMIT)
-pubkeys = FindAllFields(PUBKEY)  // from witness
-if commits.size() < 2 or pubkeys.size() < 2 or SIGNATURE absent: return ERROR
-if SHA256(pubkeys[0]) != commits[0] or SHA256(pubkeys[1]) != commits[1]: return UNSATISFIED
+pubkeys = FindAllFields(PUBKEY)
+if pubkeys.size() < 2 or SIGNATURE absent: return ERROR
 signing_key = pubkeys[0]
 adaptor_point = pubkeys[1]
 if adaptor_point.size() != 32: return ERROR
@@ -236,11 +229,87 @@ for timeout refund paths.
 
 ---
 
+### 4. MUSIG_THRESHOLD (0x0004)
+
+**Family:** Signature
+
+**Purpose:** MuSig2/FROST aggregate threshold signature verification. On-chain, this
+looks identical to a single-sig spend: one aggregate public key and one aggregate
+Schnorr signature, regardless of the threshold M or group size N. The FROST/MuSig2
+key generation and signing ceremony happen entirely off-chain. The block type only
+validates the final aggregate result using standard Schnorr verification.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| PUBKEY_COMMIT | PUBKEY_COMMIT (0x02) | 32 B | Yes (conditions) | SHA-256 commitment to the aggregate public key |
+| NUMERIC (M) | NUMERIC (0x08) | varint | Yes (conditions) | Threshold M (policy/display only, not used in verification) |
+| NUMERIC (N) | NUMERIC (0x08) | varint | Yes (conditions) | Group size N (policy/display only, not used in verification) |
+| PUBKEY | PUBKEY (0x01) | 33 B | Yes (witness) | The aggregate public key (compressed) |
+| SIGNATURE | SIGNATURE (0x06) | 64 B | Yes (witness) | The aggregate Schnorr signature |
+
+**Evaluation logic:**
+
+```
+if PUBKEY absent or SIGNATURE absent:
+    return ERROR
+if PUBKEY_COMMIT present:
+    if SHA256(PUBKEY.data) != PUBKEY_COMMIT.data:
+        return UNSATISFIED
+if two NUMERIC fields present:
+    M = ReadNumeric(NUMERIC[0])
+    N = ReadNumeric(NUMERIC[1])
+    if M <= 0 or N <= 0 or M > N:
+        return ERROR
+if SIGNATURE.size not in [64, 65]:
+    return ERROR
+xonly = strip_prefix_if_33B(PUBKEY)
+return CheckSchnorrSignature(SIGNATURE, xonly, SigVersion::LADDER) ? SATISFIED : UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid aggregate signature verifies against aggregate PUBKEY | SATISFIED |
+| Signature does not verify or PUBKEY_COMMIT mismatch | UNSATISFIED |
+| Missing required fields, invalid M/N, or wrong signature size | ERROR |
+
+**Context requirements:** BaseSignatureChecker, SigVersion, ScriptExecutionData. No
+RungEvalContext fields needed. Schnorr-only — no PQ path (aggregate signatures
+rely on Schnorr's linear aggregation property).
+
+**Example:**
+
+```json
+{
+  "type": "MUSIG_THRESHOLD",
+  "fields": [
+    { "type": "PUBKEY_COMMIT", "data": "a1b2c3...32_bytes_hex" },
+    { "type": "NUMERIC", "data": "02" },
+    { "type": "NUMERIC", "data": "03" },
+    { "type": "PUBKEY", "data": "02d4f8...33_bytes_hex" },
+    { "type": "SIGNATURE", "data": "e5f6a7...64_bytes_hex" }
+  ]
+}
+```
+
+**Wire size:** ~131 bytes total (conditions ~36B + witness ~100B), constant regardless
+of M and N. Compared to MULTISIG: 2-of-3 saves 43%, 5-of-9 saves 80%, 11-of-15 saves 88%.
+
+**Common patterns:** Any M-of-N threshold custody where privacy is desired (the
+blockchain cannot distinguish MUSIG_THRESHOLD from a single-sig SIG spend). Corporate
+treasury management, multisig wallets, federated protocols.
+
+---
+
 ## Timelock Family
 
-### 4. CSV (0x0101)
+### 5. CSV (0x0101)
 
 **Family:** Timelock
+
 **Purpose:** Enforce a relative block-height timelock using BIP68 sequence numbers. The
 input can only be spent after the specified number of blocks have elapsed since the
 UTXO was confirmed.
@@ -294,6 +363,7 @@ Lightning HTLC timeout paths.
 ### 5. CSV_TIME (0x0102)
 
 **Family:** Timelock
+
 **Purpose:** Enforce a relative time-based lock using BIP68 time-based sequence
 encoding. The input can only be spent after the specified number of seconds have
 elapsed (in units of 512-second intervals per BIP68).
@@ -345,6 +415,7 @@ BIP68 time flag is bit 22. The value encodes a time-based relative lock.
 ### 6. CLTV (0x0103)
 
 **Family:** Timelock
+
 **Purpose:** Enforce an absolute block-height lock. The input cannot be spent until the
 blockchain has reached the specified block height (via `nLockTime`).
 
@@ -395,6 +466,7 @@ with SIG for "key OR timelock" patterns.
 ### 7. CLTV_TIME (0x0104)
 
 **Family:** Timelock
+
 **Purpose:** Enforce an absolute timestamp lock. The input cannot be spent until the
 median time past (MTP) reaches the specified Unix timestamp.
 
@@ -446,6 +518,7 @@ LOCKTIME_THRESHOLD). Values below that threshold are block heights.
 ### 8. HASH_PREIMAGE (0x0201)
 
 **Family:** Hash
+
 **Purpose:** Verify that a witness preimage hashes to the committed SHA-256 digest.
 The preimage is revealed in the witness; the hash is committed in the scriptPubKey
 conditions.
@@ -497,6 +570,7 @@ alternative rung. Payment channel routing secrets.
 ### 9. HASH160_PREIMAGE (0x0202)
 
 **Family:** Hash
+
 **Purpose:** Verify a witness preimage against a RIPEMD160(SHA256()) digest. This is
 the same hash construction used by P2PKH and P2SH addresses.
 
@@ -547,6 +621,7 @@ commitment (20 bytes vs 32 bytes) for space-constrained conditions.
 ### 10. TAGGED_HASH (0x0203)
 
 **Family:** Hash
+
 **Purpose:** Verify a BIP-340 tagged hash. Computes
 `SHA256(SHA256(tag) || SHA256(tag) || preimage)` and compares against the expected
 digest. The tag hash field contains the pre-computed `SHA256(tag)`.
@@ -606,6 +681,7 @@ schemes using BIP-340 tagged hash convention.
 ### 11. CTV (0x0301)
 
 **Family:** Covenant
+
 **Purpose:** BIP-119 CheckTemplateVerify. Constrains the spending transaction to match
 a pre-committed template hash. Commits to transaction version, locktime, scriptSigs
 hash, input count, sequences hash, output count, outputs hash, and input index.
@@ -659,6 +735,7 @@ templates.
 ### 12. VAULT_LOCK (0x0302)
 
 **Family:** Covenant
+
 **Purpose:** Two-path vault construction. A recovery key can sweep funds immediately
 (cold sweep). A hot key can spend only after a CSV delay has elapsed. This provides a
 cancellation window for unauthorized hot-key spends.
@@ -667,20 +744,16 @@ cancellation window for unauthorized hot-key spends.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Recovery key commitment (cold storage, immediate sweep) |
-| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Hot key commitment (requires CSV delay) |
+| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Recovery key (cold storage, immediate sweep) |
+| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes | Hot key (requires CSV delay) |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | CSV delay in blocks for the hot-key path |
-| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Recovery key (must hash-match PUBKEY_COMMIT[0]) |
-| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes (witness) | Hot key (must hash-match PUBKEY_COMMIT[1]) |
 | SIGNATURE | SIGNATURE (0x06) | 64-65 B | Yes (witness) | Signature from either recovery or hot key |
 
 **Evaluation logic:**
 
 ```
-commits = FindAllFields(PUBKEY_COMMIT)
-pubkeys = FindAllFields(PUBKEY)  // from witness
-if commits.size() < 2 or pubkeys.size() < 2 or SIGNATURE absent or NUMERIC absent: return ERROR
-if SHA256(pubkeys[0]) != commits[0] or SHA256(pubkeys[1]) != commits[1]: return UNSATISFIED
+pubkeys = FindAllFields(PUBKEY)
+if pubkeys.size() < 2 or SIGNATURE absent or NUMERIC absent: return ERROR
 recovery_key = pubkeys[0]
 hot_key = pubkeys[1]
 hot_delay = ReadNumeric(NUMERIC)
@@ -732,6 +805,7 @@ monitoring. Pairs with CTV for vault re-encumbrance.
 ### 13. AMOUNT_LOCK (0x0303)
 
 **Family:** Covenant
+
 **Purpose:** Constrain the output amount to a specific range. SATISFIED when the output
 value falls within `[min_sats, max_sats]` inclusive.
 
@@ -794,6 +868,7 @@ When fields are valid, evaluation returns SATISFIED.
 ### 14. ANCHOR (0x0501)
 
 **Family:** Anchor
+
 **Purpose:** Generic anchor block for attaching typed metadata to a UTXO. Requires at
 least one field to be present.
 
@@ -832,6 +907,7 @@ return SATISFIED
 ### 15. ANCHOR_CHANNEL (0x0502)
 
 **Family:** Anchor
+
 **Purpose:** Lightning-style channel anchor. Records local and remote channel keys and
 a commitment number.
 
@@ -839,20 +915,20 @@ a commitment number.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT[0] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Local channel key commitment |
-| PUBKEY_COMMIT[1] | PUBKEY_COMMIT (0x09) | 32 B | Yes | Remote channel key commitment |
+| PUBKEY[0] | PUBKEY (0x01) | 32-33 B | Yes | Local channel key |
+| PUBKEY[1] | PUBKEY (0x01) | 32-33 B | Yes | Remote channel key |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | Commitment number (must be > 0 if present) |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 2: return ERROR
+if pubkey count < 2: return ERROR
 if NUMERIC present and ReadNumeric(NUMERIC) <= 0: return UNSATISFIED
 return SATISFIED
 ```
 
-**Return values:** SATISFIED if 2+ PUBKEY_COMMITs present and commitment > 0 (or absent);
-ERROR if fewer than 2 PUBKEY_COMMITs.
+**Return values:** SATISFIED if 2+ pubkeys present and commitment > 0 (or absent);
+ERROR if fewer than 2 pubkeys.
 
 **Context requirements:** None.
 
@@ -876,6 +952,7 @@ ERROR if fewer than 2 PUBKEY_COMMITs.
 ### 16. ANCHOR_POOL (0x0503)
 
 **Family:** Anchor
+
 **Purpose:** Pool anchor for VTXO (virtual transaction output) tree roots. Records a
 Merkle root of the VTXO tree and participant count.
 
@@ -917,6 +994,7 @@ return SATISFIED
 ### 17. ANCHOR_RESERVE (0x0504)
 
 **Family:** Anchor
+
 **Purpose:** Reserve anchor for guardian set management. Records threshold parameters
 and a guardian set hash. Verifies that threshold_n <= threshold_m.
 
@@ -965,6 +1043,7 @@ ERROR if missing fields.
 ### 18. ANCHOR_SEAL (0x0505)
 
 **Family:** Anchor
+
 **Purpose:** Seal anchor for client-side-validated asset protocols. Records an asset
 identifier and a state transition hash.
 
@@ -1005,6 +1084,7 @@ return SATISFIED
 ### 19. ANCHOR_ORACLE (0x0506)
 
 **Family:** Anchor
+
 **Purpose:** Oracle anchor for DLC (Discreet Log Contract) constructions. Records an
 oracle public key and outcome count.
 
@@ -1012,18 +1092,18 @@ oracle public key and outcome count.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Oracle signing key commitment |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Oracle signing key |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | Outcome count (must be > 0 if present) |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 1: return ERROR
+if pubkey count < 1: return ERROR
 if NUMERIC present and ReadNumeric(NUMERIC) <= 0: return UNSATISFIED
 return SATISFIED
 ```
 
-**Return values:** SATISFIED if oracle key commitment present and outcome count valid.
+**Return values:** SATISFIED if oracle key present and outcome count valid.
 
 **Context requirements:** None.
 
@@ -1053,6 +1133,7 @@ spends.
 ### 20. RECURSE_SAME (0x0401)
 
 **Family:** Recursion
+
 **Purpose:** Enforce identical re-encumbrance. The spending transaction's output must
 carry exactly the same rung conditions as the input being spent, preserving the full
 ladder structure across spends.
@@ -1111,6 +1192,7 @@ for key-gated recursive vaults.
 ### 21. RECURSE_MODIFIED (0x0402)
 
 **Family:** Recursion
+
 **Purpose:** Mutation covenant. Enforces re-encumbrance where specific NUMERIC fields
 in specific blocks are allowed to change by an exact additive delta. All other fields
 must remain identical. Used to implement state machines, counters, and accumulators
@@ -1195,6 +1277,7 @@ TIMER_CONTINUOUS). Any PLC block that needs tracked state changes.
 ### 22. RECURSE_UNTIL (0x0403)
 
 **Family:** Recursion
+
 **Purpose:** Height-terminated covenant. Before the target height, the UTXO must
 re-encumber with identical conditions. At or after the target height, the covenant
 terminates and the funds can be spent freely (this block returns SATISFIED without
@@ -1261,6 +1344,7 @@ Governance periods with fixed end dates.
 ### 23. RECURSE_COUNT (0x0404)
 
 **Family:** Recursion
+
 **Purpose:** Countdown covenant. Each spend must decrement the counter by exactly 1 in
 the output. When the counter reaches 0, the covenant terminates and funds can be spent
 freely.
@@ -1324,6 +1408,7 @@ limited withdrawal (spend once per block, N times total).
 ### 24. RECURSE_SPLIT (0x0405)
 
 **Family:** Recursion
+
 **Purpose:** UTXO splitting covenant. Allows a single UTXO to be split into multiple
 outputs, each carrying the same covenant with a decremented split counter. Enforces
 minimum output sizes and total value conservation.
@@ -1389,6 +1474,7 @@ UTXO expansion.
 ### 25. RECURSE_DECAY (0x0406)
 
 **Family:** Recursion
+
 **Purpose:** Progressive relaxation covenant. Identical to RECURSE_MODIFIED except all
 deltas are negated: `output_value = input_value - delta`. This causes parameter values
 to decrease over successive spends, progressively relaxing conditions (e.g., lowering
@@ -1448,6 +1534,7 @@ fields that are modified across covenant spends using RECURSE_MODIFIED.
 ### 26. HYSTERESIS_FEE (0x0601)
 
 **Family:** PLC
+
 **Purpose:** Fee rate band (hysteresis). SATISFIED only when the spending transaction's
 fee rate (sat/vB) falls within the specified band `[low, high]`.
 
@@ -1512,6 +1599,7 @@ environments. Rate-limiting high-fee spending.
 ### 27. HYSTERESIS_VALUE (0x0602)
 
 **Family:** PLC
+
 **Purpose:** Value band (hysteresis). SATISFIED only when the input UTXO amount falls
 within the specified satoshi band `[low, high]`.
 
@@ -1567,6 +1655,7 @@ Only spendable when UTXO value is between 1,000 and 100,000 sats.
 ### 28. TIMER_CONTINUOUS (0x0611)
 
 **Family:** PLC
+
 **Purpose:** Elapsed timer. Tracks accumulated time units across covenant spends.
 SATISFIED when accumulated >= target (timer has fully elapsed). Pair with
 RECURSE_MODIFIED to increment the accumulated value each spend.
@@ -1626,6 +1715,7 @@ create spend-counted timers.
 ### 29. TIMER_OFF_DELAY (0x0612)
 
 **Family:** PLC
+
 **Purpose:** Hold-off timer. SATISFIED while the remaining count is positive (still in
 the hold-off period). UNSATISFIED when remaining reaches 0 (delay expired). Pair with
 RECURSE_MODIFIED (delta=-1) to decrement each spend.
@@ -1677,6 +1767,7 @@ covenant spends.
 ### 30. LATCH_SET (0x0621)
 
 **Family:** PLC
+
 **Purpose:** Latch activation. A bistable state element that is SATISFIED when the
 state is 0 (unset), allowing the latch to be set. Pair with RECURSE_MODIFIED to
 enforce state transition from 0 to 1 in the output.
@@ -1685,13 +1776,13 @@ enforce state transition from 0 to 1 in the output.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Setter key commitment (authorized to set the latch) |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Setter key (authorized to set the latch) |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | No | State (0=unset, 1=set). If absent, structural-only mode returns SATISFIED. |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 1: return ERROR
+if pubkey count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.empty(): return SATISFIED  // backward compat
 state = ReadNumeric(numerics[0])
@@ -1705,7 +1796,7 @@ return UNSATISFIED                // already set
 |-----------|--------|
 | state == 0 (unset) | SATISFIED |
 | state != 0 (already set) | UNSATISFIED |
-| No PUBKEY_COMMIT | ERROR |
+| No PUBKEY | ERROR |
 | No NUMERIC (structural mode) | SATISFIED |
 
 **Context requirements:** None.
@@ -1731,6 +1822,7 @@ spending paths.
 ### 31. LATCH_RESET (0x0622)
 
 **Family:** PLC
+
 **Purpose:** Latch reset. SATISFIED when the state is >= 1 (set), allowing the latch
 to be reset. Includes a delay parameter for timed reset windows. Pair with
 RECURSE_MODIFIED to enforce state transition from 1 to 0.
@@ -1739,14 +1831,14 @@ RECURSE_MODIFIED to enforce state transition from 1 to 0.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Resetter key commitment |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Resetter key |
 | NUMERIC[0] | NUMERIC (0x08) | 1-4 B | Yes | State (0=unset, >=1=set) |
 | NUMERIC[1] | NUMERIC (0x08) | 1-4 B | Yes | Delay blocks (informational, not enforced by evaluator directly) |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 1: return ERROR
+if pubkey count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.size() < 2: return ERROR  // need state + delay
 state = ReadNumeric(numerics[0])
@@ -1762,7 +1854,7 @@ return UNSATISFIED                // already unset
 |-----------|--------|
 | state >= 1 (set) | SATISFIED |
 | state == 0 (already unset) | UNSATISFIED |
-| Missing PUBKEY_COMMIT or fewer than 2 NUMERICs | ERROR |
+| Missing PUBKEY or fewer than 2 NUMERICs | ERROR |
 
 **Context requirements:** None.
 
@@ -1789,6 +1881,7 @@ RECURSE_MODIFIED (delta=-1) to enforce 1-to-0 transition.
 ### 32. COUNTER_DOWN (0x0631)
 
 **Family:** PLC
+
 **Purpose:** Down counter. SATISFIED while count > 0 (can still decrement). Pair with
 RECURSE_MODIFIED (delta=-1) to decrement each spend.
 
@@ -1796,13 +1889,13 @@ RECURSE_MODIFIED (delta=-1) to decrement each spend.
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Event signer key commitment |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Event signer key |
 | NUMERIC | NUMERIC (0x08) | 1-4 B | Yes | Current count |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 1: return ERROR
+if pubkey count < 1: return ERROR
 if NUMERIC absent: return ERROR
 count = ReadNumeric(NUMERIC)
 if count < 0: return ERROR
@@ -1840,6 +1933,7 @@ RECURSE_COUNT but operates as a PLC contact for complex ladder logic.
 ### 33. COUNTER_PRESET (0x0632)
 
 **Family:** PLC
+
 **Purpose:** Preset counter (approval accumulator). SATISFIED while current < preset
 (still accumulating). UNSATISFIED when current >= preset (target reached). Pair with
 RECURSE_MODIFIED (delta=+1 on current) to increment.
@@ -1894,21 +1988,22 @@ return UNSATISFIED
 ### 34. COUNTER_UP (0x0633)
 
 **Family:** PLC
+
 **Purpose:** Up counter with target. SATISFIED while current < target (still counting
-up). UNSATISFIED when current >= target. Requires a PUBKEY_COMMIT for authorization.
+up). UNSATISFIED when current >= target. Requires a PUBKEY for authorization.
 
 **Fields:**
 
 | Name | Data Type | Size | Required | Description |
 |------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT (0x09) | 32 B | Yes | Event signer key commitment |
+| PUBKEY | PUBKEY (0x01) | 32-33 B | Yes | Event signer key |
 | NUMERIC[0] | NUMERIC (0x08) | 1-4 B | Yes | Current count |
 | NUMERIC[1] | NUMERIC (0x08) | 1-4 B | Yes | Target count |
 
 **Evaluation logic:**
 
 ```
-if PUBKEY_COMMIT count < 1: return ERROR
+if pubkey count < 1: return ERROR
 numerics = FindAllFields(NUMERIC)
 if numerics.size() < 2: return ERROR
 current = ReadNumeric(numerics[0])
@@ -1924,7 +2019,7 @@ return UNSATISFIED
 |-----------|--------|
 | current < target | SATISFIED |
 | current >= target | UNSATISFIED |
-| Missing PUBKEY_COMMIT, fewer than 2 NUMERICs, or negative values | ERROR |
+| Missing PUBKEY, fewer than 2 NUMERICs, or negative values | ERROR |
 
 **Context requirements:** None.
 
@@ -1944,13 +2039,14 @@ return UNSATISFIED
 0 of 10 events counted.
 
 **Common patterns:** Event counting with authorization. Similar to COUNTER_PRESET but
-with a PUBKEY_COMMIT requirement for spending authorization.
+with a PUBKEY requirement for spending authorization.
 
 ---
 
 ### 35. COMPARE (0x0641)
 
 **Family:** PLC
+
 **Purpose:** Amount comparator. Compares the input UTXO amount against threshold values
 using a specified comparison operator.
 
@@ -2019,6 +2115,7 @@ size. Pairs with AMOUNT_LOCK for comprehensive value constraints.
 ### 36. SEQUENCER (0x0651)
 
 **Family:** PLC
+
 **Purpose:** Step sequencer. SATISFIED when the current step index is valid (within
 bounds). Pair with RECURSE_MODIFIED (delta=+1 on current_step) to advance the sequence
 each spend.
@@ -2073,6 +2170,7 @@ State machine step tracking.
 ### 37. ONE_SHOT (0x0661)
 
 **Family:** PLC
+
 **Purpose:** Single-fire activation. SATISFIED only if state is 0 (unfired). Once
 fired, the state is set to 1 via RECURSE_MODIFIED and the block becomes permanently
 UNSATISFIED. The HASH256 commitment provides a unique identity for the one-shot event.
@@ -2124,6 +2222,7 @@ time claim tickets.
 ### 38. RATE_LIMIT (0x0671)
 
 **Family:** PLC
+
 **Purpose:** Per-block rate limiter. Constrains the output amount to not exceed
 max_per_block in a single transaction. Accumulation cap and refill parameters are
 available for UTXO-chain tracking.
@@ -2184,6 +2283,7 @@ protection on hot wallets.
 ### 39. COSIGN (0x0681)
 
 **Family:** PLC
+
 **Purpose:** Co-spend contact. Requires that another input in the same transaction
 has a spent output whose scriptPubKey hashes to the committed value. This creates a
 dependency between inputs, ensuring two specific UTXOs are spent atomically together.
@@ -2235,26 +2335,682 @@ Authorization tokens that must be co-spent with a target UTXO.
 
 ---
 
+## Compound Family
+
+Compound blocks combine multiple spending conditions (signature, timelock, hash) into a
+single block. They are semantically equivalent to placing the individual blocks in the
+same rung, but save wire bytes and simplify common patterns like HTLCs and timelocked
+signatures.
+
+### 40. TIMELOCKED_SIG (0x0701)
+
+**Family:** Compound
+
+**Purpose:** SIG + CSV in one block. Requires a valid signature AND a relative timelock
+(CSV) to be satisfied. Equivalent to placing SIG and CSV blocks in the same rung.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| pubkey | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Signing public key (or commitment in conditions) |
+| scheme | SCHEME (0x09) | 1 B | No | Signature scheme (default: Schnorr). Enables PQ routing. |
+| csv_delay | NUMERIC (0x08) | varint | Yes | Relative timelock in blocks (BIP-68 sequence value) |
+| signature | SIGNATURE (0x06) | 64--65 B | Yes | Schnorr signature (witness only) |
+
+**Evaluation logic:**
+
+```
+if PUBKEY_COMMIT present: verify SHA256(PUBKEY) == PUBKEY_COMMIT
+if SCHEME is PQ: route to VerifyPQSignature()
+else: verify Schnorr/ECDSA signature against PUBKEY
+if CSV disable flag set: return SATISFIED
+if CheckSequence(csv_delay) fails: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid signature + CSV delay met | SATISFIED |
+| Valid signature + CSV delay not met | UNSATISFIED |
+| Invalid signature | UNSATISFIED |
+| Missing fields | ERROR |
+
+**Context requirements:** Signature checker, sequence enforcement.
+
+**Example:**
+
+```json
+{
+  "type": "TIMELOCKED_SIG",
+  "fields": [
+    { "type": "PUBKEY", "hex": "02abc..." },
+    { "type": "NUMERIC", "value": 144 }
+  ]
+}
+```
+
+**Common patterns:** Time-delayed single-sig spending. Recovery paths with mandatory
+waiting periods. Staged withdrawal from vaults.
+
+---
+
+### 41. HTLC (0x0702)
+
+**Family:** Compound
+
+**Purpose:** Hash Time-Locked Contract. Requires a valid signature, a hash preimage
+reveal, AND a relative timelock. The standard Lightning Network HTLC pattern in a
+single block.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| sender_key | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Sender's public key (refund path) |
+| receiver_key | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Receiver's public key (claim path) |
+| hash_lock | HASH256 (0x03) | 32 B | Yes | SHA-256 hash that the preimage must match |
+| csv_delay | NUMERIC (0x08) | varint | Yes | Relative timelock for the refund path |
+| signature | SIGNATURE (0x06) | 64--65 B | Yes | Schnorr/ECDSA signature (witness only) |
+| preimage | PREIMAGE (0x05) | 1--252 B | Yes | Hash preimage (witness only) |
+
+**Evaluation logic:**
+
+```
+if SHA256(preimage) != hash_lock: return UNSATISFIED
+if CheckSequence(csv_delay) fails: return UNSATISFIED
+resolve PUBKEY_COMMITs, verify signature against first matched pubkey
+if signature invalid: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid preimage + valid sig + CSV met | SATISFIED |
+| Wrong preimage | UNSATISFIED |
+| Invalid signature | UNSATISFIED |
+| CSV not met | UNSATISFIED |
+| Missing fields | ERROR |
+
+**Context requirements:** Signature checker, sequence enforcement.
+
+**Example:**
+
+```json
+{
+  "type": "HTLC",
+  "fields": [
+    { "type": "PUBKEY", "hex": "02sender..." },
+    { "type": "PUBKEY", "hex": "02receiver..." },
+    { "type": "HASH256", "hex": "sha256_hash_32B" },
+    { "type": "NUMERIC", "value": 144 }
+  ]
+}
+```
+
+**Common patterns:** Lightning Network payment channels. Cross-chain atomic swaps.
+Conditional payments with timeout refund.
+
+---
+
+### 42. HASH_SIG (0x0703)
+
+**Family:** Compound
+
+**Purpose:** HASH_PREIMAGE + SIG in one block. Requires both a valid hash preimage
+and a valid signature. Used for atomic swap claim paths where no timelock is needed.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| pubkey | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Signing public key |
+| hash_lock | HASH256 (0x03) | 32 B | Yes | SHA-256 hash the preimage must match |
+| scheme | SCHEME (0x09) | 1 B | No | Signature scheme. Enables PQ routing. |
+| signature | SIGNATURE (0x06) | 64--65 B | Yes | Schnorr signature (witness only) |
+| preimage | PREIMAGE (0x05) | 1--252 B | Yes | Hash preimage (witness only) |
+
+**Evaluation logic:**
+
+```
+if SHA256(preimage) != hash_lock: return UNSATISFIED
+resolve PUBKEY_COMMITs, verify signature (PQ if SCHEME indicates)
+if signature invalid: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid preimage + valid signature | SATISFIED |
+| Wrong preimage | UNSATISFIED |
+| Invalid signature | UNSATISFIED |
+| Missing fields | ERROR |
+
+**Context requirements:** Signature checker.
+
+**Example:**
+
+```json
+{
+  "type": "HASH_SIG",
+  "fields": [
+    { "type": "PUBKEY", "hex": "02abc..." },
+    { "type": "HASH256", "hex": "sha256_hash_32B" }
+  ]
+}
+```
+
+**Common patterns:** Atomic swap claim (no timeout). Hash-gated signature verification.
+
+---
+
+### 43. PTLC (0x0704)
+
+**Family:** Compound
+
+**Purpose:** Point Time-Locked Contract. ADAPTOR_SIG + CSV in one block. Requires an
+adapted Schnorr signature (where the adaptor secret has been applied off-chain) and a
+relative timelock. The next-generation replacement for HTLCs in payment channels.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| signing_key | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Signing public key |
+| adaptor_point | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32 B | Yes | Adaptor point (committed, not revealed in witness) |
+| csv_delay | NUMERIC (0x08) | varint | Yes | Relative timelock in blocks |
+| signature | SIGNATURE (0x06) | 64--65 B | Yes | Adapted Schnorr signature (witness only) |
+
+**Evaluation logic:**
+
+```
+resolve signing_key from PUBKEY_COMMIT
+verify adapted Schnorr signature against signing_key
+(adaptor_point is committed but not needed for on-chain verification)
+if signature invalid: return UNSATISFIED
+if CheckSequence(csv_delay) fails: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid adapted sig + CSV met | SATISFIED |
+| Invalid signature | UNSATISFIED |
+| CSV not met | UNSATISFIED |
+| Missing fields | ERROR |
+
+**Context requirements:** Signature checker, sequence enforcement. Schnorr only (no ECDSA/PQ).
+
+**Example:**
+
+```json
+{
+  "type": "PTLC",
+  "fields": [
+    { "type": "PUBKEY", "hex": "02signing_key..." },
+    { "type": "PUBKEY", "hex": "adaptor_point_32B_xonly" },
+    { "type": "NUMERIC", "value": 144 }
+  ]
+}
+```
+
+**Common patterns:** PTLC payment channels. Conditional payments without hash preimage
+revelation (superior privacy to HTLCs). Adaptor signature constructions.
+
+---
+
+### 44. CLTV_SIG (0x0705)
+
+**Family:** Compound
+
+**Purpose:** SIG + CLTV in one block. Requires a valid signature AND an absolute
+timelock (by block height). Equivalent to placing SIG and CLTV blocks in the same rung.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| pubkey | PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B | Yes | Signing public key |
+| scheme | SCHEME (0x09) | 1 B | No | Signature scheme. Enables PQ routing. |
+| cltv_height | NUMERIC (0x08) | varint | Yes | Absolute block height (nLockTime minimum) |
+| signature | SIGNATURE (0x06) | 64--65 B | Yes | Schnorr signature (witness only) |
+
+**Evaluation logic:**
+
+```
+resolve PUBKEY_COMMITs, verify signature (PQ if SCHEME indicates)
+if signature invalid: return UNSATISFIED
+if CheckLockTime(cltv_height) fails: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid signature + CLTV met | SATISFIED |
+| Invalid signature | UNSATISFIED |
+| CLTV height not reached | UNSATISFIED |
+| Missing fields | ERROR |
+
+**Context requirements:** Signature checker, locktime enforcement.
+
+**Example:**
+
+```json
+{
+  "type": "CLTV_SIG",
+  "fields": [
+    { "type": "PUBKEY", "hex": "02abc..." },
+    { "type": "NUMERIC", "value": 850000 }
+  ]
+}
+```
+
+**Common patterns:** Time-locked inheritance. Absolute-time vesting schedules.
+
+---
+
+### 45. TIMELOCKED_MULTISIG (0x0706)
+
+**Family:** Compound
+
+**Purpose:** MULTISIG + CSV in one block. Requires M-of-N threshold signatures AND a
+relative timelock. Used for time-delayed multisig governance.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| threshold | NUMERIC (0x08) | varint | Yes | M (minimum signatures required) |
+| pubkeys | N x PUBKEY (0x01) / PUBKEY_COMMIT (0x02) | 32--2048 B each | Yes | N public keys |
+| csv_delay | NUMERIC (0x08) | varint | Yes | Relative timelock in blocks |
+| signatures | M x SIGNATURE (0x06) | 64--65 B each | Yes | M Schnorr signatures (witness only) |
+| scheme | SCHEME (0x09) | 1 B | No | Signature scheme. Enables PQ routing. |
+
+**Evaluation logic:**
+
+```
+read threshold M from first NUMERIC
+resolve PUBKEY_COMMITs (need >= M matching PUBKEYs)
+verify M-of-N signatures (each sig must match a distinct pubkey)
+if fewer than M valid signatures: return UNSATISFIED
+if CheckSequence(csv_delay) fails: return UNSATISFIED
+return SATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| M valid sigs + CSV met | SATISFIED |
+| Fewer than M valid sigs | UNSATISFIED |
+| CSV not met | UNSATISFIED |
+| Missing fields or bad threshold | ERROR |
+
+**Context requirements:** Signature checker, sequence enforcement.
+
+**Example:**
+
+```json
+{
+  "type": "TIMELOCKED_MULTISIG",
+  "fields": [
+    { "type": "NUMERIC", "value": 2 },
+    { "type": "PUBKEY", "hex": "02key1..." },
+    { "type": "PUBKEY", "hex": "02key2..." },
+    { "type": "PUBKEY", "hex": "02key3..." },
+    { "type": "NUMERIC", "value": 144 }
+  ]
+}
+```
+
+**Common patterns:** DAO governance with mandatory cooling-off period. Time-delayed
+corporate treasury spending. Staged release mechanisms.
+
+---
+
+## Governance Family
+
+Governance blocks enforce transaction-level constraints that are independent of
+cryptographic signatures. They restrict the structure, timing, or economic properties
+of the spending transaction itself.
+
+### 46. EPOCH_GATE (0x0801)
+
+**Family:** Governance
+
+**Purpose:** Restricts spending to periodic windows based on block height. The UTXO can
+only be spent during the first `window_size` blocks of each `epoch_size`-block epoch.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| epoch_size | NUMERIC (0x08) | varint | Yes | Length of each epoch in blocks (must be > 0) |
+| window_size | NUMERIC (0x08) | varint | Yes | Spending window within each epoch (must be <= epoch_size) |
+
+**Evaluation logic:**
+
+```
+if epoch_size <= 0 or window_size <= 0 or window_size > epoch_size: return ERROR
+position = block_height % epoch_size
+if position < window_size: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Within spending window | SATISFIED |
+| Outside spending window | UNSATISFIED |
+| Invalid parameters | ERROR |
+
+**Context requirements:** `ctx.block_height`.
+
+**Example:**
+
+```json
+{
+  "type": "EPOCH_GATE",
+  "fields": [
+    { "type": "NUMERIC", "value": 144 },
+    { "type": "NUMERIC", "value": 72 }
+  ]
+}
+```
+
+**Common patterns:** Daily spending windows (epoch=144, window=72). Weekly distribution
+schedules. Rate-limited governance operations.
+
+---
+
+### 47. WEIGHT_LIMIT (0x0802)
+
+**Family:** Governance
+
+**Purpose:** Constrains the maximum weight of the spending transaction. Prevents
+fee-siphon attacks by limiting transaction complexity.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| max_weight | NUMERIC (0x08) | varint | Yes | Maximum transaction weight in weight units |
+
+**Evaluation logic:**
+
+```
+if ctx.tx is null: return SATISFIED  // structural validation only
+if GetTransactionWeight(tx) <= max_weight: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Transaction weight within limit | SATISFIED |
+| Transaction too heavy | UNSATISFIED |
+| No tx context | SATISFIED |
+
+**Context requirements:** `ctx.tx`.
+
+**Example:**
+
+```json
+{
+  "type": "WEIGHT_LIMIT",
+  "fields": [
+    { "type": "NUMERIC", "value": 4000 }
+  ]
+}
+```
+
+**Common patterns:** Anti-bloat constraint on covenant outputs. Fee control for
+automated spending paths.
+
+---
+
+### 48. INPUT_COUNT (0x0803)
+
+**Family:** Governance
+
+**Purpose:** Constrains the number of inputs in the spending transaction to a range
+[min, max]. Enforces transaction structure requirements.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| min_inputs | NUMERIC (0x08) | varint | Yes | Minimum number of inputs (inclusive) |
+| max_inputs | NUMERIC (0x08) | varint | Yes | Maximum number of inputs (inclusive) |
+
+**Evaluation logic:**
+
+```
+if min_inputs > max_inputs: return ERROR
+if ctx.tx is null: return SATISFIED
+count = tx.vin.size()
+if count >= min_inputs AND count <= max_inputs: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Input count within range | SATISFIED |
+| Input count outside range | UNSATISFIED |
+| Invalid range | ERROR |
+| No tx context | SATISFIED |
+
+**Context requirements:** `ctx.tx`.
+
+**Example:**
+
+```json
+{
+  "type": "INPUT_COUNT",
+  "fields": [
+    { "type": "NUMERIC", "value": 1 },
+    { "type": "NUMERIC", "value": 5 }
+  ]
+}
+```
+
+**Common patterns:** Singleton-input covenants. Batching constraints.
+
+---
+
+### 49. OUTPUT_COUNT (0x0804)
+
+**Family:** Governance
+
+**Purpose:** Constrains the number of outputs in the spending transaction to a range
+[min, max]. Symmetric to INPUT_COUNT.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| min_outputs | NUMERIC (0x08) | varint | Yes | Minimum number of outputs (inclusive) |
+| max_outputs | NUMERIC (0x08) | varint | Yes | Maximum number of outputs (inclusive) |
+
+**Evaluation logic:**
+
+```
+if min_outputs > max_outputs: return ERROR
+if ctx.tx is null: return SATISFIED
+count = tx.vout.size()
+if count >= min_outputs AND count <= max_outputs: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Output count within range | SATISFIED |
+| Output count outside range | UNSATISFIED |
+| Invalid range | ERROR |
+| No tx context | SATISFIED |
+
+**Context requirements:** `ctx.tx`.
+
+**Example:**
+
+```json
+{
+  "type": "OUTPUT_COUNT",
+  "fields": [
+    { "type": "NUMERIC", "value": 2 },
+    { "type": "NUMERIC", "value": 2 }
+  ]
+}
+```
+
+**Common patterns:** Exactly-2-output covenant enforcement. Anti-fan-out constraints.
+
+---
+
+### 50. RELATIVE_VALUE (0x0805)
+
+**Family:** Governance
+
+**Purpose:** Enforces that the output value is at least a given fraction of the input
+value. Prevents fee-siphon attacks where a malicious spender routes most value to fees.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| numerator | NUMERIC (0x08) | varint | Yes | Numerator of the minimum ratio |
+| denominator | NUMERIC (0x08) | varint | Yes | Denominator of the minimum ratio (must be > 0) |
+
+**Evaluation logic:**
+
+```
+if denominator == 0: return ERROR
+// Satisfied when: output_amount / input_amount >= numerator / denominator
+// Computed as: output_amount * denominator >= input_amount * numerator
+// Uses 128-bit arithmetic to prevent overflow
+if output_amount * denominator >= input_amount * numerator: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Value ratio sufficient | SATISFIED |
+| Value ratio too low | UNSATISFIED |
+| Zero denominator | ERROR |
+
+**Context requirements:** `ctx.input_amount`, `ctx.output_amount`.
+
+**Example:**
+
+```json
+{
+  "type": "RELATIVE_VALUE",
+  "fields": [
+    { "type": "NUMERIC", "value": 9 },
+    { "type": "NUMERIC", "value": 10 }
+  ]
+}
+```
+
+**Common patterns:** Anti-fee-siphon (output >= 90% of input). Value preservation in
+recursive covenants. DCA covenant minimum re-encumbrance.
+
+---
+
+### 51. ACCUMULATOR (0x0806)
+
+**Family:** Governance
+
+**Purpose:** Merkle accumulator set membership proof. Verifies that a leaf value is
+included in a Merkle tree with a committed root hash. Enables scalable set membership
+checks without enumerating all elements on-chain.
+
+**Fields:**
+
+| Name | Data Type | Size | Required | Description |
+|------|-----------|------|----------|-------------|
+| root | HASH256 (0x03) | 32 B | Yes | Merkle root hash (conditions) |
+| siblings | N x HASH256 (0x03) | 32 B each | Yes | Proof path sibling hashes (witness) |
+| leaf | HASH256 (0x03) | 32 B | Yes | Leaf hash to verify (witness) |
+
+**Evaluation logic:**
+
+```
+if fewer than 3 HASH256 fields: return ERROR
+root = hashes[0], leaf = hashes[last]
+current = leaf
+for each sibling in hashes[1..N-1]:
+    if current < sibling: current = SHA256(current || sibling)
+    else: current = SHA256(sibling || current)
+if current == root: return SATISFIED
+return UNSATISFIED
+```
+
+**Return values:**
+
+| Condition | Result |
+|-----------|--------|
+| Valid Merkle proof to root | SATISFIED |
+| Proof does not verify | UNSATISFIED |
+| Fewer than 3 hashes | ERROR |
+
+**Context requirements:** None (self-contained verification).
+
+**Example:**
+
+```json
+{
+  "type": "ACCUMULATOR",
+  "fields": [
+    { "type": "HASH256", "hex": "merkle_root_32B" },
+    { "type": "HASH256", "hex": "sibling1_32B" },
+    { "type": "HASH256", "hex": "sibling2_32B" },
+    { "type": "HASH256", "hex": "leaf_hash_32B" }
+  ]
+}
+```
+
+**Common patterns:** Allowlist/blocklist enforcement. Scalable whitelist covenants.
+Commitment set proofs. Accumulator-based spending authorization.
+
+---
+
 ## Appendix: Data Type Reference
 
 | Type Code | Name | Min Size | Max Size | Description |
 |-----------|------|----------|----------|-------------|
-| 0x01 | PUBKEY | 1 B | 2048 B | Public key (compressed, x-only, or PQ). **Witness only.** |
+| 0x01 | PUBKEY | 1 B | 2048 B | Public key (compressed, x-only, or PQ) |
 | 0x02 | PUBKEY_COMMIT | 32 B | 32 B | SHA-256 commitment to a public key |
 | 0x03 | HASH256 | 32 B | 32 B | SHA-256 hash digest |
 | 0x04 | HASH160 | 20 B | 20 B | RIPEMD160(SHA256()) hash digest |
 | 0x05 | PREIMAGE | 1 B | 252 B | Hash preimage (witness only) |
 | 0x06 | SIGNATURE | 1 B | 50000 B | Cryptographic signature (witness only) |
 | 0x07 | SPEND_INDEX | 4 B | 4 B | Spend index reference |
-| 0x08 | NUMERIC | 1 B | 4 B | Numeric value (little-endian unsigned) |
+| 0x08 | NUMERIC | 1 B | 4 B | Numeric value (wire: varint; memory: 4-byte LE unsigned) |
 | 0x09 | SCHEME | 1 B | 1 B | Signature scheme selector |
 
-Condition data types (allowed in scriptPubKey): PUBKEY_COMMIT, HASH256,
+Condition data types (allowed in scriptPubKey): PUBKEY, PUBKEY_COMMIT, HASH256,
 HASH160, NUMERIC, SCHEME, SPEND_INDEX.
 
-Witness-only data types (not allowed in scriptPubKey conditions): PUBKEY, SIGNATURE, PREIMAGE.
-
-Policy limit: A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH combined) are permitted per witness (`MAX_PREIMAGE_BLOCKS_PER_WITNESS = 2`).
+Witness-only data types (not allowed in scriptPubKey conditions): SIGNATURE, PREIMAGE.
 
 ## Appendix: Signature Schemes
 
@@ -2265,192 +3021,6 @@ Policy limit: A maximum of 2 preimage-bearing blocks (HASH_PREIMAGE, HASH160_PRE
 | 0x10 | FALCON512 | varies | varies | Post-quantum |
 | 0x11 | FALCON1024 | varies | varies | Post-quantum |
 | 0x12 | DILITHIUM3 | varies | varies | Post-quantum |
-| 0x13 | SPHINCS_SHA | varies | up to 2048 B | Post-quantum |
 
 Post-quantum schemes (code >= 0x10) are routed through `VerifyPQSignature()` and
 use `ComputeLadderSighash()` with `SIGHASH_DEFAULT`.
-
----
-
-## Compound Family
-
-Compound blocks collapse common multi-block patterns into single blocks, eliminating
-duplicate block headers on wire. Each compound block evaluates its constituent checks
-in sequence — all must pass for SATISFIED.
-
-### 40. TIMELOCKED_SIG (0x0701)
-
-**Family:** Compound
-
-**Purpose:** SIG + CSV in one block. Signature verification with relative timelock.
-Saves 8 bytes vs separate blocks (5.1%).
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
-| NUMERIC | NUMERIC | 1-4 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
-| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
-| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
-| SCHEME | SCHEME | 1 B | Optional (witness) | PQ scheme identifier |
-
-**Evaluation:**
-1. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
-2. Verify signature (Schnorr, ECDSA, or PQ based on SCHEME)
-3. Verify CheckSequence(timelock)
-4. All pass → SATISFIED
-
-### 41. HTLC (0x0702)
-
-**Family:** Compound
-
-**Purpose:** HASH_PREIMAGE + CSV + SIG in one block. Hash Time Locked Contract.
-Saves 16 bytes vs separate blocks (6.9%), 48 bytes vs Tapscript (18.1%).
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| HASH256 | HASH256 | 32 B | Yes (condition) | SHA-256 hash preimage must match |
-| NUMERIC | NUMERIC | 1-4 B | Yes (condition) | Relative timelock (BIP 68 sequence) |
-| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
-| PREIMAGE | PREIMAGE | 1-520 B | Yes (witness) | Hash preimage |
-| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
-| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
-
-**Evaluation:**
-1. Verify SHA256(PREIMAGE) = HASH256
-2. Verify CheckSequence(timelock)
-3. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
-4. Verify signature against PUBKEY
-5. All pass → SATISFIED
-
-### 42. HASH_SIG (0x0703)
-
-**Family:** Compound
-
-**Purpose:** HASH_PREIMAGE + SIG in one block. Hash preimage + signature check.
-Saves 8 bytes vs separate blocks (3.6%).
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| HASH256 | HASH256 | 32 B | Yes (condition) | SHA-256 hash preimage must match |
-| PUBKEY_COMMIT | PUBKEY_COMMIT | 32 B | Yes (condition) | SHA-256 commitment to signing key |
-| PREIMAGE | PREIMAGE | 1-520 B | Yes (witness) | Hash preimage |
-| PUBKEY | PUBKEY | 32-33 B | Yes (witness) | Signing public key |
-| SIGNATURE | SIGNATURE | 64-65 B | Yes (witness) | Schnorr/ECDSA signature |
-
-**Evaluation:**
-1. Verify SHA256(PREIMAGE) = HASH256
-2. Verify PUBKEY_COMMIT = SHA256(PUBKEY)
-3. Verify signature against PUBKEY
-4. All pass → SATISFIED
-
----
-
-## Governance Family
-
-Governance blocks enforce transaction-level constraints. They inspect the spending
-transaction's structure, weight, and value ratios. None have Tapscript equivalents —
-these constraints are not expressible in Bitcoin Script.
-
-### 43. EPOCH_GATE (0x0801)
-
-**Family:** Governance
-
-**Purpose:** Periodic spending windows. Allows spending only when
-`block_height % epoch_size < window_size`.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| NUMERIC[0] | NUMERIC | 1-4 B | Yes (condition) | Epoch size in blocks |
-| NUMERIC[1] | NUMERIC | 1-4 B | Yes (condition) | Window size (must be ≤ epoch_size) |
-
-**Evaluation:** `block_height % epoch_size < window_size` → SATISFIED
-
-### 44. WEIGHT_LIMIT (0x0802)
-
-**Family:** Governance
-
-**Purpose:** Maximum transaction weight constraint.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| NUMERIC | NUMERIC | 1-4 B | Yes (condition) | Maximum allowed weight units |
-
-**Evaluation:** `GetTransactionWeight(tx) <= max_weight` → SATISFIED
-
-### 45. INPUT_COUNT (0x0803)
-
-**Family:** Governance
-
-**Purpose:** Bounds on number of inputs in the spending transaction.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| NUMERIC[0] | NUMERIC | 1-4 B | Yes (condition) | Minimum inputs |
-| NUMERIC[1] | NUMERIC | 1-4 B | Yes (condition) | Maximum inputs |
-
-**Evaluation:** `min <= tx.vin.size() <= max` → SATISFIED
-
-### 46. OUTPUT_COUNT (0x0804)
-
-**Family:** Governance
-
-**Purpose:** Bounds on number of outputs in the spending transaction.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| NUMERIC[0] | NUMERIC | 1-4 B | Yes (condition) | Minimum outputs |
-| NUMERIC[1] | NUMERIC | 1-4 B | Yes (condition) | Maximum outputs |
-
-**Evaluation:** `min <= tx.vout.size() <= max` → SATISFIED
-
-### 47. RELATIVE_VALUE (0x0805)
-
-**Family:** Governance
-
-**Purpose:** Anti-siphon ratio enforcement. Output must maintain a minimum ratio of
-input value. Uses integer ratio (no floating point). Overflow-safe via `__int128`.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| NUMERIC[0] | NUMERIC | 1-4 B | Yes (condition) | Numerator (≥ 0) |
-| NUMERIC[1] | NUMERIC | 1-4 B | Yes (condition) | Denominator (> 0) |
-
-**Evaluation:** `output_amount * denominator >= input_amount * numerator` → SATISFIED
-
-Example: 9/10 ratio means output must be ≥ 90% of input.
-
-### 48. ACCUMULATOR (0x0806)
-
-**Family:** Governance
-
-**Purpose:** Merkle set membership proof. Conditions commit to a Merkle root; witness
-provides the leaf and sibling path. Uses sorted-pair convention: `hash(min(a,b) || max(a,b))`.
-
-**Fields:**
-
-| Name | Data Type | Size | Required | Description |
-|------|-----------|------|----------|-------------|
-| HASH256[0] | HASH256 | 32 B | Yes (condition) | Merkle root |
-| HASH256[1..N] | HASH256 | 32 B each | Yes (witness) | Sibling hashes (proof path) |
-| HASH256[N+1] | HASH256 | 32 B | Yes (witness) | Leaf hash being proven |
-
-**Evaluation:**
-1. Start with leaf
-2. For each sibling: `current = SHA256(min(current, sibling) || max(current, sibling))`
-3. Compare computed root to committed root → SATISFIED if equal

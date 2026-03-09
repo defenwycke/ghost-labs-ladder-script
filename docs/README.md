@@ -52,19 +52,19 @@ cryptography, and stateful smart contracts.
 
 ## Block Type Overview
 
-Ladder Script defines 48 block types across 9 families. Each block evaluates a
+Ladder Script defines 52 block types across 9 families. Each block evaluates a
 single spending condition within a rung.
 
 | Family | Range | Block Types |
 |--------|-------|-------------|
-| **Signature** | 0x0001-0x00FF | `SIG`, `MULTISIG`, `ADAPTOR_SIG` |
+| **Signature** | 0x0001-0x00FF | `SIG`, `MULTISIG`, `ADAPTOR_SIG`, `MUSIG_THRESHOLD` |
 | **Timelock** | 0x0100-0x01FF | `CSV`, `CSV_TIME`, `CLTV`, `CLTV_TIME` |
 | **Hash** | 0x0200-0x02FF | `HASH_PREIMAGE`, `HASH160_PREIMAGE`, `TAGGED_HASH` |
 | **Covenant** | 0x0300-0x03FF | `CTV`, `VAULT_LOCK`, `AMOUNT_LOCK` |
 | **Recursion** | 0x0400-0x04FF | `RECURSE_SAME`, `RECURSE_MODIFIED`, `RECURSE_UNTIL`, `RECURSE_COUNT`, `RECURSE_SPLIT`, `RECURSE_DECAY` |
 | **Anchor** | 0x0500-0x05FF | `ANCHOR`, `ANCHOR_CHANNEL`, `ANCHOR_POOL`, `ANCHOR_RESERVE`, `ANCHOR_SEAL`, `ANCHOR_ORACLE` |
 | **PLC** | 0x0600-0x06FF | `HYSTERESIS_FEE`, `HYSTERESIS_VALUE`, `TIMER_CONTINUOUS`, `TIMER_OFF_DELAY`, `LATCH_SET`, `LATCH_RESET`, `COUNTER_DOWN`, `COUNTER_PRESET`, `COUNTER_UP`, `COMPARE`, `SEQUENCER`, `ONE_SHOT`, `RATE_LIMIT`, `COSIGN` |
-| **Compound** | 0x0700-0x07FF | `TIMELOCKED_SIG`, `HTLC`, `HASH_SIG` |
+| **Compound** | 0x0700-0x07FF | `TIMELOCKED_SIG`, `HTLC`, `HASH_SIG`, `PTLC`, `CLTV_SIG`, `TIMELOCKED_MULTISIG` |
 | **Governance** | 0x0800-0x08FF | `EPOCH_GATE`, `WEIGHT_LIMIT`, `INPUT_COUNT`, `OUTPUT_COUNT`, `RELATIVE_VALUE`, `ACCUMULATOR` |
 
 Each block type accepts typed fields (PUBKEY, HASH256, NUMERIC, SCHEME, etc.)
@@ -80,7 +80,7 @@ are defined:
 
 | Type | Byte | Size | Allowed In |
 |------|------|------|------------|
-| PUBKEY | 0x01 | 1-2048 bytes | Witness only |
+| PUBKEY | 0x01 | 1-2048 bytes | Conditions, Witness |
 | PUBKEY_COMMIT | 0x02 | 32 bytes (fixed) | Conditions |
 | HASH256 | 0x03 | 32 bytes (fixed) | Conditions |
 | HASH160 | 0x04 | 20 bytes (fixed) | Conditions |

@@ -8,12 +8,6 @@ walkthrough of how the evaluator processes the transaction.
 All examples use transaction version 4 (v4 RUNG_TX). Public keys, hashes, and
 transaction IDs shown here are illustrative placeholders.
 
-**Note on PUBKEY in conditions:** The `createrungtx` RPC auto-hashes any PUBKEY
-field to PUBKEY_COMMIT (SHA-256) when building output conditions. Users provide
-pubkey hex as `"type": "PUBKEY"` in the JSON and the RPC performs the conversion.
-The on-chain conditions contain PUBKEY_COMMIT (32 bytes); the raw PUBKEY is
-provided in the witness at spend time.
-
 ---
 
 ## Conventions
@@ -872,6 +866,101 @@ on a separate state rung, with each UTXO spend representing one scan cycle.
 
 ---
 
+## 9. Diff Witness (Two-Input SIG Batch)
+
+### Scenario
+
+A user controls two UTXOs locked by the same SIG conditions (same public key). They want to consolidate both into a single output. Rather than providing a full witness for each input, the second input inherits the first input's witness structure and only provides a fresh signature (which differs because the sighash includes the input index).
+
+### Ladder Diagram
+
+```
+INPUT 0 (full witness):
+     L+                                              L-
+     |                                                |
+R000 |--[ SIG: pk=02ab..., sig=3045... ]---(  )-------|
+     |                                                |
+     +------------------------------------------------+
+
+INPUT 1 (diff witness → inherits from input 0):
+     L+                                              L-
+     |                                                |
+     |   DIFF_WITNESS: source=input_0                 |
+     |   diff[0]: rung=0, block=0, field=1 → sig=3046|
+     |---(  )------------------------------------------
+     |                                                |
+     +------------------------------------------------+
+```
+
+### Wire Comparison
+
+| Input | Encoding | Size |
+|-------|----------|------|
+| Input 0 | Full witness (SIG block + PUBKEY + SIGNATURE + coil) | 107 bytes |
+| Input 1 | Diff witness (sentinel + source_idx + 1 diff + coil) | 77 bytes |
+| **Savings** | | **28%** |
+
+### createrungtx JSON
+
+```json
+{
+  "inputs": [
+    {"txid": "aabb...", "vout": 0},
+    {"txid": "ccdd...", "vout": 0}
+  ],
+  "outputs": [
+    {
+      "amount": 0.099,
+      "conditions": [{"blocks": [{"type": "SIG", "fields": [
+        {"type": "PUBKEY", "hex": "02abcdef..."}
+      ]}]}]
+    }
+  ]
+}
+```
+
+### signrungtx JSON
+
+```json
+{
+  "signers": [
+    {"input": 0, "blocks": [{"type": "SIG", "privkey": "cVt..."}]},
+    {"input": 1, "diff_witness": {
+      "source_input": 0,
+      "diffs": [
+        {"rung_index": 0, "block_index": 0, "field_index": 1,
+         "field": {"type": "SIGNATURE", "privkey": "cVt..."}}
+      ]
+    }}
+  ]
+}
+```
+
+### Evaluation Walkthrough
+
+1. **Input 0** is deserialized as a normal ladder witness. The SIG block contains PUBKEY and SIGNATURE fields. `EvalBlock(SIG)` verifies the Schnorr signature against `LadderSighash(input_index=0)`. The rung is SATISFIED.
+
+2. **Input 1** is deserialized. `n_rungs = 0` triggers diff witness mode:
+   - `input_index = 0` → copy rungs and relays from input 0's witness.
+   - One diff: replace `rungs[0].blocks[0].fields[1]` (SIGNATURE) with a fresh signature.
+   - The coil is read fresh from the diff witness bytes.
+   - `witness_ref` is cleared; the witness is now fully resolved.
+
+3. The resolved witness for input 1 has the same structure as input 0 but with a different signature. `EvalBlock(SIG)` verifies the signature against `LadderSighash(input_index=1)` — a different sighash because the input index differs. The rung is SATISFIED.
+
+4. Both inputs pass evaluation. The transaction is valid.
+
+### When to Use Diff Witness
+
+Diff witness is most valuable when:
+- **Batch consolidation**: Many UTXOs with identical conditions spend in one transaction.
+- **Covenant chains**: Sequential spends where witness structure is repetitive.
+- **MULTISIG batches**: Inherit the full key set and threshold structure, diff only the signatures.
+
+Savings scale with witness complexity: a MULTISIG(3-of-5) witness saves ~60% per additional input via diff witness, since only the 3 signatures need diffs while 5 pubkeys are inherited.
+
+---
+
 ## Summary of Evaluation Rules
 
 | Rule | Scope | Behavior |
@@ -887,18 +976,18 @@ on a separate state rung, with each UTXO spend representing one scan cycle.
 
 ## Appendix: NUMERIC Field Encoding
 
-All NUMERIC values in the wire format are 4-byte little-endian unsigned integers.
+NUMERIC values are encoded on the wire as `CompactSize(value)` (varint). After deserialization, they are stored in memory as 4-byte little-endian unsigned integers for evaluator compatibility.
 
-| Decimal | Hex (LE) | Field |
-|---------|----------|-------|
-| 2 | `02000000` | MULTISIG threshold |
-| 3 | `03000000` | RECURSE_COUNT remaining |
-| 5 | `05000000` | HYSTERESIS_FEE low bound |
-| 50 | `32000000` | HYSTERESIS_FEE high bound |
-| 144 | `90000000` | CSV 144 blocks |
-| 1000 | `e8030000` | RECURSE_SAME depth |
-| 10,000 | `10270000` | AMOUNT_LOCK min |
-| 50,000 | `50c30000` | AMOUNT_LOCK min (DCA) |
-| 52,560 | `50cd0000` | CSV ~1 year in blocks |
-| 100,000 | `a0860100` | AMOUNT_LOCK max (DCA) |
-| 500,000 | `20a10700` | AMOUNT_LOCK max |
+| Decimal | Wire (varint) | Memory (4B LE) | Field |
+|---------|--------------|----------------|-------|
+| 2 | `02` | `02000000` | MULTISIG threshold |
+| 3 | `03` | `03000000` | RECURSE_COUNT remaining |
+| 5 | `05` | `05000000` | HYSTERESIS_FEE low bound |
+| 50 | `32` | `32000000` | HYSTERESIS_FEE high bound |
+| 144 | `9000` (fd prefix not needed; `90` < 253) | `90000000` | CSV 144 blocks |
+| 1000 | `fde803` | `e8030000` | RECURSE_SAME depth |
+| 10,000 | `fd1027` | `10270000` | AMOUNT_LOCK min |
+| 50,000 | `fd50c3` | `50c30000` | AMOUNT_LOCK min (DCA) |
+| 52,560 | `fd50cd` | `50cd0000` | CSV ~1 year in blocks |
+| 100,000 | `fea0860100` | `a0860100` | AMOUNT_LOCK max (DCA) |
+| 500,000 | `fe20a10700` | `20a10700` | AMOUNT_LOCK max |
