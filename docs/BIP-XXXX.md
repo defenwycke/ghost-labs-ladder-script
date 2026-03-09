@@ -542,11 +542,11 @@ The following RPCs are provided for wallet and application integration:
 
 Wallets cannot spend ladder-locked outputs without implementing the ladder evaluator and sighash computation.
 
-**Unified deployment.** All block types activate simultaneously as a single BIP-9 deployment. Upon activation, all block types (signature, timelock, hash, covenant, anchor, recursion, and PLC) are standard and consensus-enforced.
+**Unified deployment.** All block types activate simultaneously as a single deployment. Upon activation, all block types (signature, timelock, hash, covenant, anchor, recursion, and PLC) are standard and enforced.
 
 ## Reference Implementation
 
-The reference implementation is located in the `src/rung/` directory of ghost-core:
+The reference implementation is located in the `src/rung/` directory:
 
 | File | Purpose |
 |------|---------|

@@ -45,6 +45,6 @@ Two inheritance mechanisms minimise transaction size:
 
 ## Implementation
 
-Ladder Script is fully implemented and consensus-standard in Bitcoin Ghost (ghost-core). The implementation comprises 10 source files under `src/rung/`, covering type definitions, serialisation, condition parsing, block evaluation, sighash computation, PQ verification, adaptor signatures, aggregate proofs, and policy enforcement. The test suite includes 303 unit tests and 190 functional test scenarios covering all block types, serialisation round-trips, PQ signatures, covenant evaluation, diff witness resolution, and full mempool acceptance paths.
+Ladder Script is fully implemented and running on a dedicated signet, built on a fork of Bitcoin Core with modified consensus rules. The implementation comprises 10 source files under `src/rung/`, covering type definitions, serialisation, condition parsing, block evaluation, sighash computation, PQ verification, adaptor signatures, aggregate proofs, and policy enforcement. The test suite includes 303 unit tests and 190 functional test scenarios covering all block types, serialisation round-trips, PQ signatures, covenant evaluation, diff witness resolution, and full mempool acceptance paths.
 
 The Ladder Script Engine (`tools/ladder-engine/`) provides a browser-based visual programming environment for designing, simulating, and exporting Ladder Script transactions with no build step or server dependency.

@@ -1,7 +1,7 @@
 # DIFF_WITNESS Implementation Plan
 
 **Status:** Planned (not yet implemented)
-**Depends on:** RUNG_TEMPLATE_INHERIT (complete in ghost-core)
+**Depends on:** RUNG_TEMPLATE_INHERIT (complete on signet)
 **Purpose:** Witness-side counterpart to template inheritance — inherit rungs/relays from a previous input's witness, provide only field-level diffs + fresh coil.
 
 ## Motivation

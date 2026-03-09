@@ -2,7 +2,7 @@
 
 **Bitcoin Ghost Project · March 2026 · v1.0 · Not for distribution**
 
-This document records all deviations between the Ladder Script Block Library spec (v1.0) and the Ghost Core implementation in `ghost-core/src/rung/`. Each deviation is intentional — the implementation reflects what was needed to ship a working system on Bitcoin Core v30.
+This document records all deviations between the Ladder Script Block Library spec (v1.0) and the signet implementation in `src/rung/`. Each deviation is intentional — the implementation reflects what was needed to ship a working system on a Bitcoin Core v30 fork.
 
 ---
 

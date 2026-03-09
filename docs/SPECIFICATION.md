@@ -2,7 +2,7 @@
 
 **Version:** 3 (wire format v3)
 **Transaction version:** 4 (`RUNG_TX_VERSION`)
-**Status:** Implemented; all block types consensus-standard
+**Status:** Implemented; running on signet
 
 ---
 
@@ -1438,7 +1438,7 @@ Post-quantum signature verification uses the Open Quantum Safe (OQS) project's l
 
 A consensus split from a liboqs bug would require the bug to cause *different* verification results on different nodes — i.e., one node accepts a signature that another rejects. This is the same risk class as libsecp256k1 for ECDSA/Schnorr verification. Mitigations:
 
-1. **Pinned version.** The build system pins a specific liboqs release. Nodes running the same ghost-core version use the same liboqs version.
+1. **Pinned version.** The build system pins a specific liboqs release. Nodes running the same the signet node version use the same liboqs version.
 2. **Algorithm stability.** FALCON and Dilithium are NIST-standardised algorithms (FIPS 204, FIPS 206). The verification equations are fixed by the standard.
 3. **Fail-closed default.** Nodes without liboqs reject all PQ signatures. This means PQ transactions require explicit opt-in by node operators who install liboqs, reducing the surface area for version mismatches.
 4. **Activation gating.** PQ signature block types activate with all other block types. Before activation, PQ transactions are non-standard and cannot enter the mempool. After activation, all nodes on the network must support PQ verification to validate blocks.

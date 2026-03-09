@@ -4135,7 +4135,13 @@ function BlockModal({ block, onChange, onClose, rungs }) {
 
           {/* Configuration */}
           <div className="block-modal-section">
-            <div className="block-modal-section-title">CONFIGURATION</div>
+            <div className="block-modal-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              CONFIGURATION
+              <button className="block-modal-expand-btn" onClick={() => {
+                const testVals = generateTestData(block.type);
+                Object.entries(testVals).forEach(([field, value]) => onChange(block.id, field, value));
+              }} title="Populate all fields with valid test data">FILL TEST DATA</button>
+            </div>
             <div className="block-modal-checkbox-row">
               <input
                 type="checkbox"
@@ -4826,7 +4832,13 @@ function PropertiesPanel({ block, onChange, rungs, onExpand }) {
       <div className="prop-section">
         <div className="prop-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>BLOCK — {block.type}</span>
-          <button className="block-modal-expand-btn" onClick={() => onExpand?.(block.id)}>EXPAND ◇</button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button className="block-modal-expand-btn" onClick={() => {
+              const testVals = generateTestData(block.type);
+              Object.entries(testVals).forEach(([field, value]) => onChange(block.id, field, value));
+            }} title="Populate all fields with valid test data">TEST DATA</button>
+            <button className="block-modal-expand-btn" onClick={() => onExpand?.(block.id)}>EXPAND ◇</button>
+          </div>
         </div>
         <div className="prop-row">
           <span className="prop-label">Name</span>
