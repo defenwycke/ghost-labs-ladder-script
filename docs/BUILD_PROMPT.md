@@ -1,6 +1,6 @@
 # Claude Code Prompt: Ladder Script — Ghost Core Implementation v2
 
-> **Note:** This document is a historical build prompt. References to "phases" below reflect the original incremental build strategy used during development. All 52 block types across 9 families are now fully implemented and activate in a single soft fork. See [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) for the current activation strategy.
+> **Note:** This document is a historical build prompt. References to "phases" below reflect the original incremental build strategy used during development. All 53 block types across 9 families are now fully implemented and activate in a single soft fork. See [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) for the current activation strategy.
 
 ---
 

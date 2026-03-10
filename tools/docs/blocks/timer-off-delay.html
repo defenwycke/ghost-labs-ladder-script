@@ -55,7 +55,7 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">remaining</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Remaining count before delay expires (decremented by RECURSE_MODIFIED each spend)</td></tr>
+      <tr><td class="field-name">remaining</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Remaining count before delay expires (decremented by RECURSE_MODIFIED each spend)</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">No witness fields required. RECURSE_MODIFIED on the same rung decrements remaining in the recursed output.</p>

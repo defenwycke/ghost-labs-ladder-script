@@ -89,6 +89,32 @@ Verifies an adaptor signature — a signature that becomes valid when combined w
 
 ---
 
+### `MUSIG_THRESHOLD` · `0x0004`
+
+Aggregate threshold signature verification. The conditions commit a PUBKEY_COMMIT for the aggregate key and NUMERIC fields for M and N. The witness provides the aggregate public key and a single Schnorr signature. The threshold signing ceremony occurs entirely off-chain; on-chain the spend is indistinguishable from a single-sig SIG block.
+
+**Condition params:** `PUBKEY_COMMIT aggregate_key_commit` · `NUMERIC threshold_m` · `NUMERIC group_size_n`
+**Witness params:** `PUBKEY aggregate_key` · `SIGNATURE aggregate_sig`
+
+**Invertible:** No
+
+**Use case:** MuSig2/FROST threshold signing, key-aggregated multisig, privacy-preserving quorums
+
+---
+
+### `KEY_REF_SIG` · `0x0005`
+
+Signature using a key commitment resolved from a relay block. Enables multiple rungs to share a single PUBKEY_COMMIT defined in a relay, avoiding duplication.
+
+**Condition params:** `NUMERIC relay_index` · `NUMERIC field_index` · `SCHEME scheme` (optional)
+**Witness params:** `SIGNATURE sig`
+
+**Invertible:** No
+
+**Use case:** Multi-rung ladders sharing a common key, relay-based key indirection, reducing conditions size
+
+---
+
 ### Signature Schemes
 
 | Scheme | Enum | Sig Size | Notes |
@@ -683,6 +709,8 @@ All block type enum values. Unrecognised blocks return `UNSATISFIED` — forward
 | `0x0001` | `SIG` | Signature | Single signature verification |
 | `0x0002` | `MULTISIG` | Signature | n-of-m threshold signatures |
 | `0x0003` | `ADAPTOR_SIG` | Signature | Adaptor signature (DLC / atomic swap) |
+| `0x0004` | `MUSIG_THRESHOLD` | Signature | Aggregate threshold signature (MuSig2/FROST) |
+| `0x0005` | `KEY_REF_SIG` | Signature | Signature via relay key reference |
 | `0x0101` | `CSV` | Timelock | Relative block timelock |
 | `0x0102` | `CSV_TIME` | Timelock | Relative time timelock |
 | `0x0103` | `CLTV` | Timelock | Absolute block height timelock |
@@ -722,6 +750,9 @@ All block type enum values. Unrecognised blocks return `UNSATISFIED` — forward
 | `0x0701` | `TIMELOCKED_SIG` | Compound | SIG + CSV combined |
 | `0x0702` | `HTLC` | Compound | Hash + Timelock + Sig (Lightning HTLC) |
 | `0x0703` | `HASH_SIG` | Compound | HASH_PREIMAGE + SIG combined |
+| `0x0704` | `PTLC` | Compound | ADAPTOR_SIG + CSV (point time-lock contract) |
+| `0x0705` | `CLTV_SIG` | Compound | SIG + CLTV combined |
+| `0x0706` | `TIMELOCKED_MULTISIG` | Compound | MULTISIG + CSV combined |
 | `0x0801` | `EPOCH_GATE` | Governance | Periodic spending window |
 | `0x0802` | `WEIGHT_LIMIT` | Governance | Maximum transaction weight |
 | `0x0803` | `INPUT_COUNT` | Governance | Input count bounds (min/max) |
@@ -729,7 +760,7 @@ All block type enum values. Unrecognised blocks return `UNSATISFIED` — forward
 | `0x0805` | `RELATIVE_VALUE` | Governance | Output/input value ratio enforcement |
 | `0x0806` | `ACCUMULATOR` | Governance | Merkle set membership proof |
 
-**Total: 52 block types across 9 families.**
+**Total: 53 block types across 9 families.**
 
 ---
 

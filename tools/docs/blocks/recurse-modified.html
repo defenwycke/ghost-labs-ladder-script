@@ -54,11 +54,11 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">max_depth</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum recursion depth (&gt; 0). Bounds the chain of modified spends.</td></tr>
-      <tr><td class="field-name">depth / rung_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target rung index within the ladder conditions. Legacy format uses &ldquo;depth&rdquo;; new format specifies rung_idx per mutation.</td></tr>
-      <tr><td class="field-name">block_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target block index within the rung.</td></tr>
-      <tr><td class="field-name">param_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target parameter index within the block.</td></tr>
-      <tr><td class="field-name">delta</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Additive delta applied to the target parameter. Can be positive or negative.</td></tr>
+      <tr><td class="field-name">max_depth</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum recursion depth (&gt; 0). Bounds the chain of modified spends.</td></tr>
+      <tr><td class="field-name">depth / rung_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target rung index within the ladder conditions. Legacy format uses &ldquo;depth&rdquo;; new format specifies rung_idx per mutation.</td></tr>
+      <tr><td class="field-name">block_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target block index within the rung.</td></tr>
+      <tr><td class="field-name">param_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target parameter index within the block.</td></tr>
+      <tr><td class="field-name">delta</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Additive delta applied to the target parameter. Can be positive or negative.</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px"><strong>Legacy format:</strong> max_depth, depth, block_idx, param_idx, delta (5 NUMERICs, single mutation).<br><strong>New format:</strong> max_depth, depth, num_mutations, then per mutation: rung_idx, block_idx, param_idx, delta (3 + 4N NUMERICs).</p>

@@ -55,7 +55,7 @@
     <tbody>
       <tr><td class="field-name">hash</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">SHA-256 hash the preimage must match</td></tr>
       <tr><td class="field-name">pubkey_commit</td><td class="field-type">PUBKEY_COMMIT</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">SHA-256 commitment to the signing public key</td></tr>
-      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">1-520 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field</td></tr>
+      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">1-252 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field</td></tr>
       <tr><td class="field-name">pubkey</td><td class="field-type">PUBKEY</td><td class="field-size">32-33 B</td><td class="field-side-w">Witness</td><td class="field-desc">Public key matching the commitment</td></tr>
       <tr><td class="field-name">signature</td><td class="field-type">SIGNATURE</td><td class="field-size">64-65 B</td><td class="field-side-w">Witness</td><td class="field-desc">Schnorr signature over the transaction</td></tr>
     </tbody>
@@ -138,7 +138,7 @@
 
 <div class="doc-nav">
   <a href="htlc.html">&larr; HTLC</a>
-  <a href="epoch-gate.html">EPOCH_GATE &rarr;</a>
+  <a href="ptlc.html">PTLC &rarr;</a>
 </div>
 
 </div>

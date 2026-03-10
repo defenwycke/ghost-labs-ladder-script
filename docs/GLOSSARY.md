@@ -371,7 +371,7 @@ single spending condition. Represented by the `RungBlock` struct containing:
 ### RungBlockType
 
 An enum (`uint16_t`) identifying the type of a block. Encoded as 2 bytes (little-endian)
-in the wire format. 52 block types are defined across 9 families. The numeric ranges
+in the wire format. 53 block types are defined across 9 families. The numeric ranges
 partition the type space by family:
 
 | Range | Family |

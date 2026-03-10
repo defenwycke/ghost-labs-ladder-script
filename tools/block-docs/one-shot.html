@@ -56,7 +56,7 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">state</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Trigger state: 0 = armed (can fire), nonzero = fired (permanently used)</td></tr>
+      <tr><td class="field-name">state</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Trigger state: 0 = armed (can fire), nonzero = fired (permanently used)</td></tr>
       <tr><td class="field-name">commitment</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Commitment hash binding the trigger to a specific action or context</td></tr>
     </tbody>
   </table>

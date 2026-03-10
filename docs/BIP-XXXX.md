@@ -110,24 +110,24 @@ The micro-header lookup table maps 128 slot indices to block type values. All 53
 
 | Slot | Block Type | Slot | Block Type | Slot | Block Type |
 |------|------------|------|------------|------|------------|
-| 0x00 | SIG | 0x12 | ACCUMULATOR | 0x24 | TIMELOCKED_SIG |
-| 0x01 | MULTISIG | 0x13 | ANCHOR_RESERVE | 0x25 | COUNTER_PRESET |
-| 0x02 | ADAPTOR_SIG | 0x14 | ANCHOR_SEAL | 0x26 | COUNTER_UP |
-| 0x03 | MUSIG_THRESHOLD | 0x15 | ANCHOR_ORACLE | 0x27 | COMPARE |
-| 0x04 | KEY_REF_SIG | 0x16 | RECURSE_SAME | 0x28 | SEQUENCER |
-| 0x05 | CSV | 0x17 | RECURSE_MODIFIED | 0x29 | ONE_SHOT |
-| 0x06 | CSV_TIME | 0x18 | RECURSE_UNTIL | 0x2A | RATE_LIMIT |
-| 0x07 | CLTV | 0x19 | RECURSE_COUNT | 0x2B | COSIGN |
-| 0x08 | CLTV_TIME | 0x1A | RECURSE_SPLIT | 0x2C | EPOCH_GATE |
-| 0x09 | HASH_PREIMAGE | 0x1B | RECURSE_DECAY | 0x2D | HASH_SIG |
-| 0x0A | HASH160_PREIMAGE | 0x1C | HYSTERESIS_FEE | 0x2E | PTLC |
-| 0x0B | TAGGED_HASH | 0x1D | HYSTERESIS_VALUE | 0x2F | CLTV_SIG |
-| 0x0C | CTV | 0x1E | TIMER_CONTINUOUS | 0x30 | TIMELOCKED_MULTISIG |
-| 0x0D | VAULT_LOCK | 0x1F | TIMER_OFF_DELAY | 0x31 | WEIGHT_LIMIT |
-| 0x0E | AMOUNT_LOCK | 0x20 | LATCH_SET | 0x32 | INPUT_COUNT |
-| 0x0F | ANCHOR | 0x21 | LATCH_RESET | 0x33 | OUTPUT_COUNT |
-| 0x10 | ANCHOR_CHANNEL | 0x22 | COUNTER_DOWN | 0x34 | RELATIVE_VALUE |
-| 0x11 | ANCHOR_POOL | 0x23 | HTLC | | |
+| 0x00 | SIG | 0x12 | RECURSE_DECAY | 0x24 | ONE_SHOT |
+| 0x01 | MULTISIG | 0x13 | ANCHOR | 0x25 | RATE_LIMIT |
+| 0x02 | ADAPTOR_SIG | 0x14 | ANCHOR_CHANNEL | 0x26 | COSIGN |
+| 0x03 | CSV | 0x15 | ANCHOR_POOL | 0x27 | TIMELOCKED_SIG |
+| 0x04 | CSV_TIME | 0x16 | ANCHOR_RESERVE | 0x28 | HTLC |
+| 0x05 | CLTV | 0x17 | ANCHOR_SEAL | 0x29 | HASH_SIG |
+| 0x06 | CLTV_TIME | 0x18 | ANCHOR_ORACLE | 0x2A | PTLC |
+| 0x07 | HASH_PREIMAGE | 0x19 | HYSTERESIS_FEE | 0x2B | CLTV_SIG |
+| 0x08 | HASH160_PREIMAGE | 0x1A | HYSTERESIS_VALUE | 0x2C | TIMELOCKED_MULTISIG |
+| 0x09 | TAGGED_HASH | 0x1B | TIMER_CONTINUOUS | 0x2D | EPOCH_GATE |
+| 0x0A | CTV | 0x1C | TIMER_OFF_DELAY | 0x2E | WEIGHT_LIMIT |
+| 0x0B | VAULT_LOCK | 0x1D | LATCH_SET | 0x2F | INPUT_COUNT |
+| 0x0C | AMOUNT_LOCK | 0x1E | LATCH_RESET | 0x30 | OUTPUT_COUNT |
+| 0x0D | RECURSE_SAME | 0x1F | COUNTER_DOWN | 0x31 | RELATIVE_VALUE |
+| 0x0E | RECURSE_MODIFIED | 0x20 | COUNTER_PRESET | 0x32 | ACCUMULATOR |
+| 0x0F | RECURSE_UNTIL | 0x21 | COUNTER_UP | 0x33 | MUSIG_THRESHOLD |
+| 0x10 | RECURSE_COUNT | 0x22 | COMPARE | 0x34 | KEY_REF_SIG |
+| 0x11 | RECURSE_SPLIT | 0x23 | SEQUENCER | | |
 
 Slots `0x35`–`0x7F` are reserved for future block types. Unknown micro-header slots are rejected during deserialization.
 
@@ -437,9 +437,9 @@ Ladder evaluation follows a strict three-level logic:
 - SATISFIED becomes UNSATISFIED
 - UNSATISFIED becomes SATISFIED
 - ERROR remains ERROR (never inverted)
-- UNKNOWN_BLOCK_TYPE becomes ERROR (unconditionally unusable)
+- UNKNOWN_BLOCK_TYPE becomes SATISFIED (forward-compatible)
 
-**Unknown block types:** An unrecognized `block_type` value returns UNKNOWN_BLOCK_TYPE. When not inverted, it propagates as a non-SATISFIED result, causing the rung to fail and evaluation to fall through to subsequent rungs. When inverted, it becomes ERROR (consensus failure). This prevents an attacker from using an inverted unknown block type to bypass spending conditions. New block types are deployed via soft fork activation — all block types activate simultaneously.
+**Unknown block types:** An unrecognized `block_type` value returns UNKNOWN_BLOCK_TYPE. When not inverted, it propagates as a non-SATISFIED result, causing the rung to fail and evaluation to fall through to subsequent rungs. When inverted, it becomes SATISFIED — the absence of an unknown condition passes, enabling forward-compatible "NOT (some future condition)" patterns. Conditions with unknown block types are policy-non-standard and will not be relayed or mined by default. New block types are deployed via soft fork activation — all block types activate simultaneously.
 
 ### Sighash
 
@@ -532,7 +532,7 @@ The following RPCs are provided for wallet and application integration:
 
 **Inversion.** The `inverted` flag on blocks provides NOT logic without a separate opcode. Combined with AND/OR rung semantics, this yields full boolean expressiveness. The rule that ERROR is never inverted prevents masking of consensus failures.
 
-**Strict unknown type handling.** Unknown block types return UNSATISFIED (rung fails, falls through to next rung) when not inverted, and ERROR when inverted. This prevents the inverted-unknown footgun where an attacker could bypass conditions using unknown block types in negated position. New block types activate simultaneously via soft fork — there is no need for forward-compatible unknown type evaluation.
+**Forward-compatible unknown type handling.** Unknown block types return UNSATISFIED (rung fails, falls through to next rung) when not inverted, and SATISFIED when inverted. This enables "NOT (some future condition)" patterns while maintaining forward compatibility. Conditions with unknown block types are policy-non-standard and will not be relayed or mined by default, preventing exploitation before the block type is activated via soft fork.
 
 **Post-quantum signature support.** The PUBKEY maximum of 2,048 bytes and SIGNATURE maximum of 50,000 bytes were chosen to accommodate all NIST post-quantum finalist schemes including SPHINCS_SHA. The PUBKEY_COMMIT mechanism enables a commit-reveal migration path: users can lock funds to a 32-byte hash of their PQ public key today, revealing the full key only at spend time.
 
@@ -592,7 +592,7 @@ The implementation includes comprehensive test coverage across two layers:
 - Sighash determinism, hash type variants, and invalid hash type rejection
 - Witness-conditions merge validation
 - Anchor structural validation for all 6 anchor subtypes
-- PLC structural validation for all 15 PLC block types
+- PLC structural validation for all 14 PLC block types
 - Post-quantum key generation, signing, and commit-reveal verification
 - Adaptor signature creation and verification
 - COSIGN cross-input matching

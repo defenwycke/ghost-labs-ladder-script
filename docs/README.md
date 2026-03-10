@@ -53,12 +53,12 @@ cryptography, and stateful smart contracts.
 
 ## Block Type Overview
 
-Ladder Script defines 52 block types across 9 families. Each block evaluates a
+Ladder Script defines 53 block types across 9 families. Each block evaluates a
 single spending condition within a rung.
 
 | Family | Range | Block Types |
 |--------|-------|-------------|
-| **Signature** | 0x0001-0x00FF | `SIG`, `MULTISIG`, `ADAPTOR_SIG`, `MUSIG_THRESHOLD` |
+| **Signature** | 0x0001-0x00FF | `SIG`, `MULTISIG`, `ADAPTOR_SIG`, `MUSIG_THRESHOLD`, `KEY_REF_SIG` |
 | **Timelock** | 0x0100-0x01FF | `CSV`, `CSV_TIME`, `CLTV`, `CLTV_TIME` |
 | **Hash** | 0x0200-0x02FF | `HASH_PREIMAGE`, `HASH160_PREIMAGE`, `TAGGED_HASH` |
 | **Covenant** | 0x0300-0x03FF | `CTV`, `VAULT_LOCK`, `AMOUNT_LOCK` |

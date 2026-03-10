@@ -745,6 +745,7 @@ const BLOCK_DEFS = {
   MULTISIG:          { category: 'sig',      phase: 1, label: 'MULTISIG',          fields: [{name:'threshold', type:'NUMERIC', placeholder:'2'}, {name:'pubkeys', type:'PUBKEY_LIST', placeholder:'02..., 03...'}] },
   ADAPTOR_SIG:       { category: 'sig',      phase: 1, label: 'ADAPTOR_SIG',       fields: [{name:'signing_key', type:'PUBKEY', placeholder:'02... signing key'}, {name:'adaptor_point', type:'PUBKEY', placeholder:'adaptor point'}] },
   MUSIG_THRESHOLD:   { category: 'sig',      phase: 1, label: 'MUSIG_THRESHOLD',   fields: [{name:'aggregate_key', type:'PUBKEY', placeholder:'02... aggregate pubkey'}, {name:'threshold', type:'NUMERIC', placeholder:'2'}, {name:'group_size', type:'NUMERIC', placeholder:'3'}] },
+  KEY_REF_SIG:       { category: 'sig',      phase: 1, label: 'KEY_REF_SIG',       fields: [{name:'relay_index', type:'NUMERIC', placeholder:'relay index'}, {name:'block_index', type:'NUMERIC', placeholder:'block index'}] },
 
   // ── TIMELOCK (0x01xx) — Phase 1 ──
   CSV:               { category: 'timelock', phase: 1, label: 'CSV',               fields: [{name:'blocks', type:'NUMERIC', placeholder:'144'}] },

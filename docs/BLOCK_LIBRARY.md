@@ -3030,7 +3030,7 @@ Commitment set proofs. Accumulator-based spending authorisation.
 
 ## Compact Encodings
 
-Compact encodings are not block types — they are space-optimised wire representations that resolve to standard blocks at deserialisation time. The block count remains 52.
+Compact encodings are not block types — they are space-optimised wire representations that resolve to standard blocks at deserialisation time. The block count remains 53.
 
 ### COMPACT_SIG
 

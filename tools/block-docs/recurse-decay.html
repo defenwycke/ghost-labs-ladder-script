@@ -54,11 +54,11 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">max_depth</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum recursion depth (&gt; 0). Bounds the chain of decaying spends.</td></tr>
-      <tr><td class="field-name">depth / rung_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target rung index within the ladder conditions. Same format as RECURSE_MODIFIED.</td></tr>
-      <tr><td class="field-name">block_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target block index within the rung.</td></tr>
-      <tr><td class="field-name">param_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target parameter index within the block.</td></tr>
-      <tr><td class="field-name">delta</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Decay amount. Negated before applying: effective change is <code>-delta</code> per spend.</td></tr>
+      <tr><td class="field-name">max_depth</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum recursion depth (&gt; 0). Bounds the chain of decaying spends.</td></tr>
+      <tr><td class="field-name">depth / rung_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target rung index within the ladder conditions. Same format as RECURSE_MODIFIED.</td></tr>
+      <tr><td class="field-name">block_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target block index within the rung.</td></tr>
+      <tr><td class="field-name">param_idx</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target parameter index within the block.</td></tr>
+      <tr><td class="field-name">delta</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Decay amount. Negated before applying: effective change is <code>-delta</code> per spend.</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">Field layout matches RECURSE_MODIFIED exactly. Both legacy (5 NUMERICs) and new (3 + 4N NUMERICs) formats are supported. The only difference is that delta is negated before application.</p>

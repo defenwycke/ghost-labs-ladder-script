@@ -1048,7 +1048,7 @@ static EvalResult VerifyMutatedConditions(const RungEvalContext& ctx,
                                            const std::vector<MutationSpec>& mutations)
 {
     if (!ctx.input_conditions || !ctx.spending_output) {
-        return EvalResult::SATISFIED; // no conditions to check
+        return EvalResult::ERROR; // no conditions to check
     }
 
     RungConditions output_conds;
@@ -1299,9 +1299,9 @@ EvalResult EvalHysteresisFeeBlock(const RungBlock& block, const RungEvalContext&
     if (high < 0 || low < 0 || low > high) {
         return EvalResult::UNSATISFIED;
     }
-    // If no tx context (structural-only mode), fall back to satisfied
+    // If no tx context, fail-safe to error
     if (!ctx.tx || !ctx.spent_outputs) {
-        return EvalResult::SATISFIED;
+        return EvalResult::ERROR;
     }
     // Compute fee = sum(input values) - sum(output values)
     int64_t total_in = 0;
@@ -1542,9 +1542,9 @@ EvalResult EvalCosignBlock(const RungBlock& block, const RungEvalContext& ctx)
         return EvalResult::ERROR;
     }
 
-    // Without transaction context or spent outputs, we can only do structural validation
+    // Without transaction context or spent outputs, fail-safe to error
     if (!ctx.tx || !ctx.spent_outputs) {
-        return EvalResult::SATISFIED;
+        return EvalResult::ERROR;
     }
 
     // Check each other input's spent output scriptPubKey
@@ -2038,7 +2038,7 @@ EvalResult EvalWeightLimitBlock(const RungBlock& block, const RungEvalContext& c
     int64_t max_weight = ReadNumeric(*numeric_field);
     if (max_weight <= 0) return EvalResult::ERROR;
 
-    if (!ctx.tx) return EvalResult::SATISFIED; // structural validation only
+    if (!ctx.tx) return EvalResult::ERROR; // fail-safe: no tx context
 
     int64_t tx_weight = GetTransactionWeight(*ctx.tx);
     if (tx_weight <= max_weight) {
@@ -2060,7 +2060,7 @@ EvalResult EvalInputCountBlock(const RungBlock& block, const RungEvalContext& ct
         return EvalResult::ERROR;
     }
 
-    if (!ctx.tx) return EvalResult::SATISFIED;
+    if (!ctx.tx) return EvalResult::ERROR;
 
     int64_t count = static_cast<int64_t>(ctx.tx->vin.size());
     if (count >= min_inputs && count <= max_inputs) {
@@ -2082,7 +2082,7 @@ EvalResult EvalOutputCountBlock(const RungBlock& block, const RungEvalContext& c
         return EvalResult::ERROR;
     }
 
-    if (!ctx.tx) return EvalResult::SATISFIED;
+    if (!ctx.tx) return EvalResult::ERROR;
 
     int64_t count = static_cast<int64_t>(ctx.tx->vout.size());
     if (count >= min_outputs && count <= max_outputs) {

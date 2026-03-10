@@ -58,8 +58,8 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">threshold_n</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Required number of guardian signatures (first NUMERIC field)</td></tr>
-      <tr><td class="field-name">threshold_m</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Total number of guardians (second NUMERIC field)</td></tr>
+      <tr><td class="field-name">threshold_n</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Required number of guardian signatures (first NUMERIC field)</td></tr>
+      <tr><td class="field-name">threshold_m</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Total number of guardians (second NUMERIC field)</td></tr>
       <tr><td class="field-name">guardian_set_hash</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Hash committing to the full guardian pubkey set</td></tr>
     </tbody>
   </table>

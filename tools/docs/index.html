@@ -296,7 +296,7 @@
       <a href="#README" class="sidebar-link" data-doc="README.md" data-title="README">README</a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-label">Block Reference</div>
-      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 52 Blocks</a>
+      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 53 Blocks</a>
     </aside>
 
     <main class="content">
@@ -312,7 +312,7 @@
     const links = document.querySelectorAll('.sidebar-link');
     let currentDoc = null;
 
-    // Block reference data — all 52 blocks organized by family
+    // Block reference data — all 53 blocks organized by family
     const BLOCK_FAMILIES = [
       {
         name: 'Signature Family', range: '0x0000', cls: 'signature',
@@ -322,6 +322,7 @@
           { code: '0x0002', name: 'MULTISIG', file: 'multisig', desc: 'M-of-N threshold signature verification. Conditions commit to N pubkeys and threshold M.' },
           { code: '0x0003', name: 'ADAPTOR_SIG', file: 'adaptor-sig', desc: 'Adaptor signature verification for atomic swaps and DLCs. Reveals a secret scalar upon completion.' },
           { code: '0x0004', name: 'MUSIG_THRESHOLD', file: 'musig-threshold', desc: 'MuSig2/FROST aggregate threshold signature. M-of-N signers produce a single Schnorr signature.' },
+          { code: '0x0005', name: 'KEY_REF_SIG', file: 'key-ref-sig', desc: 'Signature verification against a key committed in an earlier rung. Enables key reuse across rungs without repeating the pubkey.' },
         ]
       },
       {
@@ -431,7 +432,7 @@
 
     function renderBlockIndex() {
       let html = '<h1 style="font-size:32px;font-weight:800;color:var(--white);margin-bottom:8px;">Block Reference</h1>';
-      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 52 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
+      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 53 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
 
       for (const family of BLOCK_FAMILIES) {
         html += `<div class="family-section">`;

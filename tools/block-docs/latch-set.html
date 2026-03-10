@@ -58,7 +58,7 @@
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td class="field-name">setter_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key (or commitment) of the party authorized to set the latch</td></tr>
-      <tr><td class="field-name">state</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Current latch state: 0 = unset, 1 = set</td></tr>
+      <tr><td class="field-name">state</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Current latch state: 0 = unset, 1 = set</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">Requires a valid signature from the setter key in the witness to authorize the latch operation.</p>

@@ -84,8 +84,8 @@
         <td class="field-name">scheme</td>
         <td class="field-type">SCHEME</td>
         <td class="field-size">1 B</td>
-        <td class="field-side-w">Witness (opt)</td>
-        <td class="field-desc">Optional PQ signature scheme identifier for post-quantum routing</td>
+        <td class="field-side-c">Conditions</td>
+        <td class="field-desc">Signature scheme identifier (0x00 = Schnorr default). Routes to post-quantum verifier when set.</td>
       </tr>
     </tbody>
   </table>
@@ -100,9 +100,10 @@
     <div class="wire-row">
       <span class="wire-segment wire-type" style="min-width:60px">0x0001</span>
       <span class="wire-segment wire-inv">0</span>
-      <span class="wire-segment wire-count">1</span>
+      <span class="wire-segment wire-count">2</span>
       <span class="wire-segment wire-field-pubkey" style="min-width:160px">PUBKEY_COMMIT &middot; 32B</span>
-      <span class="wire-bytes">= 38 bytes</span>
+      <span class="wire-segment wire-field-sig" style="min-width:80px">SCHEME &middot; 1B</span>
+      <span class="wire-bytes">= 39 bytes</span>
     </div>
   </div>
 
@@ -119,7 +120,7 @@
 
     <div class="wire-total">
       <span class="wire-total-label">Total (conditions + witness)</span>
-      <span class="wire-total-bytes">144 bytes</span>
+      <span class="wire-total-bytes">145 bytes</span>
     </div>
   </div>
 
@@ -174,7 +175,8 @@
   <span class="json-key">"type"</span>: <span class="json-str">"SIG"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> }
+    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"SCHEME"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"00"</span> }
   ]
 }</pre></div>
 

@@ -29,8 +29,10 @@ The top-level witness structure for one input.
 
 ```
 struct LadderWitness {
-    rungs:  Vec<Rung>     // Input condition rungs (OR logic — first satisfied wins)
-    coil:   RungCoil      // Output coil (per-output metadata)
+    rungs:       Vec<Rung>                    // Input condition rungs (OR logic — first satisfied wins)
+    relays:      Vec<Relay>                   // Relay definitions (shared condition sets, referenced via requires)
+    coil:        RungCoil                     // Output coil (per-output metadata)
+    witness_ref: Option<WitnessReference>     // Witness inheritance reference (if set, rungs/relays inherited from referenced input)
 }
 ```
 
@@ -1242,9 +1244,9 @@ Any block can be inverted by setting its `inverted` flag to `0x01`. Inversion is
 | SATISFIED | UNSATISFIED |
 | UNSATISFIED | SATISFIED |
 | ERROR | ERROR (unchanged) |
-| UNKNOWN_BLOCK_TYPE | ERROR |
+| UNKNOWN_BLOCK_TYPE | SATISFIED |
 
-Unknown block types are unconditionally unusable. Whether inverted or not, an unknown block type causes the rung to fail. When not inverted, UNKNOWN_BLOCK_TYPE propagates as a non-SATISFIED result (the rung fails and evaluation falls through to subsequent rungs). When inverted, it becomes ERROR (consensus failure). This prevents an attacker from using an inverted unknown block type to bypass spending conditions.
+Unknown block types return UNSATISFIED when not inverted (the rung fails and evaluation falls through to subsequent rungs). When inverted, UNKNOWN_BLOCK_TYPE becomes SATISFIED — the absence of an unknown condition passes, enabling forward-compatible "NOT (some future condition)" patterns. New block types are deployed via soft fork activation; conditions with unknown block types are policy-non-standard and will not be relayed or mined by default.
 
 ---
 

@@ -74,6 +74,7 @@
   .family-plc { color: #98c379; }
   .family-compound { color: #f59e0b; }
   .family-governance { color: #8b5cf6; }
+  .family-compact { color: #98c379; }
 
   .intro-text {
     color: var(--text-secondary);
@@ -105,7 +106,7 @@
 
 <!-- Signature Family -->
 <div class="family-section">
-  <h2 class="family-title family-signature">Signature Family — 0x0000</h2>
+  <h2 class="family-title family-signature">Signature Family — 0x0001</h2>
   <p class="intro-text">Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization — every spend ultimately requires at least one signature check.</p>
 
   <div class="index-grid">
@@ -127,6 +128,20 @@
       <div class="block-card-code">0x0003</div>
       <div class="block-card-name">ADAPTOR_SIG</div>
       <div class="block-card-desc">Adaptor signature verification for atomic swaps and DLCs. Verifies a signature that reveals a secret scalar upon completion.</div>
+      <div class="block-card-badge badge-anchor">Signature</div>
+    </a>
+
+    <a href="musig-threshold.html" class="block-card">
+      <div class="block-card-code">0x0004</div>
+      <div class="block-card-name">MUSIG_THRESHOLD</div>
+      <div class="block-card-desc">MuSig2/FROST aggregate threshold signature. M-of-N signers produce a single aggregate Schnorr signature. On-chain footprint identical to single-sig regardless of group size.</div>
+      <div class="block-card-badge badge-anchor">Signature</div>
+    </a>
+
+    <a href="key-ref-sig.html" class="block-card">
+      <div class="block-card-code">0x0005</div>
+      <div class="block-card-name">KEY_REF_SIG</div>
+      <div class="block-card-desc">Signature using a key commitment from a relay block. Enables cross-rung key sharing without duplicating pubkey commitments, saving ~30 bytes per reference.</div>
       <div class="block-card-badge badge-anchor">Signature</div>
     </a>
   </div>
@@ -226,56 +241,6 @@
   </div>
 </div>
 
-<!-- Recursion Family -->
-<div class="family-section">
-  <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
-  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
-
-  <div class="index-grid">
-    <a href="recurse-same.html" class="block-card">
-      <div class="block-card-code">0x0401</div>
-      <div class="block-card-name">RECURSE_SAME</div>
-      <div class="block-card-desc">Enforces that an output recreates the identical covenant. The spent conditions must appear verbatim in the spending transaction's output.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-modified.html" class="block-card">
-      <div class="block-card-code">0x0402</div>
-      <div class="block-card-name">RECURSE_MODIFIED</div>
-      <div class="block-card-desc">Recursive covenant with allowed field mutations. Specifies which fields may change between iterations while enforcing structural identity.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-until.html" class="block-card">
-      <div class="block-card-code">0x0403</div>
-      <div class="block-card-name">RECURSE_UNTIL</div>
-      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-count.html" class="block-card">
-      <div class="block-card-code">0x0404</div>
-      <div class="block-card-name">RECURSE_COUNT</div>
-      <div class="block-card-desc">Count-limited recursion. Commits to a maximum iteration count; each spend decrements the counter. Terminates at zero.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-split.html" class="block-card">
-      <div class="block-card-code">0x0405</div>
-      <div class="block-card-name">RECURSE_SPLIT</div>
-      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-
-    <a href="recurse-decay.html" class="block-card">
-      <div class="block-card-code">0x0406</div>
-      <div class="block-card-name">RECURSE_DECAY</div>
-      <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
-      <div class="block-card-badge badge-recursion">Recursion</div>
-    </a>
-  </div>
-</div>
-
 <!-- Anchor Family -->
 <div class="family-section">
   <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
@@ -322,6 +287,56 @@
       <div class="block-card-name">ANCHOR_ORACLE</div>
       <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
       <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+  </div>
+</div>
+
+<!-- Recursion Family -->
+<div class="family-section">
+  <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
+  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
+
+  <div class="index-grid">
+    <a href="recurse-same.html" class="block-card">
+      <div class="block-card-code">0x0401</div>
+      <div class="block-card-name">RECURSE_SAME</div>
+      <div class="block-card-desc">Enforces that an output recreates the identical covenant. The spent conditions must appear verbatim in the spending transaction's output.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-modified.html" class="block-card">
+      <div class="block-card-code">0x0402</div>
+      <div class="block-card-name">RECURSE_MODIFIED</div>
+      <div class="block-card-desc">Recursive covenant with allowed field mutations. Specifies which fields may change between iterations while enforcing structural identity.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-until.html" class="block-card">
+      <div class="block-card-code">0x0403</div>
+      <div class="block-card-name">RECURSE_UNTIL</div>
+      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-count.html" class="block-card">
+      <div class="block-card-code">0x0404</div>
+      <div class="block-card-name">RECURSE_COUNT</div>
+      <div class="block-card-desc">Count-limited recursion. Commits to a maximum iteration count; each spend decrements the counter. Terminates at zero.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-split.html" class="block-card">
+      <div class="block-card-code">0x0405</div>
+      <div class="block-card-name">RECURSE_SPLIT</div>
+      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+
+    <a href="recurse-decay.html" class="block-card">
+      <div class="block-card-code">0x0406</div>
+      <div class="block-card-name">RECURSE_DECAY</div>
+      <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
+      <div class="block-card-badge badge-recursion">Recursion</div>
     </a>
   </div>
 </div>
@@ -426,7 +441,7 @@
     <a href="cosign.html" class="block-card">
       <div class="block-card-code">0x0681</div>
       <div class="block-card-name">COSIGN</div>
-      <div class="block-card-desc">Co-spend contact. Requires another input in the same transaction to have a spent output whose scriptPubKey hash matches the committed HASH256.</div>
+      <div class="block-card-desc">Co-signing gate. Requires an additional signature from a committed co-signer key before the primary spending condition is evaluated.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
   </div>
@@ -456,6 +471,27 @@
       <div class="block-card-code">0x0703</div>
       <div class="block-card-name">HASH_SIG</div>
       <div class="block-card-desc">Hash preimage verification combined with signature check. Replaces HASH_PREIMAGE + SIG. Saves 8 bytes on wire.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+
+    <a href="ptlc.html" class="block-card">
+      <div class="block-card-code">0x0704</div>
+      <div class="block-card-name">PTLC</div>
+      <div class="block-card-desc">Point Time Locked Contract. Adaptor point + relative timelock + signature in one block. Replaces ADAPTOR_SIG + CSV for payment channels.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+
+    <a href="cltv-sig.html" class="block-card">
+      <div class="block-card-code">0x0705</div>
+      <div class="block-card-name">CLTV_SIG</div>
+      <div class="block-card-desc">Signature verification with absolute timelock. Replaces SIG + CLTV. Saves 8 bytes on wire.</div>
+      <div class="block-card-badge badge-compound">Compound</div>
+    </a>
+
+    <a href="timelocked-multisig.html" class="block-card">
+      <div class="block-card-code">0x0706</div>
+      <div class="block-card-name">TIMELOCKED_MULTISIG</div>
+      <div class="block-card-desc">M-of-N threshold signatures with relative timelock. Replaces MULTISIG + CSV for penalty branches and vault recovery.</div>
       <div class="block-card-badge badge-compound">Compound</div>
     </a>
   </div>
@@ -507,6 +543,21 @@
       <div class="block-card-name">ACCUMULATOR</div>
       <div class="block-card-desc">Merkle set membership proof. Verifies that a value belongs to a committed set using sorted-pair Merkle proofs.</div>
       <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+  </div>
+</div>
+
+<!-- Compact Encodings -->
+<div class="family-section">
+  <h2 class="family-title family-compact">Compact Encodings</h2>
+  <p class="intro-text">Compact encodings are wire format optimisations that replace an entire rung (one or more blocks) with a fixed-size inline payload. They use the <code>n_blocks == 0</code> sentinel within a rung to signal compact data. Compact rungs resolve to equivalent standard blocks at evaluation time. They are not counted as separate block types.</p>
+
+  <div class="index-grid">
+    <a href="compact-sig.html" class="block-card">
+      <div class="block-card-code">COMPACT 0x01</div>
+      <div class="block-card-name">COMPACT_SIG</div>
+      <div class="block-card-desc">Compact single-key signature rung. Stores PUBKEY_COMMIT (32B) and SCHEME (1B) inline with no block overhead. Resolves to a SIG block at evaluation. Used for change outputs and simple single-key spending.</div>
+      <div class="block-card-badge" style="color:#98c379;border-color:#98c37940">Compact</div>
     </a>
   </div>
 </div>

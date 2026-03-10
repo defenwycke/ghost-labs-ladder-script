@@ -58,7 +58,7 @@
     <tbody>
       <tr><td class="field-name">local_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Local channel pubkey</td></tr>
       <tr><td class="field-name">remote_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Remote channel pubkey</td></tr>
-      <tr><td class="field-name">commitment_number</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Channel commitment number (must be &gt; 0)</td></tr>
+      <tr><td class="field-name">commitment_number</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Channel commitment number (must be &gt; 0)</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">No witness fields required. Both channel keys and the commitment number are committed in conditions.</p>

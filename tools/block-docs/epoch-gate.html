@@ -62,8 +62,8 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">epoch_size</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks per epoch (must be &gt; 0)</td></tr>
-      <tr><td class="field-name">window_size</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks at start of epoch where spending is allowed (must be &le; epoch_size)</td></tr>
+      <tr><td class="field-name">epoch_size</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks per epoch (must be &gt; 0)</td></tr>
+      <tr><td class="field-name">window_size</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks at start of epoch where spending is allowed (must be &le; epoch_size)</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">No witness fields required — evaluation uses only the current block height from the evaluation context.</p>
@@ -167,7 +167,7 @@
 </div>
 
 <div class="doc-nav">
-  <a href="hash-sig.html">&larr; HASH_SIG</a>
+  <a href="timelocked-multisig.html">&larr; TIMELOCKED_MULTISIG</a>
   <a href="weight-limit.html">WEIGHT_LIMIT &rarr;</a>
 </div>
 

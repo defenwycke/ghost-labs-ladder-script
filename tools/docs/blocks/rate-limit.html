@@ -59,9 +59,9 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">max_per_block</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum output amount allowed per single transaction (NUMERIC[0])</td></tr>
-      <tr><td class="field-name">accumulation_cap</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum accumulated withdrawal allowance (NUMERIC[1])</td></tr>
-      <tr><td class="field-name">refill_blocks</td><td class="field-type">NUMERIC</td><td class="field-size">1-8 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks between allowance refills (NUMERIC[2])</td></tr>
+      <tr><td class="field-name">max_per_block</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum output amount allowed per single transaction (NUMERIC[0])</td></tr>
+      <tr><td class="field-name">accumulation_cap</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum accumulated withdrawal allowance (NUMERIC[1])</td></tr>
+      <tr><td class="field-name">refill_blocks</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks between allowance refills (NUMERIC[2])</td></tr>
     </tbody>
   </table>
   <p class="section-text" style="margin-top:12px">The single-transaction check (output_amount vs max_per_block) is evaluated directly. Full accumulation tracking requires UTXO chain state beyond this block's scope.</p>

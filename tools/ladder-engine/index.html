@@ -3506,8 +3506,8 @@ function exportBlockFields(block) {
     } else if (f.dataType === 'HASH160') {
       fields.push({ type: 'HASH160', hex: val });
     } else if (f.dataType === 'SCHEME' && val) {
-      const schemeMap = { FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
-      fields.push({ type: 'SCHEME', hex: schemeMap[val] || '00' });
+      const schemeMap = { SCHNORR: '01', ECDSA: '02', FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
+      fields.push({ type: 'SCHEME', hex: schemeMap[val] || '01' });
     }
   });
   const out = { type: block.type, fields };
@@ -5041,6 +5041,7 @@ function getTypeHex(type) {
     COMPARE:'0641',SEQUENCER:'0651',ONE_SHOT:'0661',
     RATE_LIMIT:'0671',COSIGN:'0681',
     TIMELOCKED_SIG:'0701',HTLC:'0702',HASH_SIG:'0703',PTLC:'0704',CLTV_SIG:'0705',TIMELOCKED_MULTISIG:'0706',
+    EPOCH_GATE:'0801',WEIGHT_LIMIT:'0802',INPUT_COUNT:'0803',OUTPUT_COUNT:'0804',RELATIVE_VALUE:'0805',ACCUMULATOR:'0806',
   };
   return map[type] || '????';
 }

@@ -1,6 +1,6 @@
 # Building with Ladder Script: Patterns and Possibilities
 
-Ladder Script's 52 block types across 9 families compose into an enormous design space. Because evaluation follows simple AND/OR logic (all blocks in a rung must pass, first satisfied rung wins), complex spending policies emerge from combining simple primitives. This document explores what can be built.
+Ladder Script's 53 block types across 9 families compose into an enormous design space. Because evaluation follows simple AND/OR logic (all blocks in a rung must pass, first satisfied rung wins), complex spending policies emerge from combining simple primitives. This document explores what can be built.
 
 Each pattern below lists the specific blocks involved, explains why the combination works, and notes practical considerations. Where rung numbers are shown, Rung 0 is tried first and evaluation short-circuits on the first satisfied rung.
 
@@ -649,7 +649,7 @@ When a transaction spends multiple UTXOs with similar conditions (common in cove
 
 The real power is composition. Each pattern above is a building block. A single UTXO can combine primitives from every family:
 
-- **Identity** (who can spend): `SIG`, `MULTISIG`, `MUSIG_THRESHOLD`, `ADAPTOR_SIG`
+- **Identity** (who can spend): `SIG`, `MULTISIG`, `MUSIG_THRESHOLD`, `ADAPTOR_SIG`, `KEY_REF_SIG`
 - **Time** (when they can spend): `CSV`, `CLTV`, `CSV_TIME`, `CLTV_TIME`, `EPOCH_GATE`
 - **Knowledge** (what they must prove): `HASH_PREIMAGE`, `HASH160_PREIMAGE`, `TAGGED_HASH`
 - **Value** (how much can move): `AMOUNT_LOCK`, `RELATIVE_VALUE`, `HYSTERESIS_VALUE`, `HYSTERESIS_FEE`, `RATE_LIMIT`, `COMPARE`
@@ -662,4 +662,4 @@ The real power is composition. Each pattern above is a building block. A single 
 
 With AND within rungs and OR across rungs, any boolean combination of these primitives is expressible. Multiple rungs create fallback paths. Block inversion (the `inverted` flag on any block) creates ceiling guards (a block that must *not* be satisfied). Recursion creates persistent state machines. Compound blocks and diff witnesses keep it efficient. MLSC keeps it private.
 
-The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 52 typed blocks, AND/OR logic, and the expressiveness that emerges from their combination.
+The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 53 typed blocks, AND/OR logic, and the expressiveness that emerges from their combination.
