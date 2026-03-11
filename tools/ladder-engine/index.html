@@ -317,9 +317,9 @@ body {
 }
 
 .compact-toggle {
-  position: absolute;
-  left: 0;
-  top: -14px;
+  position: relative;
+  margin-top: 4px;
+  margin-left: 44px;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -345,9 +345,10 @@ body {
   color: var(--green);
 }
 .compact-badge {
-  position: absolute;
-  right: 12px;
-  top: -12px;
+  position: relative;
+  display: inline-block;
+  margin-top: 2px;
+  margin-left: 44px;
   font-size: 8px;
   font-family: var(--font-display);
   color: #000;
@@ -2377,7 +2378,9 @@ const BLOCK_FAMILIES = [
         { name: 'template_hash', dataType: 'HASH256', label: 'Template Hash', placeholder: '32-byte hex' }
       ]},
       { type: 'VAULT_LOCK', label: 'VAULT', desc: 'Vault with hot/cold key paths and delay', fields: [
-        { name: 'pubkey', dataType: 'PUBKEY', label: 'Vault Key', placeholder: '02abcdef...' }
+        { name: 'recovery_key', dataType: 'PUBKEY', label: 'Recovery Key', placeholder: '02abcdef...' },
+        { name: 'hot_key', dataType: 'PUBKEY', label: 'Hot Key', placeholder: '03abcdef...' },
+        { name: 'delay', dataType: 'NUMERIC', label: 'Hot Delay (blocks)', placeholder: '144' }
       ]},
       { type: 'AMOUNT_LOCK', label: 'AMT_LOCK', desc: 'Output amount range constraint [min, max]', fields: [
         { name: 'min', dataType: 'NUMERIC', label: 'Min (sats)', placeholder: '5000' },
@@ -2388,9 +2391,11 @@ const BLOCK_FAMILIES = [
   {
     name: 'RECURSION', color: '#a855f7',
     blocks: [
-      { type: 'RECURSE_SAME', label: 'REC_SAME', desc: 'Re-encumber output with identical conditions', fields: [] },
+      { type: 'RECURSE_SAME', label: 'REC_SAME', desc: 'Re-encumber output with identical conditions', fields: [
+        { name: 'max_depth', dataType: 'NUMERIC', label: 'Max Depth', placeholder: '10' }
+      ] },
       { type: 'RECURSE_MODIFIED', label: 'REC_MOD', desc: 'Re-encumber with a single field mutation', fields: [
-        { name: 'rung_idx', dataType: 'NUMERIC', label: 'Rung', placeholder: '0' },
+        { name: 'max_depth', dataType: 'NUMERIC', label: 'Max Depth', placeholder: '10' },
         { name: 'block_idx', dataType: 'NUMERIC', label: 'Block', placeholder: '0' },
         { name: 'param_idx', dataType: 'NUMERIC', label: 'Param', placeholder: '0' },
         { name: 'delta', dataType: 'NUMERIC', label: 'Delta', placeholder: '1' }
@@ -2402,10 +2407,14 @@ const BLOCK_FAMILIES = [
         { name: 'remaining', dataType: 'NUMERIC', label: 'Remaining', placeholder: '10' }
       ]},
       { type: 'RECURSE_SPLIT', label: 'REC_SPLIT', desc: 'Recursive output splitting with min sats', fields: [
-        { name: 'split_count', dataType: 'NUMERIC', label: 'Split Count', placeholder: '2' }
+        { name: 'max_splits', dataType: 'NUMERIC', label: 'Max Splits', placeholder: '3' },
+        { name: 'min_sats', dataType: 'NUMERIC', label: 'Min Sats/Split', placeholder: '10000' }
       ]},
       { type: 'RECURSE_DECAY', label: 'REC_DECAY', desc: 'Recursive parameter decay per spend', fields: [
-        { name: 'max_depth', dataType: 'NUMERIC', label: 'Max Depth', placeholder: '10' }
+        { name: 'max_depth', dataType: 'NUMERIC', label: 'Max Depth', placeholder: '10' },
+        { name: 'block_idx', dataType: 'NUMERIC', label: 'Block', placeholder: '0' },
+        { name: 'param_idx', dataType: 'NUMERIC', label: 'Param', placeholder: '0' },
+        { name: 'decay_per_step', dataType: 'NUMERIC', label: 'Decay/Step', placeholder: '1' }
       ]},
     ]
   },
@@ -2416,17 +2425,20 @@ const BLOCK_FAMILIES = [
         { name: 'data', dataType: 'HASH256', label: 'Data', placeholder: '32-byte hex' }
       ]},
       { type: 'ANCHOR_CHANNEL', label: 'A_CHAN', desc: 'Lightning channel anchor binding', fields: [
-        { name: 'commitment', dataType: 'HASH256', label: 'Commitment', placeholder: '32-byte hex' }
+        { name: 'local_key', dataType: 'PUBKEY', label: 'Local Key', placeholder: '02abc...' },
+        { name: 'remote_key', dataType: 'PUBKEY', label: 'Remote Key', placeholder: '03def...' }
       ]},
       { type: 'ANCHOR_POOL', label: 'A_POOL', desc: 'Pool / VTXO tree anchor', fields: [
         { name: 'pool_id', dataType: 'HASH256', label: 'Pool ID', placeholder: '32-byte hex' }
       ]},
       { type: 'ANCHOR_RESERVE', label: 'A_RESV', desc: 'N-of-M guardian reserve anchor', fields: [
         { name: 'threshold_n', dataType: 'NUMERIC', label: 'N', placeholder: '3' },
-        { name: 'threshold_m', dataType: 'NUMERIC', label: 'M', placeholder: '5' }
+        { name: 'threshold_m', dataType: 'NUMERIC', label: 'M', placeholder: '5' },
+        { name: 'guardian_hash', dataType: 'HASH256', label: 'Guardian Set Hash', placeholder: '32-byte hex' }
       ]},
       { type: 'ANCHOR_SEAL', label: 'A_SEAL', desc: 'Permanent data commitment seal', fields: [
-        { name: 'seal', dataType: 'HASH256', label: 'Seal Hash', placeholder: '32-byte hex' }
+        { name: 'asset_id', dataType: 'HASH256', label: 'Asset ID', placeholder: '32-byte hex' },
+        { name: 'state_hash', dataType: 'HASH256', label: 'State Hash', placeholder: '32-byte hex' }
       ]},
       { type: 'ANCHOR_ORACLE', label: 'A_ORACLE', desc: 'Oracle attestation anchor', fields: [
         { name: 'oracle_pk', dataType: 'PUBKEY', label: 'Oracle Key', placeholder: '02abc...' }
@@ -2511,7 +2523,8 @@ const BLOCK_FAMILIES = [
       ]},
       { type: 'HASH_SIG', label: 'HASH_SIG', desc: 'Hash preimage + Signature — atomic swap claim', fields: [
         { name: 'hash', dataType: 'HASH256', label: 'SHA256 Hash', placeholder: '32-byte hex' },
-        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' }
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+        { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
       { type: 'PTLC', label: 'PTLC', desc: 'Point Time Locked Contract — adaptor sig + CSV for payment channels', fields: [
         { name: 'signing_key', dataType: 'PUBKEY', label: 'Signing Key', placeholder: '02abcdef...' },
@@ -2660,19 +2673,19 @@ function generateTestData(blockType) {
     case 'HASH160_PREIMAGE': return { hash: TEST_HASH160 };
     case 'TAGGED_HASH': return { tag: TEST_HASH256, hash: TEST_HASH256_B };
     case 'CTV': return { template_hash: TEST_HASH256 };
-    case 'VAULT_LOCK': return { pubkey: TEST_PUBKEYS[0] };
+    case 'VAULT_LOCK': return { recovery_key: TEST_PUBKEYS[0], hot_key: TEST_PUBKEYS[1], delay: '10' };
     case 'AMOUNT_LOCK': return { min: '5000', max: '100000' };
-    case 'RECURSE_SAME': return {};
-    case 'RECURSE_MODIFIED': return { rung_idx: '0', block_idx: '0', param_idx: '0', delta: '1' };
+    case 'RECURSE_SAME': return { max_depth: '10' };
+    case 'RECURSE_MODIFIED': return { max_depth: '10', block_idx: '0', param_idx: '0', delta: '1' };
     case 'RECURSE_UNTIL': return { target_height: '860000' };
     case 'RECURSE_COUNT': return { remaining: '10' };
-    case 'RECURSE_SPLIT': return { split_count: '2' };
-    case 'RECURSE_DECAY': return { max_depth: '10' };
+    case 'RECURSE_SPLIT': return { max_splits: '3', min_sats: '10000' };
+    case 'RECURSE_DECAY': return { max_depth: '10', block_idx: '0', param_idx: '0', decay_per_step: '1' };
     case 'ANCHOR': return { data: TEST_HASH256 };
-    case 'ANCHOR_CHANNEL': return { commitment: TEST_HASH256 };
+    case 'ANCHOR_CHANNEL': return { local_key: TEST_PUBKEYS[0], remote_key: TEST_PUBKEYS[1] };
     case 'ANCHOR_POOL': return { pool_id: TEST_HASH256 };
-    case 'ANCHOR_RESERVE': return { threshold_n: '3', threshold_m: '5' };
-    case 'ANCHOR_SEAL': return { seal: TEST_HASH256 };
+    case 'ANCHOR_RESERVE': return { threshold_n: '3', threshold_m: '5', guardian_hash: TEST_HASH256 };
+    case 'ANCHOR_SEAL': return { asset_id: TEST_HASH256, state_hash: TEST_HASH256_B };
     case 'ANCHOR_ORACLE': return { oracle_pk: TEST_PUBKEYS[2] };
     case 'HYSTERESIS_FEE': return { high_sat_vb: '100', low_sat_vb: '5' };
     case 'HYSTERESIS_VALUE': return { high_sats: '100000', low_sats: '5000' };
@@ -4508,15 +4521,6 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
           title={tips ? (simMode ? (isSpent ? 'SPENT — cannot simulate' : 'Click to start step-through for this rung') : 'Drag to reorder · Double-click to rename') : undefined}
         >{displayName}</span>
       )}
-      {isCompactSigEligible(rung) && !simMode && (
-        <label className="compact-toggle" title="Encode as COMPACT_SIG — single SIG rung uses compact wire format" onClick={(e) => e.stopPropagation()}>
-          <input type="checkbox" checked={!!rung.compact} onChange={(e) => onRungChange?.(rung.id, 'compact', e.target.checked)} />
-          <span className="compact-toggle-label">Compact</span>
-        </label>
-      )}
-      {rung.compact && isCompactSigEligible(rung) && (
-        <span className="compact-badge">COMPACT</span>
-      )}
       <div className="rung-content">
         <div className="rail-left" />
         <div
@@ -4649,6 +4653,15 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
         </div>
         <div className="rail-right" />
       </div>
+      {isCompactSigEligible(rung) && !simMode && (
+        <label className="compact-toggle" title="Encode as COMPACT_SIG — single SIG rung uses compact wire format" onClick={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={!!rung.compact} onChange={(e) => onRungChange?.(rung.id, 'compact', e.target.checked)} />
+          <span className="compact-toggle-label">Compact</span>
+        </label>
+      )}
+      {rung.compact && isCompactSigEligible(rung) && (
+        <span className="compact-badge">COMPACT</span>
+      )}
       {!simMode && (
         <div className="rung-controls">
           {rungIndex > 0 && <div className="rung-ctrl-btn" onClick={() => onMoveRung?.(rungIndex, rungIndex - 1)} title="Move rung up">▲</div>}
@@ -6038,7 +6051,7 @@ const EXAMPLES = [
       { label: 'BUY', blocks: [
         { type: 'COUNTER_DOWN', values: { pubkey: FAKE.pk1, count: '12' } },
         { type: 'AMOUNT_LOCK', values: { min: '50000', max: '100000' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '0', param_idx: '1', delta: '-1' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '0', param_idx: '1', delta: '-1' } },
       ], output: { name: 'DCA_BUY', type: 'standard' } },
       { label: 'SWEEP', blocks: [
         { type: 'COUNTER_DOWN', values: { pubkey: FAKE.pk1, count: '0' } },
@@ -6054,13 +6067,11 @@ const EXAMPLES = [
   },
   {
     title: 'VAULT WITH UNVAULT + CLAWBACK',
-    desc: 'Bitcoin vault pattern: normal spend requires unvault delay (24h). Emergency clawback to cold key at any time.',
-    tags: [['VAULT', 'cov'], ['CSV_TIME', 'time'], ['SIG', 'sig']],
+    desc: 'Bitcoin vault pattern: hot key spends after CSV delay, recovery key sweeps immediately. VAULT_LOCK is self-contained (sig + delay check).',
+    tags: [['VAULT', 'cov']],
     rungs: [
       { label: 'UNVAULT', blocks: [
-        { type: 'VAULT_LOCK', values: { pubkey: FAKE.pk1 } },
-        { type: 'CSV_TIME', values: { seconds: '86400' } },
-        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'VAULT_LOCK', values: { recovery_key: FAKE.pk3, hot_key: FAKE.pk1, delay: '10' } },
       ], output: { name: 'HOT_SPEND', type: 'standard' } },
       { label: 'CLAWBACK', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk3 } },
@@ -6081,7 +6092,7 @@ const EXAMPLES = [
       { label: 'DAY_SPEND', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
         { type: 'RATE_LIMIT', values: { max_per_block: '50000', acc_cap: '200000', refill_blocks: '144' } },
-        { type: 'RECURSE_SAME', values: {} },
+        { type: 'RECURSE_SAME', values: { max_depth: '10' } },
       ], output: { name: 'DAILY_OUT', type: 'standard' } },
       { label: 'OVERRIDE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
@@ -6103,7 +6114,7 @@ const EXAMPLES = [
       { label: 'ALIVE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
         { type: 'LATCH_SET', values: { pubkey: FAKE.pk1, state: '0' } },
-        { type: 'RECURSE_SAME', values: {} },
+        { type: 'RECURSE_SAME', values: { max_depth: '10' } },
       ], output: { name: 'KEEPALIVE', type: 'latch' } },
       { label: 'INHERIT', blocks: [
         { type: 'CSV', values: { blocks: '26000' } },
@@ -6183,7 +6194,7 @@ const EXAMPLES = [
         { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle } },
         { type: 'SIG', values: { pubkey: FAKE.pk2 } },
         { type: 'AMOUNT_LOCK', values: { min: '100000', max: '200000' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '0', param_idx: '0', delta: '1' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '0', param_idx: '0', delta: '1' } },
       ], output: { name: 'PAYOUT', type: 'standard' } },
       { label: 'CANCEL', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
@@ -6251,8 +6262,8 @@ const EXAMPLES = [
     rungs: [
       { label: 'SPLIT', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'RECURSE_SPLIT', values: { split_count: '2' } },
-        { type: 'RECURSE_DECAY', values: { max_depth: '4' } },
+        { type: 'RECURSE_SPLIT', values: { max_splits: '2', min_sats: '10000' } },
+        { type: 'RECURSE_DECAY', values: { max_depth: '4', block_idx: '0', param_idx: '0', decay_per_step: '1' } },
         { type: 'CTV', values: { template_hash: FAKE.hash4 } },
       ], output: { name: 'BRANCH', type: 'standard' } },
       { label: 'LEAF', blocks: [
@@ -6293,7 +6304,7 @@ const EXAMPLES = [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
         { type: 'COUNTER_UP', values: { pubkey: FAKE.pk2, current: '0', target: '24' } },
         { type: 'AMOUNT_LOCK', values: { min: '25000', max: '25000' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '1', param_idx: '1', delta: '1' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '1', param_idx: '1', delta: '1' } },
       ], output: { name: 'PAYMENT', type: 'standard' } },
       { label: 'CANCEL', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
@@ -6346,9 +6357,9 @@ const EXAMPLES = [
       { label: 'PQ_SPLIT', blocks: [
         { type: 'SIG', values: { pubkey: FAKE_PQ.falcon1, scheme: 'FALCON512' } },
         { type: 'COUNTER_DOWN', values: { pubkey: FAKE_PQ.falcon2, count: '8' } },
-        { type: 'RECURSE_SPLIT', values: { split_count: '2' } },
-        { type: 'RECURSE_DECAY', values: { max_depth: '3' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '1', param_idx: '1', delta: '-1' } },
+        { type: 'RECURSE_SPLIT', values: { max_splits: '2', min_sats: '10000' } },
+        { type: 'RECURSE_DECAY', values: { max_depth: '3', block_idx: '0', param_idx: '0', decay_per_step: '1' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '1', param_idx: '1', delta: '-1' } },
       ], output: { name: 'PARENT', type: 'standard' } },
       { label: 'PQ_CHILD', blocks: [
         { type: 'SIG', values: { pubkey: FAKE_PQ.falcon1, scheme: 'FALCON512' } },
@@ -6631,7 +6642,7 @@ const EXAMPLES = [
         { type: 'COUNTER_PRESET', values: { current: '0', preset: '3' } },
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
         { type: 'HYSTERESIS_VALUE', values: { high_sats: '5000000', low_sats: '100000' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '0', block_idx: '0', param_idx: '0', delta: '1' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '0', param_idx: '0', delta: '1' } },
       ], output: { name: 'VOTE_CAST', type: 'standard' } },
       { label: 'EXECUTE', blocks: [
         { type: 'COUNTER_PRESET', values: { current: '3', preset: '3' } },
@@ -6657,13 +6668,13 @@ const EXAMPLES = [
     rungs: [
       { label: 'COOP', blocks: [
         { type: 'MUSIG_THRESHOLD', values: { agg_pubkey: FAKE.pk1, threshold: '2', group_size: '2' } },
-        { type: 'ANCHOR_CHANNEL', values: { commitment: FAKE.hash1 } },
+        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk1, remote_key: FAKE.pk2 } },
       ], output: { name: 'COOP_CLOSE', type: 'standard' } },
       { label: 'UPDATE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk2 } },
-        { type: 'ANCHOR_CHANNEL', values: { commitment: FAKE.hash2 } },
+        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk2, remote_key: FAKE.pk3 } },
         { type: 'RECURSE_UNTIL', values: { target_height: '950000' } },
-        { type: 'RECURSE_MODIFIED', values: { rung_idx: '1', block_idx: '1', param_idx: '0', delta: '0' } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '1', param_idx: '0', delta: '0' } },
       ], output: { name: 'STATE_UPDATE', type: 'standard' } },
       { label: 'EXPIRE', blocks: [
         { type: 'CLTV', values: { height: '950000' } },
@@ -6856,6 +6867,7 @@ function decodedToBuilderRungs(data) {
 const SIGNET_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8801'
   : 'https://bitcoinghost.org';
+console.log('%c[ENGINE v3] rungSnapshot + vout tracking active', 'color: lime; font-weight: bold');
 
 function ConvertPanel({ onViewAsLadder }) {
   const [pasteJson, setPasteJson] = useState('');
@@ -6947,6 +6959,7 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
   const [funded, setFunded] = useState(false);
   const [signingData, setSigningData] = useState(null); // { keypairs, spentOutputs }
   const [fundScheme, setFundScheme] = useState('SCHNORR'); // scheme for output conditions
+  const [changeMode, setChangeMode] = useState('auto'); // 'auto' | 'compact' | 'none'
   const [copiedKey, setCopiedKey] = useState(null);
 
   const copyWithFeedback = (text, key) => {
@@ -7079,9 +7092,14 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
             scheme: signingData.scheme || 'SCHNORR',
           })),
           changeKey: null,
-          preimages: [],
-          rungs: rungs.map(r => ({ label: r.label, blocks: r.blocks.map(b => ({ type: b.type, values: { ...b.values } })) })),
+          preimages: signingData.preimages || [],
+          rungs: signingData.rungSnapshot || rungs.map(r => {
+            const voutIdx = txOutputs.findIndex(o => o.id === r.output?.txOutputId);
+            return { label: r.label, vout: voutIdx >= 0 ? voutIdx : null, blocks: r.blocks.map(b => ({ type: b.type, values: { ...b.values } })) };
+          }),
         };
+        console.log('%c[BROADCAST] hasSnapshot:', 'color: orange', !!signingData.rungSnapshot,
+          'record.rungs:', JSON.stringify(record.rungs.map(r => ({ label: r.label, vout: r.vout, blocks: r.blocks.map(b => b.type) }))));
         try {
           const existing = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
           existing.push(record);
@@ -7127,6 +7145,8 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
   };
 
   const handleFundFromWallet = async () => {
+    setError(null);
+    try {
     // 1. Fetch UTXOs
     const utxoData = await apiCall('/api/ladder/wallet/utxos');
     if (!utxoData || utxoData.length === 0) { setError('No UTXOs in wallet. Use faucet or mine blocks first.'); return; }
@@ -7138,19 +7158,36 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     // Also track SIG blocks with EMPTY pubkeys — these still need keys generated
     const pubkeyFields = [];
     const emptyPubkeySigs = []; // SIG blocks that have no pubkey yet
+    // Single-key types that use 'pubkey' field (signature + PLC blocks)
+    const PUBKEY_FIELD_TYPES = ['SIG', 'TIMELOCKED_SIG', 'CLTV_SIG', 'HTLC', 'HASH_SIG',
+      'COUNTER_DOWN', 'COUNTER_UP', 'LATCH_SET', 'LATCH_RESET'];
+    // Single-key types that use 'signing_key' field
+    const SIGNING_KEY_TYPES = ['ADAPTOR_SIG', 'PTLC'];
+    // Multi-pubkey named field types (each named field is a separate pubkey)
+    const NAMED_PUBKEY_FIELDS = {
+      'VAULT_LOCK': ['recovery_key', 'hot_key'],
+      'ANCHOR_CHANNEL': ['local_key', 'remote_key'],
+    };
     rungs.forEach((rung, ri) => {
       rung.blocks.forEach((block, bi) => {
-        if (block.type === 'SIG') {
+        if (PUBKEY_FIELD_TYPES.includes(block.type)) {
           if (block.values.pubkey) {
             pubkeyFields.push({ ri, bi, field: 'pubkey', multi: false });
           } else {
             emptyPubkeySigs.push({ ri, bi });
           }
+        } else if (NAMED_PUBKEY_FIELDS[block.type]) {
+          // Blocks with multiple named pubkey fields (e.g. VAULT_LOCK has recovery_key + hot_key)
+          for (const fname of NAMED_PUBKEY_FIELDS[block.type]) {
+            if (block.values[fname]) {
+              pubkeyFields.push({ ri, bi, field: fname, multi: false });
+            }
+          }
         } else if ((block.type === 'MULTISIG' || block.type === 'TIMELOCKED_MULTISIG') && block.values.pubkeys) {
           pubkeyFields.push({ ri, bi, field: 'pubkeys', multi: true });
         } else if (block.type === 'MUSIG_THRESHOLD' && block.values.agg_pubkey) {
           pubkeyFields.push({ ri, bi, field: 'agg_pubkey', multi: false });
-        } else if (block.type === 'ADAPTOR_SIG' && block.values.signing_key) {
+        } else if (SIGNING_KEY_TYPES.includes(block.type) && block.values.signing_key) {
           pubkeyFields.push({ ri, bi, field: 'signing_key', multi: false });
         }
       });
@@ -7188,6 +7225,27 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     const walletKey = isPQ ? await apiCall('/api/ladder/wallet/keypair') : keypairs[0];
     if (!walletKey) { setError('Failed to generate wallet keypair for input signing.'); return; }
 
+    // 3b. Generate preimages for hash blocks (HASH_PREIMAGE, HASH160_PREIMAGE, HASH_SIG, HTLC, TAGGED_HASH)
+    const HASH_BLOCK_TYPES = { HASH_PREIMAGE: 'sha256', HASH160_PREIMAGE: 'hash160', HASH_SIG: 'sha256', HTLC: 'sha256', TAGGED_HASH: 'sha256' };
+    const hashFields = []; // { ri, bi, hashType, field: 'hash'|'tag' }
+    rungs.forEach((rung, ri) => {
+      rung.blocks.forEach((block, bi) => {
+        if (HASH_BLOCK_TYPES[block.type] && block.values.hash) {
+          hashFields.push({ ri, bi, hashType: HASH_BLOCK_TYPES[block.type], field: 'hash' });
+        }
+      });
+    });
+    const preimagesGenerated = [];
+    const hashReplacements = new Map(); // "ri:bi" -> { preimage, hash }
+    for (const hf of hashFields) {
+      const pi = await apiCall('/api/ladder/preimage', undefined, true);
+      if (pi) {
+        const newHash = hf.hashType === 'hash160' ? pi.hash160 : pi.sha256;
+        hashReplacements.set(`${hf.ri}:${hf.bi}`, { preimage: pi.preimage, hash: newHash });
+        preimagesGenerated.push({ preimage: pi.preimage, hash: newHash, type: hf.hashType, ri: hf.ri, bi: hf.bi });
+      }
+    }
+
     // 4. Map old fake pubkeys to new pubkeys (+ commit hashes for PQ)
     const oldToNew = new Map(); // oldKey -> newPubkey
     const oldKeys = [...allPubkeysNeeded];
@@ -7207,13 +7265,18 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
       ...rung,
       blocks: rung.blocks.map((block, bi) => {
         const vals = { ...block.values };
-        if (block.type === 'SIG' && vals.pubkey && oldToNew.has(vals.pubkey)) {
+        if (PUBKEY_FIELD_TYPES.includes(block.type) && vals.pubkey && oldToNew.has(vals.pubkey)) {
           vals.pubkey = oldToNew.get(vals.pubkey);
           vals.scheme = fundScheme;
-        } else if (block.type === 'SIG' && !vals.pubkey && emptyKeyMap.has(`${ri}:${bi}`)) {
-          // Empty pubkey SIG block — assign generated key
+        } else if (PUBKEY_FIELD_TYPES.includes(block.type) && !vals.pubkey && emptyKeyMap.has(`${ri}:${bi}`)) {
           vals.pubkey = emptyKeyMap.get(`${ri}:${bi}`);
           vals.scheme = fundScheme;
+        } else if (NAMED_PUBKEY_FIELDS[block.type]) {
+          for (const fname of NAMED_PUBKEY_FIELDS[block.type]) {
+            if (vals[fname] && oldToNew.has(vals[fname])) {
+              vals[fname] = oldToNew.get(vals[fname]);
+            }
+          }
         } else if ((block.type === 'MULTISIG' || block.type === 'TIMELOCKED_MULTISIG') && vals.pubkeys) {
           const keys = vals.pubkeys.split(',').map(k => k.trim()).filter(Boolean);
           vals.pubkeys = keys.map(k => oldToNew.get(k) || k).join(', ');
@@ -7221,9 +7284,14 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
         } else if (block.type === 'MUSIG_THRESHOLD' && vals.agg_pubkey && oldToNew.has(vals.agg_pubkey)) {
           vals.agg_pubkey = oldToNew.get(vals.agg_pubkey);
           vals.scheme = fundScheme;
-        } else if (block.type === 'ADAPTOR_SIG' && vals.signing_key && oldToNew.has(vals.signing_key)) {
+        } else if (SIGNING_KEY_TYPES.includes(block.type) && vals.signing_key && oldToNew.has(vals.signing_key)) {
           vals.signing_key = oldToNew.get(vals.signing_key);
           vals.scheme = fundScheme;
+        }
+        // Replace hash values with real hashes (from generated preimages)
+        const hr = hashReplacements.get(`${ri}:${bi}`);
+        if (hr && vals.hash) {
+          vals.hash = hr.hash;
         }
         return { ...block, values: vals };
       }),
@@ -7315,25 +7383,36 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
       totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
     }
 
-    // Auto-add change output when implied fee is excessive.
-    // A user deliberately consuming the full UTXO will set output ≈ input,
-    // so the implied fee stays small and this won't trigger.
+    // Change output handling — respects user's changeMode preference.
+    // First, remove any previously auto-added change rung + output to avoid duplication on re-fund.
+    const prevChangeRungs = rungs.filter(r => r.label === 'Change');
+    const prevChangeOutputIds = new Set(prevChangeRungs.map(r => r.output?.txOutputId).filter(Boolean));
+    if (prevChangeRungs.length > 0) {
+      newOutputs.splice(0, newOutputs.length, ...newOutputs.filter(o => !prevChangeOutputIds.has(o.id)));
+      setTxOutputs(prev => prev.filter(o => !prevChangeOutputIds.has(o.id)));
+    }
     totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
     const impliedFee = selectedTotal - totalNewOutputSats;
-    if (impliedFee > feeSats && impliedFee > 5000) {
+    if (changeMode !== 'none' && impliedFee > feeSats && impliedFee > 5000) {
       const changeSats = impliedFee - feeSats;
       if (changeSats >= 546) {
         const changeAddr = await apiCall('/api/ladder/wallet/address');
         if (changeAddr) {
           const changeOutputId = uid();
           newOutputs.push({ id: changeOutputId, address: changeAddr.address, amount: changeSats });
+          const isCompact = changeMode === 'compact';
           const changeRung = createRung();
           changeRung.label = 'Change';
+          changeRung.compact = isCompact;
           changeRung.blocks = [{ id: uid(), type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }];
-          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
-          setRungs(prev => [...prev, changeRung]);
+          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: isCompact ? 'COMPACT_SIG' : 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
+          setRungs(prev => [...prev.filter(r => r.label !== 'Change'), changeRung]);
         }
       }
+    } else if (changeMode === 'none' && impliedFee > 5000) {
+      // User chose no change — warn about high fee
+      setError(null); // clear previous
+      console.warn('No change output: ' + impliedFee + ' sats will be miner fee.');
     }
 
     // 8. Build spent outputs for signing (amount + scriptPubKey from each UTXO)
@@ -7343,6 +7422,50 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     }));
 
     // 9. Store signing data for handleSign
+    // Snapshot rungs NOW so the record at broadcast time uses the correct rungs
+    // (not whatever the user may have switched to in the BUILD tab after funding).
+    // Build snapshot from closure's rungs + the change rung we just created + newOutputs.
+    const snapshotRungs = rungs.filter(r => r.label !== 'Change'); // exclude old change
+    const snapshotApplyKeys = (r, ri) => {
+      const updatedBlocks = r.blocks.map((block, bi) => {
+        const bv = { ...block.values };
+        if (PUBKEY_FIELD_TYPES.includes(block.type) && bv.pubkey && oldToNew.has(bv.pubkey)) {
+          bv.pubkey = oldToNew.get(bv.pubkey);
+        } else if (PUBKEY_FIELD_TYPES.includes(block.type) && !bv.pubkey && emptyKeyMap.has(`${ri}:${bi}`)) {
+          bv.pubkey = emptyKeyMap.get(`${ri}:${bi}`);
+        } else if (NAMED_PUBKEY_FIELDS[block.type]) {
+          for (const fname of NAMED_PUBKEY_FIELDS[block.type]) {
+            if (bv[fname] && oldToNew.has(bv[fname])) bv[fname] = oldToNew.get(bv[fname]);
+          }
+        } else if ((block.type === 'MULTISIG' || block.type === 'TIMELOCKED_MULTISIG') && bv.pubkeys) {
+          bv.pubkeys = bv.pubkeys.split(',').map(k => k.trim()).filter(Boolean).map(k => oldToNew.get(k) || k).join(', ');
+        } else if (block.type === 'MUSIG_THRESHOLD' && bv.agg_pubkey && oldToNew.has(bv.agg_pubkey)) {
+          bv.agg_pubkey = oldToNew.get(bv.agg_pubkey);
+        } else if (SIGNING_KEY_TYPES.includes(block.type) && bv.signing_key && oldToNew.has(bv.signing_key)) {
+          bv.signing_key = oldToNew.get(bv.signing_key);
+        }
+        const hr = hashReplacements.get(`${ri}:${bi}`);
+        if (hr && bv.hash) bv.hash = hr.hash;
+        return { type: block.type, values: bv };
+      });
+      // Resolve vout index from newOutputs (which has the final output IDs including change)
+      const voutIdx = newOutputs.findIndex(o => o.id === r.output?.txOutputId);
+      return { label: r.label, vout: voutIdx >= 0 ? voutIdx : null, blocks: updatedBlocks };
+    };
+    const rungSnapshot = snapshotRungs.map(snapshotApplyKeys);
+    // Append change rung if one was created (it's not in the closure's rungs yet)
+    if (changeMode !== 'none') {
+      const changeOut = newOutputs[newOutputs.length - 1];
+      const changeIdx = newOutputs.length - 1;
+      if (changeOut && newOutputs.length > outputCount) {
+        rungSnapshot.push({
+          label: 'Change',
+          vout: changeIdx,
+          blocks: [{ type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }],
+        });
+      }
+    }
+    console.log('%c[FUND] rungSnapshot:', 'color: lime', JSON.stringify(rungSnapshot.map(r => ({ label: r.label, vout: r.vout, blocks: r.blocks.map(b => b.type) }))));
     setSigningData({
       keypairs,
       walletKey, // standard secp256k1 key for input signing (inputs are always standard p2wpkh)
@@ -7350,6 +7473,8 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
       spentOutputs,
       selectedUtxos: selected,
       scheme: fundScheme,
+      preimages: preimagesGenerated,
+      rungSnapshot, // frozen at fund time — used by handleBroadcast for the record
     });
 
     // 10. Update engine state
@@ -7363,24 +7488,28 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     setTxOutputs(newOutputs);
 
     // 11. Verify rung→output assignments are still valid after output replacement
+    //     Also assign txInputIds to all rungs (every rung uses all inputs).
     const newOutputIds = new Set(newOutputs.map(o => o.id));
+    const allNewInputIds = newInputs.map(i => i.id);
     setRungs(prev => {
-      // Check if any rung points to an output that no longer exists
-      const needsFix = prev.some(r => r.output.txOutputId != null && !newOutputIds.has(r.output.txOutputId));
-      if (!needsFix) return prev;
       // Find orphaned rungs and unassigned outputs
       const assignedOutputIds = new Set(prev.filter(r => r.output.txOutputId != null && newOutputIds.has(r.output.txOutputId)).map(r => r.output.txOutputId));
       const unassignedOutputs = newOutputs.filter(o => !assignedOutputIds.has(o.id));
       let nextUnassigned = 0;
       return prev.map(r => {
+        let updated = r;
         if (r.output.txOutputId != null && !newOutputIds.has(r.output.txOutputId)) {
           // This rung's output was lost — reassign to next available unassigned output
           if (nextUnassigned < unassignedOutputs.length) {
             const newOut = unassignedOutputs[nextUnassigned++];
-            return { ...r, output: { ...r.output, txOutputId: newOut.id } };
+            updated = { ...updated, output: { ...updated.output, txOutputId: newOut.id } };
           }
         }
-        return r;
+        // Assign all inputs to every rung (fund flow uses all selected UTXOs for all rungs)
+        if (!updated.txInputIds || updated.txInputIds.length === 0 || updated.label === 'Change') {
+          updated = { ...updated, txInputIds: allNewInputIds };
+        }
+        return updated;
       });
     });
     setTxHex('');
@@ -7390,6 +7519,10 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     setError(null);
     setFunded(true);
     setTimeout(() => setFunded(false), 4000);
+    } catch (e) {
+      setError('Fund failed: ' + (e.message || e));
+      console.error('handleFundFromWallet error:', e);
+    }
   };
 
   const sty = {
@@ -7597,13 +7730,27 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
               ))}
             </div>
           </div>
+          {/* CHANGE OUTPUT CONTROLS */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '6px 10px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 1.2, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Change</span>
+            {['auto', 'compact', 'none'].map(m => (
+              <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: changeMode === m ? 'var(--green-bright)' : 'var(--text-dim)', cursor: 'pointer' }}>
+                <input type="radio" name="changeMode" value={m} checked={changeMode === m} onChange={() => setChangeMode(m)}
+                  style={{ width: 10, height: 10, accentColor: 'var(--green-bright)' }} />
+                {m === 'auto' ? 'Auto (SIG)' : m === 'compact' ? 'Compact SIG' : 'None'}
+              </label>
+            ))}
+            <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 'auto' }}>
+              {changeMode === 'none' ? 'No change — full UTXO consumed as fee+outputs' : changeMode === 'compact' ? 'Compact wire format (~40% smaller)' : 'Standard SIG condition'}
+            </span>
+          </div>
           <div>
             <div style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>RUNGS</div>
             {rungs.length > 0 ? (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {rungs.map((r, i) => (
-                  <span key={i} style={{ fontSize: 9, padding: '2px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', letterSpacing: 0.5 }}>
-                    {r.label || `R${i}`}: {r.blocks.map(b => b.type).join(' + ')}
+                  <span key={i} style={{ fontSize: 9, padding: '2px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: r.compact ? 'var(--green-bright)' : 'var(--text-secondary)', letterSpacing: 0.5 }}>
+                    {r.label || `R${i}`}: {r.compact ? 'COMPACT_SIG' : r.blocks.map(b => b.type).join(' + ')}
                   </span>
                 ))}
               </div>
@@ -7877,7 +8024,10 @@ function SpendPanel({ onViewAsLadder }) {
   const [spendLog, setSpendLog] = useState([]);
   const [spending, setSpending] = useState(false);
   const [spendResult, setSpendResult] = useState(null);
+  const [spendTxJson, setSpendTxJson] = useState(null);
   const [copiedKey, setCopiedKey] = useState(null);
+  const [selectedRungIdx, setSelectedRungIdx] = useState(0);
+  const [selectedVout, setSelectedVout] = useState(null); // null = use rec.vout default
 
   const copyWithFeedback = (text, key) => {
     navigator.clipboard.writeText(text);
@@ -7928,12 +8078,20 @@ function SpendPanel({ onViewAsLadder }) {
   const loadRecords = () => {
     try {
       const recs = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
-      setRecords(recs.reverse()); // newest first
+      // Migration: remove records with stale rungs (no vout tracking)
+      const valid = recs.filter(r => r.rungs && r.rungs.length > 0 && r.rungs[0].vout !== undefined);
+      if (valid.length < recs.length) {
+        localStorage.setItem('ghost_rung_keys', JSON.stringify(valid));
+        console.log('Cleared ' + (recs.length - valid.length) + ' stale record(s) without vout tracking');
+      }
+      setRecords(valid.reverse()); // newest first
     } catch { setRecords([]); }
   };
 
   const selectRecord = (rec) => {
     setSelectedRecord(rec);
+    setSelectedRungIdx(0);
+    setSelectedVout(null);
     setSpendResult(null);
     setSpendLog([]);
     setError(null);
@@ -7964,7 +8122,7 @@ function SpendPanel({ onViewAsLadder }) {
     try {
       const rec = selectedRecord;
       const txid = rec.txid;
-      const vout = rec.vout || 0;
+      const vout = selectedVout !== null ? selectedVout : (rec.vout || 0);
       const scheme = rec.scheme || 'SCHNORR';
       const isPQ = scheme !== 'SCHNORR' && scheme !== 'ECDSA';
 
@@ -8004,50 +8162,126 @@ function SpendPanel({ onViewAsLadder }) {
       const conditionKeys = rec.conditionKeys || [];
       if (conditionKeys.length === 0) throw new Error('No signing keys found. This record has no stored keys.');
 
+      // Build pubkey→key lookup for robust matching (not dependent on key generation order)
+      const keyByPubkey = new Map();
+      conditionKeys.forEach(k => { if (k.pubkey) keyByPubkey.set(k.pubkey, k); });
+
+      // Find the rung(s) for the target vout — use selectedRungIdx for user-chosen condition path
+      const allRungs = rec.rungs || [];
+      const voutRungs = allRungs.filter(r => r.vout === vout);
+      const rungIdx = Math.min(selectedRungIdx, Math.max(0, voutRungs.length - 1));
+      const targetRung = voutRungs.length > 0 ? voutRungs[rungIdx] : allRungs[0];
+      const rungBlocks = targetRung?.blocks || [];
+      if (voutRungs.length > 1) {
+        addLog('Using condition ' + rungIdx + ' of ' + voutRungs.length + ' for vout ' + vout + ' (' + (targetRung.label || 'unlabeled') + ')', 'info');
+      }
+      if (targetRung?.label) {
+        addLog('Spending rung: ' + targetRung.label + ' (' + rungBlocks.map(b => b.type).join(' + ') + ')', 'info');
+      }
+
       // Analyze stored rung conditions to build the correct signer format
       // signrungtx expects: { input, blocks: [{ type, privkey/privkeys }] }
-      const rungBlocks = (rec.rungs && rec.rungs[0]?.blocks) || [];
       const signerBlocks = [];
-      let keysUsed = 0;
+
+      // Single-key sig types (all use privkey, same as SIG)
+      const SINGLE_KEY_TYPES = ['SIG', 'ADAPTOR_SIG', 'MUSIG_THRESHOLD', 'VAULT_LOCK', 'TIMELOCKED_SIG', 'CLTV_SIG', 'KEY_REF_SIG', 'PTLC'];
+      // Multi-key sig types (use privkeys[])
+      const MULTI_KEY_TYPES = ['MULTISIG', 'TIMELOCKED_MULTISIG'];
+      // Preimage-only types
+      const PREIMAGE_TYPES = ['HASH_PREIMAGE', 'HASH160_PREIMAGE', 'TAGGED_HASH'];
+      // Compound types: preimage + single-key sig
+      const PREIMAGE_SIG_TYPES = ['HASH_SIG', 'HTLC'];
+      // No-witness types (CSV, CLTV, covenants, governance, recursion, etc.)
+
+      // Helper: find key by matching block's pubkey field to conditionKeys
+      const findKeyForBlock = (b, preferField) => {
+        // Check the preferred field first (e.g. 'hot_key' vs 'recovery_key' for VAULT_LOCK)
+        if (preferField && b.values?.[preferField] && keyByPubkey.has(b.values[preferField])) {
+          return keyByPubkey.get(b.values[preferField]);
+        }
+        // Check all known pubkey field names
+        const pubkeyFields = ['pubkey', 'signing_key', 'agg_pubkey', 'hot_key', 'recovery_key', 'local_key', 'remote_key'];
+        for (const fname of pubkeyFields) {
+          const val = b.values?.[fname];
+          if (val && keyByPubkey.has(val)) return keyByPubkey.get(val);
+        }
+        return null;
+      };
+      let fallbackKeyIdx = 0;
+
+      let preimageIdx = 0;
+      // Filter preimages to those belonging to the rung being spent
+      const allPreimages = rec.preimages || [];
+      const targetRungIdx = allRungs.indexOf(targetRung);
+      const preimages = allPreimages.filter(p => p.ri === targetRungIdx || p.ri === undefined);
 
       for (const b of rungBlocks) {
-        if (b.type === 'SIG') {
-          const key = conditionKeys[keysUsed];
-          if (!key) throw new Error('Not enough keys for SIG block (need key #' + (keysUsed + 1) + ').');
-          if (isPQ) {
-            signerBlocks.push({ type: 'SIG', pq_privkey: key.privkey, pq_pubkey: key.pubkey, scheme });
+        if (SINGLE_KEY_TYPES.includes(b.type)) {
+          let key = findKeyForBlock(b);
+          if (!key) { key = conditionKeys[fallbackKeyIdx]; fallbackKeyIdx++; }
+          if (!key) throw new Error('No matching key for ' + b.type + ' block. Expected pubkey: ' + (b.values?.pubkey || b.values?.signing_key || '?'));
+          const entry = { type: b.type };
+          if (isPQ && b.type !== 'ADAPTOR_SIG' && b.type !== 'PTLC') {
+            entry.pq_privkey = key.privkey; entry.pq_pubkey = key.pubkey; entry.scheme = scheme;
           } else {
-            signerBlocks.push({ type: 'SIG', privkey: key.privkey });
+            entry.privkey = key.privkey;
           }
-          keysUsed++;
-        } else if (b.type === 'MULTISIG' || b.type === 'TIMELOCKED_MULTISIG') {
+          // ADAPTOR_SIG and PTLC: include adaptor_secret if stored in block values
+          if ((b.type === 'ADAPTOR_SIG' || b.type === 'PTLC') && b.values?.adaptor_secret) {
+            entry.adaptor_secret = b.values.adaptor_secret;
+          }
+          signerBlocks.push(entry);
+        } else if (MULTI_KEY_TYPES.includes(b.type)) {
           const threshold = parseInt(b.values?.threshold) || 2;
-          if (keysUsed + threshold > conditionKeys.length) {
-            throw new Error(b.type + ' requires ' + threshold + ' keys but only ' + (conditionKeys.length - keysUsed) + ' available.');
-          }
+          const pubkeysStr = b.values?.pubkeys || '';
+          const blockPubkeys = pubkeysStr.split(',').map(k => k.trim()).filter(Boolean);
           const privkeys = [];
+          const pubkeys = [];
           for (let si = 0; si < threshold; si++) {
-            privkeys.push(conditionKeys[keysUsed + si].privkey);
+            let key = blockPubkeys[si] ? keyByPubkey.get(blockPubkeys[si]) : null;
+            if (!key) { key = conditionKeys[fallbackKeyIdx]; fallbackKeyIdx++; }
+            if (!key) throw new Error(b.type + ' requires ' + threshold + ' keys but only found ' + si + '.');
+            privkeys.push(key.privkey);
+            pubkeys.push(key.pubkey);
           }
           if (isPQ) {
-            signerBlocks.push({
-              type: b.type, scheme,
-              pq_privkeys: privkeys,
-              pq_pubkeys: conditionKeys.slice(keysUsed, keysUsed + threshold).map(k => k.pubkey),
-            });
+            signerBlocks.push({ type: b.type, scheme, pq_privkeys: privkeys, pq_pubkeys: pubkeys });
           } else {
             signerBlocks.push({ type: b.type, privkeys });
           }
           addLog('Detected ' + b.type + ' (threshold=' + threshold + ', providing ' + threshold + ' keys)', 'info');
-          keysUsed += threshold;
-        } else if (b.type === 'HASH_PREIMAGE' || b.type === 'HASH160_PREIMAGE') {
-          // Preimage blocks — check if we have stored preimages
-          const preimages = rec.preimages || [];
-          if (preimages.length > 0) {
-            signerBlocks.push({ type: b.type, preimage: preimages[0]?.preimage || preimages[0] });
+        } else if (PREIMAGE_TYPES.includes(b.type)) {
+          // TAGGED_HASH has OPTIONAL preimage — include only if available
+          if (preimageIdx < preimages.length) {
+            const pi = preimages[preimageIdx]?.preimage || preimages[preimageIdx];
+            signerBlocks.push({ type: b.type, preimage: pi });
+            preimageIdx++;
+          } else if (b.type === 'TAGGED_HASH') {
+            // TAGGED_HASH can be satisfied without preimage (rpc.cpp uses exists("preimage") check)
+            signerBlocks.push({ type: b.type });
+          } else {
+            throw new Error(b.type + ' block requires a preimage but none was stored. Re-create the transaction with preimage values.');
           }
+        } else if (PREIMAGE_SIG_TYPES.includes(b.type)) {
+          // Compound: preimage + signature (HASH_SIG, HTLC)
+          let key = findKeyForBlock(b);
+          if (!key) { key = conditionKeys[fallbackKeyIdx]; fallbackKeyIdx++; }
+          if (!key) throw new Error('No matching key for ' + b.type + ' block.');
+          const entry = { type: b.type };
+          if (isPQ) { entry.pq_privkey = key.privkey; entry.pq_pubkey = key.pubkey; entry.scheme = scheme; }
+          else { entry.privkey = key.privkey; }
+          if (preimageIdx < preimages.length) {
+            entry.preimage = preimages[preimageIdx]?.preimage || preimages[preimageIdx];
+            preimageIdx++;
+          } else {
+            throw new Error(b.type + ' block requires a preimage but none was stored. Re-create the transaction with preimage values.');
+          }
+          signerBlocks.push(entry);
+        } else {
+          // CSV, CLTV, covenants, governance, recursion, PLC blocks — RPC still needs
+          // an entry for every block in the rung (it returns empty witness for these)
+          signerBlocks.push({ type: b.type });
         }
-        // Other block types (CSV, CLTV, etc.) don't need signing data
       }
 
       // Fallback: if no blocks detected, use simple SIG format
@@ -8064,7 +8298,60 @@ function SpendPanel({ onViewAsLadder }) {
       const walletKey = rec.walletKey || await apiCall('/api/ladder/wallet/keypair', undefined, true);
       if (!walletKey) throw new Error('Failed to generate wallet keypair.');
 
-      const spendInputs = [{ txid, vout }];
+      // Detect timelock requirements from blocks
+      let inputSequence = 0xfffffffe; // default
+      let txLocktime = 0;
+      let csvTimeSeconds = 0; // track CSV_TIME seconds for pre-mining
+      let csvBlocks = 0; // track CSV block count for pre-mining
+      for (const b of rungBlocks) {
+        if (b.type === 'CSV' || b.type === 'TIMELOCKED_SIG' || b.type === 'TIMELOCKED_MULTISIG' || b.type === 'HTLC' || b.type === 'PTLC') {
+          csvBlocks = parseInt(b.values?.blocks) || 1;
+          inputSequence = csvBlocks; // BIP68: blocks-based relative lock
+          addLog('Setting input sequence=' + csvBlocks + ' for CSV lock', 'info');
+        } else if (b.type === 'VAULT_LOCK') {
+          // VAULT_LOCK has internal CSV delay (block-based) for the hot key path
+          const vaultDelay = parseInt(b.values?.delay) || 144;
+          csvBlocks = vaultDelay;
+          inputSequence = vaultDelay; // BIP68: blocks-based relative lock
+          addLog('Setting input sequence=' + vaultDelay + ' for VAULT_LOCK delay', 'info');
+        } else if (b.type === 'CSV_TIME') {
+          const seconds = parseInt(b.values?.seconds) || 512;
+          csvTimeSeconds = seconds;
+          // BIP68: time-based = (seconds / 512) | 0x400000
+          inputSequence = (Math.ceil(seconds / 512) | 0x400000);
+          addLog('Setting input sequence=0x' + inputSequence.toString(16) + ' for CSV_TIME lock (' + seconds + 's)', 'info');
+        } else if (b.type === 'CLTV' || b.type === 'CLTV_SIG') {
+          const height = parseInt(b.values?.height) || 0;
+          txLocktime = height;
+          addLog('Setting locktime=' + height + ' for CLTV lock', 'info');
+        } else if (b.type === 'CLTV_TIME') {
+          const timestamp = parseInt(b.values?.timestamp) || 0;
+          txLocktime = timestamp;
+          addLog('Setting locktime=' + timestamp + ' for CLTV_TIME lock', 'info');
+        }
+      }
+
+      // Warn about blocks that may cause consensus rejection
+      const COVENANT_TYPES = ['AMOUNT_LOCK', 'CTV', 'RELATIVE_VALUE', 'INPUT_COUNT', 'OUTPUT_COUNT', 'WEIGHT_LIMIT',
+        'EPOCH_GATE', 'HYSTERESIS_FEE', 'HYSTERESIS_VALUE', 'ACCUMULATOR', 'COSIGN', 'ANCHOR_ORACLE',
+        'RECURSE_SAME', 'RECURSE_MODIFIED', 'RECURSE_SPLIT', 'RECURSE_DECAY', 'RECURSE_COUNT', 'RECURSE_UNTIL',
+        'RATE_LIMIT', 'COUNTER_DOWN', 'COUNTER_UP', 'COUNTER_PRESET', 'SEQUENCER',
+        'LATCH_SET', 'LATCH_RESET', 'ONE_SHOT', 'TIMER_CONTINUOUS', 'TIMER_OFF_DELAY', 'ANCHOR_CHANNEL', 'COMPARE'];
+      const covenantBlocks = rungBlocks.filter(b => COVENANT_TYPES.includes(b.type));
+      if (covenantBlocks.length > 0) {
+        const types = [...new Set(covenantBlocks.map(b => b.type))].join(', ');
+        addLog('⚠ Rung contains covenant/policy blocks: ' + types + '. Spend may fail consensus validation.', 'warn');
+      }
+      if (txLocktime > 500000000) {
+        addLog('⚠ CLTV_TIME lock: tx locked until ' + new Date(txLocktime * 1000).toISOString() + '. May fail if time not reached.', 'warn');
+      } else if (txLocktime > 0 && st.blocks < txLocktime) {
+        addLog('⚠ CLTV lock: needs block height ' + txLocktime + ' but chain is at ' + st.blocks + '. Will fail.', 'warn');
+      }
+      if (inputSequence < 0x400000 && inputSequence > 1) {
+        addLog('⚠ CSV lock: ' + inputSequence + ' blocks relative timelock. Need ' + inputSequence + ' confirmations after send.', 'warn');
+      }
+
+      const spendInputs = [{ txid, vout, sequence: inputSequence }];
       const spendAmount = sendSats / 1e8;
 
       // Create the spending tx (output gets a simple SIG condition)
@@ -8075,22 +8362,50 @@ function SpendPanel({ onViewAsLadder }) {
           conditions: [{ blocks: [{ type: 'SIG', fields: [{ type: 'PUBKEY', hex: walletKey.pubkey }] }] }],
         }],
       };
+      if (txLocktime > 0) createPayload.locktime = txLocktime;
       const createResult = await apiCall('/api/ladder/create', createPayload, true);
       if (!createResult || !createResult.hex) throw new Error('Failed to create spending tx.');
       addLog('Unsigned tx created (' + (createResult.hex.length / 2) + ' bytes)', 'ok');
 
       // 5. Sign using blocks-based signer format
-      addLog('Signing with ' + keysUsed + ' ' + scheme + ' key(s)...');
+      addLog('Signing with ' + signerBlocks.length + ' block(s), ' + scheme + ' scheme...');
+      const signerEntry = { input: 0, blocks: signerBlocks };
+      // Pass rung index when multiple conditions exist (tells RPC which OR path to satisfy)
+      // rungIdx maps to the condition index in the on-chain scriptPubKey for this output
+      if (voutRungs.length > 1) {
+        signerEntry.rung = rungIdx;
+        addLog('Passing rung index ' + rungIdx + ' to signrungtx (condition ' + (rungIdx + 1) + ' of ' + voutRungs.length + ')', 'info');
+      }
       const signPayload = {
         hex: createResult.hex,
-        signers: [{ input: 0, blocks: signerBlocks }],
+        signers: [signerEntry],
         spent_outputs: [{ amount: utxoOutput.value, scriptPubKey: utxoOutput.scriptPubKey?.hex || '' }],
       };
       const signResult = await apiCall('/api/ladder/sign', signPayload, true);
       if (!signResult || !signResult.hex) throw new Error('Signing failed.');
-      addLog(keysUsed + ' signature(s) applied (' + scheme + ')', 'ok');
+      addLog(signerBlocks.length + ' signature block(s) applied (' + scheme + ')', 'ok');
 
-      // 6. Broadcast
+      // 6. Satisfy relative timelocks before broadcast
+      if (csvTimeSeconds > 0) {
+        // CSV_TIME (time-based BIP68): cannot easily advance MTP on signet.
+        // Warn the user — they need to wait for real time to elapse.
+        addLog('⚠ CSV_TIME requires ' + csvTimeSeconds + 's to elapse (MTP-based). Mining blocks alone may not satisfy this — you may need to wait.', 'warn');
+        addLog('Mining 6 blocks to advance MTP slightly...', 'info');
+        await apiCall('/api/ladder/mine', { blocks: 6 }, true);
+      } else if (csvBlocks > 1) {
+        // CSV (block-based): mine enough blocks to satisfy the relative lock
+        let remaining = csvBlocks;
+        addLog('Mining ' + remaining + ' block(s) for CSV relative lock...', 'info');
+        while (remaining > 0) {
+          const batch = Math.min(remaining, 50);
+          await apiCall('/api/ladder/mine', { blocks: batch }, true);
+          remaining -= batch;
+          if (remaining > 0) addLog('Mined ' + batch + ', ' + remaining + ' remaining...', 'info');
+        }
+        addLog('CSV lock satisfied (' + csvBlocks + ' blocks mined)', 'ok');
+      }
+
+      // 7. Broadcast
       addLog('Broadcasting...');
       let bcResult;
       try {
@@ -8106,7 +8421,7 @@ function SpendPanel({ onViewAsLadder }) {
       if (!bcResult.txid) throw new Error('Broadcast failed: no txid returned.');
       addLog('Broadcast! TXID: ' + bcResult.txid, 'ok');
 
-      // 7. Mine confirmation
+      // 8. Mine confirmation
       addLog('Mining confirmation block...');
       await apiCall('/api/ladder/mine', { blocks: 1 }, true);
       addLog('Confirmed!', 'ok');
@@ -8197,8 +8512,8 @@ function SpendPanel({ onViewAsLadder }) {
                 <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-dim)' }}>
                   <span style={{ color: isPQ ? 'var(--cyan)' : 'var(--text-secondary)' }}>{scheme}</span>
                   <span style={{ color: 'var(--green-bright)' }}>{formatSats(rec.amount)}</span>
-                  <span>{new Date(rec.timestamp).toLocaleDateString()}</span>
-                  <span>{(rec.rungs || []).length} rung(s)</span>
+                  <span>{new Date(rec.timestamp).toLocaleString()}</span>
+                  <span>{(rec.rungs || []).length} rung(s){(rec.rungs || []).filter(r => r.label).length > 0 ? ': ' + (rec.rungs || []).filter(r => r.label).map(r => r.label).join(', ') : ''}</span>
                   <span>{(rec.conditionKeys || []).length} key(s)</span>
                 </div>
               </div>
@@ -8224,29 +8539,113 @@ function SpendPanel({ onViewAsLadder }) {
         <div style={sty.divider} />
         <div style={sty.sectionTitle}>SPEND: {selectedRecord.txid.substring(0, 20)}...</div>
 
-        {/* Conditions */}
-        <div style={sty.section}>
-          <div style={sty.label}>CONDITIONS</div>
-          {selectedRecord.rungs && selectedRecord.rungs.length > 0 ? (
-            selectedRecord.rungs.map((rung, ri) => (
-              <div key={ri} style={{ marginBottom: 8, padding: '8px 10px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--amber)', letterSpacing: 1, marginBottom: 4 }}>
-                  RUNG {ri}{rung.label ? ': ' + rung.label : ''}
+        {/* Output (vout) Selector — show when record has rungs with different vouts */}
+        {(() => {
+          const allRungs = selectedRecord.rungs || [];
+          const uniqueVouts = [...new Set(allRungs.map(r => r.vout).filter(v => v !== null && v !== undefined))].sort((a, b) => a - b);
+          const activeVout = selectedVout !== null ? selectedVout : (selectedRecord.vout || 0);
+          if (uniqueVouts.length > 1) {
+            return (
+              <div style={{ ...sty.section, borderColor: 'var(--amber-dim)', background: 'var(--amber-glow)' }}>
+                <div style={sty.label}>SELECT OUTPUT TO SPEND</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {uniqueVouts.map(v => {
+                    const vRungs = allRungs.filter(r => r.vout === v);
+                    const labels = vRungs.map(r => r.label).filter(Boolean).join(', ');
+                    const isActive = v === activeVout;
+                    return (
+                      <button key={v} onClick={() => { setSelectedVout(v); setSelectedRungIdx(0); }} style={{
+                        ...sty.btn, padding: '6px 14px',
+                        color: isActive ? 'var(--amber)' : 'var(--text-secondary)',
+                        background: isActive ? 'var(--amber-glow)' : 'var(--bg-primary)',
+                        borderColor: isActive ? 'var(--amber)' : 'var(--border)',
+                        marginRight: 0,
+                      }}>
+                        vout {v}{labels ? ' — ' + labels : ''} ({vRungs.length} condition{vRungs.length > 1 ? 's' : ''})
+                      </button>
+                    );
+                  })}
                 </div>
-                {(rung.blocks || []).map((b, bi) => (
-                  <div key={bi} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', padding: '2px 0' }}>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--white)', background: 'var(--bg-tertiary)', padding: '1px 6px', letterSpacing: 0.5 }}>{b.type}</span>
-                    {Object.entries(b.values || {}).filter(([k, v]) => v && k !== 'scheme').map(([k, v]) => (
-                      <span key={k}><span style={{ color: 'var(--text-dim)' }}>{k}:</span> {typeof v === 'string' && v.length > 24 ? v.substring(0, 10) + '...' + v.substring(v.length - 6) : String(v)}</span>
-                    ))}
-                  </div>
-                ))}
               </div>
-            ))
-          ) : (
-            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No condition data stored. The proxy will decode the UTXO on spend.</div>
-          )}
-        </div>
+            );
+          }
+          return null;
+        })()}
+
+        {/* Conditions + Rung Selector */}
+        {(() => {
+          const vout = selectedVout !== null ? selectedVout : (selectedRecord.vout || 0);
+          const allRungs = selectedRecord.rungs || [];
+          const voutRungs = allRungs.filter(r => r.vout === vout);
+          const hasMultipleConditions = voutRungs.length > 1;
+          return (<>
+            {hasMultipleConditions && (
+              <div style={{ ...sty.section, borderColor: 'var(--cyan)', background: 'rgba(0,212,255,0.04)' }}>
+                <div style={sty.label}>SELECT CONDITION PATH</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  This output has {voutRungs.length} spending conditions (OR paths). Choose which one to satisfy:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {voutRungs.map((rung, ri) => {
+                    const isActive = ri === selectedRungIdx;
+                    return (
+                      <div key={ri} onClick={() => setSelectedRungIdx(ri)} style={{
+                        padding: '8px 12px', cursor: 'pointer', border: '1px solid',
+                        borderColor: isActive ? 'var(--cyan)' : 'var(--border)',
+                        background: isActive ? 'rgba(0,212,255,0.08)' : 'var(--bg-primary)',
+                        transition: 'all 0.15s', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: isActive ? 'var(--cyan)' : 'var(--text-dim)', marginRight: 8 }}>
+                            {isActive ? '\u25B6' : '\u25CB'} CONDITION {ri}
+                          </span>
+                          {rung.label && <span style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 600 }}>{rung.label}</span>}
+                        </div>
+                        <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>
+                          {(rung.blocks || []).map(b => b.type).join(' + ')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div style={sty.section}>
+              <div style={sty.label}>CONDITIONS</div>
+              {allRungs.length > 0 ? (
+                allRungs.map((rung, ri) => {
+                  const isTarget = hasMultipleConditions
+                    ? (voutRungs.indexOf(rung) === selectedRungIdx)
+                    : (ri === 0);
+                  return (
+                    <div key={ri} style={{
+                      marginBottom: 8, padding: '8px 10px',
+                      background: isTarget ? 'rgba(0,212,255,0.05)' : 'var(--bg-primary)',
+                      border: '1px solid',
+                      borderColor: isTarget ? 'var(--cyan)' : 'var(--border)',
+                      opacity: (hasMultipleConditions && rung.vout === vout && !isTarget) ? 0.4 : 1,
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: isTarget ? 'var(--cyan)' : 'var(--amber)', letterSpacing: 1, marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>RUNG {ri}{rung.label ? ': ' + rung.label : ''}</span>
+                        {isTarget && <span style={{ fontSize: 9, color: 'var(--cyan)', fontWeight: 400 }}>SPENDING THIS</span>}
+                      </div>
+                      {(rung.blocks || []).map((b, bi) => (
+                        <div key={bi} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', padding: '2px 0' }}>
+                          <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--white)', background: 'var(--bg-tertiary)', padding: '1px 6px', letterSpacing: 0.5 }}>{b.type}</span>
+                          {Object.entries(b.values || {}).filter(([k, v]) => v && k !== 'scheme').map(([k, v]) => (
+                            <span key={k}><span style={{ color: 'var(--text-dim)' }}>{k}:</span> {typeof v === 'string' && v.length > 24 ? v.substring(0, 10) + '...' + v.substring(v.length - 6) : String(v)}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No condition data stored. The proxy will decode the UTXO on spend.</div>
+              )}
+            </div>
+          </>);
+        })()}
 
         {/* Signing keys */}
         <div style={sty.section}>
@@ -8314,9 +8713,18 @@ function SpendPanel({ onViewAsLadder }) {
         {/* RESULT */}
         {spendResult && (
           <div style={{ ...sty.section, borderColor: 'var(--green)', background: 'var(--green-dim)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ color: 'var(--green-bright)', fontSize: 18 }}>&#x2713;</span>
-              <span style={{ color: 'var(--green-bright)', fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>SPEND CONFIRMED</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--green-bright)', fontSize: 18 }}>&#x2713;</span>
+                <span style={{ color: 'var(--green-bright)', fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>SPEND CONFIRMED</span>
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button style={{ ...sty.btn, ...sty.btnCyan, padding: '3px 10px', fontSize: 9 }} onClick={async () => {
+                  const data = await apiCall('/api/ladder/tx/' + spendResult.txid, undefined, true);
+                  if (data) setSpendTxJson(data);
+                }}>{spendTxJson ? 'REFRESH' : 'VIEW JSON'}</button>
+                {spendTxJson && <button style={{ ...sty.btn, ...sty.btnDefault, padding: '3px 10px', fontSize: 9, marginRight: 0, ...(copiedKey === 'spend-json' ? { color: 'var(--green-bright)', borderColor: 'var(--green-bright)' } : {}) }} onClick={() => copyWithFeedback(JSON.stringify(spendTxJson, null, 2), 'spend-json')}>{copiedKey === 'spend-json' ? '✓ COPIED' : 'COPY JSON'}</button>}
+              </div>
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -8332,6 +8740,9 @@ function SpendPanel({ onViewAsLadder }) {
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Destination: <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{spendResult.destAddress}</span></div>
             </div>
+            {spendTxJson && (
+              <pre style={{ marginTop: 10, padding: '10px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', overflow: 'auto', maxHeight: 400, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>{JSON.stringify(spendTxJson, null, 2)}</pre>
+            )}
           </div>
         )}
       </>)}

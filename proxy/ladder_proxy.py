@@ -40,7 +40,7 @@ RPC_USER = os.environ.get("RPC_USER", "ghostrpc")
 RPC_PASS = os.environ.get("RPC_PASS", "ghost_signet_rpc_2024")
 FAUCET_AMOUNT = float(os.environ.get("FAUCET_AMOUNT", "0.001"))
 FAUCET_COOLDOWN = int(os.environ.get("FAUCET_COOLDOWN", "300"))  # seconds per IP
-RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "30"))  # requests per minute
+RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "120"))  # requests per minute
 ALLOWED_ORIGINS = os.environ.get(
     "ALLOWED_ORIGINS", "https://bitcoinghost.org,https://www.bitcoinghost.org,http://localhost:8080,http://127.0.0.1:8080"
 ).split(",")
@@ -266,7 +266,23 @@ app.add_middleware(
 async def rate_limit_middleware(request: Request, call_next):
     if request.method != "OPTIONS":
         ip = request.headers.get("X-Real-IP", request.client.host)
-        _check_rate_limit(ip)
+        try:
+            _check_rate_limit(ip)
+        except HTTPException as exc:
+            # Must include CORS headers on 429 responses — otherwise the browser
+            # treats the missing Access-Control-Allow-Origin as a network error
+            # ("Failed to fetch") instead of showing the actual 429 status.
+            origin = request.headers.get("origin", "")
+            headers = {}
+            if origin in ALLOWED_ORIGINS:
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+                headers["Access-Control-Allow-Headers"] = "Content-Type"
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+                headers=headers,
+            )
     return await call_next(request)
 
 
@@ -566,6 +582,69 @@ async def pq_keypair(request: Request):
     return result
 
 
+def _ripemd160(data: bytes) -> bytes:
+    """Pure-Python RIPEMD-160 (OpenSSL 3.x disabled legacy hashes)."""
+    # Constants
+    _f = [lambda x, y, z: x ^ y ^ z, lambda x, y, z: (x & y) | (~x & z),
+          lambda x, y, z: (x | ~y) ^ z, lambda x, y, z: (x & z) | (y & ~z),
+          lambda x, y, z: x ^ (y | ~z)]
+    _K1 = [0x00000000, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E]
+    _K2 = [0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000]
+    _R1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,
+           3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,
+           4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13]
+    _R2 = [5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,
+           15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,
+           12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11]
+    _S1 = [11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,
+           11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,
+           9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6]
+    _S2 = [8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,
+           9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,
+           8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11]
+    M = 0xFFFFFFFF
+    rl = lambda v, n: ((v << n) | (v >> (32 - n))) & M
+    msg = bytearray(data)
+    l = len(msg) * 8
+    msg.append(0x80)
+    while len(msg) % 64 != 56:
+        msg.append(0)
+    msg += struct.pack('<Q', l)
+    h0, h1, h2, h3, h4 = 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0
+    for i in range(0, len(msg), 64):
+        X = list(struct.unpack('<16L', msg[i:i+64]))
+        a1, b1, c1, d1, e1 = h0, h1, h2, h3, h4
+        a2, b2, c2, d2, e2 = h0, h1, h2, h3, h4
+        for j in range(80):
+            rnd = j >> 4
+            t = (a1 + _f[rnd](b1, c1, d1) + X[_R1[j]] + _K1[rnd]) & M
+            t = (rl(t, _S1[j]) + e1) & M
+            a1, e1, d1, c1, b1 = e1, d1, rl(c1, 10), b1, t
+            t = (a2 + _f[4 - rnd](b2, c2, d2) + X[_R2[j]] + _K2[rnd]) & M
+            t = (rl(t, _S2[j]) + e2) & M
+            a2, e2, d2, c2, b2 = e2, d2, rl(c2, 10), b2, t
+        t = (h1 + c1 + d2) & M
+        h1 = (h2 + d1 + e2) & M
+        h2 = (h3 + e1 + a2) & M
+        h3 = (h4 + a1 + b2) & M
+        h4 = (h0 + b1 + c2) & M
+        h0 = t
+    return struct.pack('<5L', h0, h1, h2, h3, h4)
+
+
+@app.get("/api/ladder/preimage")
+async def generate_preimage():
+    """Generate a random 32-byte preimage and return its SHA256 and HASH160 hashes."""
+    preimage = os.urandom(32)
+    sha256_hash = hashlib.sha256(preimage).digest()
+    hash160 = _ripemd160(sha256_hash)
+    return {
+        "preimage": preimage.hex(),
+        "sha256": sha256_hash.hex(),
+        "hash160": hash160.hex(),
+    }
+
+
 @app.post("/api/ladder/mine")
 async def mine_blocks(request: Request):
     """Mine blocks on regtest (for local testing only)."""
@@ -575,7 +654,7 @@ async def mine_blocks(request: Request):
     except json.JSONDecodeError:
         data = {}
 
-    n_blocks = min(int(data.get("blocks", 1)), 10)  # cap at 10
+    n_blocks = min(int(data.get("blocks", 1)), 200)  # cap at 200 for CSV satisfaction
     address = data.get("address", "")
 
     if not address:

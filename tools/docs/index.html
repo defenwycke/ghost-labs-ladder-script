@@ -436,6 +436,13 @@
     // Transaction examples data
     const TX_EXAMPLES = [
       {
+        name: 'Atomic Swaps', cls: 'sig',
+        intro: 'On-chain atomic swap transactions using adaptor signatures and hash-locked contracts.',
+        txs: [
+          { file: 'adaptor-sig-swap', name: 'Adaptor Sig Swap', desc: 'Schnorr adaptor signature atomic swap. ADAPTOR_SIG execute path with CSV+dual-SIG cancel. On-chain adapted sig reveals the adaptor secret.', date: '2026-03-11', scheme: 'SCHNORR' },
+        ]
+      },
+      {
         name: 'Post-Quantum', cls: 'pq',
         intro: 'Round-trip transactions demonstrating post-quantum signature schemes supported by Ladder Script.',
         txs: [
