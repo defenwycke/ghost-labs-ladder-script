@@ -7315,23 +7315,26 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
       totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
     }
 
-    // Auto-add change output if implied fee would be excessive
-    totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
-    const impliedFee = selectedTotal - totalNewOutputSats;
-    const maxReasonableFee = Math.max(feeSats, 5000);
-    if (impliedFee > maxReasonableFee) {
-      const changeSats = impliedFee - feeSats;
-      if (changeSats >= 546) {
-        const changeAddr = await apiCall('/api/ladder/wallet/address');
-        if (changeAddr) {
-          const changeOutputId = uid();
-          newOutputs.push({ id: changeOutputId, address: changeAddr.address, amount: changeSats });
-          // Create a change rung with a simple SIG condition
-          const changeRung = createRung();
-          changeRung.label = 'Change';
-          changeRung.blocks = [{ id: uid(), type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }];
-          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
-          setRungs(prev => [...prev, changeRung]);
+    // Auto-add change output only when the user didn't explicitly set all amounts
+    // (i.e. some outputs had zero amounts that we auto-filled from the wallet).
+    // If the user set every output amount themselves, they own the fee — don't override.
+    if (zeroAmountIndices.length > 0) {
+      totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
+      const impliedFee = selectedTotal - totalNewOutputSats;
+      const maxReasonableFee = Math.max(feeSats, 5000);
+      if (impliedFee > maxReasonableFee) {
+        const changeSats = impliedFee - feeSats;
+        if (changeSats >= 546) {
+          const changeAddr = await apiCall('/api/ladder/wallet/address');
+          if (changeAddr) {
+            const changeOutputId = uid();
+            newOutputs.push({ id: changeOutputId, address: changeAddr.address, amount: changeSats });
+            const changeRung = createRung();
+            changeRung.label = 'Change';
+            changeRung.blocks = [{ id: uid(), type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }];
+            changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
+            setRungs(prev => [...prev, changeRung]);
+          }
         }
       }
     }
