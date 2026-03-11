@@ -514,6 +514,13 @@
           let txHtml = '<span class="block-detail-back" onclick="loadTxIndex()">\u2190 All Transaction Examples</span>';
           txHtml += content.innerHTML;
           docContent.innerHTML = txHtml;
+
+          // Rewrite doc-nav spans to use loadTxIndex() instead of navigating
+          docContent.querySelectorAll('.doc-nav span').forEach(s => {
+            if (s.getAttribute('onclick') && s.getAttribute('onclick').includes('TX_INDEX')) {
+              s.setAttribute('onclick', 'loadTxIndex()');
+            }
+          });
         } else {
           loading.style.display = 'none';
           docContent.innerHTML = '<p style="color:var(--gray-400);">Could not parse transaction documentation.</p>';
