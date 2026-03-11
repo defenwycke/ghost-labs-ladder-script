@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault Unvault — Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-seg.w-scheme { background: #00d4ff; }
+  .witness-seg.w-pubkey { background: #f7931a; }
+  .witness-seg.w-sig { background: #00ff88; }
+  .witness-seg.w-overhead { background: #4a4a4a; }
+  .witness-seg.w-vault { background: #ff6b9d; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+  .scheme-badge.vault { background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.25); }
+  .scheme-badge.schnorr { background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; COVENANT</div>
+  <h1 class="block-title">Vault with Unvault + Clawback</h1>
+  <p class="block-subtitle">Bitcoin vault pattern using the VAULT_LOCK block type. A v4 RUNG_TX creates a 2-path output: the hot key can spend after a CSV relative delay (unvault path), while the recovery key can sweep immediately (clawback path). This example funds the vault and then exercises the unvault path by mining 10 blocks to satisfy the CSV delay before spending.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px;">
+    <span class="scheme-badge vault">VAULT_LOCK &middot; TYPE 0x0B</span>
+    <span class="scheme-badge schnorr">SCHNORR &middot; SCHEME 0x01</span>
+  </div>
+</div>
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">The funding transaction encodes two rungs &mdash; two independent spending paths. Only one needs to be satisfied to spend the output.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.2);">UNVAULT</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.2);">VAULT_LOCK (hot_key + delay:10)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">HOT_SPEND</div>
+      </div>
+    </div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">CLAWBACK</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">SIG (recovery_key)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">COLD_CLAWBACK</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-text" style="margin-top: 8px;">The VAULT_LOCK block is self-contained: it commits both the hot key and recovery key pubkey hashes, plus a numeric delay. The evaluator checks the hot key signature <em>and</em> enforces BIP-68 relative timelock (nSequence) in a single block.</p>
+</div>
+
+<!-- Transaction Pair -->
+<div class="doc-section">
+  <div class="section-label">Transactions</div>
+
+  <div class="tx-pair">
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">dc7d617a3aeeb4f929576addeeb04f94d23833b14ae381731b5d2a12ed420fc5</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">353 bytes &middot; 270 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">3 &mdash; vout 0: VAULT_LOCK (100,000 sats), vout 1: SIG clawback (99,900 sats), vout 2: change (49.998 BTC)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Unvault Path)</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">ae99a381eb03c53b56362d51b4389110fe67358d1da1e64ff25b34342ad93c79</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">220 bytes &middot; 135 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">nSequence</div>
+        <div class="tx-field-value highlight">10 (CSV delay satisfied)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Witness Breakdown -->
+<div class="doc-section">
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The unvault witness is 110 bytes. It identifies the VAULT_LOCK block type (0x0B), provides the hot key (33 bytes compressed), and a 64-byte Schnorr signature. The nSequence field (10) satisfies the CSV relative lock.</p>
+
+  <div class="witness-bar">
+    <div class="witness-seg w-overhead" style="flex: 3;" title="Framing: 3 bytes"></div>
+    <div class="witness-seg w-vault" style="flex: 1;" title="Block type: 0x0B VAULT_LOCK">0x0B</div>
+    <div class="witness-seg w-overhead" style="flex: 2;" title="Rung index + key count">IDX</div>
+    <div class="witness-seg w-pubkey" style="flex: 33;" title="Hot key: 33 bytes">33B key</div>
+    <div class="witness-seg w-overhead" style="flex: 1;" title="Sig length prefix">LEN</div>
+    <div class="witness-seg w-sig" style="flex: 64;" title="Schnorr signature: 64 bytes">64B sig</div>
+    <div class="witness-seg w-overhead" style="flex: 6;" title="Trailing framing">TAIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #ff6b9d;"></div> Block Type (1B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Hot Key (33B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature (64B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing (12B)</div>
+  </div>
+</div>
+
+<!-- CSV Mechanics -->
+<div class="doc-section">
+  <div class="section-label">CSV Relative Timelock</div>
+  <p class="section-text">The VAULT_LOCK block encodes a relative delay of 10 blocks via BIP-68. The spending transaction must set <code>nSequence = 10</code> on the input, and the UTXO must have at least 10 confirmations before the spend is valid.</p>
+
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">CSV Delay</div>
+      <div class="verify-value">10 blocks</div>
+      <div class="verify-check">Encoded in conditions</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">nSequence</div>
+      <div class="verify-value">0x0000000A</div>
+      <div class="verify-check">Matches delay</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Blocks Mined</div>
+      <div class="verify-value">10</div>
+      <div class="verify-check">BIP-68 satisfied</div>
+    </div>
+  </div>
+</div>
+
+<!-- Verification -->
+<div class="doc-section">
+  <div class="section-label">Verification</div>
+  <p class="section-text">The evaluator performs three checks for the VAULT_LOCK unvault path: hot key commitment, signature validity, and CSV enforcement.</p>
+
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">Hot Key</div>
+      <div class="verify-value">33 bytes</div>
+      <div class="verify-check">PUBKEY_COMMIT match</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Signature</div>
+      <div class="verify-value">64 bytes</div>
+      <div class="verify-check">Schnorr valid</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">CSV Lock</div>
+      <div class="verify-value">Enforced</div>
+      <div class="verify-check">nSequence &ge; delay</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Witness Parse</div>
+      <div class="verify-value">110 / 110</div>
+      <div class="verify-check">All bytes consumed</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Spending Path</div>
+      <div class="verify-value">Unvault</div>
+      <div class="verify-check">Rung 0 (hot key)</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Block Accepted</div>
+      <div class="verify-value">Confirmed</div>
+      <div class="verify-check">Spend valid</div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works -->
+<div class="doc-section">
+  <div class="section-label">How Vault Spending Works</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">Funding transaction creates an output with <span class="eval-keyword">rung_conditions</span> containing two rungs. Rung 0 has a <span class="eval-keyword">VAULT_LOCK</span> block encoding two PUBKEY_COMMITs (hot key and recovery key) plus a numeric CSV delay of 10 blocks. Rung 1 has a standard <span class="eval-keyword">SIG</span> block for the recovery key (clawback).</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text">To spend via the unvault path, the spender waits for 10 confirmations, then constructs a transaction with <code>nSequence = 10</code> on the input. The ladder witness provides the hot key and Schnorr signature.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text">The evaluator selects rung 0, identifies the VAULT_LOCK block, verifies <code>SHA256(hot_key)</code> matches the committed hash, validates the Schnorr signature against the sighash, and confirms <code>nSequence &ge; 10</code>. Result: <span class="eval-result-sat">SATISFIED</span>.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">Alternatively, the recovery key holder can bypass the delay entirely by satisfying rung 1 (CLAWBACK) with a single signature &mdash; no CSV wait required. This is the emergency sweep path.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Vault vs. Alternatives -->
+<div class="doc-section">
+  <div class="section-label">Comparison</div>
+  <table class="field-table">
+    <thead>
+      <tr><th>Approach</th><th>Delay Enforcement</th><th>Clawback</th><th>On-chain Cost</th><th>Complexity</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background: rgba(255, 107, 157, 0.04);">
+        <td class="field-name" style="color: #ff6b9d;">Ladder VAULT_LOCK</td>
+        <td>Single block (CSV built-in)</td>
+        <td>Second rung, 1 sig</td>
+        <td>270 vB fund, 135 vB spend</td>
+        <td>1 block type</td>
+      </tr>
+      <tr>
+        <td class="field-name">OP_VAULT (BIP-345)</td>
+        <td>OP_VAULT_RECOVER + CTV</td>
+        <td>Recovery output</td>
+        <td>~200&ndash;300 vB</td>
+        <td>New opcodes required</td>
+      </tr>
+      <tr>
+        <td class="field-name">Pre-signed TX Vault</td>
+        <td>Pre-signed with nLocktime</td>
+        <td>Delete pre-signed TX</td>
+        <td>Standard TX sizes</td>
+        <td>Key deletion trust</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Full JSON -->
+<div class="doc-section">
+  <div class="section-label">Funding Transaction JSON</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"dc7d617a3aeeb4f929576addeeb04f94d23833b14ae381731b5d2a12ed420fc5"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"fdfe16c34bd01ca9b986db0f02e11e1e24a66e71f02b72de30be241ce48385b5"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">353</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">270</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">1079</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"dfb8f51bda954f9e93c3c7141d74ecda7dd046fd6098c1701711aa9e17fde1aa"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"0101002103edd326b5b9aef2dc6a3a6f80c9df7052ae00f7f6e7340edcc09df843383c1b314078143a1542d9b4864be9d364cd44b24d234346289198ddd667aef86f876d5e6620105bdfa3bb07ea3e4a4c1f4bd35ead8b6d907205c08619dc828efc9a038d960101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00100000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
+        <span class="json-key">"address"</span>: <span class="json-str">"rung1qyqskqczyqkpl7wxdxzpq8gaf5c4xj5h2zjy4mlhyvh4kd9av0flwgvzqzz7gq3qyw59a9sq95ytwk8jqs6nqaz8u93x26merv9l8xypx9u7rq2cg94sszspqyqsqqq5e4cxn"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00099900</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
+        <span class="json-key">"address"</span>: <span class="json-str">"rung1qyqsqtqll8rxnpqsr5w56v2nf2t4pfz2almjxt6mxj7k85lhyxpqpp0yqyqszqgqqqeccw94"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">49.99799100</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">2</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
+        <span class="json-key">"address"</span>: <span class="json-str">"rung1qyqsqtqll8rxnpqsr5w56v2nf2t4pfz2almjxt6mxj7k85lhyxpqpp0yqyqszqgqqqeccw94"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"476a568cbc740eebe55aa31265f56bbdf197239fb1eb3321ff296ef29e2d32a3"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773258199</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773258199</span>
+}</pre>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Spending Transaction JSON (Unvault Path)</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"ae99a381eb03c53b56362d51b4389110fe67358d1da1e64ff25b34342ad93c79"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"4297572572a5f47c4ff8857e3b1962089cec8437b68478737ee9331043ade14b"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">220</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">135</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">538</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"dc7d617a3aeeb4f929576addeeb04f94d23833b14ae381731b5d2a12ed420fc5"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"01010b020121029d6d1804d321b5ce142333173e1a52fa14eb15f927279920c40486105e6561b006407ad818b48a0e8b33fca8e7a73e3e5afba05733bfb2cbe9f18cbef9df0c3ea17e81dbb2118148583edd856238b0b71fbcc4c31988718b629f1fd658a27f19fc290101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">10</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00099000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
+        <span class="json-key">"address"</span>: <span class="json-str">"rung1qyqcqqgqqypzqtqll8rxnpqsr5w56v2nf2t4pfz2almjxt6mxj7k85lhyxpqpp0yqyqszqqq58uxu8"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"34da939f93461bd8db21fac408cd326f9229c14c267aff12ef5eacc5c938ebd6"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773258223</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773258223</span>
+}</pre>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="doc-nav">
+  <span onclick="if(window.parent !== window) window.parent.location.hash='TX_INDEX'; else window.location.href='../index.html#TX_INDEX';">&#8592; All Transaction Examples</span>
+  <span></span>
+</div>
+
+</div>
+
+</body>
+</html>

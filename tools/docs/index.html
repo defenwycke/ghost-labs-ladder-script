@@ -448,6 +448,13 @@
         txs: [
           { file: 'falcon512-roundtrip', name: 'Falcon-512 Round-Trip', desc: 'Complete fund-and-spend cycle using a 897-byte Falcon-512 public key and 657-byte signature. First proven PQ spend.', date: '2026-03-10', scheme: 'FALCON-512' },
         ]
+      },
+      {
+        name: 'Covenants', cls: 'cov',
+        intro: 'Vault and covenant patterns demonstrating advanced spending conditions with built-in timelocks and multi-path outputs.',
+        txs: [
+          { file: 'vault-unvault', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback. VAULT_LOCK encodes both paths in a single block type.', date: '2026-03-11', scheme: 'VAULT_LOCK' },
+        ]
       }
     ];
 
