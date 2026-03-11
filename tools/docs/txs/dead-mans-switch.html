@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead Man's Switch — Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-seg.w-scheme { background: #00d4ff; }
+  .witness-seg.w-pubkey { background: #f7931a; }
+  .witness-seg.w-sig { background: #00ff88; }
+  .witness-seg.w-overhead { background: #4a4a4a; }
+  .witness-seg.w-latch { background: #a855f7; }
+  .witness-seg.w-recurse { background: #ff6b9d; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+  .scheme-badge.recurse { background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.25); }
+  .scheme-badge.latch { background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); }
+  .scheme-badge.schnorr { background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  .hex-compare { font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.8; background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 16px; margin: 16px 0; word-break: break-all; }
+  .hex-compare .label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px; }
+  .hex-compare .hex { color: #00ff88; }
+  .hex-compare .match { font-size: 12px; color: #00ff88; font-weight: 600; margin-top: 8px; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; COVENANT</div>
+  <h1 class="block-title">Dead Man's Switch (Inheritance)</h1>
+  <p class="block-subtitle">Bitcoin inheritance pattern using RECURSE_SAME + LATCH_SET. The owner must periodically sign a keepalive transaction to maintain control. Each spend re-encumbers the output with identical conditions via RECURSE_SAME, resetting the CSV clock. If the owner fails to sign within the timeout window, the heir can claim the funds via the INHERIT path.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge recurse">RECURSE_SAME &middot; TYPE 0x0D</span>
+    <span class="scheme-badge latch">LATCH_SET &middot; TYPE 0x1D</span>
+    <span class="scheme-badge schnorr">SCHNORR &middot; SCHEME 0x01</span>
+  </div>
+</div>
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">The funding transaction creates two outputs, each with a single rung (spending path). Vout 0 is the owner's keepalive path &mdash; a recursive covenant that re-encumbers itself. Vout 1 is the heir's claim path, gated by a CSV relative timelock.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">ALIVE</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (owner)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">LATCH_SET (state=0)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.2);">RECURSE_SAME (depth=10)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">KEEPALIVE</div>
+      </div>
+    </div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">INHERIT</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.2);">CSV (26,000 blocks)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (heir)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">HEIR_CLAIM</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-text" style="margin-top: 8px;">The ALIVE rung combines three block types: <strong>SIG</strong> proves the owner is alive, <strong>LATCH_SET</strong> provides state tracking (precondition: state must be 0), and <strong>RECURSE_SAME</strong> enforces that the spending output carries byte-identical conditions &mdash; the covenant loop. The INHERIT rung on a separate output uses <strong>CSV</strong> (~6 months) + <strong>SIG</strong> for the heir.</p>
+</div>
+
+<!-- Transaction Pair -->
+<div class="doc-section">
+  <div class="section-label">Transactions</div>
+
+  <div class="tx-pair">
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">1a84fb9d350db1a860b1f6e45f86474e66f8c94f3d273c7b85192470a722289a</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">359 bytes &middot; 276 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">3 &mdash; vout 0: ALIVE (250,000 sats), vout 1: INHERIT (249,900 sats), vout 2: change (49.99 BTC)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Keepalive)</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">a73093aa78f96a417c3edc61c7d0df73305b05d81943de6d3cdcc079b58f7e84</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">259 bytes &middot; 173 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Output</div>
+        <div class="tx-field-value">vout 0: 249,000 sats &mdash; identical conditions (carry-forward)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Covenant Carry-Forward -->
+<div class="doc-section">
+  <div class="section-label">Covenant Carry-Forward</div>
+  <p class="section-text">The RECURSE_SAME block enforces that the spending output's scriptPubKey is byte-identical to the input's. The evaluator deserializes both, compares every rung, block, field type, and field data. Here is the raw scriptPubKey comparison:</p>
+
+  <div class="hex-compare">
+    <div class="label">Funding vout 0 scriptPubKey</div>
+    <div class="hex">c101030004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867011d02022004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde586708000d01080a0101010000</div>
+    <div class="label" style="margin-top: 12px;">Spending vout 0 scriptPubKey</div>
+    <div class="hex">c101030004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867011d02022004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde586708000d01080a0101010000</div>
+    <div class="match">BYTE-IDENTICAL &mdash; FullConditionsEqual: SATISFIED</div>
+  </div>
+
+  <p class="section-text">The 84-byte scriptPubKey encodes: <code>0xC1</code> prefix, 1 rung with 3 blocks (SIG with PUBKEY_COMMIT, LATCH_SET with PUBKEY_COMMIT + state, RECURSE_SAME with max_depth=10), and a default UNLOCK/INLINE/SCHNORR coil.</p>
+</div>
+
+<!-- Witness Breakdown -->
+<div class="doc-section">
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The keepalive witness provides data for all three blocks. The SIG block contributes the owner's public key (33 bytes) and Schnorr signature (64 bytes). LATCH_SET and RECURSE_SAME contribute no witness data &mdash; they are evaluated from the conditions and transaction structure alone.</p>
+
+  <div class="witness-bar">
+    <div class="witness-seg w-overhead" style="flex: 3;" title="Framing: rung count + block count">FRM</div>
+    <div class="witness-seg w-pubkey" style="flex: 33;" title="Owner pubkey: 33 bytes">33B pubkey</div>
+    <div class="witness-seg w-sig" style="flex: 64;" title="Schnorr signature: 64 bytes">64B signature</div>
+    <div class="witness-seg w-latch" style="flex: 1;" title="LATCH_SET: no witness data">L</div>
+    <div class="witness-seg w-recurse" style="flex: 1;" title="RECURSE_SAME: no witness data">R</div>
+    <div class="witness-seg w-overhead" style="flex: 9;" title="Trailing framing + coil">TAIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Pubkey (33B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature (64B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #a855f7;"></div> LATCH_SET (0B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #ff6b9d;"></div> RECURSE_SAME (0B)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing (12B)</div>
+  </div>
+</div>
+
+<!-- Verification -->
+<div class="doc-section">
+  <div class="section-label">Verification</div>
+  <p class="section-text">The evaluator performs four checks across the three blocks to validate the keepalive spend.</p>
+
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">SIG Block</div>
+      <div class="verify-value">Schnorr</div>
+      <div class="verify-check">PUBKEY_COMMIT match + valid sig</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">LATCH_SET</div>
+      <div class="verify-value">state = 0</div>
+      <div class="verify-check">Precondition: unset</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">RECURSE_SAME</div>
+      <div class="verify-value">Identical</div>
+      <div class="verify-check">84 bytes match</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Max Depth</div>
+      <div class="verify-value">10</div>
+      <div class="verify-check">Decrements each spend</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Spending Path</div>
+      <div class="verify-value">ALIVE</div>
+      <div class="verify-check">Rung 0 (owner keepalive)</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Block Accepted</div>
+      <div class="verify-value">Confirmed</div>
+      <div class="verify-check">Spend valid</div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works -->
+<div class="doc-section">
+  <div class="section-label">How Dead Man's Switch Works</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">The funding transaction creates two outputs. Vout 0 (ALIVE) contains a single rung with three blocks: <span class="eval-keyword">SIG</span> (owner's PUBKEY_COMMIT), <span class="eval-keyword">LATCH_SET</span> (state=0), and <span class="eval-keyword">RECURSE_SAME</span> (max_depth=10). Vout 1 (INHERIT) contains <span class="eval-keyword">CSV</span> (26,000 blocks ~6 months) + <span class="eval-keyword">SIG</span> (heir's key).</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text">To prove they are alive, the owner spends vout 0 with a valid signature. The evaluator checks: SIG is valid, LATCH_SET precondition passes (state==0), and the spending output carries <em>byte-identical</em> conditions (RECURSE_SAME). The output is re-encumbered with the same covenant.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text">Each keepalive resets the relative timeout on the INHERIT output. As long as the owner keeps spending within the CSV window, the heir cannot claim. The covenant can loop up to <code>max_depth</code> times (10 in this example).</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">If the owner fails to sign within 26,000 blocks (~6 months), the heir satisfies vout 1 by waiting out the CSV lock and providing their own signature. The INHERIT path has no recursion constraint &mdash; it spends freely to any destination.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison -->
+<div class="doc-section">
+  <div class="section-label">Comparison</div>
+  <table class="field-table">
+    <thead>
+      <tr><th>Approach</th><th>Keepalive Mechanism</th><th>Inheritance Trigger</th><th>On-chain Cost</th><th>Complexity</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background: rgba(168, 85, 247, 0.04);">
+        <td class="field-name" style="color: #a855f7;">Ladder Dead Man's Switch</td>
+        <td>RECURSE_SAME carry-forward</td>
+        <td>CSV timeout (trustless)</td>
+        <td>276 vB fund, 173 vB spend</td>
+        <td>3 block types</td>
+      </tr>
+      <tr>
+        <td class="field-name">Multisig + Timelock Script</td>
+        <td>Sweep to new UTXO</td>
+        <td>nLockTime expiry</td>
+        <td>~200&ndash;400 vB</td>
+        <td>Script complexity, no covenant</td>
+      </tr>
+      <tr>
+        <td class="field-name">Custodial Inheritance</td>
+        <td>Login activity tracking</td>
+        <td>Inactivity period</td>
+        <td>N/A (off-chain)</td>
+        <td>Requires trusted third party</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Full JSON -->
+<div class="doc-section">
+  <div class="section-label">Funding Transaction JSON</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"1a84fb9d350db1a860b1f6e45f86474e66f8c94f3d273c7b85192470a722289a"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"9f83a29956667488da28ed9adf1f0805d8bf8d87580a546580d5c92e41fb8ca5"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">359</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">276</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">1103</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"b040e6025838a1a631b49b499c72db06c843a76141c98f25f735bbbbad3061a7"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"01010021035afd0e66eb1a899ead689e0d484249ebe9fb3c584ead823f82c44c14808b68d340d6a14b0c6f8565b41ba62fc583c7a61e6bbb81741773ec079780bde82bdae5ccb67b9ff64d67f6a13869a73d25a9f1dc2885b47542b9bad813868dd6d4ff74600101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00250000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c101030004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867011d02022004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde586708000d01080a0101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00249900</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c1010203900004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867010101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">49.99498950</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">2</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c101010004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867010101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"552479c18e7fed383b395c87efa4b9bae6256504e494033a3d35bbaa5471386b"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773262350</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773262350</span>
+}</pre>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Spending Transaction JSON (Keepalive)</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"a73093aa78f96a417c3edc61c7d0df73305b05d81943de6d3cdcc079b58f7e84"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"d77b8bac35099294cc4be418b13044dd72c2bcd3ff561dc64842f811a19863c5"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">259</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">173</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">691</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"1a84fb9d350db1a860b1f6e45f86474e66f8c94f3d273c7b85192470a722289a"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"01030021035afd0e66eb1a899ead689e0d484249ebe9fb3c584ead823f82c44c14808b68d34028e4f44dc9547607f2baa8326f07b2579e2eafb568191befe34e74242b094449266a701a30af8d8df34edda04838509890d64a3bdfcf51926a8fe793014229631d000d000101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00249000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c101030004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde5867011d02022004fd1343c5ffb147bd304c2fe116cddfec6c7932fbb12f5f5d3004212fde586708000d01080a0101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"6bae30d8bf43796bb695512825488a939bf66a41f874f4fd77f23ed82d6c9fd3"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773262384</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773262384</span>
+}</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

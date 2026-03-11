@@ -454,6 +454,7 @@
         intro: 'Vault and covenant patterns demonstrating advanced spending conditions with built-in timelocks and multi-path outputs.',
         txs: [
           { file: 'vault-unvault', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback. VAULT_LOCK encodes both paths in a single block type.', date: '2026-03-11', scheme: 'VAULT_LOCK' },
+          { file: 'dead-mans-switch', name: 'Dead Man\'s Switch (Inheritance)', desc: 'Recursive covenant inheritance pattern. Owner keepalive via RECURSE_SAME carry-forward resets CSV clock. Heir claims after timeout. First proven covenant round-trip.', date: '2026-03-11', scheme: 'RECURSE_SAME' },
         ]
       }
     ];
