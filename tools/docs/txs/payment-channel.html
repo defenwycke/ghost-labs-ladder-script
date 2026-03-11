@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Channel — Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-seg.w-pubkey { background: #f7931a; }
+  .witness-seg.w-sig { background: #00ff88; }
+  .witness-seg.w-overhead { background: #4a4a4a; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+  .scheme-badge.sig { background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.25); }
+  .scheme-badge.time { background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.25); }
+  .scheme-badge.ctv { background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.25); }
+  .scheme-badge.schnorr { background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; CHANNEL</div>
+  <h1 class="block-title">Payment Channel</h1>
+  <p class="block-subtitle">Lightning-style payment channel using Ladder Script. The funding transaction creates three outputs: a cooperative close path requiring both parties' signatures, and two unilateral force-close paths each gated by a 24-hour CSV_TIME timeout and a CTV template commitment. This example exercises the cooperative close &mdash; both parties sign to settle the channel immediately.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge sig">DUAL SIG &middot; COOP CLOSE</span>
+    <span class="scheme-badge time">CSV_TIME &middot; 86400s</span>
+    <span class="scheme-badge ctv">CTV &middot; TEMPLATE HASH</span>
+    <span class="scheme-badge schnorr">SCHNORR &middot; SCHEME 0x01</span>
+  </div>
+</div>
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">Three rungs across three outputs define the channel protocol. Each output has a single spending condition (one rung per output). The COOP output is the happy path; the FORCE outputs are fallbacks.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2);">COOP</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (Alice)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (Bob)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">COOP_CLOSE &middot; vout 0</div>
+      </div>
+    </div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.2);">FORCE_A</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (Alice)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.2);">CSV_TIME (24h)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.2);">CTV (template)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">FORCE_ALICE &middot; vout 1</div>
+      </div>
+    </div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.2);">FORCE_B</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.1); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SIG (Bob)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(45, 125, 210, 0.1); color: #2d7dd2; border: 1px solid rgba(45, 125, 210, 0.2);">CSV_TIME (24h)</div>
+        <div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(255, 107, 157, 0.1); color: #ff6b9d; border: 1px solid rgba(255, 107, 157, 0.2);">CTV (template)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">FORCE_BOB &middot; vout 2</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-text" style="margin-top: 8px;">The <strong>COOP</strong> path requires both Alice and Bob's Schnorr signatures &mdash; no timelock, no template constraint. The <strong>FORCE</strong> paths allow unilateral close: one party's signature + a 24-hour CSV_TIME relative timeout + a CTV template hash that constrains where the funds can go (preventing theft during the dispute window).</p>
+</div>
+
+<!-- Transaction Pair -->
+<div class="doc-section">
+  <div class="section-label">Transactions</div>
+
+  <div class="tx-pair">
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">e7575dd7152d98ce066aa5f5c6a0ae585df78a50a4126a97e8a8e4902d4763ae</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">478 bytes &middot; 395 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">4 &mdash; vout 0: COOP (30,000 sats), vout 1: FORCE_A (20,000 sats), vout 2: FORCE_B (20,000 sats), vout 3: change (49.99 BTC)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Cooperative Close)</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">fc4f8857d679c640bdfe21f6cc4fe8d18e57b75d34f91ceb54444b69c230a73a</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">317 bytes &middot; 159 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Path</div>
+        <div class="tx-field-value highlight">COOP (dual signature, no timelock)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Witness Breakdown -->
+<div class="doc-section">
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The cooperative close witness contains two SIG blocks, each providing a 33-byte compressed public key and a 64-byte Schnorr signature. Both signatures must be valid against the corresponding PUBKEY_COMMITs in the conditions. No timelock or CTV data is needed for the cooperative path.</p>
+
+  <div class="witness-bar">
+    <div class="witness-seg w-overhead" style="flex: 3;" title="Framing: rung count + block count">FRM</div>
+    <div class="witness-seg w-pubkey" style="flex: 33;" title="Alice pubkey: 33 bytes">33B key A</div>
+    <div class="witness-seg w-sig" style="flex: 64;" title="Alice signature: 64 bytes">64B sig A</div>
+    <div class="witness-seg w-pubkey" style="flex: 33;" title="Bob pubkey: 33 bytes">33B key B</div>
+    <div class="witness-seg w-sig" style="flex: 64;" title="Bob signature: 64 bytes">64B sig B</div>
+    <div class="witness-seg w-overhead" style="flex: 10;" title="Trailing framing + coil">TAIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Public Keys (33B &times; 2)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signatures (64B &times; 2)</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing (13B)</div>
+  </div>
+</div>
+
+<!-- Verification -->
+<div class="doc-section">
+  <div class="section-label">Verification</div>
+  <p class="section-text">The evaluator processes both SIG blocks in the COOP rung. Each block verifies the revealed pubkey against its PUBKEY_COMMIT and validates the Schnorr signature. Both must return SATISFIED for the rung to pass.</p>
+
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">SIG Block A</div>
+      <div class="verify-value">Schnorr</div>
+      <div class="verify-check">PUBKEY_COMMIT match + valid sig</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">SIG Block B</div>
+      <div class="verify-value">Schnorr</div>
+      <div class="verify-check">PUBKEY_COMMIT match + valid sig</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Timelock</div>
+      <div class="verify-value">None</div>
+      <div class="verify-check">COOP path skips CSV</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">CTV Template</div>
+      <div class="verify-value">None</div>
+      <div class="verify-check">COOP path skips CTV</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Spending Path</div>
+      <div class="verify-value">COOP</div>
+      <div class="verify-check">Rung 0 (dual signature)</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Block Accepted</div>
+      <div class="verify-value">Confirmed</div>
+      <div class="verify-check">Spend valid</div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works -->
+<div class="doc-section">
+  <div class="section-label">How Payment Channels Work</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">The funding transaction creates three outputs: <strong>COOP</strong> (vout 0) requires both Alice's and Bob's signatures; <strong>FORCE_A</strong> (vout 1) requires Alice's signature + 24-hour CSV_TIME + CTV template; <strong>FORCE_B</strong> (vout 2) requires Bob's signature + 24-hour CSV_TIME + CTV template.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text"><strong>Cooperative close</strong> (happy path): Both parties agree on the final balance split, co-sign a transaction spending vout 0, and broadcast. No timeout needed. The evaluator checks both SIG blocks &mdash; all SATISFIED, rung passes.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text"><strong>Force close</strong> (dispute path): If one party is unresponsive, the other can spend their FORCE output after waiting 24 hours (86,400 seconds via CSV_TIME). The <span class="eval-keyword">CTV</span> template hash constrains the outputs of the force-close transaction, preventing the closer from stealing funds during the timeout window.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">This design mirrors Lightning Network commitment transactions but uses Ladder Script's native block types instead of Bitcoin Script opcodes. Each block type is evaluated independently &mdash; all blocks in the rung must pass for the spend to be valid.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison -->
+<div class="doc-section">
+  <div class="section-label">Comparison</div>
+  <table class="field-table">
+    <thead>
+      <tr><th>Approach</th><th>Cooperative Close</th><th>Force Close</th><th>On-chain Cost</th><th>Complexity</th></tr>
+    </thead>
+    <tbody>
+      <tr style="background: rgba(247, 147, 26, 0.04);">
+        <td class="field-name" style="color: #f7931a;">Ladder Payment Channel</td>
+        <td>Dual SIG (1 rung, 2 blocks)</td>
+        <td>SIG + CSV_TIME + CTV</td>
+        <td>395 vB fund, 159 vB close</td>
+        <td>3 block types</td>
+      </tr>
+      <tr>
+        <td class="field-name">Lightning (BOLT)</td>
+        <td>2-of-2 multisig</td>
+        <td>Commitment TX + HTLC</td>
+        <td>~300&ndash;500 vB</td>
+        <td>Complex Script + HTLC chain</td>
+      </tr>
+      <tr>
+        <td class="field-name">Eltoo (BOLT 12+)</td>
+        <td>MuSig2 single sig</td>
+        <td>Update TX + settlement</td>
+        <td>~200&ndash;300 vB (proposed)</td>
+        <td>Requires SIGHASH_ANYPREVOUT</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Full JSON -->
+<div class="doc-section">
+  <div class="section-label">Funding Transaction JSON</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"e7575dd7152d98ce066aa5f5c6a0ae585df78a50a4126a97e8a8e4902d4763ae"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"b9ced9ca8bb1ac72cd0792442038611bcc9b24fecdf1d598374c107decd70537"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">478</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">395</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">1579</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"525b4e9f490ea772e6603a014906377e35ec1092f24fb12823b28e389dda1355"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"010100210203fdf57303f24f09377274096c2aa29a59b484d635e5b90c9537ba6f59ce761540fd941664b77efd3739d7a93c1d4eef7367f3582af08b8f0fa62273a1128540c96526c074693f40a5c2659e0a01533b0c8dd71c2be472b8d11420d5a875f6035e0101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00030000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c1010200527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a0100527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a010101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00020000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c1010300527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a0104fe805101000ae3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b8550101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00020000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">2</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c1010300527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a0104fe805101000ae3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b8550101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    },
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">49.99928400</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">3</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c1010100527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a010101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"0f17c4469fb57008df8bf7dafe24f51228e20516114b19cf992a2cc72582db25"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773267909</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773267909</span>
+}</pre>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Spending Transaction JSON (Cooperative Close)</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">"txid"</span>: <span class="json-str">"fc4f8857d679c640bdfe21f6cc4fe8d18e57b75d34f91ceb54444b69c230a73a"</span>,
+  <span class="json-key">"hash"</span>: <span class="json-str">"d0a36be64093693ecbafe39e0ab0f5c85abdb7c77cc1facf9653682d2cb4632f"</span>,
+  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
+  <span class="json-key">"size"</span>: <span class="json-num">317</span>,
+  <span class="json-key">"vsize"</span>: <span class="json-num">159</span>,
+  <span class="json-key">"weight"</span>: <span class="json-num">635</span>,
+  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
+  <span class="json-key">"vin"</span>: [
+    {
+      <span class="json-key">"txid"</span>: <span class="json-str">"e7575dd7152d98ce066aa5f5c6a0ae585df78a50a4126a97e8a8e4902d4763ae"</span>,
+      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
+      <span class="json-key">"txinwitness"</span>: [
+        <span class="json-str">"010200210203fdf57303f24f09377274096c2aa29a59b484d635e5b90c9537ba6f59ce7615402ec17d0cffcd717a1e95918c6c6cdd051e8de941f2f74fa73f87bb070f0ea673f6267fb925d3f836fbc7bbc55decadbebc1556e926968e7cb260422e5be7e90500210203fdf57303f24f09377274096c2aa29a59b484d635e5b90c9537ba6f59ce7615402f1889c40edf8033eee26150be5c9078ddc7d22a2359d4887242fdaeb3020537db0976428a7cab65eae25819f64d33fa36d7567bfbbc3db3ac1884e7da6464200101010000"</span>
+      ],
+      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">"vout"</span>: [
+    {
+      <span class="json-key">"value"</span>: <span class="json-num">0.00029000</span>,
+      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
+      <span class="json-key">"scriptPubKey"</span>: {
+        <span class="json-key">"hex"</span>: <span class="json-str">"c10101800100010220527706da0a5143784d2942ce80b8fa31019c6b10b3826107f91c4f7d5344186a0101010000"</span>,
+        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>
+      }
+    }
+  ],
+  <span class="json-key">"blockhash"</span>: <span class="json-str">"0e6051066d921c3aecdc5b9bd94716d74ea4220730b30306c042e9403adf79bf"</span>,
+  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"time"</span>: <span class="json-num">1773267944</span>,
+  <span class="json-key">"blocktime"</span>: <span class="json-num">1773267944</span>
+}</pre>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="doc-nav">
+  <span onclick="if(window.parent !== window) window.parent.location.hash='TX_INDEX'; else window.location.href='../index.html#TX_INDEX';">&#8592; All Transaction Examples</span>
+  <span></span>
+</div>
+
+</div>
+</body>
+</html>

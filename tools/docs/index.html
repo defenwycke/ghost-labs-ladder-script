@@ -456,6 +456,13 @@
           { file: 'vault-unvault', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback. VAULT_LOCK encodes both paths in a single block type.', date: '2026-03-11', scheme: 'VAULT_LOCK' },
           { file: 'dead-mans-switch', name: 'Dead Man\'s Switch (Inheritance)', desc: 'Recursive covenant inheritance pattern. Owner keepalive via RECURSE_SAME carry-forward resets CSV clock. Heir claims after timeout. First proven covenant round-trip.', date: '2026-03-11', scheme: 'RECURSE_SAME' },
         ]
+      },
+      {
+        name: 'Payment Channels', cls: 'sig',
+        intro: 'Lightning-style payment channel patterns with cooperative and unilateral close paths.',
+        txs: [
+          { file: 'payment-channel', name: 'Payment Channel (Cooperative Close)', desc: 'Lightning-style channel with dual-SIG cooperative close, CSV_TIME-gated force close, and CTV template constraints. Exercises the happy path.', date: '2026-03-11', scheme: 'SCHNORR' },
+        ]
       }
     ];
 
