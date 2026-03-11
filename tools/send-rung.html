@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Send RUNG | Ghost Labs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
+  --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
+  --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
+  --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
+  --white: #f0f0f0;
+  --orange: #f7931a; --orange-light: #ffb347;
+  --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
+::selection { background: var(--orange); color: var(--black); }
+
+/* Nav */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 10px 0; background: rgba(5,5,5,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); height: 48px; }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; height: 100%; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--white); }
+.logo-icon { width: 28px; height: 28px; border-radius: 6px; overflow: hidden; }
+.logo-icon img { width: 100%; height: 100%; object-fit: contain; }
+.logo-text { font-weight: 700; font-size: 16px; }
+.logo-text span { color: var(--orange); }
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-links a { color: var(--gray-300); text-decoration: none; padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: 6px; transition: all 0.2s; }
+.nav-links a:hover { color: var(--white); background: var(--gray-800); }
+.nav-links a.active { color: var(--orange); }
+.nav-dropdown { position: relative; }
+.nav-dropdown-menu { position: absolute; top: 100%; left: 0; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 8px; padding: 6px; min-width: 150px; opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s; }
+.nav-dropdown:hover .nav-dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.nav-dropdown-menu a { display: block; padding: 8px 14px; color: var(--gray-300); text-decoration: none; font-size: 13px; border-radius: 6px; }
+.nav-dropdown-menu a:hover { background: var(--gray-800); color: var(--white); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--font-display); font-size: 13px; font-weight: 600; border-radius: 6px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
+.btn-primary { background: var(--orange); color: var(--black); }
+.btn-primary:hover { background: var(--orange-light); }
+.btn-ghost { background: transparent; color: var(--gray-300); padding: 6px 10px; }
+.btn-ghost:hover { color: var(--white); }
+
+/* Main */
+main { max-width: 760px; margin: 0 auto; padding: 72px 24px 80px; }
+h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+h1 span { background: linear-gradient(135deg, var(--orange), var(--orange-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { font-size: 15px; color: var(--gray-400); font-family: var(--font-mono); margin-bottom: 32px; }
+
+/* Status bar */
+.status-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 10px; margin-bottom: 24px; font-size: 13px; font-family: var(--font-mono); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.online { background: var(--green); animation: pulse 2s infinite; }
+.status-dot.offline { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Preset grid */
+.section-label { font-size: 11px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); margin-bottom: 12px; }
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 32px; }
+.preset-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 18px; cursor: pointer; transition: all 0.2s; }
+.preset-card:hover { border-color: var(--orange); transform: translateY(-2px); }
+.preset-card.selected { border-color: var(--orange); background: rgba(247,147,26,0.06); }
+.preset-card .icon { font-size: 24px; margin-bottom: 8px; }
+.preset-card .title { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+.preset-card .desc { font-size: 12px; color: var(--gray-400); line-height: 1.5; }
+.preset-card .scheme-tag { display: inline-block; font-size: 10px; font-family: var(--font-mono); padding: 2px 8px; border-radius: 4px; margin-top: 8px; letter-spacing: 0.5px; }
+.scheme-tag.classical { color: var(--orange); background: rgba(247,147,26,0.1); border: 1px solid rgba(247,147,26,0.2); }
+.scheme-tag.pq { color: var(--cyan); background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2); }
+
+/* Config section */
+.config-section { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+.config-title { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.config-row { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.field-group { flex: 1; min-width: 200px; }
+.field-label { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.field-label .optional { font-size: 9px; color: var(--gray-500); background: var(--gray-800); padding: 1px 6px; border-radius: 3px; }
+.field-hint { font-size: 10px; color: var(--gray-500); margin-top: 2px; }
+input[type="text"], input[type="number"], select {
+  width: 100%; padding: 8px 12px; background: var(--black); border: 1px solid var(--gray-700);
+  color: var(--gray-100); font-family: var(--font-mono); font-size: 13px; border-radius: 8px; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--orange); }
+input::placeholder { color: var(--gray-600); }
+
+/* Rung card in config */
+.rung-card { background: var(--black); border: 1px solid var(--gray-800); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.rung-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.rung-label { font-size: 13px; font-family: var(--font-mono); font-weight: 600; color: var(--orange); }
+.block-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; padding: 3px 10px; border-radius: 5px; }
+
+/* Block type colors */
+.block-badge.sig { color: #e6a817; background: rgba(230,168,23,0.1); border: 1px solid rgba(230,168,23,0.2); }
+.block-badge.timelock { color: #39a5b7; background: rgba(57,165,183,0.1); border: 1px solid rgba(57,165,183,0.2); }
+.block-badge.hash { color: #b070b0; background: rgba(176,112,176,0.1); border: 1px solid rgba(176,112,176,0.2); }
+.block-badge.compound { color: #f59e0b; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+.block-badge.covenant { color: #e06c75; background: rgba(224,108,117,0.1); border: 1px solid rgba(224,108,117,0.2); }
+.block-badge.governance { color: #8b5cf6; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); }
+
+/* Custom builder */
+.add-block-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.btn-sm { padding: 5px 12px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid var(--gray-700); background: var(--gray-800); color: var(--gray-200); transition: all 0.15s; }
+.btn-sm:hover { border-color: var(--orange); color: var(--orange); }
+.btn-sm.danger { color: var(--red); border-color: rgba(255,68,68,0.3); }
+.btn-sm.danger:hover { border-color: var(--red); background: rgba(255,68,68,0.1); }
+
+/* Fund button */
+.fund-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; font-family: var(--font-display); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.fund-btn.ready { background: var(--orange); color: var(--black); }
+.fund-btn.ready:hover { background: var(--orange-light); transform: translateY(-1px); }
+.fund-btn.running { background: var(--gray-700); color: var(--gray-300); cursor: wait; }
+.fund-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Progress log */
+.log-panel { background: var(--black); border: 1px solid var(--gray-800); border-radius: 10px; padding: 16px; margin-top: 16px; font-family: var(--font-mono); font-size: 12px; max-height: 300px; overflow-y: auto; }
+.log-entry { margin-bottom: 4px; line-height: 1.6; }
+.log-entry.ok { color: var(--green); }
+.log-entry.err { color: var(--red); }
+.log-entry.info { color: var(--gray-300); }
+.log-entry .ts { color: var(--gray-600); margin-right: 8px; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--gray-600); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Result card */
+.result-card { background: var(--gray-900); border: 2px solid var(--green); border-radius: 14px; padding: 24px; margin-top: 20px; }
+.result-title { font-size: 18px; font-weight: 700; color: var(--green); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.result-field { margin-bottom: 12px; }
+.result-field-name { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+.result-field-value { font-size: 13px; font-family: var(--font-mono); color: var(--white); word-break: break-all; }
+.result-field-value.txid { color: var(--orange); cursor: pointer; }
+.result-field-value.txid:hover { text-decoration: underline; }
+.copy-btn { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); background: var(--gray-800); border: 1px solid var(--gray-700); padding: 3px 10px; border-radius: 5px; cursor: pointer; margin-left: 8px; }
+.copy-btn:hover { color: var(--white); border-color: var(--gray-500); }
+
+/* Links row */
+.links-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-family: var(--font-mono); font-weight: 600; color: var(--cyan); background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); border-radius: 8px; text-decoration: none; transition: all 0.2s; cursor: pointer; }
+.link-btn:hover { background: rgba(0,212,255,0.15); border-color: var(--cyan); }
+
+/* JSON preview */
+.json-preview { background: var(--black); border: 1px solid var(--gray-800); border-radius: 10px; padding: 16px; margin-top: 16px; overflow-x: auto; max-height: 400px; overflow-y: auto; }
+.json-preview pre { font-family: var(--font-mono); font-size: 12px; color: var(--gray-200); white-space: pre-wrap; word-break: break-all; margin: 0; }
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .preset-grid { grid-template-columns: 1fr 1fr; }
+  .config-row { flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .preset-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">
+      <div class="logo-icon"><img src="../logo.png" alt="Bitcoin Ghost"></div>
+      <div class="logo-text">Bitcoin<span>Ghost</span></div>
+    </a>
+    <div class="nav-links">
+      <a href="../index.html">Home</a>
+      <a href="../network.html">Network</a>
+      <div class="nav-dropdown">
+        <a href="../pool.html">Pool</a>
+        <div class="nav-dropdown-menu">
+          <a href="../pool.html">Connect</a>
+          <a href="../pool-stats.html">Statistics</a>
+          <a href="../node-finder.html">Node Finder</a>
+        </div>
+      </div>
+      <a href="../how-it-works.html">How It Works</a>
+      <a href="../economics.html">Economics</a>
+      <a href="../ghost-labs.html" class="active">Labs</a>
+      <a href="../docs/index.html">Docs</a>
+    </div>
+    <div class="nav-right">
+      <a href="https://github.com/bitcoin-ghost" class="btn btn-ghost" target="_blank">
+        <svg style="width:18px;height:18px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      </a>
+      <a href="../get-started.html" class="btn btn-primary">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1><span>Send RUNG</span></h1>
+  <p class="subtitle">Create and fund a Ladder Script output on regtest</p>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot offline" id="statusDot"></div>
+    <span id="statusText">Connecting...</span>
+  </div>
+
+  <!-- Step 1: Pick preset -->
+  <div class="section-label">Choose a pattern</div>
+  <div class="preset-grid" id="presetGrid"></div>
+
+  <!-- Step 2: Configure -->
+  <div id="configPanel" style="display:none;">
+    <div class="config-section">
+      <div class="config-title" id="configTitle">Configure</div>
+
+      <!-- Global controls -->
+      <div class="config-row">
+        <div class="field-group" style="max-width: 200px;">
+          <div class="field-label">Amount (sats)</div>
+          <input type="number" id="amountInput" value="50000" min="546" step="1000">
+        </div>
+        <div class="field-group" style="max-width: 200px;">
+          <div class="field-label">Signature Scheme</div>
+          <select id="schemeSelect">
+            <option value="SCHNORR">Schnorr (BIP-340)</option>
+            <option value="ECDSA">ECDSA</option>
+            <option value="FALCON512">Falcon-512 (PQ)</option>
+            <option value="FALCON1024">Falcon-1024 (PQ)</option>
+            <option value="DILITHIUM3">Dilithium-3 (PQ)</option>
+            <option value="SPHINCS_SHA">SPHINCS+ (PQ)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Rung list -->
+      <div id="rungList"></div>
+
+      <!-- Custom: add rung button -->
+      <div id="addRungRow" style="display:none; margin-top: 12px;">
+        <button class="btn-sm" onclick="addRung()">+ Add Rung</button>
+      </div>
+    </div>
+
+    <!-- JSON Preview (collapsible) -->
+    <details style="margin-bottom: 16px;">
+      <summary style="font-size: 12px; font-family: var(--font-mono); color: var(--gray-400); cursor: pointer; margin-bottom: 8px;">JSON Preview</summary>
+      <div class="json-preview" id="jsonPreview"><pre>{}</pre></div>
+    </details>
+
+    <!-- Fund button -->
+    <button class="fund-btn ready" id="fundBtn" onclick="handleFund()">
+      Fund &amp; Broadcast
+    </button>
+
+    <!-- Progress log -->
+    <div class="log-panel" id="logPanel" style="display:none;"></div>
+
+    <!-- Result -->
+    <div id="resultPanel" style="display:none;"></div>
+  </div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════
+
+const SIGNET_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8801'
+  : 'https://bitcoinghost.org';
+
+async function apiCall(endpoint, body) {
+  const opts = body !== undefined
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : {};
+  const r = await fetch(SIGNET_API + endpoint, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail?.rpc_error || data.detail || 'HTTP ' + r.status);
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════
+// BLOCK DEFINITIONS (subset needed for send)
+// ═══════════════════════════════════════════════════════
+
+const BLOCK_DEFS = {
+  SIG: { type: 'SIG', label: 'SIG', family: 'sig', fields: [
+    { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+    { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', optional: true }
+  ]},
+  MULTISIG: { type: 'MULTISIG', label: 'MULTISIG', family: 'sig', fields: [
+    { name: 'threshold', dataType: 'NUMERIC', label: 'Threshold (M)', placeholder: '2' },
+    { name: 'pubkeys', dataType: 'PUBKEY', label: 'Public Keys', placeholder: '02ab..., 03cd...', multi: true },
+    { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', optional: true }
+  ]},
+  CSV: { type: 'CSV', label: 'CSV', family: 'timelock', fields: [
+    { name: 'blocks', dataType: 'NUMERIC', label: 'Blocks', placeholder: '144' }
+  ]},
+  CSV_TIME: { type: 'CSV_TIME', label: 'CSV_TIME', family: 'timelock', fields: [
+    { name: 'seconds', dataType: 'NUMERIC', label: 'Seconds', placeholder: '86400' }
+  ]},
+  CLTV: { type: 'CLTV', label: 'CLTV', family: 'timelock', fields: [
+    { name: 'height', dataType: 'NUMERIC', label: 'Block Height', placeholder: '850000' }
+  ]},
+  HASH_PREIMAGE: { type: 'HASH_PREIMAGE', label: 'HASH_PRE', family: 'hash', fields: [
+    { name: 'hash', dataType: 'HASH256', label: 'SHA-256 Hash', placeholder: '32-byte hex' }
+  ]},
+  HASH160_PREIMAGE: { type: 'HASH160_PREIMAGE', label: 'H160_PRE', family: 'hash', fields: [
+    { name: 'hash', dataType: 'HASH160', label: 'HASH160', placeholder: '20-byte hex' }
+  ]},
+  TIMELOCKED_SIG: { type: 'TIMELOCKED_SIG', label: 'TL_SIG', family: 'compound', fields: [
+    { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+    { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' },
+    { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', optional: true }
+  ]},
+  HTLC: { type: 'HTLC', label: 'HTLC', family: 'compound', fields: [
+    { name: 'hash', dataType: 'HASH256', label: 'Payment Hash', placeholder: '32-byte hex' },
+    { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+    { name: 'blocks', dataType: 'NUMERIC', label: 'Timeout (blocks)', placeholder: '144' }
+  ]},
+  HASH_SIG: { type: 'HASH_SIG', label: 'HASH_SIG', family: 'compound', fields: [
+    { name: 'hash', dataType: 'HASH256', label: 'SHA-256 Hash', placeholder: '32-byte hex' },
+    { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' }
+  ]},
+  CLTV_SIG: { type: 'CLTV_SIG', label: 'CLTV_SIG', family: 'compound', fields: [
+    { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
+    { name: 'height', dataType: 'NUMERIC', label: 'Lock Height', placeholder: '850000' },
+    { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', optional: true }
+  ]},
+  TIMELOCKED_MULTISIG: { type: 'TIMELOCKED_MULTISIG', label: 'TL_MULTI', family: 'compound', fields: [
+    { name: 'threshold', dataType: 'NUMERIC', label: 'Threshold (M)', placeholder: '2' },
+    { name: 'pubkeys', dataType: 'PUBKEY', label: 'Public Keys', placeholder: '02ab..., 03cd...', multi: true },
+    { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' },
+    { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', optional: true }
+  ]},
+  CTV: { type: 'CTV', label: 'CTV', family: 'covenant', fields: [
+    { name: 'template_hash', dataType: 'HASH256', label: 'Template Hash', placeholder: '32-byte hex' }
+  ]},
+  AMOUNT_LOCK: { type: 'AMOUNT_LOCK', label: 'AMT_LOCK', family: 'covenant', fields: [
+    { name: 'min', dataType: 'NUMERIC', label: 'Min (sats)', placeholder: '5000' },
+    { name: 'max', dataType: 'NUMERIC', label: 'Max (sats)', placeholder: '100000' }
+  ]},
+};
+
+const BLOCK_TYPE_LIST = [
+  { group: 'Signature', types: ['SIG', 'MULTISIG'] },
+  { group: 'Timelock', types: ['CSV', 'CSV_TIME', 'CLTV'] },
+  { group: 'Hash', types: ['HASH_PREIMAGE', 'HASH160_PREIMAGE'] },
+  { group: 'Compound', types: ['TIMELOCKED_SIG', 'HTLC', 'HASH_SIG', 'CLTV_SIG', 'TIMELOCKED_MULTISIG'] },
+  { group: 'Covenant', types: ['CTV', 'AMOUNT_LOCK'] },
+];
+
+// ═══════════════════════════════════════════════════════
+// PRESETS
+// ═══════════════════════════════════════════════════════
+
+const PRESETS = [
+  {
+    id: 'simple-sig', title: 'Simple SIG', desc: 'Single signature. The simplest rung condition.',
+    scheme: 'SCHNORR', amount: 50000,
+    rungs: [{ label: 'SPEND', blocks: [{ type: 'SIG', values: {} }] }],
+  },
+  {
+    id: 'sig-csv', title: 'SIG + CSV', desc: 'Signature with relative timelock. Funds locked for N blocks.',
+    scheme: 'SCHNORR', amount: 50000,
+    rungs: [{ label: 'LOCKED', blocks: [{ type: 'SIG', values: {} }, { type: 'CSV', values: { blocks: '10' } }] }],
+  },
+  {
+    id: 'htlc', title: 'HTLC', desc: 'Hash time-locked contract for atomic swaps.',
+    scheme: 'SCHNORR', amount: 100000,
+    rungs: [
+      { label: 'CLAIM', blocks: [{ type: 'HTLC', values: { blocks: '144' } }] },
+      { label: 'REFUND', blocks: [{ type: 'TIMELOCKED_SIG', values: { blocks: '288' } }] },
+    ],
+  },
+  {
+    id: 'multisig', title: '2-of-3 Multisig', desc: 'Requires 2 of 3 keys to spend.',
+    scheme: 'SCHNORR', amount: 50000,
+    rungs: [{ label: 'SPEND', blocks: [{ type: 'MULTISIG', values: { threshold: '2' } }] }],
+  },
+  {
+    id: 'falcon-sig', title: 'Falcon-512', desc: 'Post-quantum Falcon-512 signature.',
+    scheme: 'FALCON512', amount: 50000,
+    rungs: [{ label: 'PQ_SPEND', blocks: [{ type: 'SIG', values: {} }] }],
+  },
+  {
+    id: 'hash-sig', title: 'Hash + SIG', desc: 'Spend by revealing a SHA-256 preimage + signature.',
+    scheme: 'SCHNORR', amount: 50000,
+    rungs: [{ label: 'REVEAL', blocks: [{ type: 'HASH_PREIMAGE', values: {} }, { type: 'SIG', values: {} }] }],
+  },
+  {
+    id: 'custom', title: 'Custom', desc: 'Build your own rung conditions from scratch.',
+    scheme: 'SCHNORR', amount: 50000,
+    rungs: [{ label: 'RUNG_0', blocks: [] }],
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+
+let state = {
+  preset: null,
+  rungs: [],
+  amount: 50000,
+  scheme: 'SCHNORR',
+  running: false,
+  result: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// WIRE FORMAT HELPERS (ported from engine)
+// ═══════════════════════════════════════════════════════
+
+function toNumericHex(val) {
+  const n = parseInt(val) || 0;
+  const buf = new Uint8Array(4);
+  buf[0] = n & 0xFF; buf[1] = (n >> 8) & 0xFF; buf[2] = (n >> 16) & 0xFF; buf[3] = (n >> 24) & 0xFF;
+  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const SCHEME_MAP = { SCHNORR: '01', ECDSA: '02', FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
+
+function exportBlockFields(block) {
+  const def = BLOCK_DEFS[block.type];
+  if (!def) return { type: block.type, fields: [] };
+  const fields = [];
+  def.fields.forEach(f => {
+    const val = block.values[f.name];
+    if (!val) return;
+    if (f.dataType === 'NUMERIC') {
+      fields.push({ type: 'NUMERIC', hex: toNumericHex(val) });
+    } else if (f.dataType === 'PUBKEY') {
+      if (f.multi) {
+        val.split(',').map(k => k.trim()).filter(Boolean).forEach(k => fields.push({ type: 'PUBKEY', hex: k }));
+      } else {
+        fields.push({ type: 'PUBKEY', hex: val });
+      }
+    } else if (f.dataType === 'HASH256') {
+      fields.push({ type: 'HASH256', hex: val });
+    } else if (f.dataType === 'HASH160') {
+      fields.push({ type: 'HASH160', hex: val });
+    } else if (f.dataType === 'SCHEME' && val) {
+      fields.push({ type: 'SCHEME', hex: SCHEME_MAP[val] || '01' });
+    }
+  });
+  return { type: block.type, fields };
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════
+
+function renderPresets() {
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML = PRESETS.map(p => {
+    const isPQ = p.scheme !== 'SCHNORR' && p.scheme !== 'ECDSA';
+    return `<div class="preset-card ${state.preset === p.id ? 'selected' : ''}" onclick="selectPreset('${p.id}')">
+      <div class="title">${p.title}</div>
+      <div class="desc">${p.desc}</div>
+      <div class="scheme-tag ${isPQ ? 'pq' : 'classical'}">${p.scheme}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectPreset(id) {
+  const preset = PRESETS.find(p => p.id === id);
+  if (!preset) return;
+  state.preset = id;
+  state.scheme = preset.scheme;
+  state.amount = preset.amount;
+  state.rungs = JSON.parse(JSON.stringify(preset.rungs));
+  state.result = null;
+
+  document.getElementById('amountInput').value = state.amount;
+  document.getElementById('schemeSelect').value = state.scheme;
+  document.getElementById('configPanel').style.display = '';
+  document.getElementById('configTitle').textContent = preset.title;
+  document.getElementById('addRungRow').style.display = id === 'custom' ? '' : 'none';
+  document.getElementById('resultPanel').style.display = 'none';
+  document.getElementById('resultPanel').innerHTML = '';
+  document.getElementById('logPanel').style.display = 'none';
+  document.getElementById('logPanel').innerHTML = '';
+
+  renderPresets();
+  renderRungs();
+  updateJsonPreview();
+}
+
+function renderRungs() {
+  const list = document.getElementById('rungList');
+  const isCustom = state.preset === 'custom';
+
+  list.innerHTML = state.rungs.map((rung, ri) => {
+    const blocksHtml = rung.blocks.map((block, bi) => {
+      const def = BLOCK_DEFS[block.type];
+      if (!def) return '';
+      const fieldsHtml = def.fields.filter(f => f.dataType !== 'SCHEME').map(f => {
+        const val = block.values[f.name] || '';
+        const isOptional = !val && (f.dataType === 'PUBKEY' || f.dataType === 'HASH256');
+        return `<div class="field-group">
+          <div class="field-label">${f.label} ${isOptional ? '<span class="optional">auto-fill</span>' : ''}</div>
+          <input type="text" value="${escHtml(val)}" placeholder="${f.placeholder || ''}"
+            oninput="updateBlockField(${ri}, ${bi}, '${f.name}', this.value)">
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span class="block-badge ${def.family}">${def.label}</span>
+          ${isCustom ? `<button class="btn-sm danger" onclick="removeBlock(${ri}, ${bi})" title="Remove block">x</button>` : ''}
+        </div>
+        <div class="config-row">${fieldsHtml}</div>
+      </div>`;
+    }).join('');
+
+    const addBlockHtml = isCustom ? `<div class="add-block-row">
+      <select id="addBlockSelect_${ri}" style="max-width: 200px; font-size: 12px;">
+        ${BLOCK_TYPE_LIST.map(g => g.types.map(t => `<option value="${t}">${g.group}: ${BLOCK_DEFS[t].label}</option>`).join('')).join('')}
+      </select>
+      <button class="btn-sm" onclick="addBlock(${ri})">+ Block</button>
+    </div>` : '';
+
+    return `<div class="rung-card">
+      <div class="rung-card-header">
+        <span class="rung-label">${isCustom
+          ? `<input type="text" value="${escHtml(rung.label)}" style="background:transparent;border:1px solid var(--gray-700);color:var(--orange);font-family:var(--font-mono);font-size:13px;padding:2px 8px;border-radius:4px;width:120px;" oninput="state.rungs[${ri}].label=this.value">`
+          : rung.label}</span>
+        ${isCustom && state.rungs.length > 1 ? `<button class="btn-sm danger" onclick="removeRung(${ri})">Remove Rung</button>` : ''}
+      </div>
+      ${blocksHtml}
+      ${addBlockHtml}
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function updateBlockField(ri, bi, field, val) {
+  state.rungs[ri].blocks[bi].values[field] = val;
+  updateJsonPreview();
+}
+
+function addBlock(ri) {
+  const sel = document.getElementById('addBlockSelect_' + ri);
+  const type = sel.value;
+  state.rungs[ri].blocks.push({ type, values: {} });
+  renderRungs();
+  updateJsonPreview();
+}
+
+function removeBlock(ri, bi) {
+  state.rungs[ri].blocks.splice(bi, 1);
+  renderRungs();
+  updateJsonPreview();
+}
+
+function addRung() {
+  const idx = state.rungs.length;
+  state.rungs.push({ label: 'RUNG_' + idx, blocks: [] });
+  renderRungs();
+  updateJsonPreview();
+}
+
+function removeRung(ri) {
+  state.rungs.splice(ri, 1);
+  renderRungs();
+  updateJsonPreview();
+}
+
+function updateJsonPreview() {
+  const conditions = state.rungs.map(rung => ({
+    blocks: rung.blocks.filter(b => BLOCK_DEFS[b.type]).map(exportBlockFields),
+  }));
+  const preview = {
+    inputs: ['(auto-selected from wallet)'],
+    outputs: [{
+      amount: (parseInt(document.getElementById('amountInput').value) || 50000) / 1e8,
+      conditions,
+    }],
+  };
+  document.getElementById('jsonPreview').querySelector('pre').textContent = JSON.stringify(preview, null, 2);
+}
+
+// Listen for amount/scheme changes
+document.getElementById('amountInput').addEventListener('input', function() {
+  state.amount = parseInt(this.value) || 50000;
+  updateJsonPreview();
+});
+document.getElementById('schemeSelect').addEventListener('change', function() {
+  state.scheme = this.value;
+  // Update preset scheme display
+  const preset = PRESETS.find(p => p.id === state.preset);
+  if (preset) preset.scheme = state.scheme;
+  renderPresets();
+});
+
+// ═══════════════════════════════════════════════════════
+// SHA-256 (via SubtleCrypto)
+// ═══════════════════════════════════════════════════════
+
+async function sha256hex(hexStr) {
+  const bytes = new Uint8Array(hexStr.match(/.{2}/g).map(b => parseInt(b, 16)));
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function randomHex(bytes) {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// FUND & BROADCAST (the main one-click flow)
+// ═══════════════════════════════════════════════════════
+
+async function handleFund() {
+  if (state.running) return;
+  state.running = true;
+  state.result = null;
+  const fundBtn = document.getElementById('fundBtn');
+  fundBtn.className = 'fund-btn running';
+  fundBtn.innerHTML = '<span class="spinner"></span> Working...';
+  const logPanel = document.getElementById('logPanel');
+  logPanel.style.display = '';
+  logPanel.innerHTML = '';
+  document.getElementById('resultPanel').style.display = 'none';
+
+  const log = (msg, cls = 'info') => {
+    const ts = new Date().toLocaleTimeString();
+    logPanel.innerHTML += `<div class="log-entry ${cls}"><span class="ts">${ts}</span>${msg}</div>`;
+    logPanel.scrollTop = logPanel.scrollHeight;
+  };
+
+  try {
+    // 1. Check proxy
+    log('Connecting to proxy...');
+    const status = await apiCall('/api/ladder/status');
+    log('Connected. Chain: ' + status.chain + ', height: ' + status.blocks, 'ok');
+
+    // 2. Fetch UTXOs
+    log('Fetching wallet UTXOs...');
+    const utxos = await apiCall('/api/ladder/wallet/utxos');
+    const confirmed = (utxos || []).filter(u => u.confirmations > 0).sort((a, b) => b.amount - a.amount);
+    if (confirmed.length === 0) throw new Error('No confirmed UTXOs. Mine blocks or use faucet first.');
+    log('Found ' + confirmed.length + ' confirmed UTXO(s)', 'ok');
+
+    // 3. Generate keypairs for empty pubkey/hash fields
+    const scheme = state.scheme;
+    const isPQ = scheme !== 'SCHNORR' && scheme !== 'ECDSA';
+    const keypairs = [];
+    const preimages = [];
+
+    // Count pubkeys needed
+    let pubkeysNeeded = 0;
+    let multisigCount = 0;
+    state.rungs.forEach(rung => rung.blocks.forEach(block => {
+      const def = BLOCK_DEFS[block.type];
+      if (!def) return;
+      def.fields.forEach(f => {
+        if (f.dataType === 'PUBKEY' && !block.values[f.name]) {
+          if (f.multi) {
+            multisigCount = Math.max(multisigCount, parseInt(block.values.threshold) || 3);
+          } else {
+            pubkeysNeeded++;
+          }
+        }
+      });
+    }));
+    const totalKeys = Math.max(pubkeysNeeded + multisigCount, 1);
+
+    log('Generating ' + totalKeys + ' keypair(s)' + (isPQ ? ' (' + scheme + ')' : '') + '...');
+    for (let i = 0; i < totalKeys; i++) {
+      if (isPQ) {
+        const kp = await apiCall('/api/ladder/pq/keypair', { scheme });
+        if (!kp) throw new Error('PQ keypair generation failed. Check liboqs support.');
+        keypairs.push(kp);
+      } else {
+        const kp = await apiCall('/api/ladder/wallet/keypair');
+        if (!kp) throw new Error('Keypair generation failed.');
+        keypairs.push(kp);
+      }
+    }
+    // Standard wallet key for input signing (always secp256k1)
+    const walletKey = isPQ ? await apiCall('/api/ladder/wallet/keypair') : keypairs[0];
+    log('Generated ' + keypairs.length + ' key(s)' + (isPQ ? ' + 1 wallet key' : ''), 'ok');
+
+    // 4. Fill empty fields in rungs
+    let keyIdx = 0;
+    for (const rung of state.rungs) {
+      for (const block of rung.blocks) {
+        const def = BLOCK_DEFS[block.type];
+        if (!def) continue;
+        for (const f of def.fields) {
+          if (f.dataType === 'PUBKEY' && !block.values[f.name]) {
+            if (f.multi) {
+              // Generate N keys for multisig
+              const n = parseInt(block.values.threshold) || 3;
+              const keys = [];
+              for (let i = 0; i < n; i++) {
+                keys.push(keypairs[keyIdx % keypairs.length].pubkey);
+                keyIdx++;
+              }
+              block.values[f.name] = keys.join(', ');
+            } else {
+              block.values[f.name] = keypairs[keyIdx % keypairs.length].pubkey;
+              keyIdx++;
+            }
+          }
+          if (f.dataType === 'HASH256' && !block.values[f.name]) {
+            // Auto-generate preimage + hash
+            const preimage = randomHex(32);
+            const hash = await sha256hex(preimage);
+            block.values[f.name] = hash;
+            preimages.push({ hash, preimage });
+            log('Generated hash preimage: ' + preimage.slice(0, 16) + '...', 'info');
+          }
+          // Set scheme on sig blocks
+          if (f.dataType === 'SCHEME') {
+            block.values[f.name] = scheme;
+          }
+        }
+      }
+    }
+    renderRungs();
+
+    // 5. Select UTXOs
+    const amountSats = parseInt(document.getElementById('amountInput').value) || 50000;
+    const feeSats = 1000;
+    const totalNeeded = amountSats + feeSats;
+    let selected = [], selectedTotal = 0;
+    for (const u of confirmed) {
+      selected.push(u);
+      selectedTotal += Math.round(u.amount * 1e8);
+      if (selectedTotal >= totalNeeded) break;
+    }
+    if (selectedTotal < totalNeeded) throw new Error('Insufficient funds: have ' + selectedTotal + ' sats, need ' + totalNeeded);
+    log('Selected ' + selected.length + ' UTXO(s), total: ' + selectedTotal + ' sats', 'ok');
+
+    // 6. Build conditions
+    const conditions = state.rungs.map(rung => ({
+      blocks: rung.blocks.filter(b => BLOCK_DEFS[b.type]).map(exportBlockFields),
+    }));
+
+    // 7. Get output address
+    const addrData = await apiCall('/api/ladder/wallet/address');
+
+    // 8. Build outputs (rung output + optional change)
+    const outputs = [{
+      amount: amountSats / 1e8,
+      conditions,
+    }];
+    const changeSats = selectedTotal - amountSats - feeSats;
+    let changeKey = null;
+    if (changeSats > 546) {
+      // Change output needs a SIG condition (v4 requires conditions on all outputs)
+      changeKey = await apiCall('/api/ladder/wallet/keypair');
+      const changeAddr = await apiCall('/api/ladder/wallet/address');
+      outputs.push({
+        amount: changeSats / 1e8,
+        conditions: [{ blocks: [{ type: 'SIG', fields: [{ type: 'PUBKEY', hex: changeKey.pubkey }] }] }],
+      });
+      log('Change output: ' + changeSats + ' sats', 'info');
+    }
+
+    // 9. Build inputs
+    const inputs = selected.map(u => ({ txid: u.txid, vout: u.vout }));
+
+    // 10. Create transaction
+    log('Creating v4 RUNG_TX...');
+    const createResult = await apiCall('/api/ladder/create', { inputs, outputs });
+    if (!createResult || !createResult.hex) throw new Error('createrungtx failed');
+    log('Transaction created (' + createResult.hex.length / 2 + ' bytes)', 'ok');
+
+    // 11. Sign
+    log('Signing with wallet key...');
+    const signers = selected.map((u, i) => ({ input: i, privkey: walletKey.privkey }));
+    const spent_outputs = selected.map(u => ({ amount: u.amount, scriptPubKey: u.scriptPubKey || '' }));
+    const signResult = await apiCall('/api/ladder/sign', { hex: createResult.hex, signers, spent_outputs });
+    if (!signResult || !signResult.hex) throw new Error('signrungtx failed');
+    log('Transaction signed', 'ok');
+
+    // 12. Broadcast
+    log('Broadcasting...');
+    const broadcastResult = await apiCall('/api/ladder/broadcast', { hex: signResult.hex });
+    if (!broadcastResult || !broadcastResult.txid) throw new Error('Broadcast failed');
+    const txid = broadcastResult.txid;
+    log('Broadcast! TXID: ' + txid, 'ok');
+
+    // 13. Mine
+    log('Mining confirmation block...');
+    await apiCall('/api/ladder/mine', { blocks: 1 });
+    log('Confirmed in block.', 'ok');
+
+    // 14. Save to localStorage
+    const record = {
+      txid, vout: 0, timestamp: Date.now(), scheme, amount: amountSats,
+      walletKey: { pubkey: walletKey.pubkey, privkey: walletKey.privkey, address: walletKey.address || '' },
+      conditionKeys: keypairs.map(kp => ({
+        pubkey: kp.pubkey, privkey: kp.privkey,
+        pubkey_commit: kp.pubkey_commit || '',
+        scheme: isPQ ? scheme : 'SCHNORR',
+      })),
+      changeKey: changeKey ? { pubkey: changeKey.pubkey, privkey: changeKey.privkey } : null,
+      preimages,
+      rungs: state.rungs.map(r => ({ label: r.label, blocks: r.blocks.map(b => ({ type: b.type, values: { ...b.values } })) })),
+    };
+    const existing = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
+    existing.push(record);
+    if (existing.length > 50) existing.splice(0, existing.length - 50);
+    localStorage.setItem('ghost_rung_keys', JSON.stringify(existing));
+
+    state.result = record;
+    log('Keypairs saved to browser storage.', 'ok');
+
+    // Show result
+    renderResult(record);
+
+  } catch (e) {
+    log('ERROR: ' + e.message, 'err');
+  } finally {
+    state.running = false;
+    const fb = document.getElementById('fundBtn');
+    fb.className = 'fund-btn ready';
+    fb.innerHTML = 'Fund &amp; Broadcast';
+  }
+}
+
+function renderResult(record) {
+  const panel = document.getElementById('resultPanel');
+  panel.style.display = '';
+  const scheme = record.scheme;
+  const isPQ = scheme !== 'SCHNORR' && scheme !== 'ECDSA';
+
+  panel.innerHTML = `
+    <div class="result-card">
+      <div class="result-title">Transaction Confirmed</div>
+      <div class="result-field">
+        <div class="result-field-name">TXID</div>
+        <div class="result-field-value txid" onclick="navigator.clipboard.writeText('${record.txid}')" title="Click to copy">${record.txid}</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Output</div>
+        <div class="result-field-value">${record.amount.toLocaleString()} sats at vout:0 with ${state.rungs.length} rung(s)</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Scheme</div>
+        <div class="result-field-value" style="color: ${isPQ ? 'var(--cyan)' : 'var(--orange)'};">${scheme}</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Keys Stored</div>
+        <div class="result-field-value" style="color: var(--green);">${record.conditionKeys.length} condition key(s) saved to browser</div>
+      </div>
+      ${record.preimages.length > 0 ? `<div class="result-field">
+        <div class="result-field-name">Preimages Stored</div>
+        <div class="result-field-value" style="color: var(--green);">${record.preimages.length} preimage(s) saved</div>
+      </div>` : ''}
+      <div class="links-row">
+        <a class="link-btn" href="spend-rung.html?txid=${record.txid}&vout=0">Spend This Output &rarr;</a>
+        <a class="link-btn" href="engine/index.html" target="_blank">Open in Engine</a>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+renderPresets();
+
+// Check proxy status
+fetch(SIGNET_API + '/api/ladder/status')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('statusDot').className = 'status-dot online';
+    document.getElementById('statusText').textContent = d.chain + ' height ' + d.blocks + ' — proxy online';
+  })
+  .catch(() => {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Proxy offline — start the ladder proxy on port 8801';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spend RUNG | Ghost Labs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
+  --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
+  --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
+  --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
+  --white: #f0f0f0;
+  --orange: #f7931a; --orange-light: #ffb347;
+  --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
+::selection { background: var(--orange); color: var(--black); }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 10px 0; background: rgba(5,5,5,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); height: 48px; }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; height: 100%; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--white); }
+.logo-icon { width: 28px; height: 28px; border-radius: 6px; overflow: hidden; }
+.logo-icon img { width: 100%; height: 100%; object-fit: contain; }
+.logo-text { font-weight: 700; font-size: 16px; }
+.logo-text span { color: var(--orange); }
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-links a { color: var(--gray-300); text-decoration: none; padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: 6px; transition: all 0.2s; }
+.nav-links a:hover { color: var(--white); background: var(--gray-800); }
+.nav-links a.active { color: var(--orange); }
+.nav-dropdown { position: relative; }
+.nav-dropdown-menu { position: absolute; top: 100%; left: 0; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 8px; padding: 6px; min-width: 150px; opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s; }
+.nav-dropdown:hover .nav-dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.nav-dropdown-menu a { display: block; padding: 8px 14px; color: var(--gray-300); text-decoration: none; font-size: 13px; border-radius: 6px; }
+.nav-dropdown-menu a:hover { background: var(--gray-800); color: var(--white); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--font-display); font-size: 13px; font-weight: 600; border-radius: 6px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
+.btn-primary { background: var(--orange); color: var(--black); }
+.btn-primary:hover { background: var(--orange-light); }
+.btn-ghost { background: transparent; color: var(--gray-300); padding: 6px 10px; }
+.btn-ghost:hover { color: var(--white); }
+
+main { max-width: 760px; margin: 0 auto; padding: 72px 24px 80px; }
+h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+h1 span { background: linear-gradient(135deg, var(--cyan), #80e8ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { font-size: 15px; color: var(--gray-400); font-family: var(--font-mono); margin-bottom: 32px; }
+
+.status-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 10px; margin-bottom: 24px; font-size: 13px; font-family: var(--font-mono); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.online { background: var(--green); animation: pulse 2s infinite; }
+.status-dot.offline { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.section-label { font-size: 11px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); margin-bottom: 12px; }
+
+.config-section { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+.config-title { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+.config-row { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.field-group { flex: 1; min-width: 200px; }
+.field-label { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.field-label .auto { font-size: 9px; color: var(--green); background: rgba(0,255,136,0.1); padding: 1px 6px; border-radius: 3px; }
+.field-hint { font-size: 10px; color: var(--gray-500); margin-top: 2px; }
+input[type="text"], input[type="number"], select {
+  width: 100%; padding: 8px 12px; background: var(--black); border: 1px solid var(--gray-700);
+  color: var(--gray-100); font-family: var(--font-mono); font-size: 13px; border-radius: 8px; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--orange); }
+input::placeholder { color: var(--gray-600); }
+
+/* Saved record cards */
+.record-grid { display: grid; gap: 10px; margin-bottom: 24px; }
+.record-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 10px; padding: 14px 18px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.record-card:hover { border-color: var(--cyan); }
+.record-card.selected { border-color: var(--cyan); background: rgba(0,212,255,0.05); }
+.record-txid { font-size: 12px; font-family: var(--font-mono); color: var(--orange); }
+.record-meta { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); display: flex; gap: 12px; }
+.record-meta .scheme { color: var(--cyan); }
+.record-meta .amt { color: var(--green); }
+
+/* Conditions display */
+.conditions-box { background: var(--black); border: 1px solid var(--gray-800); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.cond-rung { margin-bottom: 10px; }
+.cond-rung:last-child { margin-bottom: 0; }
+.cond-rung-label { font-size: 12px; font-family: var(--font-mono); color: var(--orange); margin-bottom: 6px; font-weight: 600; }
+.cond-block { font-size: 12px; font-family: var(--font-mono); color: var(--gray-300); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
+.cond-block .type-badge { font-size: 10px; font-weight: 600; color: var(--white); background: var(--gray-700); padding: 2px 8px; border-radius: 4px; }
+
+/* Spend button */
+.spend-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; font-family: var(--font-display); border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.spend-btn.ready { background: var(--cyan); color: var(--black); }
+.spend-btn.ready:hover { background: #40e0ff; transform: translateY(-1px); }
+.spend-btn.running { background: var(--gray-700); color: var(--gray-300); cursor: wait; }
+
+.log-panel { background: var(--black); border: 1px solid var(--gray-800); border-radius: 10px; padding: 16px; margin-top: 16px; font-family: var(--font-mono); font-size: 12px; max-height: 300px; overflow-y: auto; }
+.log-entry { margin-bottom: 4px; line-height: 1.6; }
+.log-entry.ok { color: var(--green); }
+.log-entry.err { color: var(--red); }
+.log-entry.info { color: var(--gray-300); }
+.log-entry .ts { color: var(--gray-600); margin-right: 8px; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--gray-600); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-card { background: var(--gray-900); border: 2px solid var(--green); border-radius: 14px; padding: 24px; margin-top: 20px; }
+.result-title { font-size: 18px; font-weight: 700; color: var(--green); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.result-field { margin-bottom: 12px; }
+.result-field-name { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+.result-field-value { font-size: 13px; font-family: var(--font-mono); color: var(--white); word-break: break-all; }
+.result-field-value.txid { color: var(--orange); cursor: pointer; }
+
+.links-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-family: var(--font-mono); font-weight: 600; color: var(--orange); background: rgba(247,147,26,0.08); border: 1px solid rgba(247,147,26,0.2); border-radius: 8px; text-decoration: none; transition: all 0.2s; cursor: pointer; }
+.link-btn:hover { background: rgba(247,147,26,0.15); border-color: var(--orange); }
+
+.empty-state { text-align: center; padding: 40px; color: var(--gray-400); }
+.empty-state a { color: var(--orange); text-decoration: none; }
+.empty-state a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .config-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">
+      <div class="logo-icon"><img src="../logo.png" alt="Bitcoin Ghost"></div>
+      <div class="logo-text">Bitcoin<span>Ghost</span></div>
+    </a>
+    <div class="nav-links">
+      <a href="../index.html">Home</a>
+      <a href="../network.html">Network</a>
+      <div class="nav-dropdown">
+        <a href="../pool.html">Pool</a>
+        <div class="nav-dropdown-menu">
+          <a href="../pool.html">Connect</a>
+          <a href="../pool-stats.html">Statistics</a>
+          <a href="../node-finder.html">Node Finder</a>
+        </div>
+      </div>
+      <a href="../how-it-works.html">How It Works</a>
+      <a href="../economics.html">Economics</a>
+      <a href="../ghost-labs.html" class="active">Labs</a>
+      <a href="../docs/index.html">Docs</a>
+    </div>
+    <div class="nav-right">
+      <a href="https://github.com/bitcoin-ghost" class="btn btn-ghost" target="_blank">
+        <svg style="width:18px;height:18px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      </a>
+      <a href="../get-started.html" class="btn btn-primary">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1><span>Spend RUNG</span></h1>
+  <p class="subtitle">Spend an existing Ladder Script output by satisfying its conditions</p>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot offline" id="statusDot"></div>
+    <span id="statusText">Connecting...</span>
+  </div>
+
+  <!-- Saved outputs from Send RUNG -->
+  <div class="section-label">Select a RUNG output</div>
+  <div id="savedRecords"></div>
+
+  <!-- Manual entry -->
+  <details style="margin-top: 16px; margin-bottom: 24px;">
+    <summary style="font-size: 12px; font-family: var(--font-mono); color: var(--gray-400); cursor: pointer;">Enter TXID manually</summary>
+    <div class="config-row" style="margin-top: 12px;">
+      <div class="field-group">
+        <div class="field-label">TXID</div>
+        <input type="text" id="manualTxid" placeholder="Transaction ID (64 hex chars)">
+      </div>
+      <div class="field-group" style="max-width: 100px;">
+        <div class="field-label">VOUT</div>
+        <input type="number" id="manualVout" value="0" min="0">
+      </div>
+      <div style="display: flex; align-items: flex-end;">
+        <button class="btn btn-primary" onclick="loadManualTxid()" style="margin-bottom: 0;">Load</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- Spend config (shown after selection) -->
+  <div id="spendPanel" style="display:none;">
+    <div class="config-section">
+      <div class="config-title">Spending Conditions</div>
+      <div id="conditionsDisplay"></div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-title">Destination</div>
+      <div class="config-row">
+        <div class="field-group">
+          <div class="field-label">Send to address <span class="auto">auto-generated</span></div>
+          <input type="text" id="destAddress" placeholder="Will auto-generate if empty">
+        </div>
+      </div>
+    </div>
+
+    <!-- Witness data (for manual key entry) -->
+    <details style="margin-bottom: 16px;">
+      <summary style="font-size: 12px; font-family: var(--font-mono); color: var(--gray-400); cursor: pointer;">Manual witness data (keys auto-loaded from browser)</summary>
+      <div class="config-section" style="margin-top: 12px;">
+        <div id="witnessFields"></div>
+      </div>
+    </details>
+
+    <button class="spend-btn ready" id="spendBtn" onclick="handleSpend()">
+      Sign &amp; Spend
+    </button>
+
+    <div class="log-panel" id="logPanel" style="display:none;"></div>
+    <div id="resultPanel" style="display:none;"></div>
+  </div>
+</main>
+
+<script>
+const SIGNET_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8801'
+  : 'https://bitcoinghost.org';
+
+async function apiCall(endpoint, body) {
+  const opts = body !== undefined
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : {};
+  const r = await fetch(SIGNET_API + endpoint, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail?.rpc_error || data.detail || 'HTTP ' + r.status);
+  return data;
+}
+
+let selectedRecord = null;
+let running = false;
+
+// ═══════════════════════════════════════════════════════
+// LOAD SAVED RECORDS
+// ═══════════════════════════════════════════════════════
+
+function loadRecords() {
+  const records = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
+  const container = document.getElementById('savedRecords');
+
+  if (records.length === 0) {
+    container.innerHTML = '<div class="empty-state">No saved RUNG outputs.<br><a href="send-rung.html">Create one with Send RUNG</a></div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="record-grid">' + records.map((r, i) => {
+    const date = new Date(r.timestamp).toLocaleDateString();
+    const scheme = r.scheme || 'SCHNORR';
+    const isPQ = scheme !== 'SCHNORR' && scheme !== 'ECDSA';
+    return `<div class="record-card" onclick="selectRecord(${i})" id="record_${i}">
+      <div>
+        <div class="record-txid">${r.txid.slice(0, 16)}...${r.txid.slice(-8)}</div>
+        <div class="record-meta">
+          <span class="scheme">${scheme}</span>
+          <span class="amt">${(r.amount || 0).toLocaleString()} sats</span>
+          <span>${date}</span>
+          <span>${(r.rungs || []).length} rung(s)</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function selectRecord(idx) {
+  const records = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
+  selectedRecord = records[idx];
+
+  // Highlight selected
+  document.querySelectorAll('.record-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('record_' + idx).classList.add('selected');
+
+  showSpendPanel();
+}
+
+function loadManualTxid() {
+  const txid = document.getElementById('manualTxid').value.trim();
+  const vout = parseInt(document.getElementById('manualVout').value) || 0;
+  if (!txid || txid.length !== 64) { alert('Enter a valid 64-character TXID.'); return; }
+
+  // Check if we have stored keys for this txid
+  const records = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
+  const found = records.find(r => r.txid === txid);
+  if (found) {
+    selectedRecord = found;
+  } else {
+    selectedRecord = { txid, vout, conditionKeys: [], preimages: [], rungs: [], scheme: 'SCHNORR' };
+  }
+  showSpendPanel();
+}
+
+function showSpendPanel() {
+  document.getElementById('spendPanel').style.display = '';
+  document.getElementById('resultPanel').style.display = 'none';
+  document.getElementById('resultPanel').innerHTML = '';
+  document.getElementById('logPanel').style.display = 'none';
+  document.getElementById('logPanel').innerHTML = '';
+
+  // Show conditions
+  const condDiv = document.getElementById('conditionsDisplay');
+  if (selectedRecord.rungs && selectedRecord.rungs.length > 0) {
+    condDiv.innerHTML = '<div class="conditions-box">' + selectedRecord.rungs.map((rung, ri) => {
+      const blocksHtml = (rung.blocks || []).map(b => {
+        const vals = Object.entries(b.values || {}).filter(([k, v]) => v && k !== 'scheme').map(([k, v]) => {
+          const display = typeof v === 'string' && v.length > 20 ? v.slice(0, 10) + '...' + v.slice(-6) : v;
+          return `<span style="color:var(--gray-500);">${k}:</span> ${display}`;
+        }).join(' ');
+        return `<div class="cond-block"><span class="type-badge">${b.type}</span> ${vals}</div>`;
+      }).join('');
+      return `<div class="cond-rung"><div class="cond-rung-label">Rung ${ri}: ${rung.label || ''}</div>${blocksHtml}</div>`;
+    }).join('') + '</div>';
+  } else {
+    condDiv.innerHTML = '<div style="font-size: 13px; color: var(--gray-500); font-family: var(--font-mono);">No condition data stored. The proxy will decode the UTXO on spend.</div>';
+  }
+
+  // Show witness fields for manual override
+  const witnessDiv = document.getElementById('witnessFields');
+  if (selectedRecord.conditionKeys && selectedRecord.conditionKeys.length > 0) {
+    witnessDiv.innerHTML = selectedRecord.conditionKeys.map((kp, i) => `
+      <div class="config-row">
+        <div class="field-group">
+          <div class="field-label">Key ${i + 1} — Private Key</div>
+          <input type="text" id="privkey_${i}" value="${kp.privkey || ''}" placeholder="WIF private key">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Key ${i + 1} — Public Key</div>
+          <input type="text" id="pubkey_${i}" value="${kp.pubkey || ''}" placeholder="Hex public key" readonly style="color: var(--gray-500);">
+        </div>
+      </div>
+    `).join('') + (selectedRecord.preimages && selectedRecord.preimages.length > 0 ? selectedRecord.preimages.map((p, i) => `
+      <div class="config-row">
+        <div class="field-group">
+          <div class="field-label">Preimage ${i + 1}</div>
+          <input type="text" id="preimage_${i}" value="${p.preimage || ''}" placeholder="32-byte hex preimage">
+        </div>
+      </div>
+    `).join('') : '');
+  } else {
+    witnessDiv.innerHTML = '<div style="font-size: 12px; color: var(--gray-500); font-family: var(--font-mono);">No stored keys. You\'ll need to provide signing data manually or use signrungtx RPC.</div>';
+  }
+
+  // Auto-scroll to spend panel
+  document.getElementById('spendPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════════════════════
+// SPEND (one-click flow)
+// ═══════════════════════════════════════════════════════
+
+async function handleSpend() {
+  if (running || !selectedRecord) return;
+  running = true;
+  const btn = document.getElementById('spendBtn');
+  btn.className = 'spend-btn running';
+  btn.innerHTML = '<span class="spinner"></span> Working...';
+  const logPanel = document.getElementById('logPanel');
+  logPanel.style.display = '';
+  logPanel.innerHTML = '';
+  document.getElementById('resultPanel').style.display = 'none';
+
+  const log = (msg, cls = 'info') => {
+    const ts = new Date().toLocaleTimeString();
+    logPanel.innerHTML += `<div class="log-entry ${cls}"><span class="ts">${ts}</span>${msg}</div>`;
+    logPanel.scrollTop = logPanel.scrollHeight;
+  };
+
+  try {
+    const rec = selectedRecord;
+    const txid = rec.txid;
+    const vout = rec.vout || 0;
+    const scheme = rec.scheme || 'SCHNORR';
+    const isPQ = scheme !== 'SCHNORR' && scheme !== 'ECDSA';
+
+    // 1. Check proxy
+    log('Connecting to proxy...');
+    const status = await apiCall('/api/ladder/status');
+    log('Connected. Height: ' + status.blocks, 'ok');
+
+    // 2. Look up the UTXO
+    log('Looking up UTXO ' + txid.slice(0, 16) + ':' + vout + '...');
+    const txData = await apiCall('/api/ladder/tx/' + txid);
+    if (!txData) throw new Error('Transaction not found');
+    const utxoOutput = txData.vout[vout];
+    if (!utxoOutput) throw new Error('Output index ' + vout + ' not found in transaction');
+    const utxoAmountSats = Math.round(utxoOutput.value * 1e8);
+    log('Found UTXO: ' + utxoAmountSats + ' sats', 'ok');
+
+    // 3. Get destination address
+    let destAddr = document.getElementById('destAddress').value.trim();
+    if (!destAddr) {
+      log('Generating destination address...');
+      const addrData = await apiCall('/api/ladder/wallet/address');
+      destAddr = addrData.address;
+      document.getElementById('destAddress').value = destAddr;
+      log('Destination: ' + destAddr, 'ok');
+    }
+
+    // 4. Build the spending transaction
+    const feeSats = 2000; // PQ witnesses are bigger
+    const sendSats = utxoAmountSats - feeSats;
+    if (sendSats < 546) throw new Error('UTXO too small to spend after fees (' + utxoAmountSats + ' sats)');
+
+    log('Building spending transaction (' + sendSats + ' sats after ' + feeSats + ' fee)...');
+
+    // For PQ spend, we use signrungtx with pq_privkey/pq_pubkey/scheme
+    // For classical spend, we build the witness through signrungtx
+
+    // Build unsigned tx: v4 input spending the RUNG UTXO → standard P2WPKH output
+    // We need to use the proxy's create endpoint, but spending a RUNG output is different
+    // from creating one. We use decoderawtransaction-level signing via signrungtx.
+
+    // Build a raw v4 tx spending txid:vout → destAddr
+    // The simplest approach: use signrungtx which handles witness construction
+    const conditionKey = rec.conditionKeys && rec.conditionKeys[0];
+    if (!conditionKey) throw new Error('No signing key found. Provide a private key manually.');
+
+    // Build the spending tx via createrawtransaction-style
+    // We construct it as a v4 transaction manually via the proxy
+    const spendInputs = [{ txid, vout }];
+    const spendAmount = sendSats / 1e8;
+
+    // For the output: standard P2WPKH (no conditions needed — it's the destination, not a RUNG output)
+    // But createrungtx requires conditions on outputs. Instead, we use the raw signing path.
+
+    log('Signing with ' + scheme + ' key...');
+
+    // Use the signrungtx RPC approach
+    if (isPQ) {
+      // PQ signing: need to construct the tx hex first, then sign with pq keys
+      // Create a minimal v4 tx: 1 input (the RUNG UTXO) → 1 output (P2WPKH dest)
+      // Use createrungtx with a SIG condition on the output, then signrungtx
+      const walletKey = rec.walletKey || await apiCall('/api/ladder/wallet/keypair');
+
+      // Create the spending tx with a simple SIG output condition
+      const createPayload = {
+        inputs: spendInputs,
+        outputs: [{
+          amount: spendAmount,
+          conditions: [{ blocks: [{ type: 'SIG', fields: [{ type: 'PUBKEY', hex: walletKey.pubkey }] }] }],
+        }],
+      };
+      const createResult = await apiCall('/api/ladder/create', createPayload);
+      if (!createResult || !createResult.hex) throw new Error('Failed to create spending tx');
+
+      // Sign with PQ key for the rung input
+      const signPayload = {
+        hex: createResult.hex,
+        signers: [{
+          input: 0,
+          pq_privkey: conditionKey.privkey,
+          pq_pubkey: conditionKey.pubkey,
+          scheme: scheme,
+        }],
+        spent_outputs: [{ amount: utxoOutput.value, scriptPubKey: utxoOutput.scriptPubKey?.hex || '' }],
+      };
+      const signResult = await apiCall('/api/ladder/sign', signPayload);
+      if (!signResult || !signResult.hex) throw new Error('PQ signing failed');
+      log('PQ signature applied (' + scheme + ')', 'ok');
+
+      // Broadcast
+      log('Broadcasting...');
+      const broadcastResult = await apiCall('/api/ladder/broadcast', { hex: signResult.hex });
+      if (!broadcastResult || !broadcastResult.txid) throw new Error('Broadcast failed: ' + (broadcastResult?.error || 'unknown'));
+      const spendTxid = broadcastResult.txid;
+      log('Broadcast! TXID: ' + spendTxid, 'ok');
+
+      log('Mining confirmation...');
+      await apiCall('/api/ladder/mine', { blocks: 1 });
+      log('Confirmed!', 'ok');
+
+      renderSpendResult(spendTxid, sendSats, scheme);
+
+    } else {
+      // Classical signing
+      const walletKey = rec.walletKey || conditionKey;
+
+      const createPayload = {
+        inputs: spendInputs,
+        outputs: [{
+          amount: spendAmount,
+          conditions: [{ blocks: [{ type: 'SIG', fields: [{ type: 'PUBKEY', hex: walletKey.pubkey }] }] }],
+        }],
+      };
+      const createResult = await apiCall('/api/ladder/create', createPayload);
+      if (!createResult || !createResult.hex) throw new Error('Failed to create spending tx');
+
+      // Sign with the condition key for the rung input
+      const signPayload = {
+        hex: createResult.hex,
+        signers: [{ input: 0, privkey: conditionKey.privkey }],
+        spent_outputs: [{ amount: utxoOutput.value, scriptPubKey: utxoOutput.scriptPubKey?.hex || '' }],
+      };
+      const signResult = await apiCall('/api/ladder/sign', signPayload);
+      if (!signResult || !signResult.hex) throw new Error('Signing failed');
+      log('Signature applied (Schnorr)', 'ok');
+
+      log('Broadcasting...');
+      const broadcastResult = await apiCall('/api/ladder/broadcast', { hex: signResult.hex });
+      if (!broadcastResult || !broadcastResult.txid) throw new Error('Broadcast failed');
+      const spendTxid = broadcastResult.txid;
+      log('Broadcast! TXID: ' + spendTxid, 'ok');
+
+      log('Mining confirmation...');
+      await apiCall('/api/ladder/mine', { blocks: 1 });
+      log('Confirmed!', 'ok');
+
+      renderSpendResult(spendTxid, sendSats, scheme);
+    }
+
+  } catch (e) {
+    log('ERROR: ' + e.message, 'err');
+  } finally {
+    running = false;
+    const b = document.getElementById('spendBtn');
+    b.className = 'spend-btn ready';
+    b.innerHTML = 'Sign &amp; Spend';
+  }
+}
+
+function renderSpendResult(txid, sats, scheme) {
+  const panel = document.getElementById('resultPanel');
+  panel.style.display = '';
+  panel.innerHTML = `
+    <div class="result-card">
+      <div class="result-title">Spend Confirmed</div>
+      <div class="result-field">
+        <div class="result-field-name">Spending TXID</div>
+        <div class="result-field-value txid" onclick="navigator.clipboard.writeText('${txid}')" title="Click to copy">${txid}</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Amount Sent</div>
+        <div class="result-field-value">${sats.toLocaleString()} sats</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Signature Scheme</div>
+        <div class="result-field-value" style="color: var(--cyan);">${scheme}</div>
+      </div>
+      <div class="result-field">
+        <div class="result-field-name">Source</div>
+        <div class="result-field-value" style="font-size: 11px; color: var(--gray-400);">${selectedRecord.txid}</div>
+      </div>
+      <div class="links-row">
+        <a class="link-btn" href="send-rung.html">&larr; Send Another</a>
+        <a class="link-btn" href="engine/index.html" target="_blank">Open in Engine</a>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+loadRecords();
+
+// Auto-select if txid in URL params
+const urlParams = new URLSearchParams(window.location.search);
+const urlTxid = urlParams.get('txid');
+if (urlTxid) {
+  const records = JSON.parse(localStorage.getItem('ghost_rung_keys') || '[]');
+  const idx = records.findIndex(r => r.txid === urlTxid);
+  if (idx >= 0) {
+    setTimeout(() => selectRecord(idx), 100);
+  } else {
+    document.getElementById('manualTxid').value = urlTxid;
+    document.getElementById('manualVout').value = urlParams.get('vout') || '0';
+  }
+}
+
+// Check proxy status
+fetch(SIGNET_API + '/api/ladder/status')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('statusDot').className = 'status-dot online';
+    document.getElementById('statusText').textContent = d.chain + ' height ' + d.blocks + ' — proxy online';
+  })
+  .catch(() => {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Proxy offline — start the ladder proxy on port 8801';
+  });
+</script>
+</body>
+</html>
