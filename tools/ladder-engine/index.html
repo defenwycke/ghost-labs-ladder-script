@@ -7026,16 +7026,6 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     if (data) { addToHistory('faucet', data.txid, 'Faucet: ' + data.amount + ' tBTC'); setTimeout(refreshWallet, 2000); }
   };
   const handleCreate = async () => {
-    // Warn if inputs >> outputs (likely missing change output)
-    if (signingData?.selectedUtxos) {
-      const inputTotal = signingData.selectedUtxos.reduce((s, u) => s + Math.round(u.amount * 100000000), 0);
-      const outputTotal = txOutputs.reduce((s, o) => s + (parseInt(o.amount) || 0), 0);
-      const impliedFee = inputTotal - outputTotal;
-      if (impliedFee > 10000 && impliedFee > outputTotal * 0.1) {
-        const ok = confirm(`Implied fee is ${impliedFee.toLocaleString()} sats (${(impliedFee / 100000000).toFixed(8)} BTC). Missing a change output? Click OK to proceed anyway, or Cancel to go back and add one.`);
-        if (!ok) return;
-      }
-    }
     const txData = exportCreateRungtx(rungs, txOutputs, txInputs, locktime);
     const data = await apiCall('/api/ladder/create', txData);
     if (data) { setTxHex(data.hex); setSignedHex(''); setTxid(''); setMined(false); }
@@ -7263,7 +7253,10 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
     }
     const outputCount = validTxOutputs.length;
     const totalOutputSats = validTxOutputs.reduce((sum, o) => sum + (parseInt(o.amount) || 0), 0);
-    const feeSats = 1000;
+    // Estimate fee: base tx overhead + per-input + per-output + per-condition-block
+    const numBlocks = rungs.reduce((s, r) => s + r.blocks.length, 0);
+    const isPQScheme = fundScheme !== 'SCHNORR' && fundScheme !== 'ECDSA';
+    const feeSats = Math.max(1000, 200 + 150 * (outputCount + 1) + 100 * numBlocks + (isPQScheme ? 2000 : 0));
     const needSats = totalOutputSats > 0 ? totalOutputSats + feeSats : 0;
 
     let selected = [];
@@ -7322,8 +7315,26 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
       totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
     }
 
-    // Note: no auto-change rung — user manages change outputs explicitly via + CHANGE button
-    // CREATERUNGTX will warn if implied fee is suspiciously large
+    // Auto-add change output if implied fee would be excessive
+    totalNewOutputSats = newOutputs.reduce((s, o) => s + o.amount, 0);
+    const impliedFee = selectedTotal - totalNewOutputSats;
+    const maxReasonableFee = Math.max(feeSats, 5000);
+    if (impliedFee > maxReasonableFee) {
+      const changeSats = impliedFee - feeSats;
+      if (changeSats >= 546) {
+        const changeAddr = await apiCall('/api/ladder/wallet/address');
+        if (changeAddr) {
+          const changeOutputId = uid();
+          newOutputs.push({ id: changeOutputId, address: changeAddr.address, amount: changeSats });
+          // Create a change rung with a simple SIG condition
+          const changeRung = createRung();
+          changeRung.label = 'Change';
+          changeRung.blocks = [{ id: uid(), type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }];
+          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
+          setRungs(prev => [...prev, changeRung]);
+        }
+      }
+    }
 
     // 8. Build spent outputs for signing (amount + scriptPubKey from each UTXO)
     const spentOutputs = selected.map(u => ({
@@ -7617,28 +7628,28 @@ function SignetPanel({ rungs, setRungs, txOutputs, txInputs, locktime, onViewAsL
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: '1 1 160px', minWidth: 140, textAlign: 'center' }}>
             <div style={sty.label}>1. CREATE</div>
-            <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleCreate} disabled={!online || loading === '/api/ladder/create'}>
-              {loading === '/api/ladder/create' ? 'CREATING...' : 'CREATERUNGTX'}
+            <button style={{ ...sty.btn, ...(txHex ? sty.btnGreen : sty.btnPrimary), opacity: online ? 1 : 0.3 }} onClick={handleCreate} disabled={!online || loading === '/api/ladder/create'}>
+              {loading === '/api/ladder/create' ? 'CREATING...' : txHex ? '\u2713 CREATED' : 'CREATERUNGTX'}
             </button>
           </div>
-          <div style={{ color: 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
+          <div style={{ color: txHex ? 'var(--green-bright)' : 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
           <div style={{ flex: '1 1 160px', minWidth: 140, textAlign: 'center' }}>
             <div style={sty.label}>2. SIGN</div>
-            <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: (online && txHex) ? 1 : 0.3 }} onClick={handleSign} disabled={!online || !txHex || loading === '/api/ladder/sign'}>
-              {loading === '/api/ladder/sign' ? 'SIGNING...' : 'SIGNRUNGTX'}
+            <button style={{ ...sty.btn, ...(signedHex ? sty.btnGreen : txHex ? sty.btnPrimary : sty.btnDefault), opacity: (online && txHex) ? 1 : 0.3 }} onClick={handleSign} disabled={!online || !txHex || loading === '/api/ladder/sign'}>
+              {loading === '/api/ladder/sign' ? 'SIGNING...' : signedHex ? '\u2713 SIGNED' : 'SIGNRUNGTX'}
             </button>
           </div>
-          <div style={{ color: 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
+          <div style={{ color: signedHex ? 'var(--green-bright)' : 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
           <div style={{ flex: '1 1 160px', minWidth: 140, textAlign: 'center' }}>
             <div style={sty.label}>3. BROADCAST</div>
-            <button style={{ ...sty.btn, ...sty.btnGreen, opacity: (online && (signedHex || txHex)) ? 1 : 0.3 }} onClick={handleBroadcast} disabled={!online || !(signedHex || txHex) || loading === '/api/ladder/broadcast'}>
-              {loading === '/api/ladder/broadcast' ? 'BROADCASTING...' : 'BROADCAST'}
+            <button style={{ ...sty.btn, ...(txid ? sty.btnGreen : signedHex ? sty.btnPrimary : sty.btnDefault), opacity: (online && signedHex) ? 1 : 0.3 }} onClick={handleBroadcast} disabled={!online || !signedHex || loading === '/api/ladder/broadcast'}>
+              {loading === '/api/ladder/broadcast' ? 'BROADCASTING...' : txid ? '\u2713 BROADCAST' : 'BROADCAST'}
             </button>
           </div>
-          <div style={{ color: 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
+          <div style={{ color: txid ? 'var(--green-bright)' : 'var(--border-light)', fontSize: 20 }}>&#x2192;</div>
           <div style={{ flex: '1 1 160px', minWidth: 140, textAlign: 'center' }}>
             <div style={sty.label}>4. CONFIRM</div>
-            <button style={{ ...sty.btn, ...(mined ? sty.btnGreen : sty.btnDefault), opacity: (online && txid) ? 1 : 0.3 }} onClick={async () => {
+            <button style={{ ...sty.btn, ...(mined ? sty.btnGreen : txid ? sty.btnPrimary : sty.btnDefault), opacity: (online && txid) ? 1 : 0.3 }} onClick={async () => {
               const d = await apiCall('/api/ladder/mine', { blocks: 1 });
               if (d) {
                 setMined(true);
