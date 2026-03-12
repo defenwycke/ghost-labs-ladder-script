@@ -557,7 +557,24 @@ The following RPCs are provided for wallet and application integration:
 
 Wallets cannot spend ladder-locked outputs without implementing the ladder evaluator and sighash computation.
 
-**Unified deployment.** All block types activate simultaneously as a single deployment. Upon activation, all block types (signature, timelock, hash, covenant, anchor, recursion, and PLC) are standard and enforced.
+**Coexistence.** Version 4 transactions coexist with all existing transaction versions. No existing transaction type is deprecated or modified by this proposal. Should Ladder Script achieve broad adoption, a future BIP may propose deprecating the creation of new legacy output types to consolidate the benefits of typed, structured conditions across the network.
+
+## Deployment
+
+Activation uses BIP-9 version bits signaling with Speedy Trial parameters, following the precedent established by BIP-341 (Taproot):
+
+| Parameter | Value |
+|-----------|-------|
+| Consensus name | `ladder` |
+| Bit | (to be assigned) |
+| Start time | (to be determined) |
+| Timeout | Start time + 7,776,000 seconds (90 days) |
+| Threshold | 90% (1,815 of 2,016 blocks per retarget period) |
+| Minimum activation height | (to be determined — set to allow sufficient ecosystem preparation) |
+
+All 53 block types activate simultaneously as a single deployment. Upon activation, all block types across all nine families are consensus-enforced and policy-standard. Partial activation of individual block types is not supported; the evaluation engine, wire format, and sighash computation form an interdependent whole.
+
+Nodes that have not upgraded treat version 4 transactions as anyone-can-spend, consistent with the soft fork upgrade path established by BIP-141 and BIP-341.
 
 ## Reference Implementation
 
