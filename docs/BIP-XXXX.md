@@ -395,6 +395,32 @@ The Programmable Logic Controller family brings industrial automation concepts t
 | `0x0671` | RATE_LIMIT | NUMERIC(max_per_window) + NUMERIC(window_blocks) + NUMERIC(current_count) | Rate limiter. SATISFIED when current_count < max_per_window. |
 | `0x0681` | COSIGN | HASH256(conditions_hash) | Co-spend constraint. SATISFIED when another input in the same transaction has rung conditions whose serialised hash matches conditions_hash. The evaluator skips the current input index when scanning. |
 
+**Compound Family (0x0700–0x07FF):**
+
+The Compound family combines multiple conditions into single blocks for wire efficiency. Each block replaces a multi-block rung pattern with a single typed block that performs the same validation with fewer bytes on the wire.
+
+| Code | Name | Required Fields | Description |
+|------|------|----------------|-------------|
+| `0x0701` | TIMELOCKED_SIG | PUBKEY_COMMIT + SCHEME + NUMERIC(sequence). Witness: PUBKEY + SIGNATURE | Signature with CSV relative timelock in one block. Equivalent to a SIG block AND a CSV block in the same rung, but encoded as a single block. The NUMERIC field is interpreted as a BIP-68 relative lock-time value. |
+| `0x0702` | HTLC | PUBKEY_COMMIT + SCHEME + HASH256(payment_hash) + NUMERIC(timeout). Witness: PUBKEY + SIGNATURE + PREIMAGE | Hash Time-Locked Contract. SATISFIED when the PREIMAGE hashes to payment_hash AND the signature verifies AND the timelock has not expired. Used for atomic swaps and payment channels. |
+| `0x0703` | HASH_SIG | PUBKEY_COMMIT + SCHEME + HASH256(hash). Witness: PUBKEY + SIGNATURE + PREIMAGE | Hash preimage combined with signature. SATISFIED when the PREIMAGE hashes to hash AND the signature verifies. |
+| `0x0704` | PTLC | PUBKEY_COMMIT + SCHEME + NUMERIC(sequence). Witness: PUBKEY + SIGNATURE | Point Time-Locked Contract. Adaptor signature with CSV relative timelock for point-locked payments. The signature must be a valid adaptor signature that commits to an agreed point. |
+| `0x0705` | CLTV_SIG | PUBKEY_COMMIT + SCHEME + NUMERIC(locktime). Witness: PUBKEY + SIGNATURE | Signature with CLTV absolute timelock in one block. The NUMERIC field is the absolute block height or time after which the signature can be used. |
+| `0x0706` | TIMELOCKED_MULTISIG | PUBKEY_COMMIT + NUMERIC(M) + NUMERIC(N) + SCHEME + NUMERIC(sequence). Witness: PUBKEY + SIGNATURE (×M) | Multisig with CSV relative timelock. M-of-N multisig that additionally requires a BIP-68 relative lock-time to be satisfied. |
+
+**Governance Family (0x0800–0x08FF):**
+
+The Governance family provides transaction-level constraints that restrict how a UTXO can be spent based on properties of the spending transaction itself. These blocks operate on transaction metadata rather than cryptographic proofs.
+
+| Code | Name | Required Fields | Description |
+|------|------|----------------|-------------|
+| `0x0801` | EPOCH_GATE | NUMERIC(epoch_length) + NUMERIC(offset) + NUMERIC(window) | Spending windows within block epochs. Divides the blockchain into epochs of epoch_length blocks. SATISFIED only during blocks [offset, offset+window) within each epoch. Enables scheduled spending windows (e.g., "spendable only during blocks 0-100 of each 1000-block epoch"). |
+| `0x0802` | WEIGHT_LIMIT | NUMERIC(max_weight) | Maximum transaction weight. SATISFIED when the spending transaction's weight is at most max_weight weight units. Prevents bloated spending transactions. |
+| `0x0803` | INPUT_COUNT | NUMERIC(min_inputs) + NUMERIC(max_inputs) | Input count bounds. SATISFIED when the spending transaction has between min_inputs and max_inputs inputs (inclusive). Constrains transaction structure. |
+| `0x0804` | OUTPUT_COUNT | NUMERIC(min_outputs) + NUMERIC(max_outputs) | Output count bounds. SATISFIED when the spending transaction has between min_outputs and max_outputs outputs (inclusive). Constrains transaction structure. |
+| `0x0805` | RELATIVE_VALUE | NUMERIC(numerator) + NUMERIC(denominator) | Output-to-input value ratio. SATISFIED when the ratio of the output value to the input value is at least numerator/denominator. Ensures a minimum proportion of value is preserved (e.g., 95/100 requires at least 95% of input value forwarded). |
+| `0x0806` | ACCUMULATOR | HASH256(merkle_root) + HASH256(leaf). Witness: PREIMAGE (Merkle proof) | Merkle set membership proof. SATISFIED when the witness Merkle proof demonstrates that leaf is a member of the set committed to by merkle_root. Enables whitelist/blacklist patterns and large-set membership checks without enumerating all elements on-chain. |
+
 **Legacy Family (0x0900-0x09FF):**
 
 The Legacy family wraps traditional Bitcoin transaction types as typed Ladder Script blocks. Each block preserves the original spending semantics while eliminating arbitrary data surfaces.
@@ -452,6 +478,7 @@ The scheme selector determines which signature algorithm is used for verificatio
 | `0x10` | FALCON512 | 897 B | ~666 B | FALCON-512 post-quantum lattice signatures. |
 | `0x11` | FALCON1024 | 1,793 B | ~1,280 B | FALCON-1024 post-quantum lattice signatures. |
 | `0x12` | DILITHIUM3 | 1,952 B | 3,293 B | Dilithium3 (ML-DSA) post-quantum lattice signatures. |
+| `0x13` | SPHINCS_SHA | 32 B | ~7,856 B | SPHINCS+-SHA256 post-quantum hash-based signatures. Stateless — no key reuse tracking required. |
 
 Post-quantum schemes (codes >= `0x10`) require liboqs support compiled into the node. Verification against a PQ scheme without liboqs support returns false.
 
@@ -518,7 +545,11 @@ The following limits are enforced at the policy (mempool) layer. Consensus enfor
 | MAX_RUNGS | 16 | Maximum rungs per ladder witness. Prevents combinatorial explosion in evaluation. |
 | MAX_BLOCKS_PER_RUNG | 8 | Maximum blocks per rung. Limits AND-condition depth. |
 | MAX_FIELDS_PER_BLOCK | 16 | Maximum typed fields per block. Sufficient for 16-of-16 multisig. |
-| MAX_LADDER_WITNESS_SIZE | 10,000 bytes | Maximum total serialised witness size. Accommodates Dilithium3 signatures (3,293 bytes) with headroom for multi-block rungs. |
+| MAX_LADDER_WITNESS_SIZE | 100,000 bytes | Maximum total serialised witness size. Accommodates post-quantum signatures (SPHINCS_SHA at ~7,856 bytes, Dilithium3 at 3,293 bytes) with headroom for multi-block rungs. |
+| MAX_PREIMAGE_BLOCKS_PER_WITNESS | 2 | Maximum HASH_PREIMAGE / HASH160_PREIMAGE blocks per witness. Limits user-chosen data to ~504 bytes, preventing data embedding. |
+| MAX_RELAYS | 8 | Maximum relay definitions per ladder witness. |
+| MAX_REQUIRES | 8 | Maximum relay requirements (co-spend input indices) per rung or relay. |
+| MAX_RELAY_DEPTH | 4 | Maximum transitive relay chain depth. Prevents unbounded recursive relay evaluation. |
 
 Policy additionally restricts:
 - All block types are standard upon activation.
@@ -574,7 +605,7 @@ The following RPCs are provided for wallet and application integration:
 
 **Conditions hash in sighash.** Including the SHA-256 hash of the serialised locking conditions in the sighash computation prevents signature reuse across different ladder outputs that happen to use the same key. This is analogous to BIP-341's tapleaf hash commitment.
 
-**Policy vs. consensus limits.** MAX_RUNGS, MAX_BLOCKS_PER_RUNG, and MAX_FIELDS_PER_BLOCK are enforced at both policy and consensus layers. The MAX_LADDER_WITNESS_SIZE limit at 10,000 bytes accommodates post-quantum signatures (Dilithium3 at 3,293 bytes) with headroom for multi-block rungs while preventing witness bloat attacks.
+**Policy vs. consensus limits.** MAX_RUNGS, MAX_BLOCKS_PER_RUNG, and MAX_FIELDS_PER_BLOCK are enforced at both policy and consensus layers. The MAX_LADDER_WITNESS_SIZE limit at 100,000 bytes accommodates post-quantum signatures (SPHINCS_SHA at ~7,856 bytes, Dilithium3 at 3,293 bytes) with headroom for multi-block rungs while preventing witness bloat attacks.
 
 ## Implications for External Protocol Layers
 

@@ -810,6 +810,15 @@ const BLOCK_DEFS = {
   OUTPUT_COUNT:      { category: 'govern',   phase: 2, label: 'OUTPUT_COUNT',      fields: [{name:'min', type:'NUMERIC', placeholder:'1'}, {name:'max', type:'NUMERIC', placeholder:'3'}] },
   RELATIVE_VALUE:    { category: 'govern',   phase: 2, label: 'RELATIVE_VALUE',    fields: [{name:'numerator', type:'NUMERIC', placeholder:'9'}, {name:'denominator', type:'NUMERIC', placeholder:'10'}] },
   ACCUMULATOR:       { category: 'govern',   phase: 2, label: 'ACCUMULATOR',       fields: [{name:'merkle_root', type:'HASH256', placeholder:'Merkle root hash'}] },
+
+  // ── LEGACY (0x09xx) — Phase 1 ──
+  P2PK_LEGACY:       { category: 'legacy',   phase: 1, label: 'P2PK_LEGACY',       fields: [{name:'pubkey', type:'PUBKEY', placeholder:'02... public key'}] },
+  P2PKH_LEGACY:      { category: 'legacy',   phase: 1, label: 'P2PKH_LEGACY',      fields: [{name:'hash160', type:'HASH160', placeholder:'RIPEMD160(SHA256(pubkey))'}] },
+  P2SH_LEGACY:       { category: 'legacy',   phase: 1, label: 'P2SH_LEGACY',       fields: [{name:'hash160', type:'HASH160', placeholder:'RIPEMD160(SHA256(script))'}] },
+  P2WPKH_LEGACY:     { category: 'legacy',   phase: 1, label: 'P2WPKH_LEGACY',     fields: [{name:'hash160', type:'HASH160', placeholder:'RIPEMD160(SHA256(pubkey))'}] },
+  P2WSH_LEGACY:      { category: 'legacy',   phase: 1, label: 'P2WSH_LEGACY',      fields: [{name:'hash256', type:'HASH256', placeholder:'SHA256(witness script)'}] },
+  P2TR_LEGACY:       { category: 'legacy',   phase: 1, label: 'P2TR_LEGACY',       fields: [{name:'pubkey', type:'PUBKEY', placeholder:'02... x-only pubkey'}] },
+  P2TR_SCRIPT_LEGACY:{ category: 'legacy',   phase: 1, label: 'P2TR_SCRIPT_LEGACY',fields: [{name:'hash256', type:'HASH256', placeholder:'Merkle root hash'}, {name:'internal_key', type:'PUBKEY', placeholder:'02... internal pubkey'}] },
 };
 
 const CATEGORIES = [
@@ -822,6 +831,7 @@ const CATEGORIES = [
   { id: 'plc',      name: 'PLC',       color: '#44DDFF' },
   { id: 'compound', name: 'COMPOUND',  color: '#FFD700' },
   { id: 'govern',   name: 'GOVERNANCE', color: '#22CC88' },
+  { id: 'legacy',   name: 'LEGACY',     color: '#e91e90' },
 ];
 
 const COIL_DEFS = {
