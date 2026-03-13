@@ -6344,6 +6344,7 @@ const FAKE_PQ = {
   dilith1: 'd3aabbccdd00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff0011223344556677889900aabb',
   dilith2: 'd3ff11ee22dd33cc44bb55aa66997788d3ff11ee22dd33cc44bb55aa66997788ff11ee22dd33cc44bb55aa66997788ff11ee22dd33cc44bb55aa6699778800112233',
   sphincs1: 'aa256f0a1b2c3d4e5f6789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567',
+  falcon1024: 'f1024aa1bb2cc3dd4ee5ff6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7',
 };
 
 const FAKE = {
@@ -6481,7 +6482,6 @@ const EXAMPLES = [
       { label: 'DAY_SPEND', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
         { type: 'RATE_LIMIT', values: { max_per_block: '50000', acc_cap: '200000', refill_blocks: '144' } },
-        { type: 'RECURSE_SAME', values: { max_depth: '10' } },
       ], output: { name: 'DAILY_OUT', type: 'standard' } },
       { label: 'OVERRIDE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
@@ -6490,7 +6490,7 @@ const EXAMPLES = [
     ],
     txInputs: [{ txid: FAKE.txid2, vout: 0 }],
     txOutputs: [
-      { address: FAKE.addr4, amount: 546 },
+      { address: FAKE.addr4, amount: 50000 },
       { address: FAKE.addr1, amount: 50000 },
     ],
     inputMap: [[0], [0]], outputMap: [0, 1],
@@ -6989,9 +6989,9 @@ const EXAMPLES = [
     tags: [['TMR_CONT', 'plc'], ['TMR_OFF', 'plc'], ['TAGGED', 'hash'], ['SIG', 'sig']],
     rungs: [
       { label: 'ACTIVE', blocks: [
-        { type: 'TIMER_CONTINUOUS', values: { accumulated: '0', target: '144' } },
+        { type: 'TIMER_CONTINUOUS', values: { accumulated: '0', target: '144' }, inverted: true },
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'TAGGED_HASH', values: { tag: FAKE.hash3, hash: FAKE.hash4 } },
+        { type: 'RECURSE_MODIFIED', values: { max_depth: '200', block_idx: '0', param_idx: '0', delta: '1' } },
       ], output: { name: 'WATCHDOG_OK', type: 'standard' } },
       { label: 'HELD', blocks: [
         { type: 'TIMER_OFF_DELAY', values: { remaining: '72' } },
@@ -7004,7 +7004,7 @@ const EXAMPLES = [
     ],
     txInputs: [{ txid: FAKE.txid2, vout: 2 }],
     txOutputs: [
-      { address: FAKE.addr1, amount: 8000 },
+      { address: FAKE.addr1, amount: 500000 },
       { address: FAKE.addr5, amount: 7000 },
       { address: FAKE.addr6, amount: 5000 },
     ],
@@ -7032,7 +7032,7 @@ const EXAMPLES = [
     ],
     txInputs: [{ txid: FAKE.txid3, vout: 3 }],
     txOutputs: [
-      { address: FAKE.addr1, amount: 45000 },
+      { address: FAKE.addr1, amount: 150000 },
       { address: FAKE.addr3, amount: 5000 },
       { address: FAKE.addr5, amount: 50000 },
     ],
@@ -7065,6 +7065,105 @@ const EXAMPLES = [
       { address: FAKE.addr4, amount: 50000 },
     ],
     inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+  {
+    title: 'SINGLE SIG (COMPACT)',
+    desc: 'Simplest possible RUNG_TX: a single compact-encoded SIG rung. The wire format uses COMPACT_SIG encoding — just the pubkey commit and scheme, no block array. Minimal transaction size.',
+    tags: [['SIG', 'sig']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'PAYMENT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 10000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+
+  {
+    title: 'DUAL SIG (COMPACT)',
+    desc: 'Two independent spend paths, each a single compact-encoded SIG rung. Hot key for daily spending, cold key for recovery. Both rungs use COMPACT_SIG wire format — no block arrays needed.',
+    tags: [['SIG', 'sig'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'HOT', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'HOT_SPEND', type: 'standard' } },
+      { label: 'COLD', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'COLD_SPEND', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 1 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 10000 },
+      { address: FAKE.addr2, amount: 10000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'SINGLE SIG (DILITHIUM3)',
+    desc: 'Post-quantum single signature using NIST FIPS 204 Dilithium3 (ML-DSA-65). Largest PQ signature at ~3,300 bytes but strongest lattice-based security. Full block encoding with SCHEME field.',
+    tags: [['DILITHIUM3', 'sig'], ['PQ', 'hash']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE_PQ.dilith1, scheme: 'DILITHIUM3' } },
+      ], output: { name: 'PAYMENT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 20000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+
+  {
+    title: 'SINGLE SIG (FALCON512)',
+    desc: 'Post-quantum single signature using NIST FIPS 206 FALCON-512 (FN-DSA). Compact lattice-based signatures (~900 bytes). Full block encoding with SCHEME field routing to PQ verification.',
+    tags: [['FALCON512', 'sig'], ['PQ', 'hash']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE_PQ.falcon1, scheme: 'FALCON512' } },
+      ], output: { name: 'PAYMENT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 20000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+
+  {
+    title: 'SINGLE SIG (FALCON1024)',
+    desc: 'Post-quantum single signature using NIST FIPS 206 FALCON-1024 (FN-DSA). Higher-security lattice-based signatures (~1,800 bytes). Full block encoding with SCHEME field. NIST Security Level 5.',
+    tags: [['FALCON1024', 'sig'], ['PQ', 'hash']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE_PQ.falcon1024, scheme: 'FALCON1024' } },
+      ], output: { name: 'PAYMENT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 20000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+
+  {
+    title: 'SINGLE SIG (SPHINCS+)',
+    desc: 'Post-quantum single signature using NIST FIPS 205 SPHINCS+-SHA2 (SLH-DSA). Hash-based stateless signatures (~50,000 bytes). Most conservative PQ assumption — security relies only on hash function strength, not lattice hardness.',
+    tags: [['SPHINCS+', 'sig'], ['PQ', 'hash']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE_PQ.sphincs1, scheme: 'SPHINCS_SHA' } },
+      ], output: { name: 'PAYMENT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 20000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
   },
 ];
 

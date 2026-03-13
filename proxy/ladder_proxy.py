@@ -227,8 +227,8 @@ async def rpc_call(method: str, params=None):
 
 # --- Validation helpers ---
 
-MAX_JSON_SIZE = 32_768  # 32KB max request body
-MAX_HEX_SIZE = 65_536  # 64KB max hex string
+MAX_JSON_SIZE = 262_144  # 256KB max request body (PQ witnesses up to ~50KB)
+MAX_HEX_SIZE = 262_144   # 256KB max hex string (SPHINCS+ signed TX ~100KB hex)
 
 
 def _validate_hex(value: str, name: str, max_len: int = MAX_HEX_SIZE) -> str:

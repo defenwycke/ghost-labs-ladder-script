@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SINGLE SIG (FALCON1024) &mdash; Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  .output-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .output-row { display: flex; align-items: stretch; gap: 0; }
+  .output-label-box { width: 80px; min-width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .output-amount { font-size: 8px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+  .output-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+
+  .rung-block.sig { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; POST-QUANTUM</div>
+  <h1 class="block-title">SINGLE SIG (FALCON1024)</h1>
+  <p class="block-subtitle">Single post-quantum signature using FALCON-1024 lattice-based cryptography. NIST Security Level 5 &amp;mdash; the highest tier. Larger signatures (~1,800 bytes) and keys (~1,793 bytes) than FALCON-512, but with a stronger security margin against quantum attack.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG &middot; TYPE 0x00</span>
+    <span class="scheme-badge" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25);">FALCON1024 &middot; SCHEME</span>
+  </div>
+</div>
+
+
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">Single rung with one SIG block using SCHEME = FALCON1024. Same structure as FALCON-512 but with Level 5 parameters.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SPEND</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PQ_SPEND</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Output Structure</div>
+  <p class="section-text">The funding transaction splits funds across outputs with different security policies.</p>
+  <div class="output-diagram">
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 0<div class="output-amount">20,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PQ_SPEND</div>
+      </div>
+    </div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 1<div class="output-amount">1,249,978,950 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">SIG (wallet)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Transaction Pair -->
+<div class="doc-section">
+  <div class="section-label">Transactions</div>
+
+  <div class="tx-pair">
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">2e8e9cd0f18eb2140b0bf4dc28fda03cf9342968ad856457f504e4db98beb4b0</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">264 bytes &middot; 181 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">2 &mdash; vout 0: PQ_SPEND (20,000 sats), vout 1: change (1,249,978,950 sats)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (FALCON-1024 Spend)</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">c86452063abdc6f2b671a4d2ee528c76f578a4be532974b91b84108b3511b643</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">3184 bytes &middot; 876 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">1 &mdash; 19,000 sats (carry-forward)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Signers</div>
+        <div class="tx-field-value highlight">SIG</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Witness</div>
+        <div class="tx-field-value">3072 bytes (ladder witness)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The ladder witness provides data for each block in the rung. Blocks that need no witness data (validation-only blocks) contribute zero bytes.</p>
+  <div class="witness-bar">
+    <div class="witness-seg" style="flex: 4; background: #4a4a4a;" title="HDR: 4 bytes">HDR</div>
+    <div class="witness-seg" style="flex: 33; background: #f7931a;" title="33B: 33 bytes">33B</div>
+    <div class="witness-seg" style="flex: 64; background: #00ff88;" title="64B: 64 bytes">64B</div>
+    <div class="witness-seg" style="flex: 6; background: #4a4a4a;" title="COIL: 6 bytes">COIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Public Key</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature</div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Verification</div>
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">Input Amount</div>
+      <div class="verify-value">20,000 sats</div>
+      <div class="verify-check">vout[0] of fund TX</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Output Amount</div>
+      <div class="verify-value">19,000 sats</div>
+      <div class="verify-check">1 output(s)</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Fee</div>
+      <div class="verify-value">1,000 sats</div>
+      <div class="verify-check">20,000 &minus; 19,000</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">How Single Sig (Falcon1024) Works</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">FALCON-1024 doubles the lattice dimension from FALCON-512, providing NIST Security Level 5 (equivalent to AES-256). Public keys are ~1,793 bytes; signatures are ~1,800 bytes.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text">The condition encoding is identical to all SIG schemes: a 32-byte PUBKEY_COMMIT in the conditions with FALCON1024 scheme byte in the coil. The evaluator hashes the full PQ public key from the witness and verifies the commitment.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text">Total witness overhead is ~3,593 bytes (1,793B pubkey + 1,800B signature) &mdash; roughly double FALCON-512 but still slightly smaller than Dilithium3's total.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">FALCON-1024 uses the same NTRU lattice and Gaussian sampling as FALCON-512 but with larger parameters. Choose FALCON-1024 when maximum PQ security is required and the ~3.6 KB witness overhead is acceptable.</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Comparison</div>
+  <table class="field-table">
+    <thead>
+      <tr><th>Property</th><th>FALCON-512</th><th>FALCON-1024</th><th>Schnorr</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="field-name">Security Level</td><td>NIST Level 1</td><td>NIST Level 5</td><td>128-bit classical</td></tr>
+      <tr><td class="field-name">Public Key</td><td>~897 bytes</td><td>~1,793 bytes</td><td>32 bytes (x-only)</td></tr>
+      <tr><td class="field-name">Signature</td><td>~690 bytes</td><td>~1,800 bytes</td><td>64 bytes</td></tr>
+      <tr><td class="field-name">Total Witness</td><td>~1,587 bytes</td><td>~3,593 bytes</td><td>97 bytes</td></tr>
+      <tr><td class="field-name">Quantum Resistant</td><td>Yes (lattice)</td><td>Yes (lattice)</td><td>No</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Funding Transaction JSON</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;2e8e9cd0f18eb2140b0bf4dc28fda03cf9342968ad856457f504e4db98beb4b0&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;42f2457f75c7d419fed5ff4e0bedbfdf4499fc13ffdf7e00bac0fb0b1cf4582a&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">264</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">181</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">723</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
+    {
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;2eb5a62797c800229a3d7511ea043ede71b998be58fc1b62581c47f342b5fb2d&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100210353b82496e7f30f4bf142aea47501793b49580cad0e930714318efb25b41b9e5440f96dd97e6ee32b7b7a96dfe72bff68753ac14c6ee3c8269980207f8e27ac74be0f06ed32d850db8b72b09f8f201f11f4ab18021c9c3c780fa7c322cefe9757ec0101010000&quot;
+      ],
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">&quot;vout&quot;</span>: [
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0002</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 1 0 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqsqwj8xdm0ew77w2kkwvklwajhvl7ceuyz2ef6fzc9amxqd4j35vq5zyqszygqqq7m45u9)#lvlpjs0g&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10101003a473376fcbbde72ad6732df7765767fd8cf0825653a48b05eecc06d651a3014110101110000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqsqwj8xdm0ew77w2kkwvklwajhvl7ceuyz2ef6fzc9amxqd4j35vq5zyqszygqqq7m45u9&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    },
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">12.4997895</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 0 -120 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqqr7zv2vlyrrdzter4z5cen62kscxjaaql2yjqv3sl3cxz5gnxnjr0zyqszygqqqpuvuq8)#5e6vq7v3&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010001f84c533e418da25e475153199e956860d2ef41f512406461f8e0c2a22669c86f110101110000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqqr7zv2vlyrrdzter4z5cen62kscxjaaql2yjqv3sl3cxz5gnxnjr0zyqszygqqqpuvuq8&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Spending Transaction JSON (FALCON-1024 Spend)</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;c86452063abdc6f2b671a4d2ee528c76f578a4be532974b91b84108b3511b643&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;fee35a4a4cb7fa6d60faf5e3a37ce6dd239879d110fbe6b5841b2eb95ee47ddb&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">3184</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">876</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">3502</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
+    {
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;2e8e9cd0f18eb2140b0bf4dc28fda03cf9342968ad856457f504e4db98beb4b0&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100fd01070ab191c6f80aa84072613f05402076addeae8205526f0974a1f66262e57ebaf9eb58298185452707cc8de9730ab5f23aee49731ea5ea8159901731d4a26f5045bd35c1866e483e9b69ef9a350ccb66145c3b808e511e3664411d448f5696fd2027e9230eac0c348769ad62c0b72a852b56bc057e70bc4ec63d0cd3353712899a3e71fbc29a7fbeb003d03310fe254897e0942b608c727ab044c32f0e65309a9cad64bc0cb3b65606971e2497e269c9d11ad522794e8cff583c6f589bd7dc3c067a35c60c507e0cd1aa5b47e2ac7c9fa2d4c95077b9fc62f5cfb1069414a4a1c31908ec2733559864970e2a06811be20c7515a798486d6c9638320acceb9c20cd19e4604f57757297c919cc885d87a08b1f5a8ae1b8346e1d4467bdfef326e92ab3f600da814ac98e716c0b18115c24d1862bc5a7e488a62f03c2611f106a6744c5cdab918e10c47a5d857cdebdd08cedf38dfd9479402b0152f148e703d32da8e08f377f82c92e3df4eae3a7831f363440aaacbb8a6dc5d8db27672c490cbb9e12313a9846e686806a15c53f767d1c478bb62e638c04ae038d72d3a1c3c5b184ecd2a2ac4a6dde9263c45c214191aaa48869527eb59857c89be24b90f620b249721c75d733cdece6b5b8139927e9263148f454742bb03c3504fba3da08800e63979a2f9d29c0661acc60911748ce91214816936a118b062c12badafeb36c01570a95606918083c977a47da5422f95f66f450456dff3e4c80f79fd75aae35ba8068618a35c4b4a5250d9086d40fd844103854baebf2bae56034029b9b4ec6c608481e6b950664a912a49b0806c68c6e0d30201f53428a823046897f818d5fb192103859d49d5aaa956952ee31d359cfd7a6710b215a813a2e94a8d6fecbd74d88215b4e8e4223e1adc699037491e552636124086cc561a985c342039e713ba54afe8ffd2c07a6421abec807aaab22f295baf5a08321a42a75c862a060ada4fc2d29cb62611dd4fea4d1998794d66559bcdaa7a74d3335a65e4c0965755110dbae3fa6c413e74a65989233529905f3001d1b71dd8b9f27558215b6a2bfb539d7624adaa7441d88f86653f1bb690a743118c816f4ac523a929a74549c8bca56c401c1fb6a065f47bd057ffa4028713c982790c5cc3e010e61e48ad87b2490dc485886cbbfe164fa71c948546a7a5011599aa928b8f2118dbf00dea1590c28071f2133c153673726283650cb4c453970aa49275256316d8bcb4240fa5406c2801802c29f820a22d119c636a684426ac9ca1b4de988d442889002b6403829ad0472290724a756a61a3db43b01bd42acd3e278c2ee74dee8b422ef123a2c1e468e143d09feef74201a0644804d238b973e4fb48871852818a9c2a01a9165706bc0bc512b89dc3498af5a465e399231b8d62ec9ac7139df8577ea792e20c4b641918b1f2908e86c6b2104c63d780ce6a80c16246785a26d4318494555536753aca8b8be6da2457aab63bfcd0e50f6a011d515fcb8e56ec64360e65d3676243f283855d974515ca1296295b536ee6368b932b724004dad2c5453f29ae2d27836d7e4a456146851042598e9df9d16b01783809f5142e7765b1a0c75656961095d6432cd4dcbf0ddaf679a6cf6f18c637ad4a8ca871bfb901a0909cf585b707636a9766472602dd7910a42a940194d86a7470c90f2169350450fa41db1fb0e9a4e4ca9d2e000a8a55b6e2eb486ec10aaba907851505f859abac84ceca2812228e8c6ef9d9a74ee6360698f94a4ed5a260f6d92d996f154aa7f6dd177389b2df190e6b896548e4667e0941993911f4d221d84e49f3b58943ccba1c208191c276ab8ec195ed4346529cfe74e31d2317f9a8b324a481309ebdb0371ec288509207f8d97a6cb96f339415ed4c65b68566547eacbc71e85515b5915630042928c8291432028fa14f5031dcc3cb42d35c3648470b18ae12825e66a32c3c94e293bbfbd31b987ac5dae7ce2632bcabb867803988fa87daf5cb09769a969276c896a64c79a02a25874a54de52aa28cf56088892f6c77b1eaa5953649f342741580ab749fe4d454330aae5f1027938a9f15eff3421df8349c9a76716e850a9c6140089f8b8aa53fdacc9f3f6f0d98d07ea864022af1a63b501a9c883da77e80ef6dee7e13bb614b81764dd964a0382b2a8828d4197d9425cdf63b4d1d481d5987915a908730f2a7814f6aaf1c3bb1f95a2c2efc6c26e7810017fd9b607122b9b6068cd3c723171bc03ea3e89c5b033df6311c52c293a48782bd9a322af0d738d287a59e5ebbb298580693b6f2f30f4b8b29a0b244fa42757c2a0dd24dd641002549b63aa97279ad7a74dedb42a9e6b3e5e25009619c03065e4a5f4b896aa4c786445ce5dc70a28dd064fd6b56b52f33a33c4876aa9fb6ac65d5d8dd8186600061647c64ef7382bd38bd1746b1b800d72a542a9b5512fae813f1930d6dc99c5c4db91680345e8d614a7650c94410849659cba876a20c426a65ebb11a011d015ed123839951b0d6265b6a81fdf1043a88eebeb44a1f129c98dd34e637c29c4cf75b04d67ce6d0b3f022305cb61425e1303f0e5d60b9286f29cb9a1d7f560bc97027a4b0dbb2e925f2c483f439d4dc0e3b31e58190295a24525aaf5327844345df4992ceb1e986ae2100329a72956ea92152ad5cdd81e49a6f534689b3754db268615ea5949eedde08bc9671b9a433356534caaad2feec6fb0dc70ba1c7715b28adaf8eeb3048f61b345c682a55ff4dc193e52dcdcb2b8a19c2a682393de6876dd1a1c0888489a7d5cc121f278515313934d9a0b87038d8fc03134b15e6a5a77630d1a63b7b138da5fd3d3eb5be8dca0dffa8dda46dc9ebc0a3c942aae512a2e2fc6fe106f6e386eff977c510747d1207ef9e83f489a52aad1d4159ca921c335c0d8f7e8f3086a51e8af57a5f657358585160f74ad804161ab632b69a0c592a4ac91c672d2b9cacdaac5fa6bcdaa5baa63f644748fdc5c4257b8cbb2323238ce48fb4fd458eca55e45aa2c653179a82c5135862334f3ab8c65ae4c2eb5e08b20356fa666dbc820bec806b5f2ff45939f2646549b2f7152abd9b0656614f767f702c360492e4bf96bc690393d6aa2481fd4c4b9bd52169258fedf32b61a66a47463c5259774370f6251033c5ed6069254502c44ee896834e5ab05b8e850b37439596dad207cdcbea36ba572f67ed88be947b4d0a3b5388fd3893ebbd28dde0d094ab00854120492b13f3c76fed79888bcd83d1ab1619252ee570562bf6a4254d42589ee4066955e56a1e99251b47c55d1ca35ca3fc9b0c53a5d143cc670a32dcfb358846917cd6e27b6e97ca06d5dbb1df42c4bf75f58c5ec4b06f789735f606408d33f7ced19474f75043398e34c4c2c4cffe87df006a62d6a6e2042bd644ead4b37822b98db28ad640900223ee841f2cdcbec51c469d8d74310c698f9354cb197f54f30087763d5a89e63b2b789da035ee058ef8f3c0ce18b0a7767e74ae48168671b5ee49acd688bc29fb9126da732c5afe7e52873e87253d48b2b4d4eee36f8ac6e438894c424244288876474b96dac172f065cc42d0a93242c9e53308dc2584712ebc47dd89b95ea7f9e4048ec66865326275fbfa75d0c9abf59ec36bf0e76e601104e47b384731b6927b748c0b082c28f3b9fa904dc69b8d8041c6bd2ea628c9038ceaba4873f6fd6f9f0e2ecde36b63748589d379d066fb4fbc67270eb68cf1ab39349259ad2989aed75f0046c4a30d9bbaf9a21856bde11dcb3eb5a5bfc4188330bf6b5529265220907885ad58f2f69e833c5a92bdca10972f7e320e97690c389169c9c4b31cf5541ccefec512268c037aaae9630b42d88438f88b8c9104e4e99096ae12a8cce41426fb61b1b744a3455511e36dfc3b17c64a7ee218fcedcf099966b0438b6ae7bd50245d5b9bb2c8194d81ffe97a21676a1b48c7790e7bfdfdc7af29ba3435decca3c36670afea64d667ef6d133cfe36079285b1739fe3af3d89ee72db0c89157724d16a5e86d596aca2583b86563233e45fa92f6a53a962c48338fa27114bd2cd64768ef40c8d63861ee8a57322e56fc3d49538acc7708f7c9a3cfd1ac4d62054fca1e5c1445ab33b0d1b9c36f21c9b452bf091a5771d1f9a7abf61cd6c9102117b6e9b7eb74395ce2555cbd86678c893937e2f69cc560648cf2b9b00d5451e37574197c6361fd9da312fd3c2f946fe2d0e3fd1a56337976e105ba495014179727895db7b3c893ab08ce7476dc93358b91eaf69a073abb0fff9286e8eac439be7c0e1cdab5b0465644eab53d14c6818b41771ca4420101010000&quot;
+      ],
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">&quot;vout&quot;</span>: [
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.00019</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 1 OP_LEFT 0 2 f84c533e418da25e475153199e956860d2ef41f512406461f8e0c2a22669c86f 1 0 0&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqcqqgqqypzp7zv2vlyrrdzter4z5cen62kscxjaaql2yjqv3sl3cxz5gnxnjr0qyqszqqqpt75al)#es3868cs&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10101800100010220f84c533e418da25e475153199e956860d2ef41f512406461f8e0c2a22669c86f0101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqcqqgqqypzp7zv2vlyrrdzter4z5cen62kscxjaaql2yjqv3sl3cxz5gnxnjr0qyqszqqqpt75al&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+
+<!-- Nav -->
+<div class="doc-nav">
+  <span onclick="if(window.parent !== window) window.parent.location.hash='TX_INDEX'; else window.location.href='../index.html#TX_INDEX';">&#8592; All Transaction Examples</span>
+  <span></span>
+</div>
+
+</div>
+
+</body>
+</html>

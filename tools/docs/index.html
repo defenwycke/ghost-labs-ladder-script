@@ -436,48 +436,89 @@
     // Transaction examples data
     const TX_EXAMPLES = [
       {
-        name: 'Atomic Swaps', cls: 'sig',
-        intro: 'On-chain atomic swap transactions using adaptor signatures and hash-locked contracts.',
+        name: 'Signature', color: '#e6a817',
+        intro: 'Single and multi-key signature patterns — the foundation of all Ladder Script transactions.',
         txs: [
-          { file: 'adaptor-sig-swap', name: 'Adaptor Sig Swap', desc: 'Schnorr adaptor signature atomic swap. ADAPTOR_SIG execute path with CSV+dual-SIG cancel. On-chain adapted sig reveals the adaptor secret.', date: '2026-03-11', scheme: 'SCHNORR' },
+          { file: 'single-sig-compact', name: 'Single SIG (Compact)', desc: 'Simplest possible RUNG_TX. Single compact-encoded SIG rung — just pubkey commit + scheme byte, no block array.', date: '2026-03-13', scheme: 'COMPACT_SIG' },
+          { file: 'dual-sig-compact', name: 'Dual SIG (Compact)', desc: 'Two independent compact-encoded SIG rungs. Hot key for daily spending, cold key for recovery.', date: '2026-03-13', scheme: 'COMPACT_SIG' },
+          { file: '2-of-3-multisig-vault', name: '2-of-3 Multisig Vault', desc: 'Multi-output vault with 2-of-3 Schnorr threshold primary spend, CSV-gated single-key recovery, and change.', date: '2026-03-13', scheme: 'MULTISIG' },
+          { file: 'musig-threshold-treasury', name: 'MuSig Threshold Treasury', desc: 'MUSIG_THRESHOLD aggregate signature — M-of-N signers produce a single Schnorr signature off-chain.', date: '2026-03-13', scheme: 'MUSIG_THR' },
+          { file: 'timelocked-multisig-vault-recovery', name: 'Timelocked Multisig Vault Recovery', desc: 'TIMELOCKED_MULTISIG with built-in CSV delay. Single block encodes threshold + timelock.', date: '2026-03-13', scheme: 'TIMELOCKED_MULTISIG' },
+          { file: 'multi-input-consolidation', name: 'Multi-Input Consolidation', desc: 'Multiple inputs consolidated into a single output. Demonstrates multi-input RUNG_TX spending.', date: '2026-03-13', scheme: 'SCHNORR' },
+          { file: 'escrow-with-oracle', name: 'Escrow with Oracle', desc: 'Three-party escrow: buyer, seller, and oracle arbiter. Any 2-of-3 can release funds.', date: '2026-03-13', scheme: 'SCHNORR' },
         ]
       },
       {
-        name: 'Post-Quantum', cls: 'pq',
-        intro: 'Round-trip transactions demonstrating post-quantum signature schemes supported by Ladder Script.',
+        name: 'Atomic Swaps', color: '#39a5b7',
+        intro: 'On-chain atomic swap transactions using adaptor signatures, hash-locked contracts, and point-locked contracts.',
         txs: [
-          { file: 'falcon512-roundtrip', name: 'Falcon-512 Round-Trip', desc: 'Complete fund-and-spend cycle using a 897-byte Falcon-512 public key and 657-byte signature. First proven PQ spend.', date: '2026-03-10', scheme: 'FALCON-512' },
+          { file: 'atomic-swap-htlc', name: 'Atomic Swap (HTLC)', desc: 'Hash Time-Locked Contract swap. HASH_PREIMAGE + SIG claim path with CSV-gated refund.', date: '2026-03-13', scheme: 'SCHNORR' },
+          { file: 'adaptor-sig-swap', name: 'Adaptor Sig Swap', desc: 'Schnorr adaptor signature atomic swap. ADAPTOR_SIG execute path reveals adaptor secret on-chain.', date: '2026-03-13', scheme: 'SCHNORR' },
+          { file: 'htlc-compact-swap', name: 'HTLC Compact Swap', desc: 'Compact HTLC swap with HASH_SIG combined block — hash preimage + signature in a single condition.', date: '2026-03-13', scheme: 'HASH_SIG' },
+          { file: 'hash-sig-atomic-claim', name: 'Hash-SIG Atomic Claim', desc: 'HASH_SIG block for atomic claim — combined preimage reveal + signature check in one block.', date: '2026-03-13', scheme: 'HASH_SIG' },
+          { file: 'ptlc-payment-channel', name: 'PTLC Payment Channel', desc: 'Point Time-Locked Contract channel using adaptor signatures for scriptless script routing.', date: '2026-03-13', scheme: 'ADAPTOR_SIG' },
         ]
       },
       {
-        name: 'Multisig', cls: 'sig',
-        intro: 'Threshold signature patterns demonstrating M-of-N multisig vaults with recovery paths and PUBKEY_COMMIT privacy.',
+        name: 'Covenants & Vaults', color: '#2ea043',
+        intro: 'Vault patterns, recursive covenants, and spending condition enforcement with built-in timelocks.',
         txs: [
-          { file: 'multisig-vault', name: '2-of-3 Multisig Vault', desc: 'Multi-output vault with 2-of-3 Schnorr threshold primary spend, CSV-gated single-key recovery (144 blocks), and change. Spend provides 2 keys + 2 sigs.', date: '2026-03-12', scheme: 'MULTISIG' },
+          { file: 'vault-with-unvault-clawback', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback.', date: '2026-03-13', scheme: 'VAULT_LOCK' },
+          { file: 'dead-man-s-switch-inheritance', name: 'Dead Man\'s Switch (Inheritance)', desc: 'Recursive inheritance pattern. Owner keepalive via RECURSE_SAME resets CSV clock. Heir claims after timeout.', date: '2026-03-13', scheme: 'RECURSE_SAME' },
+          { file: 'dca-covenant-chain', name: 'DCA Covenant Chain', desc: 'Dollar-cost averaging via recursive covenant. Each spend peels off a fixed amount and recurses the remainder.', date: '2026-03-13', scheme: 'RECURSE_SAME' },
+          { file: 'recursive-split-tree', name: 'Recursive Split (Tree)', desc: 'RECURSE_SPLIT creates child UTXOs that inherit parent conditions. Tree-structured payout.', date: '2026-03-13', scheme: 'RECURSE_SPLIT' },
+          { file: 'rate-limited-wallet', name: 'Rate-Limited Wallet', desc: 'AMOUNT_LOCK + RECURSE_SAME enforce per-spend limits. Remainder recurses with same conditions.', date: '2026-03-13', scheme: 'AMOUNT_LOCK' },
+          { file: 'fee-gated-covenant', name: 'Fee-Gated Covenant', desc: 'HYSTERESIS_FEE bounds + AMOUNT_LOCK output range. Treasury governance with emergency bypass.', date: '2026-03-13', scheme: 'HYSTERESIS_FEE' },
+          { file: 'anchored-channel-recurse-until', name: 'Anchored Channel + Recurse Until', desc: 'Lightning channel with ANCHOR_CHANNEL binding and RECURSE_UNTIL bounded recursion lifetime.', date: '2026-03-13', scheme: 'ANCHOR_CHANNEL' },
         ]
       },
       {
-        name: 'Covenants', cls: 'cov',
-        intro: 'Vault and covenant patterns demonstrating advanced spending conditions with built-in timelocks and multi-path outputs.',
-        txs: [
-          { file: 'vault-unvault', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback. VAULT_LOCK encodes both paths in a single block type.', date: '2026-03-11', scheme: 'VAULT_LOCK' },
-          { file: 'dead-mans-switch', name: 'Dead Man\'s Switch (Inheritance)', desc: 'Recursive covenant inheritance pattern. Owner keepalive via RECURSE_SAME carry-forward resets CSV clock. Heir claims after timeout. First proven covenant round-trip.', date: '2026-03-11', scheme: 'RECURSE_SAME' },
-        ]
-      },
-      {
-        name: 'Payment Channels', cls: 'sig',
+        name: 'Payment Channels', color: '#e6a817',
         intro: 'Lightning-style payment channel patterns with cooperative and unilateral close paths.',
         txs: [
-          { file: 'payment-channel', name: 'Payment Channel (Cooperative Close)', desc: 'Lightning-style channel with dual-SIG cooperative close, CSV_TIME-gated force close, and CTV template constraints. Exercises the happy path.', date: '2026-03-11', scheme: 'SCHNORR' },
+          { file: 'payment-channel', name: 'Payment Channel', desc: 'Dual-SIG cooperative close, CSV_TIME-gated force close, and CTV template constraints.', date: '2026-03-13', scheme: 'SCHNORR' },
+          { file: 'sequenced-payout', name: 'Sequenced Payout', desc: 'Multi-phase payout with sequenced CSV delays. Each phase unlocks after the previous completes.', date: '2026-03-13', scheme: 'SCHNORR' },
         ]
       },
       {
-        name: 'Governance', cls: 'cov',
-        intro: 'Fee-gated and value-constrained spending policies for treasury governance and protocol parameter enforcement.',
+        name: 'Timelocks', color: '#2d7dd2',
+        intro: 'Block-height and calendar-time lock patterns using CSV, CLTV, CLTV_SIG, and CLTV_TIME blocks.',
         txs: [
-          { file: 'fee-gated-covenant', name: 'Fee-Gated Covenant', desc: 'Treasury governance pattern enforcing fee-rate bounds (HYSTERESIS_FEE 5–50 sat/vB) and output value range (AMOUNT_LOCK 10k–100k sats). Dual-SIG emergency bypass.', date: '2026-03-11', scheme: 'HYSTERESIS_FEE' },
+          { file: 'block-height-timelock-compare', name: 'Block-Height Timelock + Compare', desc: 'CLTV absolute height lock with COMPARE validation. Funds locked until target block height.', date: '2026-03-13', scheme: 'CLTV' },
+          { file: 'cltv-sig-vesting-schedule', name: 'CLTV_SIG Vesting Schedule', desc: 'Multi-output vesting with CLTV_SIG blocks — combined absolute timelock + signature in one block.', date: '2026-03-13', scheme: 'CLTV_SIG' },
+          { file: 'cltv-time-calendar-lock', name: 'CLTV_TIME Calendar Lock', desc: 'Calendar-based absolute timelock using CLTV_TIME. Funds locked until a specific date.', date: '2026-03-13', scheme: 'CLTV_TIME' },
         ]
-      }
+      },
+      {
+        name: 'Stateful Blocks', color: '#c43030',
+        intro: 'Counter, timer, and latch patterns that maintain on-chain state across recursive spends.',
+        txs: [
+          { file: 'counter-up-subscription', name: 'Counter-Up Subscription', desc: 'COUNTER_UP increments per spend, enforcing a maximum number of recurring payments.', date: '2026-03-13', scheme: 'COUNTER_UP' },
+          { file: 'preset-counter-board-vote', name: 'Preset Counter Board Vote', desc: 'COUNTER_PRESET for multi-party voting. Preset value decrements to zero for approval threshold.', date: '2026-03-13', scheme: 'COUNTER_PRESET' },
+          { file: 'timer-watchdog', name: 'Timer Watchdog', desc: 'TIMER_CONTINUOUS accumulates block time. Watchdog monitors liveness with automatic timeout sweep.', date: '2026-03-13', scheme: 'TIMER_CONTINUOUS' },
+          { file: 'one-shot-trigger-latch', name: 'One-Shot Trigger + Latch', desc: 'ONE_SHOT fires once then permanently latches. LATCH provides irreversible state transition.', date: '2026-03-13', scheme: 'ONE_SHOT' },
+        ]
+      },
+      {
+        name: 'Governance & Validation', color: '#8b5cf6',
+        intro: 'Treasury governance, allowlist verification, and spending policy enforcement.',
+        txs: [
+          { file: 'governance-gated-treasury', name: 'Governance-Gated Treasury', desc: 'Multi-party treasury with threshold approval, fee bounds, and amount constraints.', date: '2026-03-13', scheme: 'SCHNORR' },
+          { file: 'accumulator-allowlist', name: 'Accumulator Allowlist', desc: 'ACCUMULATOR block verifies destination against a Merkle allowlist. Restricts where funds can be sent.', date: '2026-03-13', scheme: 'ACCUMULATOR' },
+        ]
+      },
+      {
+        name: 'Post-Quantum', color: '#e6a817',
+        intro: 'Post-quantum signature schemes supported by Ladder Script. Each demonstrates a complete fund-and-spend round-trip with PQ key material.',
+        txs: [
+          { file: 'single-sig-dilithium3', name: 'Single SIG (Dilithium3)', desc: 'NIST FIPS 204 ML-DSA-65. Largest PQ signature (~3,300 bytes) with strongest lattice security.', date: '2026-03-13', scheme: 'DILITHIUM3' },
+          { file: 'single-sig-falcon512', name: 'Single SIG (FALCON-512)', desc: 'NIST FIPS 206 FN-DSA Level 1. Compact lattice signatures (~690 bytes) with fast verification.', date: '2026-03-13', scheme: 'FALCON-512' },
+          { file: 'single-sig-falcon1024', name: 'Single SIG (FALCON-1024)', desc: 'NIST FIPS 206 FN-DSA Level 5. Higher-security lattice signatures (~1,800 bytes). Maximum PQ lattice security.', date: '2026-03-13', scheme: 'FALCON-1024' },
+          { file: 'single-sig-sphincs', name: 'Single SIG (SPHINCS+)', desc: 'NIST FIPS 205 SLH-DSA. Hash-based stateless signatures (~50,000 bytes). Most conservative PQ assumption — SHA-256 only.', date: '2026-03-13', scheme: 'SPHINCS+-SHA2' },
+          { file: 'quantum-safe-vault', name: 'Quantum-Safe Vault', desc: 'PQ vault with Falcon-512 hot spend, Dilithium3+Falcon recovery with CSV delay. Multi-scheme PQ protection.', date: '2026-03-13', scheme: 'FALCON-512' },
+          { file: 'quantum-vault-children', name: 'Quantum Vault + Children', desc: 'PQ vault with RECURSE_SPLIT creating child UTXOs. Emergency multisig + CSV sweep. Full PQ inheritance.', date: '2026-03-13', scheme: 'FALCON-512' },
+        ]
+      },
     ];
 
     function renderTxIndex() {
@@ -486,15 +527,15 @@
 
       for (const cat of TX_EXAMPLES) {
         html += '<div class="family-section">';
-        html += '<h2 class="family-title" style="color: var(--cyan);">' + cat.name + '</h2>';
+        html += '<h2 class="family-title" style="color: ' + cat.color + ';">' + cat.name + '</h2>';
         html += '<p class="family-intro">' + cat.intro + '</p>';
         html += '<div class="block-ref-grid">';
         for (const tx of cat.txs) {
-          html += '<div class="block-ref-card" onclick="loadTx(\'' + tx.file + '\', \'' + tx.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer;">';
-          html += '<div class="block-ref-code">' + tx.date + ' &middot; ' + tx.scheme + '</div>';
+          html += '<div class="block-ref-card" onclick="loadTx(\'' + tx.file + '\', \'' + tx.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer; border-color: ' + cat.color + '20;">';
+          html += '<div class="block-ref-code" style="color: ' + cat.color + ';">' + tx.scheme + '</div>';
           html += '<div class="block-ref-name">' + tx.name + '</div>';
           html += '<div class="block-ref-desc">' + tx.desc + '</div>';
-          html += '<div class="block-ref-badge" style="color: var(--cyan); background: rgba(0, 212, 255, 0.1);">Verified</div>';
+          html += '<div class="block-ref-badge" style="color: ' + cat.color + '; background: ' + cat.color + '18;">VERIFIED</div>';
           html += '</div>';
         }
         html += '</div></div>';

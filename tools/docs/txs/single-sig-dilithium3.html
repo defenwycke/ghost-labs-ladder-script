@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SINGLE SIG (DILITHIUM3) &mdash; Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  .output-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .output-row { display: flex; align-items: stretch; gap: 0; }
+  .output-label-box { width: 80px; min-width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .output-amount { font-size: 8px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+  .output-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+
+  .rung-block.sig { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; POST-QUANTUM</div>
+  <h1 class="block-title">SINGLE SIG (DILITHIUM3)</h1>
+  <p class="block-subtitle">Single post-quantum signature using Dilithium3 lattice-based cryptography. The simplest possible PQ transaction &amp;mdash; one rung, one SIG block, Dilithium3 scheme. Demonstrates the PQ witness overhead (~3,300 bytes) vs classical Schnorr (64 bytes).</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG &middot; TYPE 0x00</span>
+    <span class="scheme-badge" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25);">DILITHIUM3 &middot; SCHEME</span>
+  </div>
+</div>
+
+
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">Single rung with one SIG block using SCHEME = DILITHIUM3. Identical structure to a classical SIG, with PQ key material.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SPEND</div>
+      <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PQ_SPEND</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Output Structure</div>
+  <p class="section-text">The funding transaction splits funds across outputs with different security policies.</p>
+  <div class="output-diagram">
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 0<div class="output-amount">20,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PQ_SPEND</div>
+      </div>
+    </div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 1<div class="output-amount">1,249,978,575 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">SIG (wallet)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Transaction Pair -->
+<div class="doc-section">
+  <div class="section-label">Transactions</div>
+
+  <div class="tx-pair">
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">c361827ae68a98d8b0011da7be6814ba45d6e32e61817fd2c7716ef220257bc3</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">264 bytes &middot; 181 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">2 &mdash; vout 0: PQ_SPEND (20,000 sats), vout 1: change (1,249,978,575 sats)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+
+    <div class="tx-box">
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Dilithium3 Spend)</div>
+      <div class="tx-field">
+        <div class="tx-field-name">TXID</div>
+        <div class="tx-field-value txid">af920fe0f063acc06c8d24983a0f4def4baf02142f5b6f7c96be4499accfbf5f</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Version</div>
+        <div class="tx-field-value">4 (RUNG_TX)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Size</div>
+        <div class="tx-field-value">5371 bytes &middot; 1423 vB</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Outputs</div>
+        <div class="tx-field-value">1 &mdash; 18,675 sats (carry-forward)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Signers</div>
+        <div class="tx-field-value highlight">SIG</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Witness</div>
+        <div class="tx-field-value">5259 bytes (ladder witness)</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Confirmations</div>
+        <div class="tx-field-value highlight">1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The ladder witness provides data for each block in the rung. Blocks that need no witness data (validation-only blocks) contribute zero bytes.</p>
+  <div class="witness-bar">
+    <div class="witness-seg" style="flex: 4; background: #4a4a4a;" title="HDR: 4 bytes">HDR</div>
+    <div class="witness-seg" style="flex: 33; background: #f7931a;" title="33B: 33 bytes">33B</div>
+    <div class="witness-seg" style="flex: 64; background: #00ff88;" title="64B: 64 bytes">64B</div>
+    <div class="witness-seg" style="flex: 6; background: #4a4a4a;" title="COIL: 6 bytes">COIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Public Key</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature</div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Verification</div>
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">Input Amount</div>
+      <div class="verify-value">20,000 sats</div>
+      <div class="verify-check">vout[0] of fund TX</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Output Amount</div>
+      <div class="verify-value">18,675 sats</div>
+      <div class="verify-check">1 output(s)</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Fee</div>
+      <div class="verify-value">1,325 sats</div>
+      <div class="verify-check">20,000 &minus; 18,675</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">How Single Sig (Dilithium3) Works</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">The conditions are identical to a classical SIG rung: one PUBKEY_COMMIT (32 bytes, same as Schnorr). The SCHEME field in the coil selects Dilithium3.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text">The witness contains the full Dilithium3 public key (~1,952 bytes) and signature (~3,293 bytes). This is ~50x larger than Schnorr (33+64 bytes).</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text">The evaluator verifies SHA256(dilithium3_pubkey) matches the PUBKEY_COMMIT, then validates the Dilithium3 signature against the Ladder sighash.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">PQ support is transparent to the condition encoding. The same SIG type code works for all schemes &mdash; only the witness and verification algorithm change.</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="doc-section">
+  <div class="section-label">Funding Transaction JSON</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;c361827ae68a98d8b0011da7be6814ba45d6e32e61817fd2c7716ef220257bc3&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;7930e50277cbbee517f2e62591bb6deda58f65cf5eeb5a0454b82261a3960005&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">264</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">181</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">723</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
+    {
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;3a8ccc2b3fccbd21a78361464480d56735b70094018a175fc026aa865a107512&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100210336de33c714636fe9df9a2bb8073d4687c29dbb5381c5e49263c367e3469678da40c60bc4d611b980040b885540a2972dece2a826d1519af86e4c02e6d70593025fbf9bde5ab6fc3b79284840b242c4fd179837ee4cdfa6960fe55ad492304b16710101010000&quot;
+      ],
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">&quot;vout&quot;</span>: [
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0002</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 1 0 OP_NOP7 OP_UNKNOWN OP_3DUP 2c5460b82e424a7c42dcd6f3db510f37a567f1e7e6475159d36375b41201011200 0&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqspdktdusjc4rqhqhyyjnugtwddu7m2y8n0ft878n7v363t8fkxad5zgqszysqqqcgquuf)#tpzslrfm&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010100b6cb6f212c5460b82e424a7c42dcd6f3db510f37a567f1e7e6475159d36375b4120101120000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqspdktdusjc4rqhqhyyjnugtwddu7m2y8n0ft878n7v363t8fkxad5zgqszysqqqcgquuf&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    },
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">12.49978575</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 0 -75 OP_UNKNOWN OP_SIZE 2 OP_LESSTHANOREQUAL OP_UNKNOWN OP_MIN OP_SHA256 OP_UNKNOWN OP_RIGHT 4b8797521ebbbbfb93bbbe71450bf2 OP_UNKNOWN OP_UNKNOWN OP_MUL OP_UNKNOWN OP_0NOTEQUAL [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqqrj7ysff2re4r4r7czr6ts7t4y84mh0ae8wa7w9zshuhwek2lnys5zgqszysqqqz97z5l)#ctkuf48g&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010001cbc48252a1e6a3a8fd810f4b8797521ebbbbfb93bbbe71450bf2eecd95f99214120101120000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqqrj7ysff2re4r4r7czr6ts7t4y84mh0ae8wa7w9zshuhwek2lnys5zgqszysqqqz97z5l&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">Spending Transaction JSON (Dilithium3 Spend)</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;af920fe0f063acc06c8d24983a0f4def4baf02142f5b6f7c96be4499accfbf5f&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;31fa4cdc0ec99927bc54124483c308ddb46571f22f359ff11ddc61c3cdc60453&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">5371</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">1423</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">5689</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
+    {
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;c361827ae68a98d8b0011da7be6814ba45d6e32e61817fd2c7716ef220257bc3&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100fda00726cb94a78374b848e2be25f957f6b9d93cba02942b5737f0119c5a7e9f34f9fb032bcf61b553213c925b0c91833ca68d34013bc005a2e20e9b8003105b3e983cb9d73a7b0e1b23a0fec08035d73209eaea9973482ae61b35361d340a1908846398d0b68e88d8dfaf75becaf9ef97071dd79f5e4d157e4b57775805c8509f6cf3b0d7539cf77fd98f8a26b25579cca0c1e1ba37b77d11a012c373b4cea84a1fd0cd3b3fa3d018c82eedd6c878c7d15c0c0d6a48d7d0b5f69f70aa8a2e8c8ab597facc5b1af09530d21c4659e3de906b14c5fead6e9dcede37b9324a27008b4d457c671fa733ca2fb0de5db858705d98012b67642c1bd87ada69e60efd4739070d830608cdaf98de880de93a3c23b98d872f7f8af481f439f819536b4c8eed4c7ef02aca60333f4d48fe4f019a53ffa37f38ea2fc8ef1034422b87d58e59b534531bb3071cef989595ee790180d0ca384322380388eda0660a1240ffc9c95ee45cdd8b6c47c9f4db3dac01627185f1a969c1ec12d975b93c2bd0600fdbc92ac2faa6365e8016a312f93daab50579f5c96a5d6232215a035f4d4c8652b221359f90da226a7fcd4907b1afc4005e6c83fc526aaf22155d8d98a268b1535d59b62465effc223310776354165113bc9c5e6471d2507ee710e2918b6e55abc49405d4af3ba41c6dce660f7517f2c37c5ef12129846413e88afdec29d95d24fbc4d4defb074cfb359d19f5304a7ec6cdbc88e5185426984b4ff43911bbfdf6ec062b43795b606016535fa91099cd7187c2d6acdbf7fdf910d56ddead7eee77db2739cf5632fa02eafa91cc442effde18d03208d8155d78cbddc898cb211477f7b3b96aa9224fc14a84a3f402da1c342b0ffce62b5f59e05d5170cbbd487e302f7062ac9ba5918c32ab88d7a6303af35d8fb0f1eb5d54f630da4ac7c53fae3901c5b42a4b7642f7cbafabbf3fb1a7566edb5907c098aca00b7ba18c4f00f87ded2000e6219586158dc140d9b09a8f704f21081633879a5a89acb648c4fb67f3dc101e4fb96cd4d84104fde51ce5b24f3c5d23aea5b0973466f2e5310d853b967a4a4aee5957a783c66aa019c3f2240555818da3ab4a1ae116bb713a2c1b8e8ee218e46f21f738f42c3e2527ea90e3e48f13d0a534979416a748523c30d63458c0644f289e468366e235e7d7d24b15e36ae292c9d83b06bd8d36bbfb94e583527fa8a12cdbe15cd2e60a2a28d5c1b3b2acb17b3527ff0716608619078aed66163b5e090c881a00ce3ea55451b9cf03980e2d3232d724200e82d218d4f801a25b5fcd7f5ffedb189427cc8d7a25185d15f724df50b56f3f7487b01b16cefa56f71e4c003fcafffd02b1fd6a067221074a3136fcd82ee82c4c2a8dfe9cb837f2d8c4841be4ea4fbb738f8f95f1f4760b4bade7425d398eee41ed0e279fd7ddecd6ea418b80902f955bff603b35b21aaa7f13fcc30f1c3758bf906ed7aff6ddf5281bcd30e666bc03d50653ad3fd8e4db70f09b227199b66fa97998af457476e8dbd9ce583c379c678c2157e78ff3b688cb0b3f31b4c21b5fb7bc0af85a123d99c39f2c52535fbc01b2874087208d428c5ad618e7fb0ca0ec93304dd3727ec0890e3fcb829733f24230e9fb58ff6e34a68ac42dda3870fcec368b8a4b5d3f198f0a56c8dabffa9a11af4c094602240dbc5d7bb09d2ccc435634b1b70b95d82423cd8b477078a0fbfe705417b24f425d71972c5ecd68a96d5193d92edc145e980728c722d2f0a76308bc056b3768f8a125f84d1f7f0de4f78a5e0ce872ecfef47227c91a62a9888e6124a3a6a1f24f1b1c74e5f2064373b3e41141ec03300fcf722e5471b73ca558a8fc8b7b58de17905dbf5de66567bb018f7220117b76146376849df051f85e98044170e1c8f853d22a6d7eb2f212094f721e0c667fbfa184c2465dcc4fd4a0f1649ed7c73f3a740f3cc404a20e94e6d86e6ef40e8a79f64bdf3e20edc76c4dc8f4aecab7259662f4828f5cc3963ae160f86d111278acd9cd01d3c1ca8bcf40388e7c84eb9edd444d38ea5af51584b07975b8c71232b2561e77a74f63a96f1ad31096ba950c5eb4ff1714e5cded7b23f77a01461c554d7c7a58164ae8059e0ec8b36ad0d7bf8a6ce9177ba6bc2c4f2f921f8b4e61198f30a45280b75d2a91620de7bbbd9ac27a9f909791dc7aa67199f94b608b13197e432106dfd9d0429e21fae2ee175c7195935fea39e12a1febc818b3e3804ebe3ee13836db117c1f968610da8108d4e63b7a9202df15aea213564659e5981a2b356093b964bf586fe44ffb53b6650b43d7299aef68ca3bb5ebe14e71e715684d56bf092ae6877e3f2d38b06e24d589deb6aec3e035b2a060534b3ba6f4efa6df3ef4c37080b98b8ed992ab704eb996024da236490d9fc0010ffc3579f898e7861bd5d39ebc9c5df338a97b276d13904a9d9162d660ef9f784a7b595ef7c34208e7393226ac362f39470b44aa54c364aa8051b88aca461a72134d7d2033c50d9abda66f2148a62f6507548dd65854459d8a41b07e5211ae1e5552d1dab6a7a8ffc0520df04968e9022356ce9e45be91dceba2f2cb440210e745c8c22cdf41c3a19404ee439a53f57bcaa77b42b14a9cb5bbd0821f5348049cd90a03f49a2924a619eb4d361cc87aad341f28e98ad56dd3107a6644bc9d97c50e457d5e966cd8f358f5feb68b1dc64e21f356c45ca86d196df1925add28b85b496ce4d0c2f0444f72983a0ab4cdd91ebd97fddd0caca83ba9b04b6450ff67867f197ec36c5d6a9f8bbc3a090f9de1c21cb6964a751961fa2b356684e0d7ecc008ed197f5cd1314efe1f6f88283ecc632a4d6bc10696918409ae7bde257a382c94a53cd5809b850bdac731a70d293de42850dfd695b25401aef43d4e8dd8c727a9a82236cf01ade3b8405837b422131fd167a0f827bf5a925988a8cbd5e2615edff6b84756586b26b3141145c1a2630b1f0f104761412022e42f1d1be1ebd7d52c8ed4a0a3350a95cc4f9cd644f39d3672313315ff31e77ef6615427df237f2dbcd791ad3e8ae6dd558c6643b0ad0dd197ad68bd489b36d456e59efc5c55c84a05a0dd80c7cfa0dff25ad1a75516a99f61e3d76704abfc467254e1391dec76129ba9aa8a8473f4f6a5888dbc56169febb2aaa9b8789e8363972f889692212424fc408c347a4078c802e43b9db3cf3f21aedb50156458e8c5a341e6453dfea97461d82099c3bace0e54888974711b0753742054b73fb99f280a4d227acaf975614d91e5ae82153b08e2bc6508ba63760303833884b7bc3df76ee09cffb240a0a9ed316d9156c49d96aab910e437970159261a8f47c08ade1d1789825c9af416efee1328a96939b7a49091efcb6e2dbebfc3ceab1a2b8b95e4bde6a9d1a07f5f9d0778f80ba63968a8726ea33e5945bd7c07c9321ce2507211a3fb493916c4affaec232de4361276d6347fe3b9398259e6282845f77328a1fdeba660ecaf279350ef1a87a51a8d3a666726e250b0d386ad227833cd016502239f4680f81c34fa265f7ae8ac9d1ab23d10a6d9f29fff77f0e1c6aad88107f7c2d268eecc71fea019f90fa6fef8a3021756898c91aa895e4f74dc4ac283020e9749ccde0e0db0122772ee8a874ab8573557c5fd1833a022cf5177a3ae976d057a1355b4dc378c776009314188d5c2485af316ca72eda178bd8059f356b688772ea3c20cf527b90684664cef59f2515537a718a70c9cd6053d90c615b09c83963133758238d7d035fe1855c62f718642a45ba6e99a61cd6b5301f2f5a191c5c45dc8e56bb9f312aaf8ce412baf99f3ac7dacc46c797755c6e551b48ad1e75e997f93b0f8e1351a91cd9c146832b9524d7b3d7d18f7274aec92b8628088b4191fd35223ca00cc10a10abd03a8b2547a786b5025018587626f0ad315cb084b66bfc8c66edacb981824875ed907e107967ea5a6c8992ef476b6cec82a3f7899d527f13a0b947c92669e779934d10aac8c64bbe350555e55a7bd029b2270d0f89fd7423cd78a2f777e3b51944c8ccf645558bce589f25a43b012ddc74d93f5e8863af524c687cb5644a41c4a3288d293e96acd779a291a560edcbe7283c62250e7f872acf246c607028a060ebb713a56ae3414ede1d0b8ee488a8256d278b95244b2fd645f569a8e33868a2badbee84e827b749874d69cd60e5c010838791aec965e6284c8dc7f8098ae9765d3bab499d49199a9feebf101a87c49ed13988a9ab491e85bbcec6d5ca4d09cf8e39adf55e0809e6614acb79a81e96dfd5f0504028a88df4104644b53e940009ebb050ab14f5d50ec69ec8f442429f5d5aeb08be8ec896425728e403a83cfe11b9f1cb00b4d157b405ff9e1883edccd860e91130c3fde6c77810dc69bd3f65aa7297f2b1ca96dcb87d278efa8cc9476584ab4a2c4ff6449ea94e4da2e7d21a4cfa225e1ac8cd8e8e1e9674930dbae3da7949fd0819feb2e386c7b40637d4ed0fce9ee5934fccf683998e437f4ccd393f958f598ae6dc952cbe2f5da9616793dac19b13c4261d5d6c0df083e61bf2a1bf91f17e1b7390e732ebf8b3e706bbff7dcaa77a2275c8b9409dc2c975c75f8c6fbbb62539bd35256779252e9092fae1efb64179dd79cd9718c6514be724d08bcbe0f8b9025b547d47c0c18a7272a8f134227c5b9e2665e5fb2669272c328fd06783b49497cdafa46fbf8d017098b2b1267f67eaad3c97a2dd465fb68e2f6c35ca86b432779277afaf2bc31b073db25426dcee97a41313ddad5e2b1163af6f2e90f850dd1f490d06b2f4a618d4634e5413961e94adc11f9475c78b9e43d0dfe15502ab3335db149f207c4de4b012c73f3f460094b2073999e3305469edfc75ebd3897fb4ee3698fafda2f3b0289b4d8867408bfae3b6e609a1b7f9897e688244f0b583a68a6a081f255b67df759088d8b739799a1647585fa47ca56b38b3c7f26bd75ff941b3ecd295e8ef8f226d27d6d0ca67d5d00f6d746f9dcf1caf13b44835736447b130f0757d4a13d50624e85874241cce93b705246b6a1b624e4f352fefb5031edf8a79474c13fa893419410c59ef5f681cdef26891fd7685f138140a09f304c7f2768a2c2a8229ca678aa106a82bc2a78459d0e7679303d87174e3d3fd0ae3709496077e99466811229d75b5b6d483bd39824584b854359ac9f39c83de985231739ada69428fb63f2faabaa2f500d5569b518e6612836680fa99cab6aed03cdd0725cde96dc7dc73295688aee14ec5c8a8ef6b823ed7f44c640430695a92d664ae70857a9eb741129b815e2cff803c55c7c93a5e09d17fea86092cad192a39046339c7af68478e1a92d7a67edfae302ce394bfae12f5d4a4ad174f25891cc2431460c597f8b3d7bacc4a5c6b3c5f3771492f4c96dbdb067e40e0c1fcc22ff4c4c8437fa2ddb3bcaad7a7121c98983bf5474aeddeaf0e59aa7ddad1d3eaedecf6d61b4dbeff43a8df3bc02da0f9c863f916a0731400060f40bd64f8a593a94601fcade2e5fc18cdab287936fc879c5046efe00aabf81b556716aec464eba12ca4e0b83fe999902a90bfd2b4c48ab950ff50136cb7b4b67b931761ba9b4852bf5f615fe0e6c4950faed5f5f4ac996c1f0ba741cf2c56205609d8bc43ba860307d64c59d27acf57dd4a3805b6634ce49538541e7bf926c8caf617267e4115b22e232f07e36a093d142af3e918ee1ac556ecd3c3e8a69072036a4ec003df05a89abccfc68bb9c1556a94d8eae0d7709794f300ccea2a7dccd53dc40d698ebfa601c3a2f5577a7ae1ebfcddaa57ff50b3636754671cb6a8c93ccd586bd34d986d635b3be2d28ecde1d0d20a41b6853c67e05e0ed0bc073292b1976ce57c33dbe6607f3c8c2ca50d9b5a1c725ed79040fd194a7650a3a006e8569ffd9769c2a42aac09d9a4c8d4671cf6c8a4670863bd5794cb4bd2b301fb84b55ba2f4a8d9917822bc8945075ea7faf723a0dec654cd63174c3b9567661908ff9c2231ada06f4c2f6de82608ec01b873bce4111d9a8479b0fdee72907438ac6755ce5e25428ecd4b2d50f05995ec1709d406ac50e9bdc37edaafe36f601be62519a6a5d0fe8a2e82232db017b27739fe58f181bc36a0cd0d244d2b2c1752e006585f54b3ee829fe7f3db10716fac514d48b6ee5a26312e73586263b3bd32fd3e48777695bd1d0291e43f2de687de661aad52ccca0431d29d7a1ea799a5e2a5d68fb3690d944f76ce9f937d3a0dd33a54715c601af34a997ab37053b162fe927bf63a4dabaee74108528d7bc3b129062df4c0b1156e0e67bbb43687ff22d19cbf37d1c06338a872e6374013222fb72249574d0b5c7bc67a3098ab24c48991dc7134b8d134f16fc72d40188de4b1ed61c50ec7484e5d430107aacdbf0ed39ffba2e635c253c38112bfa1dd10f89263ed77ca694fe73fe0af2cd2d526d34edc7816e43ff13de76cbff8343e79cf1539f1335f0fb8f59f231b1645dc3c9f2f71293a2cc9ae45fa7cb795e93895efa97836874676b291cd09c68ebea78704239a9761f6f9403c44c492cfb96396048a330386ab5fe3937332826f6368d3040623fc21dbf47bfe184261a2e8f1717487960d7f162795eceda78b0ce4bfe9392552aba20e4167631f88d154e8858959881afc8586fa4ee625018cd30b22233b051eeda179f89885c11962e9db1e3fd05a20f5007048e134573dd2681592701bf678ef8d7b2d8b5ab5532f9141c70717f011728d6d466860531d9e235a6e03748a2365af847f0b7e0ef08c73e20e0dc8667cdf8a215dba6730d5c50332b63e54bd487bcd59dd11da50db2d98a4500d633c99500cf60240b3253665edfe22d8de508427cb060e887db52256a7759f80792d085adc1775bc5e1222aead91052bf3fed3d9448c3dcc11ac6f0f59e61819d65cc2a25e6f29e0fc4f6b91650d48c15369c28f17b514d917d4fdc50b83152df5d7cd928127ae187f1d9e179f6e95458680f15105e24fa89c6e6ee70d7c42c86f56627a16324435d92b4a6e41c45f9bd735bdbcbd10979cc99e42634d7f970852641dfb2b2915d6ca70a6da8bf4105317bc10a9e1f1276e2eafebd723c66849428282e7cca9f1334764d958620fe27549c6decf423945f35301fd6b5ab164649e37d6d38423eb830344085214492a4e659aff85e06406907e346cc467e9b8f531c8aa0bf3b1fc3cfbf17def34213e12778e07c995f243b8cdf0ea12933d6009c0664da2842459976605ac64abb8321657213a3a701772f7f9b6d3785dba9320edcf0e6d557152a0b7890894976e44815276b984c24ba454c1b548d2a475549075c576776aeced5fa1a55b6bb466999b0e0fd1f27419aa6bbd7e9000000000000000000000000000000000000000000000000000000000202090d131b0101010000&quot;
+      ],
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">&quot;vout&quot;</span>: [
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.00018675</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 1 OP_LEFT 0 2 cbc48252a1e6a3a8fd810f4b8797521ebbbbfb93bbbe71450bf2eecd95f99214 1 0 0&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqcqqgqqypzpj7ysff2re4r4r7czr6ts7t4y84mh0ae8wa7w9zshuhwek2lnys5qyqszqqqpvj8zk)#s7hjl6kn&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10101800100010220cbc48252a1e6a3a8fd810f4b8797521ebbbbfb93bbbe71450bf2eecd95f992140101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqcqqgqqypzpj7ysff2re4r4r7czr6ts7t4y84mh0ae8wa7w9zshuhwek2lnys5qyqszqqqpvj8zk&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+
+<!-- Nav -->
+<div class="doc-nav">
+  <span onclick="if(window.parent !== window) window.parent.location.hash='TX_INDEX'; else window.location.href='../index.html#TX_INDEX';">&#8592; All Transaction Examples</span>
+  <span></span>
+</div>
+
+</div>
+
+</body>
+</html>

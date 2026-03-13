@@ -25,14 +25,12 @@
 
 ---
 
-## REMAINING — BEFORE BIP SUBMISSION
+## ALL ITEMS RESOLVED
 
 ### Critical
 
-#### C-2: BIP missing activation mechanism
-- The BIP has Backwards Compatibility, Rationale, Reference Implementation, Security Considerations, and Copyright sections (agent initially reported these missing — they exist).
-- **Still missing:** Explicit activation mechanism. "All block types activate as a single deployment" but doesn't specify BIP-9 signaling, height-locked, flag day, or other mechanism.
-- **Action:** Add a "Deployment" subsection to the BIP specifying the soft fork activation method.
+#### C-2: FIXED — BIP Deployment section added
+- Full "Deployment" section added to BIP-XXXX.md with BIP-9 Speedy Trial parameters (90% threshold, 90-day timeout), simultaneous activation of all 53 block types, and soft fork compatibility note.
 
 #### C-5: FIXED — 12 block types now have full test coverage
 - **C++ unit tests:** 16 new eval tests for compound family (TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG) — positive, negative (bad sig/preimage), and CSV/CLTV failure cases.
@@ -45,9 +43,10 @@
 - 34 field name changes across 19 block types in `ladder-script-builder.html`
 - Builder JSON now uses canonical Engine/RPC names throughout
 
-#### M-6: Missing serialization round-trip tests
-- No tests verify serialize → deserialize → equals original for any block type.
-- **Action:** Add round-trip tests for all 53 block types.
+#### M-6: FIXED — Serialization round-trip tests for all 53 block types
+- `serialize_roundtrip_all_53_types_witness` — witness context round-trip for every block type
+- `serialize_roundtrip_all_53_types_conditions` — conditions context round-trip for every block type
+- Additional round-trip tests: multi-rung, inverted blocks, coil data, multi-field
 
 #### M-7: FIXED — Consensus-critical size limit boundary tests added
 - 13 new tests covering all 5 limits at exact boundary (pass) and boundary+1 (reject):

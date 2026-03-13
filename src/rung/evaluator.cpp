@@ -104,7 +104,7 @@ static int64_t ReadNumeric(const RungField& field)
     for (size_t i = 0; i < field.data.size(); ++i) {
         val |= static_cast<uint32_t>(field.data[i]) << (8 * i);
     }
-    return static_cast<int64_t>(val);
+    return static_cast<int64_t>(static_cast<int32_t>(val));
 }
 
 /** Helper: check if a pubkey field exists and has valid size.

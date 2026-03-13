@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quantum Vault + Children — Transaction Examples</title>
+<title>QUANTUM VAULT + CHILDREN &mdash; Transaction Examples</title>
 <link rel="stylesheet" href="../blocks/style.css">
 <style>
   .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
@@ -18,6 +18,12 @@
   .tx-field-value.txid { font-size: 11px; color: #f7931a; }
   .tx-field-value.highlight { color: #00ff88; }
 
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
   .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
   .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
   .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
@@ -25,36 +31,25 @@
   .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
 
   .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
-  .scheme-badge.pq { background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25); }
 
-  .tree-diagram { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 20px 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-size: 11px; }
-  .tree-level { display: flex; gap: 12px; align-items: center; }
-  .tree-node { background: #0a0a0a; border: 1px solid #242424; border-radius: 6px; padding: 6px 12px; text-align: center; min-width: 90px; }
-  .tree-node.active { border-color: #00d4ff; color: #00d4ff; }
-  .tree-node.child { border-color: #00ff88; color: #00ff88; }
-  .tree-node .node-label { font-size: 9px; color: #666; letter-spacing: 1px; text-transform: uppercase; }
-  .tree-node .node-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
-  .tree-connector { color: #333; font-size: 14px; }
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
 
-  .rung-diagram { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
-  .rung-row-diagram { display: flex; align-items: center; gap: 8px; }
-  .rung-label { font-size: 10px; color: #666; letter-spacing: 1px; text-transform: uppercase; min-width: 70px; text-align: right; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; }
-  .rung-blocks { display: flex; gap: 4px; }
-  .rung-block { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 5px 10px; border-radius: 5px; }
-  .rung-block.sig { background: rgba(230, 168, 23, 0.15); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.3); }
-  .rung-block.rec { background: rgba(230, 168, 23, 0.15); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.3); }
-  .rung-block.cov { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); }
-  .rung-block.time { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.3); }
-  .rung-block.pq { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.3); }
-  .rung-output { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; margin-left: 4px; }
+  .output-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .output-row { display: flex; align-items: stretch; gap: 0; }
+  .output-label-box { width: 80px; min-width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .output-amount { font-size: 8px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+  .output-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
 
-  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
-  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
-  .witness-seg.w-sig { background: #00ff88; }
-  .witness-seg.w-overhead { background: #4a4a4a; }
-  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
-  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
-  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+  .rung-block.cov { background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2); }
+  .rung-block.rec { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+  .rung-block.sig { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+  .rung-block.time { background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2); }
 
   .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
   .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
@@ -74,114 +69,109 @@
 
 <div class="block-title-section">
   <div class="block-type-code">TRANSACTION EXAMPLE &middot; POST-QUANTUM + RECURSION</div>
-  <h1 class="block-title">Quantum Vault + Children</h1>
-  <p class="block-subtitle">Post-quantum secured vault using Falcon-512 signatures that splits into child UTXOs via <code>RECURSE_SPLIT</code>. Each child inherits the same PQ protection. Four spend paths: split (binary tree), child leaf (amount-locked), emergency multisig, and CSV timeout sweep with Dilithium3.</p>
-  <span class="scheme-badge pq" style="margin-top: 14px;">FALCON-512 &middot; RECURSE_SPLIT &middot; DILITHIUM3</span>
+  <h1 class="block-title">QUANTUM VAULT + CHILDREN</h1>
+  <p class="block-subtitle">Post-quantum vault with recursive split producing child UTXOs. Each child inherits quantum-safe conditions. Demonstrates PQ signatures with covenant recursion.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG &middot; TYPE 0x00</span>
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_SPLIT &middot; TYPE 0x11</span>
+    <span class="scheme-badge" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK &middot; TYPE 0x0C</span>
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">MULTISIG &middot; TYPE 0x01</span>
+    <span class="scheme-badge" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV &middot; TYPE 0x03</span>
+    <span class="scheme-badge" style="background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.25);">FALCON512 &middot; SCHEME</span>
+  </div>
 </div>
+
+
 
 <!-- Rung Diagram -->
 <div class="doc-section">
   <div class="section-label">Rung Structure</div>
-  <p class="section-text">Four rungs provide four spend paths. PQ_SPLIT creates a binary tree of child UTXOs. PQ_CHILD provides an amount-locked leaf path. PQ_EMERG is a 2-of-2 Falcon multisig emergency exit. SWEEP is a Dilithium3-signed CSV timeout recovery.</p>
+  <p class="section-text">Two rungs: SPEND (SIG + RECURSE_SPLIT with Dilithium3) and RECOVER (CSV + SIG with Dilithium3). The RECURSE_SPLIT creates child UTXOs inheriting PQ conditions.</p>
 
   <div class="rung-diagram">
-    <div class="rung-row-diagram">
-      <div class="rung-label">PQ_SPLIT</div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">PQ_SPLIT</div>
       <div class="rung-blocks">
-        <div class="rung-block pq">SIG (Falcon-512)</div>
-        <div class="rung-block rec">RECURSE_SPLIT (3)</div>
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_SPLIT (3)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">SPLIT_ROOT</div>
       </div>
-      <div class="rung-output">&rarr; PARENT</div>
     </div>
-    <div class="rung-row-diagram">
-      <div class="rung-label">PQ_CHILD</div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">PQ_CHILD</div>
       <div class="rung-blocks">
-        <div class="rung-block pq">SIG (Falcon-512)</div>
-        <div class="rung-block cov">AMT_LOCK</div>
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK (5000)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">RECOVERY</div>
       </div>
-      <div class="rung-output">&rarr; CHILD_LEAF</div>
     </div>
-    <div class="rung-row-diagram">
-      <div class="rung-label">PQ_EMERG</div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">PQ_EMERG</div>
       <div class="rung-blocks">
-        <div class="rung-block pq">MULTISIG 2-of-2 (Falcon)</div>
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">MSIG (2/2)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
       </div>
-      <div class="rung-output">&rarr; EMERGENCY</div>
     </div>
-    <div class="rung-row-diagram">
-      <div class="rung-label">SWEEP</div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">SWEEP</div>
       <div class="rung-blocks">
-        <div class="rung-block time">CSV (4320 blocks)</div>
-        <div class="rung-block pq">SIG (Dilithium3)</div>
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV (4320)</div><div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
       </div>
-      <div class="rung-output">&rarr; TIMEOUT_SWEEP</div>
     </div>
   </div>
 </div>
 
-<!-- Split Tree Diagram -->
 <div class="doc-section">
-  <div class="section-label">PQ Split Tree</div>
-  <p class="section-text">The PQ_SPLIT rung creates a binary tree. Each spend divides the UTXO into two equal children with <code>max_splits</code> decremented. Every child inherits Falcon-512 quantum resistance. At <code>max_splits=0</code>, the leaf is freely spendable.</p>
-
-  <div class="tree-diagram">
-    <div class="tree-level">
-      <div class="tree-node active">
-        <div class="node-label">Parent (Fund)</div>
-        <div class="node-value">50,000 sats</div>
-        <div style="font-size: 9px; color: #888; margin-top: 2px;">splits=3 &middot; Falcon-512</div>
+  <div class="section-label">Output Structure</div>
+  <p class="section-text">The funding transaction splits funds across outputs with different security policies.</p>
+  <div class="output-diagram">
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 0<div class="output-amount">50,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_SPLIT (3)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">SPLIT_ROOT</div>
       </div>
     </div>
-    <div class="tree-connector">&darr;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&darr;</div>
-    <div class="tree-level">
-      <div class="tree-node child">
-        <div class="node-label">Child A</div>
-        <div class="node-value">23,500 sats</div>
-        <div style="font-size: 9px; color: #888; margin-top: 2px;">splits=2</div>
-      </div>
-      <div class="tree-node child">
-        <div class="node-label">Child B</div>
-        <div class="node-value">23,500 sats</div>
-        <div style="font-size: 9px; color: #888; margin-top: 2px;">splits=2</div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 1<div class="output-amount">50,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK (5000)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">RECOVERY</div>
       </div>
     </div>
-    <div class="tree-connector">&darr;&nbsp;&darr;&nbsp;&nbsp;&nbsp;&nbsp;&darr;&nbsp;&darr;</div>
-    <div class="tree-level">
-      <div class="tree-node" style="min-width: 70px;">
-        <div class="node-value" style="font-size: 10px;">10,250</div>
-        <div style="font-size: 8px; color: #666;">s=1</div>
-      </div>
-      <div class="tree-node" style="min-width: 70px;">
-        <div class="node-value" style="font-size: 10px;">10,250</div>
-        <div style="font-size: 8px; color: #666;">s=1</div>
-      </div>
-      <div class="tree-node" style="min-width: 70px;">
-        <div class="node-value" style="font-size: 10px;">10,250</div>
-        <div style="font-size: 8px; color: #666;">s=1</div>
-      </div>
-      <div class="tree-node" style="min-width: 70px;">
-        <div class="node-value" style="font-size: 10px;">10,250</div>
-        <div style="font-size: 8px; color: #666;">s=1</div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 2<div class="output-amount">100,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">MSIG (2/2)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
       </div>
     </div>
-    <div class="tree-connector" style="font-size: 10px; color: #666;">... &rarr; 8 leaf UTXOs at level 3 (splits=0, freely spendable)</div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">VOUT 3<div class="output-amount">99,500 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV (4320)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">SWEEP</div>
+      </div>
+    </div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 4<div class="output-amount">1,249,698,625 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">SIG (wallet)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- Witness Size -->
-<div class="doc-section">
-  <div class="section-label">Witness Size — Falcon-512</div>
-  <p class="section-text">Falcon-512 signatures dominate the witness. The spend transaction is 1,742 bytes raw but only 563 vB due to segwit discount. The signature alone is ~897 bytes.</p>
-
-  <div class="witness-bar">
-    <div class="witness-seg w-sig" style="flex: 897;">SIG (897 B)</div>
-    <div class="witness-seg w-overhead" style="flex: 100;">overhead</div>
-  </div>
-  <div class="witness-legend">
-    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Falcon-512 signature</div>
-    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Rung index + conditions</div>
-  </div>
-</div>
 
 <!-- Transaction Pair -->
 <div class="doc-section">
@@ -192,7 +182,7 @@
       <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
       <div class="tx-field">
         <div class="tx-field-name">TXID</div>
-        <div class="tx-field-value txid">b0802b46226a2eba4c11384132ee96d4c28f93134385a5459ebb67fad1882719</div>
+        <div class="tx-field-value txid">9e21db0e7c166160a48b3f764a05021f6097753184128e0b99009dc97d19aa6f</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Version</div>
@@ -204,11 +194,7 @@
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Outputs</div>
-        <div class="tx-field-value">5 &mdash; PQ_SPLIT (50k), PQ_CHILD (50k), PQ_EMERG (100k), SWEEP (99.5k), change</div>
-      </div>
-      <div class="tx-field">
-        <div class="tx-field-name">PQ_SPLIT Rung</div>
-        <div class="tx-field-value">SIG (Falcon-512) + RECURSE_SPLIT (max_splits=3, min_sats=10,000)</div>
+        <div class="tx-field-value">5 &mdash; vout 0: SPLIT_ROOT (50,000 sats), vout 1: RECOVERY (50,000 sats), vout 2: CHANGE (100,000 sats), vout 3: rung 3 (99,500 sats)</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Confirmations</div>
@@ -217,10 +203,10 @@
     </div>
 
     <div class="tx-box">
-      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (First Split)</div>
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Binary Split (Dilithium3))</div>
       <div class="tx-field">
         <div class="tx-field-name">TXID</div>
-        <div class="tx-field-value txid">1d8505db3453b524daa33ac0ec0e92269d82ab789a4f88d9d70bd033c6a108fe</div>
+        <div class="tx-field-value txid">877dfade001938fbed2c887d256aba3992288bd88ef7ae381ccd94301da70a51</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Version</div>
@@ -228,15 +214,19 @@
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Size</div>
-        <div class="tx-field-value">1,742 bytes &middot; 563 vB</div>
+        <div class="tx-field-value">1740 bytes &middot; 562 vB</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Outputs</div>
-        <div class="tx-field-value">2 equal children &mdash; 23,500 sats each</div>
+        <div class="tx-field-value">2 &mdash; 24,500 sats (rung conditions); 24,500 sats (rung conditions)</div>
       </div>
       <div class="tx-field">
-        <div class="tx-field-name">Child Conditions</div>
-        <div class="tx-field-value">Same rung, max_splits decremented 3 &rarr; 2</div>
+        <div class="tx-field-name">Signers</div>
+        <div class="tx-field-value highlight">SIG</div>
+      </div>
+      <div class="tx-field">
+        <div class="tx-field-name">Witness</div>
+        <div class="tx-field-value">1565 bytes (ladder witness)</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Confirmations</div>
@@ -246,260 +236,218 @@
   </div>
 </div>
 
-<!-- Verification -->
 <div class="doc-section">
-  <div class="section-label">Covenant Verification</div>
-  <p class="section-text">The spend transaction's outputs were verified against the parent's rung conditions. Both children inherit identical PQ-secured conditions with the split counter decremented.</p>
+  <div class="section-label">Spending Witness Breakdown</div>
+  <p class="section-text">The ladder witness provides data for each block in the rung. Blocks that need no witness data (validation-only blocks) contribute zero bytes.</p>
+  <div class="witness-bar">
+    <div class="witness-seg" style="flex: 4; background: #4a4a4a;" title="HDR: 4 bytes">HDR</div>
+    <div class="witness-seg" style="flex: 33; background: #f7931a;" title="33B: 33 bytes">33B</div>
+    <div class="witness-seg" style="flex: 64; background: #00ff88;" title="64B: 64 bytes">64B</div>
+    <div class="witness-seg" style="flex: 1; background: #e6a817;" title="REC: 1 bytes">REC</div>
+    <div class="witness-seg" style="flex: 6; background: #4a4a4a;" title="COIL: 6 bytes">COIL</div>
+  </div>
+  <div class="witness-legend">
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Public Key</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #e6a817;"></div> REC</div>
+  </div>
+</div>
 
+
+<div class="doc-section">
+  <div class="section-label">Verification</div>
   <div class="verify-grid">
     <div class="verify-item">
-      <div class="verify-label">Parent Amount</div>
+      <div class="verify-label">Input Amount</div>
       <div class="verify-value">50,000 sats</div>
-      <div class="verify-check">PQ_SPLIT vout[0]</div>
+      <div class="verify-check">vout[0] of fund TX</div>
     </div>
     <div class="verify-item">
-      <div class="verify-label">Child A</div>
-      <div class="verify-value">23,500 sats</div>
-      <div class="verify-check">&ge; min_sats &check;</div>
-    </div>
-    <div class="verify-item">
-      <div class="verify-label">Child B</div>
-      <div class="verify-value">23,500 sats</div>
-      <div class="verify-check">&ge; min_sats &check;</div>
-    </div>
-    <div class="verify-item">
-      <div class="verify-label">max_splits</div>
-      <div class="verify-value">3 &rarr; 2</div>
-      <div class="verify-check">Decremented &check;</div>
-    </div>
-    <div class="verify-item">
-      <div class="verify-label">Signature</div>
-      <div class="verify-value">Falcon-512</div>
-      <div class="verify-check">PQ-secured &check;</div>
+      <div class="verify-label">Output Amount</div>
+      <div class="verify-value">49,000 sats</div>
+      <div class="verify-check">2 output(s)</div>
     </div>
     <div class="verify-item">
       <div class="verify-label">Fee</div>
-      <div class="verify-value">3,000 sats</div>
-      <div class="verify-check">50,000 &minus; 47,000</div>
+      <div class="verify-value">1,000 sats</div>
+      <div class="verify-check">50,000 &minus; 49,000</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Recursion</div>
+      <div class="verify-value">REC_SPLIT</div>
+      <div class="verify-check">Conditions carried forward</div>
     </div>
   </div>
 </div>
 
-<!-- How It Works -->
+
 <div class="doc-section">
-  <div class="section-label">How Quantum Vault Splitting Works</div>
+  <div class="section-label">How Quantum Vault + Children Works</div>
 
   <div class="eval-box">
     <div class="eval-step">
       <div class="eval-step-num">1.</div>
-      <div class="eval-step-text">Funding transaction creates 4 rung outputs. The <span class="eval-keyword">PQ_SPLIT</span> rung contains a Falcon-512 <span class="eval-keyword">SIG</span> block and a <span class="eval-keyword">RECURSE_SPLIT</span> block with <code>max_splits=3</code> and <code>min_sats=10,000</code>.</div>
+      <div class="eval-step-text">The funding TX encodes RECURSE_SPLIT with SCHEME = DILITHIUM3. The split logic is identical to the classical version &mdash; two children with decremented max_splits.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">2.</div>
-      <div class="eval-step-text">To split, the PQ_SPLIT rung is spent. The evaluator verifies: (a) valid Falcon-512 signature, (b) <code>max_splits &gt; 0</code>, (c) exactly 2 outputs with <code>&ge; min_sats</code> each, and (d) both children carry the same conditions with <code>max_splits &minus; 1</code>.</div>
+      <div class="eval-step-text">Each child inherits the same PQ conditions. The Dilithium3 scheme propagates through the covenant chain automatically.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">3.</div>
-      <div class="eval-step-text">Each child UTXO inherits the full PQ protection &mdash; Falcon-512 key commitment, split parameters, and all alternative spend paths (PQ_CHILD, PQ_EMERG, SWEEP). The quantum resistance is preserved through every level of the tree.</div>
+      <div class="eval-step-text">The recover rung provides a CSV-locked escape path with the recovery key. This works identically to the classical vault recovery.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">4.</div>
-      <div class="eval-step-text">When <code>max_splits</code> reaches 0, the RECURSE_SPLIT block is <span class="eval-result-sat">SATISFIED</span> unconditionally &mdash; the leaf UTXO is freely spendable with just a Falcon-512 signature. The tree produces up to 2<sup>3</sup> = 8 leaf UTXOs.</div>
-    </div>
-    <div class="eval-step">
-      <div class="eval-step-num">5.</div>
-      <div class="eval-step-text">Alternative paths: <span class="eval-keyword">PQ_EMERG</span> requires a 2-of-2 Falcon multisig for emergency recovery. <span class="eval-keyword">SWEEP</span> requires a Dilithium3 signature after a 4,320-block CSV delay (~30 days), providing a secondary PQ scheme as backup.</div>
+      <div class="eval-step-text">This preset demonstrates that recursion covenants compose naturally with PQ signatures &mdash; no special handling needed.</div>
     </div>
   </div>
 </div>
 
-<!-- Use Cases -->
-<div class="doc-section">
-  <div class="section-label">Use Cases</div>
-  <table class="field-table">
-    <thead>
-      <tr><th>Application</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="field-name">PQ Treasury Distribution</td>
-        <td>Large quantum-resistant treasury fans out to 2<sup>N</sup> recipients through binary splits. Every branch is protected against quantum attack throughout the distribution.</td>
-      </tr>
-      <tr>
-        <td class="field-name">Hybrid PQ Recovery</td>
-        <td>Primary spend via Falcon-512; timeout recovery via Dilithium3. Two independent PQ schemes ensure funds are recoverable even if one scheme is compromised.</td>
-      </tr>
-      <tr>
-        <td class="field-name">Granular Vault Withdrawal</td>
-        <td>Vault splits into progressively smaller chunks on demand. Each chunk inherits the full security model &mdash; emergency multisig, CSV timeout, and PQ signatures.</td>
-      </tr>
-      <tr>
-        <td class="field-name">Post-Quantum CoinJoin Tree</td>
-        <td>Pre-committed quantum-resistant split tree where each participant controls a branch. Tree structure is fixed at funding time with Falcon-512 key commitments.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
 
-<!-- Key Parameters -->
-<div class="doc-section">
-  <div class="section-label">Key Parameters</div>
-  <table class="field-table">
-    <thead>
-      <tr><th>Parameter</th><th>Value</th><th>Effect</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="field-name">Signature Scheme</td>
-        <td>Falcon-512 (0x10)</td>
-        <td>Post-quantum lattice-based signature &mdash; ~897 byte signatures, NIST PQC standard</td>
-      </tr>
-      <tr>
-        <td class="field-name">max_splits</td>
-        <td>3</td>
-        <td>Tree depth: 2<sup>3</sup> = 8 leaf UTXOs maximum</td>
-      </tr>
-      <tr>
-        <td class="field-name">min_sats</td>
-        <td>10,000</td>
-        <td>Floor per child &mdash; prevents dust, ensures each leaf covers Falcon-512 spend fees</td>
-      </tr>
-      <tr>
-        <td class="field-name">CSV delay (SWEEP)</td>
-        <td>4,320 blocks</td>
-        <td>~30 day timeout before Dilithium3 recovery is available</td>
-      </tr>
-      <tr>
-        <td class="field-name">Spend tx size</td>
-        <td>1,742 B / 563 vB</td>
-        <td>Falcon-512 witness dominates &mdash; 3.1&times; weight discount via segwit</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
 
-<!-- Full JSON -->
+
 <div class="doc-section">
   <div class="section-label">Funding Transaction JSON</div>
   <div class="json-block">
     <pre>{
-  <span class="json-key">"txid"</span>: <span class="json-str">"b0802b46226a2eba4c11384132ee96d4c28f93134385a5459ebb67fad1882719"</span>,
-  <span class="json-key">"hash"</span>: <span class="json-str">"d16abd63848fdb3616c9940a9d75ebbba58d54f81e1f379dd21a306921899f43"</span>,
-  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
-  <span class="json-key">"size"</span>: <span class="json-num">479</span>,
-  <span class="json-key">"vsize"</span>: <span class="json-num">396</span>,
-  <span class="json-key">"weight"</span>: <span class="json-num">1583</span>,
-  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
-  <span class="json-key">"vin"</span>: [
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;9e21db0e7c166160a48b3f764a05021f6097753184128e0b99009dc97d19aa6f&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;d0566540ff566b12a9e74685b26816b48050765229301039e71d2ce0d82df37d&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">479</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">396</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">1583</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
     {
-      <span class="json-key">"txid"</span>: <span class="json-str">"316a1704a1df9d9d5ffbe6373a203790b4dfc70af82f9ae23066506e5d8d3694"</span>,
-      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
-      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
-      <span class="json-key">"txinwitness"</span>: [
-        <span class="json-str">"01010021033bd862698e6a4969dffd83fd85642c5f514851259714fe12b9091a398dfc172140ee5ac0df58bb582b818b47452aee3dbb4b7d49af1f510759d6fa689182cd0aafc5e142700ae444c05970db847505057f4c0871be95eb1b5014d815292d6deccc0101010000"</span>
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;912cb9f03d5093d1e50f5e3d258b426106fa5baad0c3d17ddf395d98d2f2d588&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100210260ee9f4d09eceabd407891f4ad4e10799a6bc09d348733f60dbfbcfa70995fc04059992d6317049389ab0bf83f40cf7b1e018139d2ceed0d9db5a57d5db38144a5b385d214d93aa318a65eb2735a9cfbd5508d2b65dd385634c35703cf3221aca30101010000&quot;
       ],
-      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
     }
   ],
-  <span class="json-key">"vout"</span>: [
+  <span class="json-key">&quot;vout&quot;</span>: [
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00050000</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"PQ_SPLIT — SIG(Falcon-512) + RECURSE_SPLIT(max_splits=3, min_sats=10000)"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0005</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0 OP_UNKNOWN OP_CODESEPARATOR OP_UNKNOWN OP_UNKNOWN ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080308fd10 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqrpr73qfcpqygqqqqaq7kp7)#vrcqnpcv&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010200e0abead223ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080308fd10270101100000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqrpr73qfcpqygqqqqaq7kp7&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00050000</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">1</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"PQ_CHILD — SIG(Falcon-512) + AMOUNT_LOCK(5k–1M)"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0005</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0 OP_UNKNOWN OP_CODESEPARATOR OP_UNKNOWN OP_UNKNOWN ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c100cfd8813fe4042 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqx0mzqnleqyyrcqqyq3qqqqjwdcgc)#l25w9npv&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010200e0abead223ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c100cfd8813fe40420f000101100000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqx0mzqnleqyyrcqqyq3qqqqjwdcgc&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00100000</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">2</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"PQ_EMERG — MULTISIG 2-of-2 (Falcon + Dilithium)"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.001</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">2</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 1 4 020220e0abead223 OP_CHECKMULTISIG OP_2MUL 3c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c02 bfa0ad6233945c6a662b994354deece5c7db7f669b7a901f64340d34767d6959 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqszpqgqgpzpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uqgstlg9dvgeeghr2vc4ejs65mmkwt37m0anfk75srajrgrf5we7kjkgfqygqzqgsqqqq0996ru)#slseu84y&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10101010408020220e0abead223ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c0220bfa0ad6233945c6a662b994354deece5c7db7f669b7a901f64340d34767d69590901100101100000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqszpqgqgpzpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uqgstlg9dvgeeghr2vc4ejs65mmkwt37m0anfk75srajrgrf5we7kjkgfqygqzqgsqqqq0996ru&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00099500</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">3</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"SWEEP — CSV(4320) + SIG(Dilithium3)"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.000995</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">3</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 1106173 0 OP_UNKNOWN -3270172 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypq8l0qzqq0uqcuu6cjz6kwt5y03q0q3avrk3nl6ekdmn50txtuq927f9jzcgcsqyq3qqqqm2hutv)#4sgu6ggu&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010203fde01000fe031ce6b1216ace5d08f881e08f583b467fd66cddce8f5997c0155e49642c23100101100000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypq8l0qzqq0uqcuu6cjz6kwt5y03q0q3avrk3nl6ekdmn50txtuq927f9jzcgcsqyq3qqqqm2hutv&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">"value"</span>: <span class="json-num">49.99696850</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">4</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"Change output (SIG only)"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">12.49698625</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">4</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 0 -17 OP_RSHIFT OP_DROP 5da2194aac6247b7f79de413055cb73855aeee3b08404f9b7bcd8aab10010110 0 0&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqqryvew5s9mgsef2kxy3ah77w7gyc9tjmns4dwacasssz0ndaumz4tzqqszyqqqq6z4dzx)#qn455v0l&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010001919975205da2194aac6247b7f79de413055cb73855aeee3b08404f9b7bcd8aab100101100000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqqryvew5s9mgsef2kxy3ah77w7gyc9tjmns4dwacasssz0ndaumz4tzqqszyqqqq6z4dzx&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     }
-  ],
-  <span class="json-key">"blockhash"</span>: <span class="json-str">"7b5818bf8e96dc4606bece86db6860d7fe18d036dab3356dd30de91585e4724a"</span>,
-  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
-  <span class="json-key">"time"</span>: <span class="json-num">1773358404</span>,
-  <span class="json-key">"blocktime"</span>: <span class="json-num">1773358404</span>
+  ]
 }</pre>
   </div>
 </div>
 
+
 <div class="doc-section">
-  <div class="section-label">Spending Transaction JSON (First Split)</div>
+  <div class="section-label">Spending Transaction JSON (Binary Split (Dilithium3))</div>
   <div class="json-block">
     <pre>{
-  <span class="json-key">"txid"</span>: <span class="json-str">"1d8505db3453b524daa33ac0ec0e92269d82ab789a4f88d9d70bd033c6a108fe"</span>,
-  <span class="json-key">"hash"</span>: <span class="json-str">"66c0bf10ce8f91dbff00b02584ad4655f1e468cdda7698d821260bf3a8574ba4"</span>,
-  <span class="json-key">"version"</span>: <span class="json-num">4</span>,
-  <span class="json-key">"size"</span>: <span class="json-num">1742</span>,
-  <span class="json-key">"vsize"</span>: <span class="json-num">563</span>,
-  <span class="json-key">"weight"</span>: <span class="json-num">2249</span>,
-  <span class="json-key">"locktime"</span>: <span class="json-num">0</span>,
-  <span class="json-key">"vin"</span>: [
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;877dfade001938fbed2c887d256aba3992288bd88ef7ae381ccd94301da70a51&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;62efa76b8654d69d07b100dbd2827c0af9fa0f13eb30f624f58a5b4eaa9657c1&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">1740</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">562</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">2247</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
     {
-      <span class="json-key">"txid"</span>: <span class="json-str">"b0802b46226a2eba4c11384132ee96d4c28f93134385a5459ebb67fad1882719"</span>,
-      <span class="json-key">"vout"</span>: <span class="json-num">0</span>,
-      <span class="json-key">"scriptSig"</span>: { <span class="json-key">"asm"</span>: <span class="json-str">""</span>, <span class="json-key">"hex"</span>: <span class="json-str">""</span> },
-      <span class="json-key">"txinwitness"</span>: [
-        <span class="json-str">"010200fd8103...&lt;897-byte Falcon-512 signature&gt;...01100010101000000000000"</span>
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;9e21db0e7c166160a48b3f764a05021f6097753184128e0b99009dc97d19aa6f&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010200fd810309962401d83921ee60b11dc39c0c60868e2b183e8a5e2aaa62d1432f553afcf101fc5ddb50881a86cec8ca3112ca8a378a18a1162ff120597738ce9620db512000144c5804a6664b9a6f399a6bc482d622e4620bbd0961593586df16a694e5aa3b92d8848ab2e2709ca8288e8c86ada90e87e83480fa017e420e3cc8581ee56738df412a0da2b4a91cd4150917688ef6804e0ba08edc941763d5208fecf5bab6042c9a480e1976dd338e52eb03811bab900232763dc87316998d335e8a49ac0d0f2624ed665a38e3f4804d5a29f1f6f0376941690530f815967258498df7c69c10604c20c3739e6953328e20bd8cbe115a9aca1e449b177ef345aa64df1316ed46b0e99384f634e2f8aa945261af9ad80c75333ab6280c5afc0921de84af81824dac37328d266c62902ad4cac11f0f52c265e09f1ea63647f7d30de64fb0484a760b1a0d0992a6c1e04a8d156fd932866f22f59fc39a9c75728e5811996d7a311835bb14e60f063a07847513b092ce8694ddc190a0f0fc66845fee655476197ec2a4370a668b0055a9be7ea6fbaf204890b41ee70c16200968c7763881ea614e6f3297add5befe61b9f25e7028920eb1b2a05a38eda9f08859181118b07ac6a59479c822138d48ad7a60c258c105cd2cb0e3a9984d2934eeb08a870f089a1c6c4848049523048432e206921e0543a3b21de54844a5c586a9ab599aaeb0dd6d3982210f9bc4a9c96eaa4535bb5f9117315e954d22bba96a3827a2ddc3be290e78d5d3debf8de7f03d4e171dbc31770804a4badada465321f0136ef4f4fa9b815fc9d32afd1d4f467038569c8462ae6d87c08e1e0544052827310bc58de17c87dec33cb9fa04db6ae1b5645c61b38a816b56e9cf85bacf813a76a7f64d160e6375be36b450c751055cf9f58c609c6e7306be5be2a7adaeb6331e0894153fd86bd12f4c2c0ee1ba44d751de2366ec15ce475694879567546f7da6e3ab2e41126c2d8493667c6e597bd7fe1e2045ad95c5c817c64e569465384a3f67b577505a0e42879d452bbfcc1f7e659354f8c900bae806500d07797c68f2995b16c65be5b930f1c2d3701c27164edc480a1e25b3a4d06e9bd53f97d89aa8ac4d397bf1ce4da41e764332e2ae5791bd691ec7cb9e9593e02b2193592674a1ae557161a2691a2ba5dc71a2929abe6aa1709ea91620d59e7b006b806626de2a156b45e6abb37ab2e305bb02a61df109c3f62b313af81caa9d8c30a69084d3db561836e20d89118deefd8c0239bdb30ce453e2fbb5e22b665d365b06782bda0de8d1c8e249cfc49d9ec9fb7fcdff22ce2598ee45400c612229c461006135c4808941e06f7a73841a9a6383b4c5cc745c7ddb108a5ff1ca4523e19ef4543726a6796d8bc65823873264b8f09b73e093b3b69b4c7e1fae4ea36ada10da990ecfeb66952c504877d606d6f092afec071cbeca956949134c16ee476a5449302ebe10c85cb776fdba41fc9f23490d0e2bf542531891dca8c94af4666bba6e62ed5244a5d6386d6c3cf5453415d214dc3bf38614dfc5e2b4468629e29c50193cb393ba26ac47fa293d654dfbb98e5ea9080c371240f3a81d1bcee5ccd386335963b93eaf9e3a6480d97d0acbd0ec25c8bf7cec4034453387af6b161f94be4074e34dc7da7669b450491bb46f9c89c4f68fb851d026398d63990db3e95aeae924f0c260c491438d06c267f09098763fbc2224361d08ec4fb395b8ed36208ca612130f0861f9a8e6bbc4c835951477c482a9b86cc443a5a2a31bfa0111dbaf8d52c2d260b8503bd56a6b3b324c0ae5a190a7ee4d673b92aff1b535bcece5e86aae37c2d5b25627886548cf1a9e9457e307c9d5f46b2316d2091c67313f57cb03970d3a1bdb17659242d4fc8164af6ea0462c690d1259c0a6177a2d238713e3b4aa7bf4ad2dd0588214e429f7665f69a483cd21d23ce3bab943b0d8762712c4c2f09e481f8e10ed5bd7cb411766f4d1b4f713e5c48bdb0fc1a53659ec1369488d4acd7c93e9ce3b58c75dbb67521f75c35df1b575e54b4ade597248f362a1d8aed0f462bb747c69b04695857f9bc66a697540a5cf6d2d979269bd31e4d67f6a9fa2b5fd7b8d2333580620511b89d1a364d0149e4e4dab097d961beef0e779b9c3fecea26fce560b3d40125777a7297d9d2636804c146d367911736f2811000101010000&quot;
       ],
-      <span class="json-key">"sequence"</span>: <span class="json-num">4294967294</span>
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
     }
   ],
-  <span class="json-key">"vout"</span>: [
+  <span class="json-key">&quot;vout&quot;</span>: [
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00023500</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">0</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"Child A — SIG(Falcon-512) + RECURSE_SPLIT(max_splits=2, min_sats=10000)"</span>,
-        <span class="json-key">"address"</span>: <span class="json-str">"rung1qypqqelnfadj0tr6fj94yavfk6yeud59kedwvkmh5c7pj2fe3rmxxmg0zqgsyzqzpr73qfcpqyqsqqqmgml86"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.000245</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0 OP_UNKNOWN OP_CODESEPARATOR OP_UNKNOWN OP_UNKNOWN ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080208fd10 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqzpr73qfcpqyqsqqq77qlef)#yu68fg38&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010200e0abead223ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080208fd10270101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqzpr73qfcpqyqsqqq77qlef&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">"value"</span>: <span class="json-num">0.00023500</span>,
-      <span class="json-key">"n"</span>: <span class="json-num">1</span>,
-      <span class="json-key">"scriptPubKey"</span>: {
-        <span class="json-key">"type"</span>: <span class="json-str">"rung_conditions"</span>,
-        <span class="json-key">"desc"</span>: <span class="json-str">"Child B — SIG(Falcon-512) + RECURSE_SPLIT(max_splits=2, min_sats=10000)"</span>,
-        <span class="json-key">"address"</span>: <span class="json-str">"rung1qypqqelnfadj0tr6fj94yavfk6yeud59kedwvkmh5c7pj2fe3rmxxmg0zqgsyzqzpr73qfcpqyqsqqqmgml86"</span>
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.000245</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0 OP_UNKNOWN OP_CODESEPARATOR OP_UNKNOWN OP_UNKNOWN ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080208fd10 [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqzpr73qfcpqyqsqqq77qlef)#yu68fg38&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010200e0abead223ae8d193c834b5a7401419b721a655e41c5ffc68ed4892a8c0c5e3c101102080208fd10270101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypqpc9tatfz8t5dry7gxj66wsq5rxmjrfj4usw9llrga4yf92xqch3uzqgsyzqzpr73qfcpqyqsqqq77qlef&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     }
-  ],
-  <span class="json-key">"blockhash"</span>: <span class="json-str">"7682a633a8f041a50129b2f006cef53e02f314a51209b478cdabaa474870fd51"</span>,
-  <span class="json-key">"confirmations"</span>: <span class="json-num">1</span>,
-  <span class="json-key">"time"</span>: <span class="json-num">1773358438</span>,
-  <span class="json-key">"blocktime"</span>: <span class="json-num">1773358438</span>
+  ]
 }</pre>
   </div>
 </div>
+
 
 <!-- Nav -->
 <div class="doc-nav">

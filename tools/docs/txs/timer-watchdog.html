@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COUNTER-UP SUBSCRIPTION &mdash; Transaction Examples</title>
+<title>TIMER WATCHDOG &mdash; Transaction Examples</title>
 <link rel="stylesheet" href="../blocks/style.css">
 <style>
   .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
@@ -46,10 +46,10 @@
   .output-amount { font-size: 8px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
   .output-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
 
-  .rung-block.cov { background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2); }
   .rung-block.plc { background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2); }
   .rung-block.rec { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
   .rung-block.sig { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+  .rung-block.time { background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2); }
 
   .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
   .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
@@ -69,13 +69,14 @@
 
 <div class="block-title-section">
   <div class="block-type-code">TRANSACTION EXAMPLE &middot; PLC + RECURSION</div>
-  <h1 class="block-title">COUNTER-UP SUBSCRIPTION</h1>
-  <p class="block-subtitle">Recurring subscription covenant: a counter increments on each payment (max N). The UTXO is amount-locked to a fixed payment size and auto-renews via RECURSE_MODIFIED. Three spend paths: PAY (increment counter), CANCEL (2-of-2 multisig), EXPIRE (counter reached target).</p>
+  <h1 class="block-title">TIMER WATCHDOG</h1>
+  <p class="block-subtitle">Continuous timer watchdog with recursive mutation. The timer requires N consecutive blocks of activity. Each spend increments the accumulated counter via RECURSE_MODIFIED. The inverted TIMER_CONTINUOUS block is SATISFIED while accumulated &lt; target, allowing the covenant to progress.</p>
   <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_CONT &middot; TYPE 0x20</span>
     <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG &middot; TYPE 0x00</span>
-    <span class="scheme-badge" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">CTR_UP &middot; TYPE 0x1C</span>
-    <span class="scheme-badge" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK &middot; TYPE 0x0C</span>
     <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_MOD &middot; TYPE 0x0E</span>
+    <span class="scheme-badge" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_OFF &middot; TYPE 0x21</span>
+    <span class="scheme-badge" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV &middot; TYPE 0x03</span>
     <span class="scheme-badge" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25);">SCHNORR &middot; SCHEME</span>
   </div>
 </div>
@@ -85,36 +86,35 @@
 <!-- Rung Diagram -->
 <div class="doc-section">
   <div class="section-label">Rung Structure</div>
-  <p class="section-text">Three rungs: PAY (SIG + CTR_UP + AMT_LOCK + REC_MOD), CANCEL (dual SIG cooperative exit), EXPIRE (CTR_UP at target + SIG for final withdrawal).</p>
+  <p class="section-text">Three rungs: ACTIVE (inverted TMR_CONT + SIG + REC_MOD for recursive counting), HELD (TMR_OFF + SIG for off-delay hold), EMERG (CSV + SIG for emergency timeout).</p>
 
   <div class="rung-diagram">
     <div class="rung-row">
-      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">PAY</div>
+      <div class="rung-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">ACTIVE</div>
       <div class="rung-blocks">
+        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_CONT (0/144) INV</div><div class="rung-arrow">+</div>
         <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div>
-        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">CTR_UP (0/24)</div><div class="rung-arrow">+</div>
-        <div class="rung-block" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK (25000)</div><div class="rung-arrow">+</div>
         <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_MOD (+1)</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">PAYMENT</div>
+        <div class="rung-output">WATCHDOG_OK</div>
       </div>
     </div>
     <div class="rung-row">
-      <div class="rung-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">CANCEL</div>
+      <div class="rung-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">HELD</div>
       <div class="rung-blocks">
-        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_OFF (72)</div><div class="rung-arrow">+</div>
         <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">CANCEL_SUB</div>
+        <div class="rung-output">HOLD_WINDOW</div>
       </div>
     </div>
     <div class="rung-row">
-      <div class="rung-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">EXPIRE</div>
+      <div class="rung-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">EMERG</div>
       <div class="rung-blocks">
-        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">CTR_UP (24/24)</div><div class="rung-arrow">+</div>
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV (1008)</div><div class="rung-arrow">+</div>
         <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">SUB_END</div>
+        <div class="rung-output">TIMEOUT_SWEEP</div>
       </div>
     </div>
   </div>
@@ -125,31 +125,31 @@
   <p class="section-text">The funding transaction splits funds across outputs with different security policies.</p>
   <div class="output-diagram">
     <div class="output-row">
-      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 0<div class="output-amount">26,000 sats</div></div>
+      <div class="output-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">VOUT 0<div class="output-amount">500,000 sats</div></div>
       <div class="output-blocks">
-        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">CTR_UP (0/24)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(0, 212, 255, 0.08); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2);">AMT_LOCK (25000)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_MOD (+1)</div>
+        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_CONT (0/144) INV</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">REC_MOD (+1)</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">PAYMENT</div>
+        <div class="rung-output">WATCHDOG_OK</div>
       </div>
     </div>
     <div class="output-row">
-      <div class="output-label-box" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">VOUT 1<div class="output-amount">6,000 sats</div></div>
+      <div class="output-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">VOUT 1<div class="output-amount">7,000 sats</div></div>
       <div class="output-blocks">
-        <div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">TMR_OFF (72)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">CANCEL_SUB</div>
+        <div class="rung-output">HOLD_WINDOW</div>
       </div>
     </div>
     <div class="output-row">
-      <div class="output-label-box" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">VOUT 2<div class="output-amount">5,750 sats</div></div>
+      <div class="output-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">VOUT 2<div class="output-amount">5,000 sats</div></div>
       <div class="output-blocks">
-        <div class="rung-block" style="background: rgba(168, 85, 247, 0.08); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2);">CTR_UP (24/24)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
+        <div class="rung-block" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV (1008)</div><div class="rung-arrow">+</div><div class="rung-block" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
-        <div class="rung-output">SUB_END</div>
+        <div class="rung-output">TIMEOUT_SWEEP</div>
       </div>
     </div>
     <div class="output-row">
-      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 3<div class="output-amount">1,249,960,650 sats</div></div>
+      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 3<div class="output-amount">1,249,486,500 sats</div></div>
       <div class="output-blocks">
         <div class="rung-block" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">SIG (wallet)</div>
         <div class="rung-arrow">&rarr;</div>
@@ -169,7 +169,7 @@
       <div class="tx-box-label"><span class="arrow-right">&#9654;</span> Funding Transaction</div>
       <div class="tx-field">
         <div class="tx-field-name">TXID</div>
-        <div class="tx-field-value txid">11013666be1e58c7eedfbc529a30d8c4734e596def84efdeb0ee1c74d9a9b54a</div>
+        <div class="tx-field-value txid">1bf411def73bb3ba39fa3ae8948ed19bdee2244af6fb5f67026223efa7c0d463</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Version</div>
@@ -177,11 +177,11 @@
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Size</div>
-        <div class="tx-field-value">513 bytes &middot; 430 vB</div>
+        <div class="tx-field-value">404 bytes &middot; 321 vB</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Outputs</div>
-        <div class="tx-field-value">4 &mdash; vout 0: PAYMENT (26,000 sats), vout 1: CANCEL_SUB (6,000 sats), vout 2: SUB_END (5,750 sats), vout 3: CHANGE (1,249,960,650 sats)</div>
+        <div class="tx-field-value">4 &mdash; vout 0: WATCHDOG_OK (500,000 sats), vout 1: HOLD_WINDOW (7,000 sats), vout 2: TIMEOUT_SWEEP (5,000 sats), vout 3: CHANGE (1,249,486,500 sats)</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Confirmations</div>
@@ -190,10 +190,10 @@
     </div>
 
     <div class="tx-box">
-      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Payment #1)</div>
+      <div class="tx-box-label"><span class="arrow-left">&#9664;</span> Spending Transaction (Watchdog Increment)</div>
       <div class="tx-field">
         <div class="tx-field-name">TXID</div>
-        <div class="tx-field-value txid">837a9de4b2ac962ba567e437d43bc9ab15e2b8da674714395ad5c8e413a4b5af</div>
+        <div class="tx-field-value txid">ad7217967cf1fa40abc055c4da63fda514abd258431cba28f6879de9861d78b1</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Version</div>
@@ -201,11 +201,11 @@
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Size</div>
-        <div class="tx-field-value">280 bytes &middot; 193 vB</div>
+        <div class="tx-field-value">239 bytes &middot; 153 vB</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Outputs</div>
-        <div class="tx-field-value">1 &mdash; 25,000 sats (carry-forward)</div>
+        <div class="tx-field-value">1 &mdash; 499,000 sats (carry-forward)</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Signers</div>
@@ -213,7 +213,7 @@
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Witness</div>
-        <div class="tx-field-value">113 bytes (ladder witness)</div>
+        <div class="tx-field-value">111 bytes (ladder witness)</div>
       </div>
       <div class="tx-field">
         <div class="tx-field-name">Confirmations</div>
@@ -228,19 +228,17 @@
   <p class="section-text">The ladder witness provides data for each block in the rung. Blocks that need no witness data (validation-only blocks) contribute zero bytes.</p>
   <div class="witness-bar">
     <div class="witness-seg" style="flex: 4; background: #4a4a4a;" title="HDR: 4 bytes">HDR</div>
+    <div class="witness-seg" style="flex: 1; background: #a855f7;" title="TMR: 1 bytes">TMR</div>
     <div class="witness-seg" style="flex: 33; background: #f7931a;" title="33B: 33 bytes">33B</div>
     <div class="witness-seg" style="flex: 64; background: #00ff88;" title="64B: 64 bytes">64B</div>
-    <div class="witness-seg" style="flex: 1; background: #a855f7;" title="CTR: 1 bytes">CTR</div>
-    <div class="witness-seg" style="flex: 1; background: #00d4ff;" title="AMT: 1 bytes">AMT</div>
     <div class="witness-seg" style="flex: 1; background: #e6a817;" title="REC: 1 bytes">REC</div>
     <div class="witness-seg" style="flex: 6; background: #4a4a4a;" title="COIL: 6 bytes">COIL</div>
   </div>
   <div class="witness-legend">
     <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #4a4a4a;"></div> Framing</div>
+    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #a855f7;"></div> PLC</div>
     <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #f7931a;"></div> Public Key</div>
     <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00ff88;"></div> Signature</div>
-    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #a855f7;"></div> PLC</div>
-    <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #00d4ff;"></div> COV</div>
     <div class="witness-legend-item"><div class="witness-legend-dot" style="background: #e6a817;"></div> REC</div>
   </div>
 </div>
@@ -251,18 +249,18 @@
   <div class="verify-grid">
     <div class="verify-item">
       <div class="verify-label">Input Amount</div>
-      <div class="verify-value">26,000 sats</div>
+      <div class="verify-value">500,000 sats</div>
       <div class="verify-check">vout[0] of fund TX</div>
     </div>
     <div class="verify-item">
       <div class="verify-label">Output Amount</div>
-      <div class="verify-value">25,000 sats</div>
+      <div class="verify-value">499,000 sats</div>
       <div class="verify-check">1 output(s)</div>
     </div>
     <div class="verify-item">
       <div class="verify-label">Fee</div>
       <div class="verify-value">1,000 sats</div>
-      <div class="verify-check">26,000 &minus; 25,000</div>
+      <div class="verify-check">500,000 &minus; 499,000</div>
     </div>
     <div class="verify-item">
       <div class="verify-label">Recursion</div>
@@ -274,24 +272,24 @@
 
 
 <div class="doc-section">
-  <div class="section-label">How Counter-Up Subscription Works</div>
+  <div class="section-label">How Timer Watchdog Works</div>
 
   <div class="eval-box">
     <div class="eval-step">
       <div class="eval-step-num">1.</div>
-      <div class="eval-step-text">The PAY rung enforces subscription logic: SIG authorizes, COUNTER_UP tracks payments (0/24), AMOUNT_LOCK constrains output to fixed range, RECURSE_MODIFIED increments the counter.</div>
+      <div class="eval-step-text">The ACTIVE rung uses an <em>inverted</em> TIMER_CONTINUOUS block: it's SATISFIED when accumulated < target (the normal block would be UNSATISFIED). This allows the covenant to advance while counting.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">2.</div>
-      <div class="eval-step-text">Each PAY spend creates a carry-forward output with identical conditions except the counter's <code>current</code> field is incremented by <code>delta</code> via RECURSE_MODIFIED.</div>
+      <div class="eval-step-text">RECURSE_MODIFIED targets the TIMER_CONTINUOUS block's <code>accumulated</code> field (block_idx=0, param_idx=0), incrementing it by delta=1 on each spend.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">3.</div>
-      <div class="eval-step-text">AMOUNT_LOCK constrains the output to exactly min=max sats, ensuring each payment is a fixed amount. The fee comes from the surplus funded above the lock.</div>
+      <div class="eval-step-text">After 144 spends, accumulated reaches target. The inverted TIMER_CONTINUOUS becomes UNSATISFIED (since accumulated = target), locking the ACTIVE rung. The watchdog has completed.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">4.</div>
-      <div class="eval-step-text">After 24 payments, <code>current = target = 24</code>. COUNTER_UP becomes <span class="eval-result-unsat">UNSATISFIED</span>, locking PAY. The EXPIRE rung (requires counter at target) becomes spendable.</div>
+      <div class="eval-step-text">The HELD rung (TMR_OFF_DELAY) provides a hold window. The EMERG rung (CSV + SIG) is a safety timeout if the watchdog stalls.</div>
     </div>
   </div>
 </div>
@@ -303,69 +301,69 @@
   <div class="section-label">Funding Transaction JSON</div>
   <div class="json-block">
     <pre>{
-  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;11013666be1e58c7eedfbc529a30d8c4734e596def84efdeb0ee1c74d9a9b54a&quot;</span>,
-  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;f674d12ca2f30a715ed62398578d686027244f6f53860c33cc1f3e4d2c3c9a96&quot;</span>,
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;1bf411def73bb3ba39fa3ae8948ed19bdee2244af6fb5f67026223efa7c0d463&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;6929de87cbadc095f0fcd2292b79f40c0ac9040f8edbbd980c676285f48b185e&quot;</span>,
   <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
-  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">513</span>,
-  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">430</span>,
-  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">1719</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">404</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">321</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">1283</span>,
   <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
   <span class="json-key">&quot;vin&quot;</span>: [
     {
-      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;fa30ef63ff405669560b5b9a95840ee27365ffa9fa634aa24d4c2d91b68715bf&quot;</span>,
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;2498e0ce34a2b48ddb8d90bd2f73208a41a405f87fcbbd71adaecb56cff77fc2&quot;</span>,
       <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
       <span class="json-key">&quot;scriptSig&quot;</span>: {
         <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
         <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
       },
       <span class="json-key">&quot;txinwitness&quot;</span>: [
-        &quot;010100210256e150f86b6d8fa522514035a9730239f885070a989310d9466a16dcf0658960405da950515062ea67f0739e3e67d80e0e83b2016ac22037e4c1f42e97ed44ed92bb0b477c5a05a3a542e178af7fd59424e1add948cfe88edd49fcd97469bb46f70101010000&quot;
+        &quot;01010021038fe02d4b60918fee434c1927f7c0a3df3433d7a8a224761bda06600671f367d9409c8cc376f69faf49b762caf6f82109613ff37fcdf1c10a2e2bf63054be70174717ef003a6aad09e276b7a075d0945f64b9849dda6197d0dc1661907b530d08180101010000&quot;
       ],
       <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
     }
   ],
   <span class="json-key">&quot;vout&quot;</span>: [
     {
-      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.00026</span>,
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.005</span>,
       <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
       <span class="json-key">&quot;scriptPubKey&quot;</span>: {
-        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 4 OP_LEFT 0 2 cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1 0302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107 OP_UNKNOWN 080008180c OP_UNKNOWN OP_SHA256 OP_NOP OP_UNKNOWN OP_SHA256 OP_NOP 04080a0801080108010101010000&quot;</span>,
-        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyzgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpyypsygpwqnug4z0ssq6tr0kvwm0nyflrup4e8d305j7e3kwx5chwzp77q5yqqzqcpn76sc0a4pssupqgpgyqzzqppqqszqgpqqqqggpjty)#xx9r24rh&quot;</span>,
-        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10104800100010220cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1210302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107de05080008180cfda861fda8610e04080a0801080108010101010000&quot;</span>,
-        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyzgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpyypsygpwqnug4z0ssq6tr0kvwm0nyflrup4e8d305j7e3kwx5chwzp77q5yqqzqcpn76sc0a4pssupqgpgyqzzqppqqszqgpqqqqggpjty&quot;</span>,
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 3 OP_RIGHT 0602080008908001000102204f12bb578d OP_VERNOTIF [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypczygxqgyqqzyssqqsqqgzyp839w6h34nyft5txxxqwq5y5769838vjl88lk68a0wr44wfx936yrsypryqsqqgqqyqzqgpqyqqqpeghj8)#uuajkdg3&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010381110602080008908001000102204f12bb578d6644ae8b318c070284a7b453c4ec97ce7fdb47ebdc3ad5c93163a20e0408c80800080008010101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypczygxqgyqqzyssqqsqqgzyp839w6h34nyft5txxxqwq5y5769838vjl88lk68a0wr44wfx936yrsypryqsqqgqqyqzqgpqyqqqpeghj8&quot;</span>,
         <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">6</span>e-05,
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">7</span>e-05,
       <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
       <span class="json-key">&quot;scriptPubKey&quot;</span>: {
-        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 OP_LEFT 0 2 cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1 OP_LEFT 0 2 2e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107de05 1 0 0&quot;</span>,
-        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpsqqsqqgzyqhqf7y238cgqd93hmx8dhejyl37q6unkch6f0vcm8r2vthpql0q2qgpqyqqqchjda9)#3707fmwu&quot;</span>,
-        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10102800100010220cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c18001000102202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107de050101010000&quot;</span>,
-        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpsqqsqqgzyqhqf7y238cgqd93hmx8dhejyl37q6unkch6f0vcm8r2vthpql0q2qgpqyqqqchjda9&quot;</span>,
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0108488001000102204f12bb578d6644ae8b318c070284a7b453c4ec OP_MOD OP_UNKNOWN OP_SUBSTR OP_UNKNOWN [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyppcqggfzqqzqqpqgsy7y4m27xkv39w3vcccpczsjnmg57yajtuul7mgl4acwk4eyck8gspqyqsqqq75drul)#3slzyucy&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c101021c0108488001000102204f12bb578d6644ae8b318c070284a7b453c4ec97ce7fdb47ebdc3ad5c93163a20101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyppcqggfzqqzqqpqgsy7y4m27xkv39w3vcccpczsjnmg57yajtuul7mgl4acwk4eyck8gspqyqsqqq75drul&quot;</span>,
         <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">5.75</span>e-05,
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">5</span>e-05,
       <span class="json-key">&quot;n&quot;</span>: <span class="json-num">2</span>,
       <span class="json-key">&quot;scriptPubKey&quot;</span>: {
-        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 0302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107 OP_UNKNOWN 0818081880 0 2 cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1 1 0 0&quot;</span>,
-        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypzzqczyqhqf7y238cgqd93hmx8dhejyl37q6unkch6f0vcm8r2vthpql0q2zqcpqvgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpqyqszqqq637qaf)#cwhlkw2z&quot;</span>,
-        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10102210302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107de0508180818800100010220cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c10101010000&quot;</span>,
-        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypzzqczyqhqf7y238cgqd93hmx8dhejyl37q6unkch6f0vcm8r2vthpql0q2zqcpqvgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpqyqszqqq637qaf&quot;</span>,
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 2 258301 OP_LEFT 0 2 a52135d4e982dd08cee822a04ca8bf8ae97249c0643750da79d14c829a371297 1 0 0&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypq8l0sqwqqzqqpqgs22gf46n5c9hggem5z9gzv4zlc46tjf8qxgd6smfuaznyzngm399cpqyqsqqqlkmccp)#5ve9lm3j&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010203fdf003800100010220a52135d4e982dd08cee822a04ca8bf8ae97249c0643750da79d14c829a3712970101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypq8l0sqwqqzqqpqgs22gf46n5c9hggem5z9gzv4zlc46tjf8qxgd6smfuaznyzngm399cpqyqsqqqlkmccp&quot;</span>,
         <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     },
     {
-      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">12.4996065</span>,
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">12.494865</span>,
       <span class="json-key">&quot;n&quot;</span>: <span class="json-num">3</span>,
       <span class="json-key">&quot;scriptPubKey&quot;</span>: {
-        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 0 -75 OP_SHA256 OP_UNKNOWN [error]&quot;</span>,
-        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqqrjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpqyqszqgqqq5ukxr2)#y3vsatx3&quot;</span>,
-        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010001cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1010101010000&quot;</span>,
-        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqqrjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpqyqszqgqqq5ukxr2&quot;</span>,
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 0 79 bb578d6644ae8b318c070284a7b453c4ec97 OP_UNKNOWN OP_SUBSTR OP_UNKNOWN [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqqzncjhdtc6ejy469nrrq8q2z20dzncnkf0nnlmdr7hhp66hynzcazqyqszqgqqqh0uyx3)#g80z96fa&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10100014f12bb578d6644ae8b318c070284a7b453c4ec97ce7fdb47ebdc3ad5c93163a2010101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyqqzncjhdtc6ejy469nrrq8q2z20dzncnkf0nnlmdr7hhp66hynzcazqyqszqgqqqh0uyx3&quot;</span>,
         <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     }
@@ -376,39 +374,39 @@
 
 
 <div class="doc-section">
-  <div class="section-label">Spending Transaction JSON (Payment #1)</div>
+  <div class="section-label">Spending Transaction JSON (Watchdog Increment)</div>
   <div class="json-block">
     <pre>{
-  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;837a9de4b2ac962ba567e437d43bc9ab15e2b8da674714395ad5c8e413a4b5af&quot;</span>,
-  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;2a72ef3bac5ddfc5327fe51f114499779cda9c9898d7775463801b18e6d2c57e&quot;</span>,
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;ad7217967cf1fa40abc055c4da63fda514abd258431cba28f6879de9861d78b1&quot;</span>,
+  <span class="json-key">&quot;hash&quot;</span>: <span class="json-str">&quot;a6f2374c2bfaa00289a13fc895c3352d5a8f43a74f2e463e26e2f145c1a92d0b&quot;</span>,
   <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
-  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">280</span>,
-  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">193</span>,
-  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">769</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">239</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">153</span>,
+  <span class="json-key">&quot;weight&quot;</span>: <span class="json-num">611</span>,
   <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
   <span class="json-key">&quot;vin&quot;</span>: [
     {
-      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;11013666be1e58c7eedfbc529a30d8c4734e596def84efdeb0ee1c74d9a9b54a&quot;</span>,
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;1bf411def73bb3ba39fa3ae8948ed19bdee2244af6fb5f67026223efa7c0d463&quot;</span>,
       <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
       <span class="json-key">&quot;scriptSig&quot;</span>: {
         <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
         <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
       },
       <span class="json-key">&quot;txinwitness&quot;</span>: [
-        &quot;010400210256e150f86b6d8fa522514035a9730239f885070a989310d9466a16dcf0658960404ea653fb75bd3e8b7e3fd1efa5d05baa488a191354ecd3c8642337936fa174e4177104ff49357f3dfd5a25b02287dac62d06f1e030f0c19c284fa685d8f680e721000c000e000101010000&quot;
+        &quot;01031b000021038fe02d4b60918fee434c1927f7c0a3df3433d7a8a224761bda06600671f367d9407f92052718d48a4cfc4a167cfda63d040e9ee12d963cd27955e5c2faa94ca967a2acf32ff2e57b00de68246586b1afd345683f62372aefd2b4e52e95d03dbe670e000101010000&quot;
       ],
       <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
     }
   ],
   <span class="json-key">&quot;vout&quot;</span>: [
     {
-      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.00025</span>,
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.00499</span>,
       <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
       <span class="json-key">&quot;scriptPubKey&quot;</span>: {
-        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 4 OP_LEFT 0 2 cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1 0302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107 OP_UNKNOWN 080108180c OP_UNKNOWN OP_SHA256 OP_NOP OP_UNKNOWN OP_SHA256 OP_NOP 04080a0801080108010101010000&quot;</span>,
-        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyzgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpyypsygpwqnug4z0ssq6tr0kvwm0nyflrup4e8d305j7e3kwx5chwzp77q5yqzzqcpn76sc0a4pssupqgpgyqzzqppqqszqgpqqqqprf98n)#eh2afsdm&quot;</span>,
-        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c10104800100010220cba8bf29fc6569aa00c639fd45b1e7de4890c2c06ce9cfbbfc1bd631e7c976c1210302202e04f88a89f08034b1becc76df3227e3e06b93b62fa4bd98d9c6a62ee107de05080108180cfda861fda8610e04080a0801080108010101010000&quot;</span>,
-        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qyzgqqgqqypzpjaghu5lcetf4gqvvw0agkc70hjgjrpvqm8fe7alcx7kx8nujakpyypsygpwqnug4z0ssq6tr0kvwm0nyflrup4e8d305j7e3kwx5chwzp77q5yqzzqcpn76sc0a4pssupqgpgyqzzqppqqszqgpqqqqprf98n&quot;</span>,
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;OP_UNKNOWN 3 OP_RIGHT 0602080108908001000102204f12bb578d OP_VERNOTIF [error]&quot;</span>,
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypczygxqgyqzzyssqqsqqgzyp839w6h34nyft5txxxqwq5y5769838vjl88lk68a0wr44wfx936yrsypryqsqqgqqyqzqgpqyqqquyjv80)#lf2ckjlk&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010381110602080108908001000102204f12bb578d6644ae8b318c070284a7b453c4ec97ce7fdb47ebdc3ad5c93163a20e0408c80800080008010101010000&quot;</span>,
+        <span class="json-key">&quot;address&quot;</span>: <span class="json-str">&quot;rung1qypczygxqgyqzzyssqqsqqgzyp839w6h34nyft5txxxqwq5y5769838vjl88lk68a0wr44wfx936yrsypryqsqqgqqyqzqgpqyqqquyjv80&quot;</span>,
         <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
       }
     }
