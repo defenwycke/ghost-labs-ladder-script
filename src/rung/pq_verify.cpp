@@ -49,6 +49,20 @@ bool VerifyPQSignature(RungScheme scheme,
         return false;
     }
 
+    // Validate key and signature sizes match the scheme before calling OQS
+    if (pubkey.size() != oqs_sig->length_public_key) {
+        LogPrintf("PQ: pubkey size mismatch for %s: got %zu, expected %zu\n",
+                  alg_name, pubkey.size(), oqs_sig->length_public_key);
+        OQS_SIG_free(oqs_sig);
+        return false;
+    }
+    if (sig.size() > oqs_sig->length_signature) {
+        LogPrintf("PQ: signature too large for %s: got %zu, max %zu\n",
+                  alg_name, sig.size(), oqs_sig->length_signature);
+        OQS_SIG_free(oqs_sig);
+        return false;
+    }
+
     OQS_STATUS result = OQS_SIG_verify(oqs_sig, msg.data(), msg.size(),
                                          sig.data(), sig.size(), pubkey.data());
     OQS_SIG_free(oqs_sig);

@@ -16,7 +16,7 @@ namespace rung {
  *  Each block evaluates a single spending condition within a rung.
  *  Encoded as uint16_t in the wire format (little-endian 2 bytes).
  *
- *  Ranges (9 families, 53 block types):
+ *  Ranges (10 families, 60 block types):
  *    0x0001-0x00FF  Signature family (SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG)
  *    0x0100-0x01FF  Timelock family (CSV, CSV_TIME, CLTV, CLTV_TIME)
  *    0x0200-0x02FF  Hash family (HASH_PREIMAGE, HASH160_PREIMAGE, TAGGED_HASH)
@@ -25,7 +25,8 @@ namespace rung {
  *    0x0500-0x05FF  Anchor family (ANCHOR, _CHANNEL, _POOL, _RESERVE, _SEAL, _ORACLE)
  *    0x0600-0x06FF  PLC family (HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN)
  *    0x0700-0x07FF  Compound family (TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG)
- *    0x0800-0x08FF  Governance family (EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR) */
+ *    0x0800-0x08FF  Governance family (EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR)
+ *    0x0900-0x09FF  Legacy family (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT) */
 enum class RungBlockType : uint16_t {
     // Signature family
     SIG              = 0x0001, //!< Single signature verification
@@ -81,6 +82,15 @@ enum class RungBlockType : uint16_t {
     OUTPUT_COUNT     = 0x0804, //!< Output count bounds (min/max outputs in spending tx)
     RELATIVE_VALUE   = 0x0805, //!< Output value as ratio of input (numerator/denominator)
     ACCUMULATOR      = 0x0806, //!< Merkle accumulator: set membership proof with root update
+
+    // Legacy family (wrapped Bitcoin transaction types)
+    P2PK_LEGACY          = 0x0901, //!< P2PK wrapped: PUBKEY_COMMIT + SCHEME → PUBKEY + SIGNATURE
+    P2PKH_LEGACY         = 0x0902, //!< P2PKH wrapped: HASH160 → PUBKEY + SIGNATURE
+    P2SH_LEGACY          = 0x0903, //!< P2SH wrapped: HASH160 → PREIMAGE (inner conditions) + inner witness
+    P2WPKH_LEGACY        = 0x0904, //!< P2WPKH wrapped: HASH160 → PUBKEY + SIGNATURE (delegates to P2PKH)
+    P2WSH_LEGACY         = 0x0905, //!< P2WSH wrapped: HASH256 → PREIMAGE (inner conditions) + inner witness
+    P2TR_LEGACY          = 0x0906, //!< P2TR key-path wrapped: PUBKEY_COMMIT + SCHEME → PUBKEY + SIGNATURE
+    P2TR_SCRIPT_LEGACY   = 0x0907, //!< P2TR script-path wrapped: HASH256 + PUBKEY_COMMIT → PREIMAGE (inner) + inner witness
 
     // PLC family
     HYSTERESIS_FEE   = 0x0601, //!< Fee hysteresis band
@@ -184,6 +194,14 @@ inline bool IsKnownBlockType(uint16_t b)
     case RungBlockType::OUTPUT_COUNT:
     case RungBlockType::RELATIVE_VALUE:
     case RungBlockType::ACCUMULATOR:
+    // Legacy family
+    case RungBlockType::P2PK_LEGACY:
+    case RungBlockType::P2PKH_LEGACY:
+    case RungBlockType::P2SH_LEGACY:
+    case RungBlockType::P2WPKH_LEGACY:
+    case RungBlockType::P2WSH_LEGACY:
+    case RungBlockType::P2TR_LEGACY:
+    case RungBlockType::P2TR_SCRIPT_LEGACY:
         return true;
     }
     return false;
@@ -289,6 +307,13 @@ inline std::string BlockTypeName(RungBlockType type)
     case RungBlockType::OUTPUT_COUNT:     return "OUTPUT_COUNT";
     case RungBlockType::RELATIVE_VALUE:   return "RELATIVE_VALUE";
     case RungBlockType::ACCUMULATOR:      return "ACCUMULATOR";
+    case RungBlockType::P2PK_LEGACY:      return "P2PK_LEGACY";
+    case RungBlockType::P2PKH_LEGACY:     return "P2PKH_LEGACY";
+    case RungBlockType::P2SH_LEGACY:      return "P2SH_LEGACY";
+    case RungBlockType::P2WPKH_LEGACY:    return "P2WPKH_LEGACY";
+    case RungBlockType::P2WSH_LEGACY:     return "P2WSH_LEGACY";
+    case RungBlockType::P2TR_LEGACY:      return "P2TR_LEGACY";
+    case RungBlockType::P2TR_SCRIPT_LEGACY: return "P2TR_SCRIPT_LEGACY";
     }
     return "UNKNOWN";
 }
@@ -540,9 +565,16 @@ inline constexpr uint16_t MICRO_HEADER_TABLE[MICRO_HEADER_SLOTS] = {
     // Slot 51-52: Late-added Signature family
     0x0004, // 0x33: MUSIG_THRESHOLD
     0x0005, // 0x34: KEY_REF_SIG
+    // Slot 53-59: Legacy family
+    0x0901, // 0x35: P2PK_LEGACY
+    0x0902, // 0x36: P2PKH_LEGACY
+    0x0903, // 0x37: P2SH_LEGACY
+    0x0904, // 0x38: P2WPKH_LEGACY
+    0x0905, // 0x39: P2WSH_LEGACY
+    0x0906, // 0x3A: P2TR_LEGACY
+    0x0907, // 0x3B: P2TR_SCRIPT_LEGACY
     // Remaining slots unused
-    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x35-0x3A
-    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x3B-0x3F
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x3C-0x3F
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x40-0x47
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x48-0x4F
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x50-0x57
@@ -680,6 +712,22 @@ inline constexpr ImplicitFieldLayout ANCHOR_SEAL_CONDITIONS = {1, {
     {RungDataType::HASH256, 32},
 }};
 
+/** P2PKH_LEGACY / P2WPKH_LEGACY conditions: [HASH160(20)] */
+inline constexpr ImplicitFieldLayout P2PKH_LEGACY_CONDITIONS = {1, {
+    {RungDataType::HASH160, 20},
+}};
+
+/** P2WSH_LEGACY conditions: [HASH256(32)] */
+inline constexpr ImplicitFieldLayout P2WSH_LEGACY_CONDITIONS = {1, {
+    {RungDataType::HASH256, 32},
+}};
+
+/** P2TR_SCRIPT_LEGACY conditions: [HASH256(32), PUBKEY_COMMIT(32)] */
+inline constexpr ImplicitFieldLayout P2TR_SCRIPT_LEGACY_CONDITIONS = {2, {
+    {RungDataType::HASH256, 32},
+    {RungDataType::PUBKEY_COMMIT, 32},
+}};
+
 // -- Witness context implicit field layouts --
 
 /** SIG witness: [PUBKEY(var), SIGNATURE(var)] */
@@ -770,6 +818,14 @@ inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t 
         case RungBlockType::CLTV_SIG:         return CLTV_SIG_CONDITIONS;
         case RungBlockType::EPOCH_GATE:       return EPOCH_GATE_CONDITIONS;
         case RungBlockType::ANCHOR_SEAL:      return ANCHOR_SEAL_CONDITIONS;
+        // Legacy family
+        case RungBlockType::P2PK_LEGACY:      return SIG_CONDITIONS;
+        case RungBlockType::P2PKH_LEGACY:     return P2PKH_LEGACY_CONDITIONS;
+        case RungBlockType::P2SH_LEGACY:      return P2PKH_LEGACY_CONDITIONS;
+        case RungBlockType::P2WPKH_LEGACY:    return P2PKH_LEGACY_CONDITIONS;
+        case RungBlockType::P2WSH_LEGACY:     return P2WSH_LEGACY_CONDITIONS;
+        case RungBlockType::P2TR_LEGACY:      return SIG_CONDITIONS;
+        case RungBlockType::P2TR_SCRIPT_LEGACY: return P2TR_SCRIPT_LEGACY_CONDITIONS;
         default: return NO_IMPLICIT;
         }
     } else {
@@ -790,6 +846,12 @@ inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t 
         case RungBlockType::HTLC:             return HTLC_WITNESS;
         case RungBlockType::HASH_SIG:         return HASH_SIG_WITNESS;
         case RungBlockType::CLTV_SIG:         return CLTV_SIG_WITNESS;
+        // Legacy family
+        case RungBlockType::P2PK_LEGACY:      return SIG_WITNESS;
+        case RungBlockType::P2PKH_LEGACY:     return SIG_WITNESS;
+        case RungBlockType::P2WPKH_LEGACY:    return SIG_WITNESS;
+        case RungBlockType::P2TR_LEGACY:      return SIG_WITNESS;
+        // P2SH, P2WSH, P2TR_SCRIPT: no implicit witness (variable inner conditions)
         default: return NO_IMPLICIT;
         }
     }
@@ -803,6 +865,39 @@ inline bool MatchesImplicitLayout(const RungBlock& block, const ImplicitFieldLay
     if (block.fields.size() != layout.count) return false;
     for (uint8_t i = 0; i < layout.count; ++i) {
         if (block.fields[i].type != layout.fields[i].type) return false;
+    }
+    return true;
+}
+
+/** Runtime check that every block type with a CONDITIONS implicit layout also
+ *  has a WITNESS implicit layout (or the block is one of the explicitly-listed
+ *  types that intentionally have no implicit witness: P2SH, P2WSH, P2TR_SCRIPT,
+ *  EPOCH_GATE, ANCHOR_SEAL, AMOUNT_LOCK, CTV).
+ *  Call once at init to catch layout pairing mistakes early. */
+inline bool VerifyImplicitLayoutPairing()
+{
+    // Block types that intentionally have conditions-only implicit layouts
+    static constexpr RungBlockType conditions_only[] = {
+        RungBlockType::P2SH_LEGACY, RungBlockType::P2WSH_LEGACY,
+        RungBlockType::P2TR_SCRIPT_LEGACY,
+        RungBlockType::EPOCH_GATE, RungBlockType::ANCHOR_SEAL,
+        RungBlockType::AMOUNT_LOCK, RungBlockType::CTV,
+    };
+
+    for (uint32_t code = 0; code <= 0x0FFF; ++code) {
+        uint16_t tc = static_cast<uint16_t>(code);
+        if (!IsKnownBlockType(tc)) continue;
+        auto bt = static_cast<RungBlockType>(tc);
+        const auto& cond_layout = GetImplicitLayout(bt, 1);
+        const auto& wit_layout = GetImplicitLayout(bt, 0);
+        if (cond_layout.count > 0 && wit_layout.count == 0) {
+            // Must be in the conditions_only whitelist
+            bool whitelisted = false;
+            for (auto exempt : conditions_only) {
+                if (bt == exempt) { whitelisted = true; break; }
+            }
+            if (!whitelisted) return false;
+        }
     }
     return true;
 }

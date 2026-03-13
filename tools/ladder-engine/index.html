@@ -1659,28 +1659,6 @@ body {
   opacity: 0.3;
 }
 
-/* Watch mode */
-.watch-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-size: 10px;
-  color: var(--green-bright);
-  background: var(--green-dim);
-  border: 1px solid var(--green);
-}
-
-@keyframes watchBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-.watch-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--green-bright);
-  animation: watchBlink 1s ease-in-out infinite;
-}
 
 /* Examples Modal */
 
@@ -1780,6 +1758,7 @@ body {
 .example-tag.cov { border-color: #2ea04366; color: #2ea043; }
 .example-tag.rec { border-color: #a855f766; color: #a855f7; }
 .example-tag.plc { border-color: #c4303066; color: #c43030; }
+.example-tag.legacy { border-color: #e91e9066; color: #e91e90; }
 
 /* Fullscreen mode */
 .app.fullscreen .main-content {
@@ -2586,6 +2565,44 @@ const BLOCK_FAMILIES = [
       ]},
     ]
   },
+  {
+    name: 'LEGACY', color: '#e91e90',
+    blocks: [
+      { type: 'P2PK_LEGACY', label: 'P2PK', desc: 'P2PK wrapped — public key + signature verification (same as SIG)', fields: [
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
+        { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: '64-byte Schnorr sig hex' },
+        { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: '01=Schnorr', optional: true }
+      ]},
+      { type: 'P2PKH_LEGACY', label: 'P2PKH', desc: 'P2PKH wrapped — HASH160(pubkey) verification + signature', fields: [
+        { name: 'hash160', dataType: 'HASH160', label: 'PubKey Hash (HASH160)', placeholder: '20-byte HASH160 hex' },
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
+        { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex' }
+      ]},
+      { type: 'P2SH_LEGACY', label: 'P2SH', desc: 'P2SH wrapped — HASH160 of inner Ladder Script conditions + evaluation', fields: [
+        { name: 'hash160', dataType: 'HASH160', label: 'Script Hash (HASH160)', placeholder: '20-byte HASH160 hex' },
+        { name: 'preimage', dataType: 'PREIMAGE', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions hex' }
+      ]},
+      { type: 'P2WPKH_LEGACY', label: 'P2WPKH', desc: 'P2WPKH wrapped — same as P2PKH (segwit version)', fields: [
+        { name: 'hash160', dataType: 'HASH160', label: 'PubKey Hash (HASH160)', placeholder: '20-byte HASH160 hex' },
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
+        { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex' }
+      ]},
+      { type: 'P2WSH_LEGACY', label: 'P2WSH', desc: 'P2WSH wrapped — SHA256 of inner Ladder Script conditions + evaluation', fields: [
+        { name: 'hash256', dataType: 'HASH256', label: 'Script Hash (SHA256)', placeholder: '32-byte SHA256 hex' },
+        { name: 'preimage', dataType: 'PREIMAGE', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions hex' }
+      ]},
+      { type: 'P2TR_LEGACY', label: 'P2TR', desc: 'P2TR key-path wrapped — public key + signature (same as SIG)', fields: [
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
+        { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: '64-byte Schnorr sig hex' },
+        { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: '01=Schnorr', optional: true }
+      ]},
+      { type: 'P2TR_SCRIPT_LEGACY', label: 'P2TR_S', desc: 'P2TR script-path wrapped — Merkle root + internal key + revealed leaf (Ladder conditions)', fields: [
+        { name: 'hash256', dataType: 'HASH256', label: 'Script Tree Root (SHA256)', placeholder: '32-byte Merkle root hex' },
+        { name: 'internal_key', dataType: 'PUBKEY_COMMIT', label: 'Internal Key Commit', placeholder: '32-byte SHA256(internal_pubkey)' },
+        { name: 'preimage', dataType: 'PREIMAGE', label: 'Revealed Leaf (serialized)', placeholder: 'Serialized Ladder Script conditions hex' }
+      ]},
+    ]
+  },
 ];
 
 // Internal block type for referencing output coils from other rungs
@@ -2660,6 +2677,13 @@ const BLOCK_RULES = {
   CLTV_SIG: 'SIG + CLTV combined. Signature verification with absolute block-height timelock. Saves 8 bytes vs separate blocks.',
   TIMELOCKED_MULTISIG: 'MULTISIG + CSV combined. M-of-N threshold signatures with relative timelock. Used for penalty branches and vault recovery.',
   OUTPUT_REF: 'References a named output coil from another rung.',
+  P2PK_LEGACY: 'Legacy P2PK wrapped as a Ladder Script block. Same evaluation as SIG — PUBKEY_COMMIT verified, then Schnorr/ECDSA/PQ signature check. Closes arbitrary data surfaces by requiring typed fields.',
+  P2PKH_LEGACY: 'Legacy P2PKH wrapped. Computes HASH160(pubkey) and compares to the committed hash. If match, verifies signature. Bridges legacy pay-to-pubkey-hash semantics into typed fields.',
+  P2SH_LEGACY: 'Legacy P2SH wrapped. HASH160 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions that are deserialized and evaluated. Prevents arbitrary script embedding.',
+  P2WPKH_LEGACY: 'Legacy P2WPKH wrapped. Identical evaluation to P2PKH — HASH160(pubkey) check + signature verify. Represents the segwit migration path.',
+  P2WSH_LEGACY: 'Legacy P2WSH wrapped. SHA256 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions. Same pattern as P2SH but with SHA256 hash.',
+  P2TR_LEGACY: 'Legacy P2TR key-path wrapped. Same evaluation as SIG — key-path Taproot spend with typed fields. Closes key-path data surfaces.',
+  P2TR_SCRIPT_LEGACY: 'Legacy P2TR script-path wrapped. HASH256 is Merkle root of script tree, PUBKEY_COMMIT is internal key. Revealed leaf (PREIMAGE) must be valid Ladder Script conditions. Closes the primary inscription/data-embedding vector.',
 };
 
 // Realistic test data for every block type — deterministic fake keys/hashes
@@ -2994,6 +3018,52 @@ BlockRegistry.ACCUMULATOR.evaluate = (block, simState) => {
   return simState.knownRoots?.has(rootHash) ? 'satisfied' : 'unsatisfied';
 };
 
+// ─── Legacy block evaluators ───
+
+BlockRegistry.P2PK_LEGACY.evaluate = (block, simState) =>
+  simState.availableKeys?.has(block.values.pubkey) ? 'satisfied' : 'unsatisfied';
+
+BlockRegistry.P2PKH_LEGACY.evaluate = (block, simState) => {
+  const hash = (block.values.hash160 || '').trim();
+  if (!hash || hash.length !== 40) return 'error';
+  return simState.availableKeys?.has(block.values.pubkey) ? 'satisfied' : 'unsatisfied';
+};
+
+BlockRegistry.P2SH_LEGACY.evaluate = (block) => {
+  const hash = (block.values.hash160 || '').trim();
+  const preimage = (block.values.preimage || '').trim();
+  if (!hash || hash.length !== 40) return 'error';
+  if (!preimage) return 'unsatisfied';
+  return 'satisfied';
+};
+
+BlockRegistry.P2WPKH_LEGACY.evaluate = (block, simState) => {
+  const hash = (block.values.hash160 || '').trim();
+  if (!hash || hash.length !== 40) return 'error';
+  return simState.availableKeys?.has(block.values.pubkey) ? 'satisfied' : 'unsatisfied';
+};
+
+BlockRegistry.P2WSH_LEGACY.evaluate = (block) => {
+  const hash = (block.values.hash256 || '').trim();
+  const preimage = (block.values.preimage || '').trim();
+  if (!hash || hash.length !== 64) return 'error';
+  if (!preimage) return 'unsatisfied';
+  return 'satisfied';
+};
+
+BlockRegistry.P2TR_LEGACY.evaluate = (block, simState) =>
+  simState.availableKeys?.has(block.values.pubkey) ? 'satisfied' : 'unsatisfied';
+
+BlockRegistry.P2TR_SCRIPT_LEGACY.evaluate = (block) => {
+  const root = (block.values.hash256 || '').trim();
+  const ikey = (block.values.internal_key || '').trim();
+  const leaf = (block.values.preimage || '').trim();
+  if (!root || root.length !== 64) return 'error';
+  if (!ikey || ikey.length !== 64) return 'error';
+  if (!leaf) return 'unsatisfied';
+  return 'satisfied';
+};
+
 // ─── Test data methods ───
 
 BlockRegistry.SIG.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
@@ -3049,6 +3119,13 @@ BlockRegistry.INPUT_COUNT.testData = () => ({ min: '1', max: '10' });
 BlockRegistry.OUTPUT_COUNT.testData = () => ({ min: '1', max: '2' });
 BlockRegistry.RELATIVE_VALUE.testData = () => ({ numerator: '9', denominator: '10' });
 BlockRegistry.ACCUMULATOR.testData = () => ({ merkle_root: TEST_HASH256 });
+BlockRegistry.P2PK_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
+BlockRegistry.P2PKH_LEGACY.testData = () => ({ hash160: TEST_HASH160, pubkey: TEST_PUBKEYS[0] });
+BlockRegistry.P2SH_LEGACY.testData = () => ({ hash160: TEST_HASH160, preimage: TEST_HASH256 });
+BlockRegistry.P2WPKH_LEGACY.testData = () => ({ hash160: TEST_HASH160, pubkey: TEST_PUBKEYS[0] });
+BlockRegistry.P2WSH_LEGACY.testData = () => ({ hash256: TEST_HASH256, preimage: TEST_HASH256_B });
+BlockRegistry.P2TR_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
+BlockRegistry.P2TR_SCRIPT_LEGACY.testData = () => ({ hash256: TEST_HASH256, internal_key: TEST_HASH256_B, preimage: TEST_HASH256 });
 
 // ─── Output roles ───
 // 'none' | 'recurse' | 'mutation' | 'split' | 'ctv' | 'validation'
@@ -3701,7 +3778,7 @@ function exportCompactSig(rung) {
   const sigBlock = rung.blocks.find(b => b.type === 'SIG');
   return {
     compact_type: 'COMPACT_SIG',
-    pubkey_commit: sigBlock.values.pubkey || '',
+    pubkey: sigBlock.values.pubkey || '',
     scheme: sigBlock.values.scheme || rung.output?.scheme || 'SCHNORR'
   };
 }
@@ -4924,7 +5001,7 @@ function LadderView({ scanSequence, fullSimState, energizedOutputs, energizedRun
     showTooltips: tips } = ctx;
   const scanTotal = scanSequence.length;
   const simState = fullSimState;
-  const simMode = mode === 'simulate' || mode === 'watch';
+  const simMode = mode === 'simulate';
 
   // Dispatch-based callbacks replacing prop callbacks
   const onSelectBlock = useCallback((id) => dispatch({ type: 'SELECT_BLOCK', value: id }), [dispatch]);
@@ -5121,12 +5198,6 @@ function LadderView({ scanSequence, fullSimState, energizedOutputs, energizedRun
     <div className="ladder-area">
       <div className="ladder-toolbar">
         <span style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: 1 }}>LADDER</span>
-        {mode === 'watch' && (
-          <div className="watch-indicator">
-            <div className="watch-dot" />
-            LIVE
-          </div>
-        )}
         <div className="zoom-controls">
           <button className="zoom-btn" onClick={() => setZoom(z => Math.round(Math.max(0.3, z - 0.1) * 10) / 10)} title="Zoom out">−</button>
           <span className="zoom-level" onClick={resetView} style={{ cursor: 'pointer' }} title="Click to reset zoom">{Math.round(zoom * 100)}%</span>
@@ -5426,6 +5497,7 @@ function getTypeHex(type) {
     RATE_LIMIT:'0671',COSIGN:'0681',
     TIMELOCKED_SIG:'0701',HTLC:'0702',HASH_SIG:'0703',PTLC:'0704',CLTV_SIG:'0705',TIMELOCKED_MULTISIG:'0706',
     EPOCH_GATE:'0801',WEIGHT_LIMIT:'0802',INPUT_COUNT:'0803',OUTPUT_COUNT:'0804',RELATIVE_VALUE:'0805',ACCUMULATOR:'0806',
+    P2PK_LEGACY:'0901',P2PKH_LEGACY:'0902',P2SH_LEGACY:'0903',P2WPKH_LEGACY:'0904',P2WSH_LEGACY:'0905',P2TR_LEGACY:'0906',P2TR_SCRIPT_LEGACY:'0907',
   };
   return map[type] || '????';
 }
@@ -7151,6 +7223,77 @@ const EXAMPLES = [
   },
 
   {
+    title: 'LEGACY P2PKH + RECOVERY',
+    desc: 'P2PKH legacy spending with a time-locked recovery path. Demonstrates legacy Bitcoin address semantics wrapped as typed Ladder Script blocks — same spending logic, no arbitrary data surfaces.',
+    tags: [['P2PKH', 'legacy'], ['CSV', 'time'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'P2PKH_LEGACY', values: { hash160: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', pubkey: FAKE.pk1, signature: '' } },
+      ], output: { name: 'NORMAL_SPEND', type: 'standard' } },
+      { label: 'RECOVER', blocks: [
+        { type: 'CSV', values: { blocks: '52560' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'RECOVERY', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 45000 },
+      { address: FAKE.addr2, amount: 5000 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
+
+  {
+    title: 'LEGACY P2SH MULTISIG VAULT',
+    desc: 'P2SH legacy wrapping inner Ladder Script conditions — the PREIMAGE carries serialized conditions that are deserialized and evaluated. Combines with a P2WPKH hot-spend path and CLTV cold sweep.',
+    tags: [['P2SH', 'legacy'], ['P2WPKH', 'legacy'], ['CLTV', 'time']],
+    rungs: [
+      { label: 'HOT', blocks: [
+        { type: 'P2WPKH_LEGACY', values: { hash160: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0', pubkey: FAKE.pk1, signature: '' } },
+      ], output: { name: 'HOT_SPEND', type: 'standard' } },
+      { label: 'VAULT', blocks: [
+        { type: 'P2SH_LEGACY', values: { hash160: 'c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0', preimage: '' } },
+      ], output: { name: 'VAULT_UNLOCK', type: 'standard' } },
+      { label: 'COLD', blocks: [
+        { type: 'CLTV', values: { height: '900000' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk3 } },
+      ], output: { name: 'COLD_SWEEP', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr3, amount: 40000 },
+      { address: FAKE.addr4, amount: 30000 },
+      { address: FAKE.addr5, amount: 29500 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+
+  {
+    title: 'P2TR TAPROOT MIGRATION',
+    desc: 'Taproot key-path and script-path legacy blocks composed with native Ladder Script. P2TR key-path for daily spending, P2TR_SCRIPT for governed multisig, and a PQ-safe emergency recovery.',
+    tags: [['P2TR', 'legacy'], ['P2TR_S', 'legacy'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'KEY', blocks: [
+        { type: 'P2TR_LEGACY', values: { pubkey: FAKE.pk1, signature: '' } },
+      ], output: { name: 'KEY_PATH', type: 'standard' } },
+      { label: 'SCRIPT', blocks: [
+        { type: 'P2TR_SCRIPT_LEGACY', values: { hash256: FAKE.hash1, internal_key: FAKE.hash2, preimage: '' } },
+      ], output: { name: 'SCRIPT_PATH', type: 'standard' } },
+      { label: 'PQ_SAFE', blocks: [
+        { type: 'CSV', values: { blocks: '26000' } },
+        { type: 'SIG', values: { pubkey: FAKE_PQ.falcon1, scheme: 'FALCON512' } },
+      ], output: { name: 'PQ_RECOVERY', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid3, vout: 1 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 50000 },
+      { address: FAKE.addr2, amount: 30000 },
+      { address: FAKE.addr6, amount: 19500 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+
+  {
     title: 'SINGLE SIG (SPHINCS+)',
     desc: 'Post-quantum single signature using NIST FIPS 205 SPHINCS+-SHA2 (SLH-DSA). Hash-based stateless signatures (~50,000 bytes). Most conservative PQ assumption — security relies only on hash function strength, not lattice hardness.',
     tags: [['SPHINCS+', 'sig'], ['PQ', 'hash']],
@@ -7262,7 +7405,7 @@ function decodedToBuilderRungs(data) {
     // Handle COMPACT_SIG import
     if (rd.compact_type === 'COMPACT_SIG') {
       const block = createBlock('SIG');
-      block.values.pubkey = rd.pubkey_commit || '';
+      block.values.pubkey = rd.pubkey || rd.pubkey_commit || '';
       block.values.scheme = rd.scheme || 'SCHNORR';
       rung.blocks = [block];
       rung.compact = true;
@@ -10035,7 +10178,6 @@ const INITIAL_STATE = {
   simActiveRungId: null,
   simActiveStep: -1,
   simStepResults: {},
-  watchLive: false,
 };
 
 function appReducer(state, action) {
@@ -10079,7 +10221,6 @@ function appReducer(state, action) {
     case 'SET_SIM_ACTIVE': return { ...state, simActiveRungId: action.rungId, simActiveStep: action.step, simStepResults: action.results !== undefined ? action.results : state.simStepResults };
     case 'SET_SIM_STEP_RESULTS': return { ...state, simStepResults: action.value };
     case 'UPDATE_SIM_STEP_RESULTS': return { ...state, simStepResults: action.fn(state.simStepResults) };
-    case 'SET_WATCH_LIVE': return { ...state, watchLive: action.value };
     case 'SET_LADDER_FULLSCREEN': return { ...state, ladderFullscreen: action.value };
 
     // Compound: select block (clears coil/input, sets rightTab)
@@ -10228,7 +10369,7 @@ function App() {
     selectedBlockId, selectedCoilId, selectedInputId, expandedBlockId, expandedInputId, expandedOutputId,
     contextMenu, inputContextMenu, outputContextMenu, renamingBlockId, renamingInputId, rightTab,
     validationResult, showValidationPanel, scanPhase, scanSpeed, scanResults, scanIdx, scanStopRung,
-    simState, forcedBlocks, spentRungs, simActiveRungId, simActiveStep, simStepResults, watchLive
+    simState, forcedBlocks, spentRungs, simActiveRungId, simActiveStep, simStepResults
   } = state;
 
   const [pendingExample, setPendingExample] = useState(() => {
@@ -10237,7 +10378,7 @@ function App() {
     return ex !== null ? parseInt(ex, 10) : null;
   });
 
-  const isSimMode = mode === 'simulate' || mode === 'watch';
+  const isSimMode = mode === 'simulate';
 
   // Keyboard shortcuts: ESC closes modals/fullscreen, F11 toggles fullscreen, Delete removes selection
   useEffect(() => {
@@ -10305,42 +10446,6 @@ function App() {
       }
     }
   }, [isSimMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Watch mode — poll signet for real block height, no fallback ticker
-  useEffect(() => {
-    if (mode !== 'watch') { dispatch({ type: 'SET_WATCH_LIVE', value: false }); return; }
-    let cancelled = false;
-
-    const pollSignet = async () => {
-      try {
-        const r = await fetch(SIGNET_API + '/api/ladder/status');
-        if (cancelled) return;
-        if (r.ok) {
-          const data = await r.json();
-          if (data.blocks) {
-            dispatch({ type: 'SET_WATCH_LIVE', value: true });
-            dispatch({ type: 'UPDATE_SIM_STATE', fn: prev => {
-              const heightDelta = data.blocks - (prev.blockHeight || 0);
-              return {
-                ...prev,
-                blockHeight: data.blocks,
-                csvBlocks: prev.csvBlocks + Math.max(0, heightDelta),
-              };
-            }});
-          }
-        } else {
-          dispatch({ type: 'SET_WATCH_LIVE', value: false });
-        }
-      } catch {
-        if (!cancelled) dispatch({ type: 'SET_WATCH_LIVE', value: false });
-      }
-    };
-
-    pollSignet();
-    const signetInterval = setInterval(pollSignet, 10000);
-
-    return () => { cancelled = true; clearInterval(signetInterval); };
-  }, [mode]);
 
   // Build the flat scan sequence: input → block0 → block1 → ... → coil, for each rung
   const scanSequence = useMemo(() => {
@@ -11144,7 +11249,7 @@ ${ladderRows.map(r => `
             // Handle COMPACT_SIG import
             if (cond.compact_type === 'COMPACT_SIG') {
               const block = createBlock('SIG');
-              block.values.pubkey = cond.pubkey_commit || '';
+              block.values.pubkey = cond.pubkey || cond.pubkey_commit || '';
               block.values.scheme = cond.scheme || 'SCHNORR';
               rung.blocks = [block];
               rung.compact = true;
@@ -11223,7 +11328,6 @@ ${ladderRows.map(r => `
           <button className={`mode-tab ${mode === 'convert' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'convert' })} title={showTooltips ? 'Paste RPC JSON output to convert back to ladder diagram' : undefined}>CONVERT</button>
           <button className={`mode-tab ${mode === 'send' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'send' })} title={showTooltips ? 'Create and fund Ladder Script outputs on signet' : undefined} style={mode === 'send' ? { color: 'var(--green-bright)', borderBottomColor: 'var(--green-bright)' } : {}}>SEND</button>
           <button className={`mode-tab ${mode === 'spend' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'spend' })} title={showTooltips ? 'Spend existing RUNG outputs on signet' : undefined} style={mode === 'spend' ? { color: 'var(--cyan)', borderBottomColor: 'var(--cyan)' } : {}}>SPEND</button>
-          <button className={`mode-tab ${mode === 'watch' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'watch' })} title={showTooltips ? 'Live mode — block height auto-increments' : undefined}>WATCH</button>
         </div>
         <div className="header-actions">
           <button className="header-btn primary" onClick={() => dispatch({ type: 'SET_SHOW_EXAMPLES', value: true })} title={showTooltips ? 'Load pre-built example programs' : undefined}>EXAMPLES</button>
@@ -11249,20 +11353,8 @@ ${ladderRows.map(r => `
           </div>
         ) : <>
         {isSimMode ? (
-          <div className="palette" style={{ opacity: mode === 'watch' && !watchLive ? 1 : 0.3, pointerEvents: 'none' }}>
-            {mode === 'watch' && !watchLive ? (
-              <div style={{ padding: '12px 8px' }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, color: 'var(--amber)', textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' }}>WATCH MODE</div>
-                <div style={{ padding: '8px', background: 'rgba(230, 168, 23, 0.1)', border: '1px solid rgba(230, 168, 23, 0.25)', fontSize: 10, color: 'var(--amber)', lineHeight: 1.6 }}>
-                  Signet proxy is not available. Live block data requires a ghost-core node running the feature/ladder-script branch.
-                </div>
-                <div style={{ marginTop: 10, fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', letterSpacing: 0.5, lineHeight: 1.6 }}>
-                  Waiting for signet connection...
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '12px 8px', fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1, textAlign: 'center' }}>PALETTE LOCKED<br/>IN {mode === 'watch' ? 'WATCH' : 'SIMULATOR'} MODE</div>
-            )}
+          <div className="palette" style={{ opacity: 0.3, pointerEvents: 'none' }}>
+              <div style={{ padding: '12px 8px', fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1, textAlign: 'center' }}>PALETTE LOCKED<br/>IN SIMULATOR MODE</div>
           </div>
         ) : (
           <PalettePanel />
@@ -11356,8 +11448,8 @@ ${ladderRows.map(r => `
         </>}
       </div>
 
-      {/* Register Table — hidden in signet and watch modes for more space */}
-      {mode !== 'send' && mode !== 'spend' && mode !== 'watch' && <RegisterTable fullSimState={fullSimState} />}
+      {/* Register Table — hidden in signet modes for more space */}
+      {mode !== 'send' && mode !== 'spend' && <RegisterTable fullSimState={fullSimState} />}
 
       {/* Status Bar */}
       <div className="status-bar">
@@ -11370,12 +11462,6 @@ ${ladderRows.map(r => `
           <div className="status-item">
             <div className={`status-dot ${energizedCount > 0 ? 'amber' : 'red'}`} />
             {energizedCount} ENERGIZED
-          </div>
-        )}
-        {mode === 'watch' && (
-          <div className="status-item">
-            <div className={`status-dot ${watchLive ? 'green' : 'amber'}`} />
-            {watchLive ? 'SIGNET LIVE' : 'LOCAL'} HEIGHT: {simState.blockHeight}
           </div>
         )}
         {(() => {

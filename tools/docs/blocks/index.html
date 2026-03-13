@@ -241,56 +241,6 @@
   </div>
 </div>
 
-<!-- Anchor Family -->
-<div class="family-section">
-  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
-  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
-
-  <div class="index-grid">
-    <a href="anchor.html" class="block-card">
-      <div class="block-card-code">0x0501</div>
-      <div class="block-card-name">ANCHOR</div>
-      <div class="block-card-desc">Generic anchor point. Commits to a 32-byte anchor hash identifying an off-chain structure. Base type for all anchor variants.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-channel.html" class="block-card">
-      <div class="block-card-code">0x0502</div>
-      <div class="block-card-name">ANCHOR_CHANNEL</div>
-      <div class="block-card-desc">Payment channel anchor. Commits to a channel ID and sequence number. Enables channel state binding to on-chain UTXOs.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-pool.html" class="block-card">
-      <div class="block-card-code">0x0503</div>
-      <div class="block-card-name">ANCHOR_POOL</div>
-      <div class="block-card-desc">Liquidity pool anchor. Commits to a pool ID binding the UTXO to a specific liquidity pool or coinpool structure.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-reserve.html" class="block-card">
-      <div class="block-card-code">0x0504</div>
-      <div class="block-card-name">ANCHOR_RESERVE</div>
-      <div class="block-card-desc">Reserve proof anchor. Commits to a minimum reserve amount, providing on-chain proof of reserves for off-chain balances.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-seal.html" class="block-card">
-      <div class="block-card-code">0x0505</div>
-      <div class="block-card-name">ANCHOR_SEAL</div>
-      <div class="block-card-desc">Tamper-evident seal. Single-use commitment that can only be opened once. Used for client-side validation and single-use seals.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-oracle.html" class="block-card">
-      <div class="block-card-code">0x0506</div>
-      <div class="block-card-name">ANCHOR_ORACLE</div>
-      <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-  </div>
-</div>
-
 <!-- Recursion Family -->
 <div class="family-section">
   <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
@@ -337,6 +287,56 @@
       <div class="block-card-name">RECURSE_DECAY</div>
       <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
       <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+  </div>
+</div>
+
+<!-- Anchor Family -->
+<div class="family-section">
+  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
+  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
+
+  <div class="index-grid">
+    <a href="anchor.html" class="block-card">
+      <div class="block-card-code">0x0501</div>
+      <div class="block-card-name">ANCHOR</div>
+      <div class="block-card-desc">Generic anchor point. Commits to a 32-byte anchor hash identifying an off-chain structure. Base type for all anchor variants.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-channel.html" class="block-card">
+      <div class="block-card-code">0x0502</div>
+      <div class="block-card-name">ANCHOR_CHANNEL</div>
+      <div class="block-card-desc">Payment channel anchor. Commits to a channel ID and sequence number. Enables channel state binding to on-chain UTXOs.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-pool.html" class="block-card">
+      <div class="block-card-code">0x0503</div>
+      <div class="block-card-name">ANCHOR_POOL</div>
+      <div class="block-card-desc">Liquidity pool anchor. Commits to a pool ID binding the UTXO to a specific liquidity pool or coinpool structure.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-reserve.html" class="block-card">
+      <div class="block-card-code">0x0504</div>
+      <div class="block-card-name">ANCHOR_RESERVE</div>
+      <div class="block-card-desc">Reserve proof anchor. Commits to a minimum reserve amount, providing on-chain proof of reserves for off-chain balances.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-seal.html" class="block-card">
+      <div class="block-card-code">0x0505</div>
+      <div class="block-card-name">ANCHOR_SEAL</div>
+      <div class="block-card-desc">Tamper-evident seal. Single-use commitment that can only be opened once. Used for client-side validation and single-use seals.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-oracle.html" class="block-card">
+      <div class="block-card-code">0x0506</div>
+      <div class="block-card-name">ANCHOR_ORACLE</div>
+      <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
     </a>
   </div>
 </div>

@@ -4,6 +4,8 @@
 
 #include <rung/aggregate.h>
 
+#include <logging.h>
+
 namespace rung {
 
 bool VerifyAggregateSpend(const AggregateProof& proof,
@@ -17,15 +19,22 @@ bool VerifyAggregateSpend(const AggregateProof& proof,
     if (proof.pubkey_commits[spend_index] != pubkey_commit) {
         return false;
     }
-    // The aggregate signature itself is verified at the block level,
-    // not per-spend. Individual spend verification just checks inclusion.
+    // IMPORTANT: This function only verifies spend inclusion — the aggregate
+    // signature over the entire batch must be verified separately at the block
+    // level via proof.aggregate_sig before calling this. Callers must not treat
+    // a true return as full signature verification.
+    if (!proof.verified) {
+        return false; // Aggregate sig must be verified before checking inclusion
+    }
     return true;
 }
 
-bool VerifyDeferredAttestation(const uint256& /*template_hash*/)
+bool VerifyDeferredAttestation(const uint256& template_hash)
 {
     // Deferred attestation is not yet supported. Fail closed to prevent
     // any code path from silently accepting unverified attestations.
+    LogPrintf("AGGREGATE: Rejected deferred attestation for template %s — not yet supported\n",
+              template_hash.ToString());
     return false;
 }
 

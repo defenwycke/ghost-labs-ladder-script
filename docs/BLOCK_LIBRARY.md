@@ -23,6 +23,7 @@ escape byte for others). See the wire format v3 specification.
 7. [PLC Family (0x06xx)](#plc-family)
 8. [Compound Family (0x07xx)](#compound-family)
 9. [Governance Family (0x08xx)](#governance-family)
+10. [Legacy Family (0x09xx)](#legacy-family)
 
 ---
 
@@ -3028,9 +3029,107 @@ Commitment set proofs. Accumulator-based spending authorisation.
 
 ---
 
+## Legacy Family
+
+Legacy blocks wrap Bitcoin's original transaction types as typed Ladder Script blocks. They preserve spending semantics while closing data-embedding surfaces. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions — arbitrary bytes are rejected.
+
+**Family:** Legacy
+**Range:** 0x0900–0x09FF
+
+### 54. P2PK_LEGACY (0x0901)
+
+**Family:** Legacy
+
+Wraps P2PK (pay-to-public-key). Same evaluation as SIG — PUBKEY_COMMIT verified, then Schnorr/ECDSA/PQ signature check.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| pubkey_commit | PUBKEY_COMMIT | 32 B | Conditions | SHA-256(pubkey) |
+| scheme | SCHEME | 1 B | Conditions | Signature scheme (optional) |
+| pubkey | PUBKEY | var | Witness | Public key |
+| signature | SIGNATURE | var | Witness | Signature |
+
+### 55. P2PKH_LEGACY (0x0902)
+
+**Family:** Legacy
+
+Wraps P2PKH (pay-to-pubkey-hash). Computes HASH160(pubkey), compares to committed hash, then verifies signature.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| hash160 | HASH160 | 20 B | Conditions | RIPEMD160(SHA256(pubkey)) |
+| pubkey | PUBKEY | var | Witness | Public key |
+| signature | SIGNATURE | var | Witness | Signature |
+
+### 56. P2SH_LEGACY (0x0903)
+
+**Family:** Legacy
+
+Wraps P2SH (pay-to-script-hash). HASH160 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions that are deserialized and evaluated. Recursion depth limited to 2.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| hash160 | HASH160 | 20 B | Conditions | HASH160 of serialized inner conditions |
+| preimage | PREIMAGE | var | Witness | Serialized Ladder Script conditions |
+| (inner fields) | var | var | Witness | Witness fields for inner conditions |
+
+### 57. P2WPKH_LEGACY (0x0904)
+
+**Family:** Legacy
+
+Wraps P2WPKH (pay-to-witness-pubkey-hash). Delegates to P2PKH evaluator — HASH160(pubkey) check + signature verify.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| hash160 | HASH160 | 20 B | Conditions | RIPEMD160(SHA256(pubkey)) |
+| pubkey | PUBKEY | var | Witness | Public key |
+| signature | SIGNATURE | var | Witness | Signature |
+
+### 58. P2WSH_LEGACY (0x0905)
+
+**Family:** Legacy
+
+Wraps P2WSH (pay-to-witness-script-hash). SHA256 of inner conditions must match. Same pattern as P2SH but with SHA256.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| hash256 | HASH256 | 32 B | Conditions | SHA256 of serialized inner conditions |
+| preimage | PREIMAGE | var | Witness | Serialized Ladder Script conditions |
+| (inner fields) | var | var | Witness | Witness fields for inner conditions |
+
+### 59. P2TR_LEGACY (0x0906)
+
+**Family:** Legacy
+
+Wraps P2TR key-path (Taproot). Key-path spend — same evaluation as SIG block. For script-path, see P2TR_SCRIPT_LEGACY.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| pubkey_commit | PUBKEY_COMMIT | 32 B | Conditions | SHA-256(internal_pubkey) |
+| scheme | SCHEME | 1 B | Conditions | Signature scheme (optional) |
+| pubkey | PUBKEY | var | Witness | Public key |
+| signature | SIGNATURE | var | Witness | Signature |
+
+### 60. P2TR_SCRIPT_LEGACY (0x0907)
+
+**Family:** Legacy
+
+Wraps P2TR script-path (Taproot). This is the critical anti-inscription block — taproot script-path is the primary data-embedding vector. The revealed script leaf must be valid Ladder Script conditions.
+
+| Field | Data Type | Size | Side | Description |
+|-------|-----------|------|------|-------------|
+| hash256 | HASH256 | 32 B | Conditions | Merkle root of script tree |
+| pubkey_commit | PUBKEY_COMMIT | 32 B | Conditions | SHA-256(internal_pubkey) |
+| preimage | PREIMAGE | var | Witness | Revealed script leaf (serialized Ladder conditions) |
+| (inner fields) | var | var | Witness | Witness fields for inner conditions |
+
+**Evaluation:** SHA256(revealed leaf) must equal HASH256 (Merkle root). Leaf deserializes as Ladder Script conditions and is evaluated with remaining witness fields. Recursion depth limited to 2.
+
+---
+
 ## Compact Encodings
 
-Compact encodings are not block types — they are space-optimised wire representations that resolve to standard blocks at deserialisation time. The block count remains 53.
+Compact encodings are not block types — they are space-optimised wire representations that resolve to standard blocks at deserialisation time. The block count remains 60.
 
 ### COMPACT_SIG
 

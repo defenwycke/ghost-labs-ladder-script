@@ -82,7 +82,7 @@ This makes Ladder Script programs amenable to static analysis. The set of condit
 
 ### 2.4 Block Type Families
 
-Block types are organised into nine families, each occupying a dedicated range in the `uint16_t` block type space:
+Block types are organised into ten families, each occupying a dedicated range in the `uint16_t` block type space:
 
 - **Signature** (0x0001--0x00FF): Identity verification — SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG.
 - **Timelock** (0x0100--0x01FF): Temporal constraints — CSV, CSV_TIME, CLTV, CLTV_TIME.
@@ -93,6 +93,7 @@ Block types are organised into nine families, each occupying a dedicated range i
 - **PLC** (0x0600--0x06FF): State machines and flow control — hysteresis, timers, latches, counters, comparators, sequencers, rate limiters, co-spend.
 - **Compound** (0x0700--0x07FF): Multi-condition blocks combining signature, timelock, and hash checks in a single block — HTLC, PTLC, TIMELOCKED_SIG, CLTV_SIG, HASH_SIG, TIMELOCKED_MULTISIG.
 - **Governance** (0x0800--0x08FF): Transaction-level constraints — epoch gates, weight limits, input/output count bounds, relative value ratios, Merkle accumulator proofs.
+- **Legacy** (0x0900--0x09FF): Legacy Bitcoin transaction types wrapped as typed Ladder blocks — P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY.
 
 All block types are activated as a single deployment and are standard upon activation.
 
@@ -150,7 +151,7 @@ Each block begins with a single byte that determines the encoding mode:
 | `0x80` | Escape | Followed by `type(uint16_t LE)`; inverted = false |
 | `0x81` | Escape + inverted | Followed by `type(uint16_t LE)`; inverted = true |
 
-The micro-header lookup table assigns 1-byte slots to all 53 block types:
+The micro-header lookup table assigns 1-byte slots to all 60 block types:
 
 | Slot | Block Type | Slot | Block Type | Slot | Block Type |
 |------|------------|------|------------|------|------------|
@@ -217,7 +218,7 @@ The AGGREGATE mode uses an `AggregateProof` structure containing pubkey commitme
 
 ## 4. Block Type System
 
-Ladder Script defines 53 block types across nine families. Each family occupies a dedicated range in the uint16_t block type space.
+Ladder Script defines 60 block types across ten families. Each family occupies a dedicated range in the uint16_t block type space.
 
 ### 4.1 Signature Family (0x0001--0x00FF)
 
@@ -355,6 +356,26 @@ Transaction-level constraint blocks that enforce structural properties of the sp
 
 **ACCUMULATOR (0x0806):** Merkle set membership proof. Verifies that a value is in a pre-committed allowlist via a Merkle proof.
 
+### 4.10 Legacy Family (0x0900--0x09FF)
+
+Legacy Bitcoin transaction types wrapped as typed Ladder Script blocks. Each block preserves the original spending semantics while eliminating arbitrary data surfaces.
+
+**P2PK_LEGACY (0x0901):** P2PK wrapped. Conditions: PUBKEY_COMMIT + SCHEME. Witness: PUBKEY + SIGNATURE. The PUBKEY_COMMIT commits to the full public key; SCHEME selects the signature algorithm.
+
+**P2PKH_LEGACY (0x0902):** P2PKH wrapped. Conditions: HASH160. Witness: PUBKEY + SIGNATURE. The witness PUBKEY must hash to the committed HASH160 value, and the SIGNATURE must verify against that key.
+
+**P2SH_LEGACY (0x0903):** P2SH wrapped. Conditions: HASH160. Witness: PREIMAGE + inner witness. The PREIMAGE must hash to HASH160 and must deserialize as valid Ladder Script conditions. Inner witness satisfies those conditions. Recursion depth limited to 2.
+
+**P2WPKH_LEGACY (0x0904):** P2WPKH wrapped. Conditions: HASH160. Witness: PUBKEY + SIGNATURE. Delegates to P2PKH_LEGACY evaluation: HASH160 contains the 20-byte witness program.
+
+**P2WSH_LEGACY (0x0905):** P2WSH wrapped. Conditions: HASH256. Witness: PREIMAGE + inner witness. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
+
+**P2TR_LEGACY (0x0906):** P2TR key-path wrapped. Conditions: PUBKEY_COMMIT + SCHEME. Witness: PUBKEY + SIGNATURE. PUBKEY_COMMIT commits to the Taproot internal key. Verification uses Schnorr (BIP-340) by default.
+
+**P2TR_SCRIPT_LEGACY (0x0907):** P2TR script-path wrapped. Conditions: HASH256 + PUBKEY_COMMIT. Witness: PREIMAGE + inner witness. HASH256 is the tapleaf hash; PUBKEY_COMMIT commits to the internal key. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
+
+For P2SH_LEGACY, P2WSH_LEGACY, and P2TR_SCRIPT_LEGACY, the PREIMAGE field in the witness must deserialize as a valid `RungConditions` structure. Arbitrary byte sequences are rejected at deserialization. The recursion depth is limited to 2, preventing unbounded nesting while allowing one level of script wrapping.
+
 ---
 
 ## 5. Post-Quantum Cryptography
@@ -449,6 +470,10 @@ These limits are sufficient for any practical spending condition while preventin
 
 Because every field must conform to a data type that has semantic meaning in the evaluation model, embedding arbitrary data requires encoding it as valid-looking typed fields (e.g., as PUBKEY or HASH256 data). Such fields, if used in conditions, create cryptographically unspendable outputs; the "data" would need to be a valid public key or hash with a known preimage. Funds locked to such outputs are permanently burned. This creates a direct economic cost for data embedding that scales with the amount of data stored.
 
+### 7.5 Legacy Wrapping
+
+Legacy Bitcoin transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) retain writable surfaces for arbitrary data embedding. By wrapping these as typed Ladder Script blocks in the Legacy family (0x0900--0x09FF), all fields become typed and validated. P2SH/P2WSH/P2TR_SCRIPT inner scripts must be valid Ladder Script conditions — arbitrary byte sequences are rejected at deserialization. This closes the inscription vector while preserving legacy spending semantics.
+
 ---
 
 ## 8. Comparison with Existing Proposals
@@ -485,7 +510,7 @@ Simplicity and Ladder Script share the goal of replacing Bitcoin Script with a m
 Ladder Script defends against the following attack classes:
 
 - **Type confusion attacks.** Script's untyped stack allows a 32-byte value to be interpreted as a public key, hash, or arbitrary data depending on context. Ladder Script eliminates this by requiring every field to declare its type, with size constraints enforced at deserialization.
-- **Data smuggling / spam embedding.** Attackers embed arbitrary data in Script witnesses via OP_PUSHDATA. Ladder Script's mandatory typing means every witness byte must conform to a known data type with semantic meaning; embedding arbitrary data requires creating cryptographically unspendable outputs (economic cost).
+- **Data smuggling / spam embedding.** Attackers embed arbitrary data in Script witnesses via OP_PUSHDATA. Ladder Script's mandatory typing means every witness byte must conform to a known data type with semantic meaning; embedding arbitrary data requires creating cryptographically unspendable outputs (economic cost). Additionally, PUBKEY_COMMIT values in compact SIG conditions are always computed by the node from validated public keys — raw user-supplied commitments are rejected, preventing data smuggling via the commitment field.
 - **Witness bloat / DoS.** Pathologically large witnesses can slow validation. Bounded limits (MAX_RUNGS=16, MAX_BLOCKS_PER_RUNG=8, MAX_FIELDS_PER_BLOCK=16, MAX_LADDER_WITNESS_SIZE=10,000 bytes) cap worst-case evaluation at 2,048 field checks.
 - **Signature replay across outputs.** Including the conditions hash in the sighash binds each signature to the specific locking conditions it satisfies, preventing replay even when the same key locks multiple outputs.
 - **Quantum key extraction.** The PUBKEY_COMMIT mechanism stores only a 32-byte hash of the public key in conditions. The full key is revealed only in the witness at spend time, limiting the window for quantum adversaries.
@@ -582,7 +607,7 @@ Total witness size: 1 + 1 + 1 + 1 + 64 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = **75 bytes*
 
 Ladder Script replaces Bitcoin's untyped, imperative scripting model with a typed, declarative block system that draws on decades of industrial control system design. By requiring every byte to be typed, every condition to be named, and every evaluation to be deterministic, Ladder Script eliminates the classes of ambiguity and complexity that have constrained Bitcoin's programmability.
 
-The 53 block types across nine families (signature, timelock, hash, covenant, recursion, anchor, PLC, compound, and governance) provide a comprehensive vocabulary for transaction authorisation. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
+The 60 block types across ten families (signature, timelock, hash, covenant, recursion, anchor, PLC, compound, governance, and legacy) provide a comprehensive vocabulary for transaction authorisation. Post-quantum cryptography is supported natively through the SCHEME routing mechanism and PUBKEY_COMMIT compact representations. Spam resistance is structural rather than policy-dependent.
 
 All block types activate simultaneously as a single deployment. Forward compatibility ensures that transactions using future block types are structurally valid even to nodes that do not yet implement those types.
 

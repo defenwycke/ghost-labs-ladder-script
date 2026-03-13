@@ -60,7 +60,7 @@ The first element of the segregated witness stack for each v4 input is a seriali
 
 **Evaluation entry point:**
 
-The function `VerifyRungTx` is called for each input of a v4 transaction. For `0xC1` inputs, it deserializes conditions from the spent output's `scriptPubKey` and the witness from the spending input. For `0xC2` inputs, it deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 53 block evaluators are identical for both output formats.
+The function `VerifyRungTx` is called for each input of a v4 transaction. For `0xC1` inputs, it deserializes conditions from the spent output's `scriptPubKey` and the witness from the spending input. For `0xC2` inputs, it deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 60 block evaluators are identical for both output formats.
 
 ### Wire Format (v3)
 
@@ -106,7 +106,7 @@ Each block begins with a single byte that determines the encoding mode:
 | `0x80` | Escape | Followed by `type(uint16_t LE)`; inverted = false |
 | `0x81` | Escape + inverted | Followed by `type(uint16_t LE)`; inverted = true |
 
-The micro-header lookup table maps 128 slot indices to block type values. All 53 current block types have assigned slots:
+The micro-header lookup table maps 128 slot indices to block type values. All 60 current block types have assigned slots:
 
 | Slot | Block Type | Slot | Block Type | Slot | Block Type |
 |------|------------|------|------------|------|------------|
@@ -127,9 +127,15 @@ The micro-header lookup table maps 128 slot indices to block type values. All 53
 | 0x0E | RECURSE_MODIFIED | 0x20 | COUNTER_PRESET | 0x32 | ACCUMULATOR |
 | 0x0F | RECURSE_UNTIL | 0x21 | COUNTER_UP | 0x33 | MUSIG_THRESHOLD |
 | 0x10 | RECURSE_COUNT | 0x22 | COMPARE | 0x34 | KEY_REF_SIG |
-| 0x11 | RECURSE_SPLIT | 0x23 | SEQUENCER | | |
+| 0x11 | RECURSE_SPLIT | 0x23 | SEQUENCER | 0x35 | P2PK_LEGACY |
+| | | | | 0x36 | P2PKH_LEGACY |
+| | | | | 0x37 | P2SH_LEGACY |
+| | | | | 0x38 | P2WPKH_LEGACY |
+| | | | | 0x39 | P2WSH_LEGACY |
+| | | | | 0x3A | P2TR_LEGACY |
+| | | | | 0x3B | P2TR_SCRIPT_LEGACY |
 
-Slots `0x35`–`0x7F` are reserved for future block types. Unknown micro-header slots are rejected during deserialization.
+Slots `0x3C`–`0x7F` are reserved for future block types. Unknown micro-header slots are rejected during deserialization.
 
 A micro-header is used when all three conditions are met:
 1. The block type has an assigned micro-header slot.
@@ -383,11 +389,37 @@ The Programmable Logic Controller family brings industrial automation concepts t
 | `0x0631` | COUNTER_DOWN | PUBKEY + NUMERIC(current) + NUMERIC(step) | Down counter. SATISFIED when current count is positive. Decrements by step per spend. |
 | `0x0632` | COUNTER_PRESET | NUMERIC(preset) + NUMERIC(current) | Preset counter (approval accumulator). SATISFIED when current >= preset (threshold reached). |
 | `0x0633` | COUNTER_UP | PUBKEY + NUMERIC(current) + NUMERIC(target) | Up counter. SATISFIED when current >= target. Requires two NUMERIC fields. |
-| `0x0641` | COMPARE | NUMERIC(operator) + NUMERIC(operand) [+ NUMERIC(upper)] | Comparator. Operator encoding: 0=EQ, 1=NEQ, 2=LT, 3=GT, 4=LTE, 5=GTE, 6=IN_RANGE. IN_RANGE requires a third NUMERIC (upper bound). Compares against the output amount from evaluation context. |
+| `0x0641` | COMPARE | NUMERIC(operator) + NUMERIC(operand) [+ NUMERIC(upper)] | Comparator. Operator encoding: 1=EQ, 2=NEQ, 3=LT, 4=GT, 5=LTE, 6=GTE, 7=IN_RANGE. IN_RANGE requires a third NUMERIC (upper bound). Compares against the input amount from evaluation context. |
 | `0x0651` | SEQUENCER | NUMERIC(current_step) + NUMERIC(total_steps) | Step sequencer. SATISFIED when current_step < total_steps. Total must be non-zero. |
 | `0x0661` | ONE_SHOT | HASH256(id) + NUMERIC(window) [+ NUMERIC(state)] | One-shot activation window. SATISFIED when state is zero (not yet fired) or absent. Once fired, permanently unsatisfied. |
 | `0x0671` | RATE_LIMIT | NUMERIC(max_per_window) + NUMERIC(window_blocks) + NUMERIC(current_count) | Rate limiter. SATISFIED when current_count < max_per_window. |
 | `0x0681` | COSIGN | HASH256(conditions_hash) | Co-spend constraint. SATISFIED when another input in the same transaction has rung conditions whose serialised hash matches conditions_hash. The evaluator skips the current input index when scanning. |
+
+**Legacy Family (0x0900-0x09FF):**
+
+The Legacy family wraps traditional Bitcoin transaction types as typed Ladder Script blocks. Each block preserves the original spending semantics while eliminating arbitrary data surfaces.
+
+| Code | Name | Required Fields | Description |
+|------|------|----------------|-------------|
+| `0x0901` | P2PK_LEGACY | Conditions: PUBKEY_COMMIT + SCHEME. Witness: PUBKEY + SIGNATURE | P2PK wrapped as a typed block. The PUBKEY_COMMIT commits to the full public key; SCHEME selects the signature algorithm. Verification is identical to SIG but restricted to P2PK semantics. |
+| `0x0902` | P2PKH_LEGACY | Conditions: HASH160. Witness: PUBKEY + SIGNATURE | P2PKH wrapped. The HASH160 field contains the public key hash. The witness PUBKEY must hash to the committed HASH160 value, and the SIGNATURE must verify against that key. |
+| `0x0903` | P2SH_LEGACY | Conditions: HASH160. Witness: PREIMAGE + inner witness | P2SH wrapped. The HASH160 field is the script hash. The PREIMAGE must hash to HASH160 and must deserialize as valid Ladder Script conditions. Inner witness satisfies those conditions. Recursion depth limited to 2. |
+| `0x0904` | P2WPKH_LEGACY | Conditions: HASH160. Witness: PUBKEY + SIGNATURE | P2WPKH wrapped. Delegates to P2PKH_LEGACY evaluation: HASH160 contains the 20-byte witness program, witness provides the public key and signature. |
+| `0x0905` | P2WSH_LEGACY | Conditions: HASH256. Witness: PREIMAGE + inner witness | P2WSH wrapped. The HASH256 field is the witness script hash. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2. |
+| `0x0906` | P2TR_LEGACY | Conditions: PUBKEY_COMMIT + SCHEME. Witness: PUBKEY + SIGNATURE | P2TR key-path wrapped. PUBKEY_COMMIT commits to the Taproot internal key. Verification uses Schnorr (BIP-340) by default. |
+| `0x0907` | P2TR_SCRIPT_LEGACY | Conditions: HASH256 + PUBKEY_COMMIT. Witness: PREIMAGE + inner witness | P2TR script-path wrapped. HASH256 is the tapleaf hash; PUBKEY_COMMIT commits to the internal key. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2. |
+
+**Inner-conditions semantics (P2SH_LEGACY, P2WSH_LEGACY, P2TR_SCRIPT_LEGACY):** The PREIMAGE field in the witness must deserialize as a valid `RungConditions` structure. Arbitrary byte sequences that do not parse as valid Ladder Script conditions are rejected at deserialization. The recursion depth is limited to 2 (an inner script may not itself contain a P2SH/P2WSH/P2TR_SCRIPT_LEGACY block with another inner script). This prevents unbounded nesting while allowing one level of script wrapping.
+
+#### Legacy Migration Model
+
+The Legacy family supports a three-phase migration path from traditional Bitcoin transaction types to fully typed Ladder Script:
+
+1. **Coexistence.** Both legacy Bitcoin transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) and Ladder Script version 4 transactions are valid on-chain. No existing transaction type is deprecated. Wallets choose which format to use.
+
+2. **Legacy-in-Blocks.** Legacy transaction types are wrapped as typed Ladder Script blocks in the Legacy family. The spending semantics are identical — a P2PKH_LEGACY block evaluates the same way as a P2PKH script — but all fields are typed and validated. No arbitrary data surfaces exist in the wrapped form.
+
+3. **Sunset.** Raw legacy transaction formats are deprecated for new output creation. Only block-wrapped versions in the Legacy family are accepted. Existing legacy UTXOs remain spendable under their original rules indefinitely.
 
 ### Coil Types
 
@@ -572,7 +604,7 @@ Activation uses BIP-9 version bits signaling with Speedy Trial parameters, follo
 | Threshold | 90% (1,815 of 2,016 blocks per retarget period) |
 | Minimum activation height | (to be determined — set to allow sufficient ecosystem preparation) |
 
-All 53 block types activate simultaneously as a single deployment. Upon activation, all block types across all nine families are consensus-enforced and policy-standard. Partial activation of individual block types is not supported; the evaluation engine, wire format, and sighash computation form an interdependent whole.
+All 60 block types activate simultaneously as a single deployment. Upon activation, all block types across all ten families are consensus-enforced and policy-standard. Partial activation of individual block types is not supported; the evaluation engine, wire format, and sighash computation form an interdependent whole.
 
 Nodes that have not upgraded treat version 4 transactions as anyone-can-spend, consistent with the soft fork upgrade path established by BIP-141 and BIP-341.
 
@@ -585,7 +617,7 @@ The reference implementation is located in the `src/rung/` directory:
 | `types.h` / `types.cpp` | Core type definitions: `RungBlockType`, `RungDataType`, `RungCoilType`, `RungAttestationMode`, `RungScheme`, and all struct definitions. |
 | `conditions.h` / `conditions.cpp` | Conditions (locking side): `RungConditions`, serialization to/from `CScript` with `0xc1` prefix, condition data type validation, template inheritance resolution. |
 | `serialize.h` / `serialize.cpp` | Wire format v3 serialization/deserialization with micro-headers, implicit fields, varint NUMERIC, and context-aware encoding. Policy limit constants. |
-| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 53 block types. Rung AND logic, ladder OR logic, inversion. `VerifyRungTx` entry point. `LadderSignatureChecker` for Schnorr/PQ signature verification. |
+| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 60 block types. Rung AND logic, ladder OR logic, inversion. `VerifyRungTx` entry point. `LadderSignatureChecker` for Schnorr/PQ signature verification. |
 | `sighash.h` / `sighash.cpp` | `SignatureHashLadder` tagged hash computation. |
 | `policy.h` / `policy.cpp` | Mempool policy enforcement: `IsStandardRungTx`, `IsStandardRungOutput`. |
 | `aggregate.h` / `aggregate.cpp` | Block-level signature aggregation and deferred attestation. |
@@ -599,9 +631,9 @@ The implementation includes comprehensive test coverage across two layers:
 
 **Unit tests** (`src/test/rung_tests.cpp`): 268 test cases covering:
 - Field validation for all 9 data types with boundary conditions
-- Serialization round-trips for all 53 block types
+- Serialization round-trips for all 60 block types
 - Deserialization rejection of malformed inputs (empty, truncated, trailing bytes, oversized, unknown types)
-- Block evaluation for all block types
+- Block evaluation for all 60 block types
 - Inversion logic including ERROR non-inversion
 - Rung AND logic and ladder OR logic
 - Policy enforcement (standard/non-standard classification)
@@ -672,6 +704,10 @@ Every RECURSE_* block type has a provably reachable terminal state:
 The maximum chain length is bounded by the initial value of the termination parameter (`uint32_t`, max ~4 billion). This is infeasible to execute and each intermediate transaction pays fees, making long chains economically prohibitive.
 
 When multiple RECURSE_* blocks appear in the same rung (AND), the shortest termination parameter dominates. Alternative rungs (OR) may provide early exit paths.
+
+### Commitment Integrity
+
+PUBKEY_COMMIT values are always computed by the node from validated public keys supplied in the `pubkey` field. User-supplied raw 32-byte commitments are rejected. This prevents inscription-style data embedding in the UTXO set via the commitment field, since every stored commitment is provably derived from a real public key.
 
 ### Post-Quantum Library Dependency
 

@@ -572,8 +572,9 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                                 ss.read(MakeWritableByteSpan(block.fields[fi].data));
                             } else {
                                 uint64_t dlen = ReadCompactSize(ss);
-                                if (dlen > FieldMaxSize(layout.fields[fi].type)) {
-                                    error = "MLSC proof field too large";
+                                if (dlen < FieldMinSize(layout.fields[fi].type) ||
+                                    dlen > FieldMaxSize(layout.fields[fi].type)) {
+                                    error = "MLSC proof field size out of range";
                                     return false;
                                 }
                                 block.fields[fi].data.resize(dlen);
@@ -600,6 +601,11 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                                 block.fields[fi].data[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
                             } else {
                                 uint64_t dlen = ReadCompactSize(ss);
+                                if (dlen < FieldMinSize(block.fields[fi].type) ||
+                                    dlen > FieldMaxSize(block.fields[fi].type)) {
+                                    error = "MLSC proof explicit field size out of range";
+                                    return false;
+                                }
                                 block.fields[fi].data.resize(dlen);
                                 if (dlen > 0) ss.read(MakeWritableByteSpan(block.fields[fi].data));
                             }
@@ -631,6 +637,11 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                             block.fields[fi].data[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
                         } else {
                             uint64_t dlen = ReadCompactSize(ss);
+                            if (dlen < FieldMinSize(block.fields[fi].type) ||
+                                dlen > FieldMaxSize(block.fields[fi].type)) {
+                                error = "MLSC proof escape field size out of range";
+                                return false;
+                            }
                             block.fields[fi].data.resize(dlen);
                             if (dlen > 0) ss.read(MakeWritableByteSpan(block.fields[fi].data));
                         }
@@ -644,6 +655,11 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                 for (const auto& field : block.fields) {
                     if (!IsConditionDataType(field.type)) {
                         error = "MLSC proof contains witness-only field: " + DataTypeName(field.type);
+                        return false;
+                    }
+                    std::string field_reason;
+                    if (!field.IsValid(field_reason)) {
+                        error = "MLSC proof invalid field: " + field_reason;
                         return false;
                     }
                 }
@@ -728,6 +744,11 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                             ss.read(MakeWritableByteSpan(rblock.fields[fi].data));
                         } else {
                             uint64_t dlen = ReadCompactSize(ss);
+                            if (dlen < FieldMinSize(layout.fields[fi].type) ||
+                                dlen > FieldMaxSize(layout.fields[fi].type)) {
+                                error = "MLSC proof relay field size out of range";
+                                return false;
+                            }
                             rblock.fields[fi].data.resize(dlen);
                             if (dlen > 0) ss.read(MakeWritableByteSpan(rblock.fields[fi].data));
                         }
@@ -751,6 +772,11 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
                             rblock.fields[fi].data[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
                         } else {
                             uint64_t dlen = ReadCompactSize(ss);
+                            if (dlen < FieldMinSize(rblock.fields[fi].type) ||
+                                dlen > FieldMaxSize(rblock.fields[fi].type)) {
+                                error = "MLSC proof relay explicit field size out of range";
+                                return false;
+                            }
                             rblock.fields[fi].data.resize(dlen);
                             if (dlen > 0) ss.read(MakeWritableByteSpan(rblock.fields[fi].data));
                         }

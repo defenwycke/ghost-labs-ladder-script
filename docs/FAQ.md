@@ -444,7 +444,7 @@ Features include:
 |-----|---------|
 | `createrungtx` | Create a v4 RUNG_TX transaction from JSON conditions |
 | `signrungtx` | Sign a v4 transaction (Schnorr, ECDSA, or PQ) |
-| `decoderungtx` | Decode and display a v4 transaction's conditions and witness |
+| `decoderung` | Decode and display a v4 transaction's conditions and witness |
 | `generatepqkeypair` | Generate a post-quantum keypair (FALCON512, etc.) |
 | `pqpubkeycommit` | Compute SHA-256 commitment for a PQ public key |
 | `extractadaptorsecret` | Extract adaptor secret from adapted/pre-signatures |

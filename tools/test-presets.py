@@ -331,6 +331,34 @@ BLOCK_FIELDS = {
         {"name": "merkle_root", "dataType": "HASH256"},
         {"name": "merkle_leaves", "dataType": "HASH256", "multi": True, "noWire": True},
     ],
+    "P2PK_LEGACY": [
+        {"name": "pubkey_commit", "dataType": "HASH256"},
+        {"name": "scheme", "dataType": "SCHEME", "optional": True},
+        {"name": "pubkey", "dataType": "PUBKEY", "noWire": True},
+    ],
+    "P2PKH_LEGACY": [
+        {"name": "hash160", "dataType": "HASH160"},
+        {"name": "pubkey", "dataType": "PUBKEY", "noWire": True},
+    ],
+    "P2SH_LEGACY": [
+        {"name": "hash160", "dataType": "HASH160"},
+    ],
+    "P2WPKH_LEGACY": [
+        {"name": "hash160", "dataType": "HASH160"},
+        {"name": "pubkey", "dataType": "PUBKEY", "noWire": True},
+    ],
+    "P2WSH_LEGACY": [
+        {"name": "hash256", "dataType": "HASH256"},
+    ],
+    "P2TR_LEGACY": [
+        {"name": "pubkey_commit", "dataType": "HASH256"},
+        {"name": "scheme", "dataType": "SCHEME", "optional": True},
+        {"name": "pubkey", "dataType": "PUBKEY", "noWire": True},
+    ],
+    "P2TR_SCRIPT_LEGACY": [
+        {"name": "hash256", "dataType": "HASH256"},
+        {"name": "pubkey_commit", "dataType": "HASH256"},
+    ],
 }
 
 SCHEME_MAP = {"SCHNORR": "01", "ECDSA": "02", "FALCON512": "10", "FALCON1024": "11", "DILITHIUM3": "12", "SPHINCS_SHA": "13"}
@@ -354,6 +382,10 @@ KEY_BLOCKS = {
     "COUNTER_UP": [("pubkey", False)],
     "ANCHOR_CHANNEL": [("local_key", False), ("remote_key", False)],
     "ANCHOR_ORACLE": [("oracle_pk", False)],
+    "P2PK_LEGACY": [("pubkey", False)],
+    "P2PKH_LEGACY": [("pubkey", False)],
+    "P2WPKH_LEGACY": [("pubkey", False)],
+    "P2TR_LEGACY": [("pubkey", False)],
 }
 
 # Block types that need hash preimages
@@ -996,6 +1028,47 @@ PRESETS.append({
     "outputs": [{"amount": 20000}],
 })
 
+# Legacy block presets — wrap classic Bitcoin script types as typed Ladder blocks
+PRESETS.append({
+    "title": "P2PK Legacy",
+    "rungs": [
+        {"label": "SPEND", "blocks": [
+            {"type": "P2PK_LEGACY", "values": {"pubkey": FAKE["pk1"]}},
+        ]},
+    ],
+    "outputs": [{"amount": 10000}],
+})
+
+PRESETS.append({
+    "title": "P2PKH Legacy",
+    "rungs": [
+        {"label": "SPEND", "blocks": [
+            {"type": "P2PKH_LEGACY", "values": {"pubkey": FAKE["pk1"]}},
+        ]},
+    ],
+    "outputs": [{"amount": 10000}],
+})
+
+PRESETS.append({
+    "title": "P2WPKH Legacy",
+    "rungs": [
+        {"label": "SPEND", "blocks": [
+            {"type": "P2WPKH_LEGACY", "values": {"pubkey": FAKE["pk1"]}},
+        ]},
+    ],
+    "outputs": [{"amount": 10000}],
+})
+
+PRESETS.append({
+    "title": "P2TR Legacy",
+    "rungs": [
+        {"label": "SPEND", "blocks": [
+            {"type": "P2TR_LEGACY", "values": {"pubkey": FAKE["pk1"]}},
+        ]},
+    ],
+    "outputs": [{"amount": 10000}],
+})
+
 
 # ═══════════════════════════════════════════════════════════════
 # FUND FLOW
@@ -1100,6 +1173,16 @@ def fund_preset(preset, verbose=True):
             hr = hash_replacements.get(f"{ri}:{bi}")
             if hr and "hash" in vals:
                 vals["hash"] = hr["hash"]
+
+            # Compute derived hashes for legacy block types
+            if btype in ("P2PK_LEGACY", "P2TR_LEGACY"):
+                pk_hex = vals.get("pubkey", "")
+                if pk_hex:
+                    vals["pubkey_commit"] = hashlib.sha256(bytes.fromhex(pk_hex)).digest().hex()
+            elif btype in ("P2PKH_LEGACY", "P2WPKH_LEGACY"):
+                pk_hex = vals.get("pubkey", "")
+                if pk_hex:
+                    vals["hash160"] = hashlib.new('ripemd160', hashlib.sha256(bytes.fromhex(pk_hex)).digest()).digest().hex()
 
             block["values"] = vals
 
@@ -1632,6 +1715,26 @@ def spend_preset(record, spend_rung_idx=0, verbose=True, dry_run=False):
             # COUNTER_UP: no witness key needed (evaluator only checks current < target)
             # Engine sends {type: "COUNTER_UP"} with no privkey
             signer_blocks.append({"type": "COUNTER_UP"})
+
+        elif btype in ("P2PK_LEGACY", "P2TR_LEGACY"):
+            pk = vals.get("pubkey", "")
+            key = key_by_pubkey.get(pk)
+            if key:
+                entry = {"type": btype, "privkey": key["privkey"]}
+                s = vals.get("scheme", scheme)
+                if s and s != "SCHNORR":
+                    entry["scheme"] = s
+                signer_blocks.append(entry)
+            else:
+                signer_blocks.append({"type": btype})
+
+        elif btype in ("P2PKH_LEGACY", "P2WPKH_LEGACY"):
+            pk = vals.get("pubkey", "")
+            key = key_by_pubkey.get(pk)
+            if key:
+                signer_blocks.append({"type": btype, "privkey": key["privkey"], "pubkey": key["pubkey"]})
+            else:
+                signer_blocks.append({"type": btype})
 
         else:
             # All other types: no witness data needed (COMPARE, SEQUENCER, AMOUNT_LOCK, etc.)

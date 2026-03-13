@@ -140,6 +140,15 @@ EvalResult EvalPTLCBlock(const RungBlock& block, const BaseSignatureChecker& che
 EvalResult EvalCLTVSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalTimelockedMultisigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 
+// Legacy evaluators (wrapped Bitcoin transaction types)
+EvalResult EvalP2PKLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalP2PKHLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalP2SHLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, const RungEvalContext& ctx);
+EvalResult EvalP2WPKHLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalP2WSHLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, const RungEvalContext& ctx);
+EvalResult EvalP2TRLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
+EvalResult EvalP2TRScriptLegacyBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, const RungEvalContext& ctx);
+
 // Governance evaluators (transaction-level constraints)
 EvalResult EvalEpochGateBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalWeightLimitBlock(const RungBlock& block, const RungEvalContext& ctx);

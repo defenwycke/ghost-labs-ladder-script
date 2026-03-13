@@ -728,7 +728,7 @@
       <div class="section-num">// 05</div>
       <h2 class="section-title">Block Type Families</h2>
       <div class="section-content">
-        <p>53 block types organized into nine numbered families. New block types are added within families, not as opcodes. See the <a href="docs/#BLOCKS" style="color:var(--orange);text-decoration:none;">Block Reference</a> for deep-dive documentation on each type.</p>
+        <p>60 block types organized into ten numbered families. New block types are added within families, not as opcodes. See the <a href="docs/#BLOCKS" style="color:var(--orange);text-decoration:none;">Block Reference</a> for deep-dive documentation on each type.</p>
       </div>
 
       <div class="family-grid">
@@ -880,7 +880,7 @@
         <div class="explainer-text">
           <h4>Version 4 Transactions</h4>
           <p>Ladder Script supports two output formats. <strong>Inline</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC1</code>) stores full serialized conditions in the output. <strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) stores only a 32-byte Merkle root &mdash; conditions are revealed at spend time in the witness.</p>
-          <p>The conditions provide the lock (pubkeys, hashes, parameters). The witness provides the key (signatures, preimages). At verification time, they merge field-by-field for evaluation. All 53 block evaluators are identical for both output formats.</p>
+          <p>The conditions provide the lock (pubkeys, hashes, parameters). The witness provides the key (signatures, preimages). At verification time, they merge field-by-field for evaluation. All 60 block evaluators are identical for both output formats.</p>
           <p><strong>Compact rungs</strong> use an <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">n_blocks == 0</code> sentinel to store data inline without block overhead. COMPACT_SIG stores a 32-byte pubkey commitment and 1-byte scheme directly on the rung, resolving to a standard SIG block at evaluation time. Primarily used for change outputs.</p>
           <p>Sighash uses a tagged hash <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">"LadderSighash"</code> that commits to the conditions hash (or Merkle root for MLSC outputs), binding each signature to the exact conditions it satisfies.</p>
         </div>

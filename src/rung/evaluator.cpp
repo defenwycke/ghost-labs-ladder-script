@@ -210,7 +210,7 @@ EvalResult ApplyInversion(EvalResult raw, bool inverted)
     case EvalResult::SATISFIED:        return EvalResult::UNSATISFIED;
     case EvalResult::UNSATISFIED:      return EvalResult::SATISFIED;
     case EvalResult::ERROR:            return EvalResult::ERROR; // errors never flip
-    case EvalResult::UNKNOWN_BLOCK_TYPE: return EvalResult::SATISFIED; // unknown inverted → satisfied
+    case EvalResult::UNKNOWN_BLOCK_TYPE: return EvalResult::ERROR; // unknown types must not satisfy
     }
     return raw;
 }
@@ -228,6 +228,7 @@ static EvalResult EvalPQSig(RungScheme scheme,
 {
     auto* ladder_checker = dynamic_cast<const LadderSignatureChecker*>(&checker);
     if (!ladder_checker) return EvalResult::ERROR;
+    if (!HasPQSupport()) return EvalResult::ERROR;
 
     uint256 sighash;
     if (!ladder_checker->ComputeSighash(SIGHASH_DEFAULT, sighash)) {
@@ -284,7 +285,30 @@ EvalResult EvalSigBlock(const RungBlock& block,
         if (IsPQScheme(scheme)) {
             return EvalPQSig(scheme, *sig_field, *pubkey_field, checker);
         }
-        // SCHNORR/ECDSA scheme values fall through to existing size-based routing
+        // Explicit SCHNORR/ECDSA routing when SCHEME is specified
+        if (scheme == RungScheme::SCHNORR) {
+            std::span<const unsigned char> sig_span{sig_field->data.data(), sig_field->data.size()};
+            std::span<const unsigned char> pubkey_span{pubkey_field->data.data(), pubkey_field->data.size()};
+            std::vector<unsigned char> xonly;
+            if (pubkey_field->data.size() == 33) {
+                xonly.assign(pubkey_field->data.begin() + 1, pubkey_field->data.end());
+                pubkey_span = std::span<const unsigned char>{xonly.data(), xonly.size()};
+            }
+            if (checker.CheckSchnorrSignature(sig_span, pubkey_span, sigversion, execdata, nullptr)) {
+                return EvalResult::SATISFIED;
+            }
+            return EvalResult::UNSATISFIED;
+        }
+        if (scheme == RungScheme::ECDSA) {
+            std::vector<unsigned char> sig_vec(sig_field->data.begin(), sig_field->data.end());
+            std::vector<unsigned char> pubkey_vec(pubkey_field->data.begin(), pubkey_field->data.end());
+            CScript empty_script;
+            if (checker.CheckECDSASignature(sig_vec, pubkey_vec, empty_script, sigversion)) {
+                return EvalResult::SATISFIED;
+            }
+            return EvalResult::UNSATISFIED;
+        }
+        // Unknown classical scheme — fall through to size-based routing
     }
 
     std::span<const unsigned char> sig_span{sig_field->data.data(), sig_field->data.size()};
@@ -339,11 +363,17 @@ EvalResult EvalMultisigBlock(const RungBlock& block,
     uint32_t threshold = static_cast<uint32_t>(threshold_val);
 
     // Resolve pubkey commitments: verify each PUBKEY_COMMIT matches a witness PUBKEY
+    auto commits = FindAllFields(block, RungDataType::PUBKEY_COMMIT);
     auto pubkeys = ResolvePubkeyCommitments(block);
     auto sigs = FindAllFields(block, RungDataType::SIGNATURE);
 
     if (pubkeys.empty() || threshold > pubkeys.size()) {
         return EvalResult::ERROR;
+    }
+    // Every revealed witness PUBKEY must match a PUBKEY_COMMIT (no unbound pubkeys)
+    auto witness_pubkeys = FindAllFields(block, RungDataType::PUBKEY);
+    if (!commits.empty() && pubkeys.size() != witness_pubkeys.size()) {
+        return EvalResult::UNSATISFIED; // Some witness pubkeys don't match any commit
     }
     if (sigs.size() < threshold) {
         return EvalResult::UNSATISFIED;
@@ -1029,7 +1059,8 @@ static bool ParseMutationSpecs(const std::vector<const RungField*>& numerics,
 
     // New format: numerics[1] = num_mutations, then 4 fields per mutation
     int64_t num_mutations = ReadNumeric(*numerics[1]);
-    if (num_mutations < 1 || static_cast<size_t>(2 + 4 * num_mutations) > numerics.size()) {
+    if (num_mutations < 1 || num_mutations > 64 ||
+        static_cast<size_t>(2 + 4 * num_mutations) > numerics.size()) {
         return false;
     }
     for (int64_t i = 0; i < num_mutations; ++i) {
@@ -2111,7 +2142,9 @@ EvalResult EvalRelativeValueBlock(const RungBlock& block, const RungEvalContext&
     int64_t rhs = ctx.input_amount * numerator;
 
     // Overflow check: if either multiplication would overflow, use __int128
-    if (ctx.output_amount > 0 && lhs / denominator != ctx.output_amount) {
+    bool lhs_overflow = (ctx.output_amount > 0 && lhs / denominator != ctx.output_amount);
+    bool rhs_overflow = (ctx.input_amount > 0 && numerator != 0 && rhs / numerator != ctx.input_amount);
+    if (lhs_overflow || rhs_overflow) {
         // Overflow — use extended precision
         __int128 lhs128 = static_cast<__int128>(ctx.output_amount) * denominator;
         __int128 rhs128 = static_cast<__int128>(ctx.input_amount) * numerator;
@@ -2269,6 +2302,285 @@ EvalResult EvalKeyRefSigBlock(const RungBlock& block,
     }
 
     return EvalResult::ERROR;
+}
+
+// ============================================================================
+// Shared signature verification helper
+// ============================================================================
+
+/** Verify a signature using PUBKEY_COMMIT check + SCHEME routing + sig dispatch.
+ *  Shared by SIG-like evaluators (EvalSigBlock, P2PKH, TIMELOCKED_SIG, etc.).
+ *  Assumes pubkey_field and sig_field are non-null and PUBKEY_COMMIT already verified. */
+static EvalResult VerifySigFromFields(const RungField& pubkey_field,
+                                       const RungField& sig_field,
+                                       const RungField* scheme_field,
+                                       const BaseSignatureChecker& checker,
+                                       SigVersion sigversion,
+                                       ScriptExecutionData& execdata)
+{
+    // Check for explicit SCHEME field — routes to PQ verifier if present
+    if (scheme_field && !scheme_field->data.empty()) {
+        auto scheme = static_cast<RungScheme>(scheme_field->data[0]);
+        if (IsPQScheme(scheme)) {
+            return EvalPQSig(scheme, sig_field, pubkey_field, checker);
+        }
+    }
+
+    std::span<const unsigned char> sig_span{sig_field.data.data(), sig_field.data.size()};
+    std::span<const unsigned char> pubkey_span{pubkey_field.data.data(), pubkey_field.data.size()};
+
+    if (sig_field.data.size() >= 64 && sig_field.data.size() <= 65) {
+        std::vector<unsigned char> xonly;
+        if (pubkey_field.data.size() == 33) {
+            xonly.assign(pubkey_field.data.begin() + 1, pubkey_field.data.end());
+            pubkey_span = std::span<const unsigned char>{xonly.data(), xonly.size()};
+        }
+        if (checker.CheckSchnorrSignature(sig_span, pubkey_span, sigversion, execdata, nullptr)) {
+            return EvalResult::SATISFIED;
+        }
+        return EvalResult::UNSATISFIED;
+    }
+
+    if (sig_field.data.size() >= 8 && sig_field.data.size() <= 72) {
+        std::vector<unsigned char> sig_vec(sig_field.data.begin(), sig_field.data.end());
+        std::vector<unsigned char> pubkey_vec(pubkey_field.data.begin(), pubkey_field.data.end());
+        CScript empty_script;
+        if (checker.CheckECDSASignature(sig_vec, pubkey_vec, empty_script, sigversion)) {
+            return EvalResult::SATISFIED;
+        }
+        return EvalResult::UNSATISFIED;
+    }
+
+    return EvalResult::ERROR;
+}
+
+// ============================================================================
+// Legacy evaluators (wrapped Bitcoin transaction types)
+// ============================================================================
+
+/** Maximum recursion depth for P2SH/P2WSH/P2TR_SCRIPT inner condition evaluation. */
+static constexpr int MAX_LEGACY_INNER_DEPTH = 2;
+
+/** Evaluate inner conditions from a PREIMAGE field (used by P2SH, P2WSH, P2TR_SCRIPT).
+ *  Deserializes the PREIMAGE as LadderWitness conditions, then evaluates using remaining
+ *  witness fields from the outer block. */
+static EvalResult EvalInnerConditions(const std::vector<uint8_t>& preimage_data,
+                                       const RungBlock& outer_block,
+                                       const BaseSignatureChecker& checker,
+                                       SigVersion sigversion,
+                                       ScriptExecutionData& execdata,
+                                       const RungEvalContext& ctx,
+                                       int depth)
+{
+    if (depth > MAX_LEGACY_INNER_DEPTH) {
+        return EvalResult::ERROR;
+    }
+
+    // Deserialize inner conditions from PREIMAGE bytes
+    LadderWitness inner;
+    std::string error;
+    if (!DeserializeLadderWitness(preimage_data, inner, error, SerializationContext::CONDITIONS)) {
+        return EvalResult::ERROR;
+    }
+
+    if (inner.rungs.empty()) {
+        return EvalResult::ERROR;
+    }
+
+    // Collect witness fields from outer block (everything except HASH160/HASH256/PUBKEY_COMMIT/PREIMAGE)
+    // These become the witness fields for the inner conditions' blocks
+    std::vector<const RungField*> witness_fields;
+    for (const auto& field : outer_block.fields) {
+        if (field.type == RungDataType::PUBKEY || field.type == RungDataType::SIGNATURE ||
+            field.type == RungDataType::NUMERIC || field.type == RungDataType::SCHEME) {
+            witness_fields.push_back(&field);
+        }
+    }
+
+    // Evaluate inner rungs: OR logic (first satisfied rung wins)
+    for (const auto& rung : inner.rungs) {
+        bool all_satisfied = true;
+        for (const auto& block : rung.blocks) {
+            // Build a combined block with inner conditions + outer witness fields
+            RungBlock combined;
+            combined.type = block.type;
+            combined.inverted = block.inverted;
+            // Add inner condition fields
+            for (const auto& f : block.fields) {
+                combined.fields.push_back(f);
+            }
+            // Add outer witness fields
+            for (const auto* wf : witness_fields) {
+                combined.fields.push_back(*wf);
+            }
+
+            // Check for recursive legacy blocks
+            if (block.type == RungBlockType::P2SH_LEGACY ||
+                block.type == RungBlockType::P2WSH_LEGACY ||
+                block.type == RungBlockType::P2TR_SCRIPT_LEGACY) {
+                // These would need deeper recursion — check depth
+                if (depth + 1 > MAX_LEGACY_INNER_DEPTH) {
+                    all_satisfied = false;
+                    break;
+                }
+            }
+
+            EvalResult result = EvalBlock(combined, checker, sigversion, execdata, ctx);
+            if (result != EvalResult::SATISFIED) {
+                all_satisfied = false;
+                break;
+            }
+        }
+        if (all_satisfied) return EvalResult::SATISFIED;
+    }
+
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalP2PKLegacyBlock(const RungBlock& block,
+                                const BaseSignatureChecker& checker,
+                                SigVersion sigversion,
+                                ScriptExecutionData& execdata)
+{
+    // P2PK_LEGACY: identical to SIG block — delegates directly
+    return EvalSigBlock(block, checker, sigversion, execdata);
+}
+
+EvalResult EvalP2PKHLegacyBlock(const RungBlock& block,
+                                 const BaseSignatureChecker& checker,
+                                 SigVersion sigversion,
+                                 ScriptExecutionData& execdata)
+{
+    // P2PKH_LEGACY: HASH160(pubkey) == committed hash, then verify sig
+    const RungField* hash160_field = FindField(block, RungDataType::HASH160);
+    const RungField* pubkey_field = FindField(block, RungDataType::PUBKEY);
+    const RungField* sig_field = FindField(block, RungDataType::SIGNATURE);
+
+    if (!hash160_field || !pubkey_field || !sig_field) {
+        return EvalResult::ERROR;
+    }
+    if (hash160_field->data.size() != 20) {
+        return EvalResult::ERROR;
+    }
+
+    // Compute HASH160(pubkey) and compare
+    unsigned char computed[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pubkey_field->data).Finalize(computed);
+    if (memcmp(computed, hash160_field->data.data(), 20) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // Verify signature
+    const RungField* scheme_field = FindField(block, RungDataType::SCHEME);
+    return VerifySigFromFields(*pubkey_field, *sig_field, scheme_field, checker, sigversion, execdata);
+}
+
+EvalResult EvalP2WPKHLegacyBlock(const RungBlock& block,
+                                  const BaseSignatureChecker& checker,
+                                  SigVersion sigversion,
+                                  ScriptExecutionData& execdata)
+{
+    // P2WPKH_LEGACY: identical evaluation to P2PKH
+    return EvalP2PKHLegacyBlock(block, checker, sigversion, execdata);
+}
+
+EvalResult EvalP2TRLegacyBlock(const RungBlock& block,
+                                const BaseSignatureChecker& checker,
+                                SigVersion sigversion,
+                                ScriptExecutionData& execdata)
+{
+    // P2TR_LEGACY key-path: identical to SIG block — delegates directly
+    return EvalSigBlock(block, checker, sigversion, execdata);
+}
+
+EvalResult EvalP2SHLegacyBlock(const RungBlock& block,
+                                const BaseSignatureChecker& checker,
+                                SigVersion sigversion,
+                                ScriptExecutionData& execdata,
+                                const RungEvalContext& ctx)
+{
+    // P2SH_LEGACY: HASH160(inner_conditions) == committed hash, then eval inner
+    const RungField* hash160_field = FindField(block, RungDataType::HASH160);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+
+    if (!hash160_field || !preimage_field) {
+        return EvalResult::ERROR;
+    }
+    if (hash160_field->data.size() != 20) {
+        return EvalResult::ERROR;
+    }
+
+    // Compute HASH160(preimage) and compare
+    unsigned char computed[CHash160::OUTPUT_SIZE];
+    CHash160().Write(preimage_field->data).Finalize(computed);
+    if (memcmp(computed, hash160_field->data.data(), 20) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // Deserialize and evaluate inner conditions
+    return EvalInnerConditions(preimage_field->data, block, checker, sigversion, execdata, ctx, 1);
+}
+
+EvalResult EvalP2WSHLegacyBlock(const RungBlock& block,
+                                 const BaseSignatureChecker& checker,
+                                 SigVersion sigversion,
+                                 ScriptExecutionData& execdata,
+                                 const RungEvalContext& ctx)
+{
+    // P2WSH_LEGACY: SHA256(inner_conditions) == committed hash, then eval inner
+    const RungField* hash256_field = FindField(block, RungDataType::HASH256);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+
+    if (!hash256_field || !preimage_field) {
+        return EvalResult::ERROR;
+    }
+    if (hash256_field->data.size() != 32) {
+        return EvalResult::ERROR;
+    }
+
+    // Compute SHA256(preimage) and compare
+    unsigned char computed[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(preimage_field->data.data(), preimage_field->data.size()).Finalize(computed);
+    if (memcmp(computed, hash256_field->data.data(), 32) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // Deserialize and evaluate inner conditions
+    return EvalInnerConditions(preimage_field->data, block, checker, sigversion, execdata, ctx, 1);
+}
+
+EvalResult EvalP2TRScriptLegacyBlock(const RungBlock& block,
+                                      const BaseSignatureChecker& checker,
+                                      SigVersion sigversion,
+                                      ScriptExecutionData& execdata,
+                                      const RungEvalContext& ctx)
+{
+    // P2TR_SCRIPT_LEGACY: script-path spend
+    // Conditions: HASH256 (Merkle root of script tree) + PUBKEY_COMMIT (internal key)
+    // Witness: PREIMAGE (revealed leaf = serialized Ladder Script conditions) + inner witness fields
+    // Verification: hash the revealed leaf, check it matches the Merkle root,
+    //               then deserialize and evaluate inner conditions.
+    const RungField* hash256_field = FindField(block, RungDataType::HASH256);
+    const RungField* pubkey_commit = FindField(block, RungDataType::PUBKEY_COMMIT);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+
+    if (!hash256_field || !pubkey_commit || !preimage_field) {
+        return EvalResult::ERROR;
+    }
+    if (hash256_field->data.size() != 32 || pubkey_commit->data.size() != 32) {
+        return EvalResult::ERROR;
+    }
+
+    // Verify revealed leaf hashes into Merkle root.
+    // For a single-leaf tree, SHA256(leaf) == root.
+    unsigned char leaf_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(preimage_field->data.data(), preimage_field->data.size()).Finalize(leaf_hash);
+    if (memcmp(leaf_hash, hash256_field->data.data(), 32) != 0) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // Deserialize and evaluate inner conditions
+    return EvalInnerConditions(preimage_field->data, block, checker, sigversion, execdata, ctx, 1);
 }
 
 // ============================================================================
@@ -2450,6 +2762,28 @@ EvalResult EvalBlock(const RungBlock& block,
         break;
     case RungBlockType::ACCUMULATOR:
         raw = EvalAccumulatorBlock(block);
+        break;
+    // Legacy
+    case RungBlockType::P2PK_LEGACY:
+        raw = EvalP2PKLegacyBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::P2PKH_LEGACY:
+        raw = EvalP2PKHLegacyBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::P2SH_LEGACY:
+        raw = EvalP2SHLegacyBlock(block, checker, sigversion, execdata, ctx);
+        break;
+    case RungBlockType::P2WPKH_LEGACY:
+        raw = EvalP2WPKHLegacyBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::P2WSH_LEGACY:
+        raw = EvalP2WSHLegacyBlock(block, checker, sigversion, execdata, ctx);
+        break;
+    case RungBlockType::P2TR_LEGACY:
+        raw = EvalP2TRLegacyBlock(block, checker, sigversion, execdata);
+        break;
+    case RungBlockType::P2TR_SCRIPT_LEGACY:
+        raw = EvalP2TRScriptLegacyBlock(block, checker, sigversion, execdata, ctx);
         break;
     default:
         raw = EvalResult::UNKNOWN_BLOCK_TYPE;

@@ -174,8 +174,12 @@ bool VerifyAdaptorPreSignature(const std::vector<uint8_t>& pubkey_bytes,
     // Compare s'*G with R + e*P
     unsigned char sG_ser[33], R_plus_eP_ser[33];
     size_t sG_len = 33, R_plus_eP_len = 33;
-    secp256k1_ec_pubkey_serialize(secp256k1_context_static, sG_ser, &sG_len, &sG_point, SECP256K1_EC_COMPRESSED);
-    secp256k1_ec_pubkey_serialize(secp256k1_context_static, R_plus_eP_ser, &R_plus_eP_len, &R_plus_eP, SECP256K1_EC_COMPRESSED);
+    if (!secp256k1_ec_pubkey_serialize(secp256k1_context_static, sG_ser, &sG_len, &sG_point, SECP256K1_EC_COMPRESSED)) {
+        return false;
+    }
+    if (!secp256k1_ec_pubkey_serialize(secp256k1_context_static, R_plus_eP_ser, &R_plus_eP_len, &R_plus_eP, SECP256K1_EC_COMPRESSED)) {
+        return false;
+    }
 
     return sG_len == R_plus_eP_len && std::memcmp(sG_ser, R_plus_eP_ser, sG_len) == 0;
 }

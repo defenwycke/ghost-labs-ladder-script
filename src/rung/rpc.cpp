@@ -267,6 +267,14 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
     if (name == "ONE_SHOT")         { out = RungBlockType::ONE_SHOT; return true; }
     if (name == "RATE_LIMIT")       { out = RungBlockType::RATE_LIMIT; return true; }
     if (name == "COSIGN")           { out = RungBlockType::COSIGN; return true; }
+    // Legacy family
+    if (name == "P2PK_LEGACY")      { out = RungBlockType::P2PK_LEGACY; return true; }
+    if (name == "P2PKH_LEGACY")     { out = RungBlockType::P2PKH_LEGACY; return true; }
+    if (name == "P2SH_LEGACY")      { out = RungBlockType::P2SH_LEGACY; return true; }
+    if (name == "P2WPKH_LEGACY")    { out = RungBlockType::P2WPKH_LEGACY; return true; }
+    if (name == "P2WSH_LEGACY")     { out = RungBlockType::P2WSH_LEGACY; return true; }
+    if (name == "P2TR_LEGACY")      { out = RungBlockType::P2TR_LEGACY; return true; }
+    if (name == "P2TR_SCRIPT_LEGACY") { out = RungBlockType::P2TR_SCRIPT_LEGACY; return true; }
     // Backward compat aliases
     if (name == "HASHLOCK")         { out = RungBlockType::HASH_PREIMAGE; return true; }
     if (name == "ANCHOR_BOND")      { out = RungBlockType::ANCHOR_SEAL; return true; }
@@ -281,7 +289,10 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
 static bool ParseDataType(const std::string& name, RungDataType& out)
 {
     if (name == "PUBKEY")        { out = RungDataType::PUBKEY; return true; }
-    if (name == "PUBKEY_COMMIT") { out = RungDataType::PUBKEY_COMMIT; return true; }
+    if (name == "PUBKEY_COMMIT") {
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            "Use PUBKEY instead of PUBKEY_COMMIT; the node computes the commitment automatically");
+    }
     if (name == "HASH256")       { out = RungDataType::HASH256; return true; }
     if (name == "HASH160")       { out = RungDataType::HASH160; return true; }
     if (name == "PREIMAGE")      { out = RungDataType::PREIMAGE; return true; }
@@ -688,22 +699,34 @@ static RungConditions ParseConditionsSpec(const UniValue& rungs_arr,
         const UniValue& rung_obj = rungs_arr[r];
         Rung rung;
 
-        // Compact rung: {"compact_type": "COMPACT_SIG", "pubkey_commit": "hex", "scheme": "SCHNORR"}
+        // Compact rung: {"compact_type": "COMPACT_SIG", "pubkey": "hex", "scheme": "SCHNORR"}
         if (rung_obj.exists("compact_type")) {
             std::string ctype = rung_obj["compact_type"].get_str();
             if (ctype == "COMPACT_SIG") {
                 CompactRungData compact;
                 compact.type = CompactRungType::COMPACT_SIG;
-                compact.pubkey_commit = ParseHex(rung_obj["pubkey_commit"].get_str());
-                if (compact.pubkey_commit.size() == 33) {
-                    // Auto-hash compressed pubkey → 32-byte commitment
-                    std::vector<unsigned char> commit(CSHA256::OUTPUT_SIZE);
-                    CSHA256().Write(compact.pubkey_commit.data(), compact.pubkey_commit.size()).Finalize(commit.data());
-                    compact.pubkey_commit = std::move(commit);
-                } else if (compact.pubkey_commit.size() != 32) {
+                // Accept both "pubkey" (preferred) and "pubkey_commit" (backward compat)
+                std::string pubkey_field = rung_obj.exists("pubkey") ? "pubkey" : "pubkey_commit";
+                auto pubkey_bytes = ParseHex(rung_obj[pubkey_field].get_str());
+                size_t pk_size = pubkey_bytes.size();
+                // Validate pubkey size: 33 (compressed secp256k1), 32 (x-only Schnorr),
+                // 897 (FALCON512), 1793 (FALCON1024), 1952 (DILITHIUM3), or >=32 (SPHINCS+/other PQ)
+                if (pk_size == 33) {
+                    // Compressed secp256k1: must start with 0x02 or 0x03
+                    if (pubkey_bytes[0] != 0x02 && pubkey_bytes[0] != 0x03) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER,
+                            "33-byte pubkey must be compressed secp256k1 (prefix 0x02 or 0x03)");
+                    }
+                } else if (pk_size != 32 && pk_size != 897 && pk_size != 1793 &&
+                           pk_size != 1952 && pk_size < 32) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER,
-                        "compact_type COMPACT_SIG requires 32-byte pubkey_commit or 33-byte compressed pubkey");
+                        "Invalid pubkey size " + std::to_string(pk_size) +
+                        ". Expected: 32 (x-only), 33 (compressed), 897 (FALCON512), "
+                        "1793 (FALCON1024), 1952 (DILITHIUM3), or 32+ (SPHINCS+)");
                 }
+                // Always compute SHA256(pubkey) — node never accepts raw commits
+                compact.pubkey_commit.resize(CSHA256::OUTPUT_SIZE);
+                CSHA256().Write(pubkey_bytes.data(), pubkey_bytes.size()).Finalize(compact.pubkey_commit.data());
                 if (rung_obj.exists("scheme")) {
                     std::string scheme_str = rung_obj["scheme"].get_str();
                     if (scheme_str == "SCHNORR") compact.scheme = RungScheme::SCHNORR;
@@ -1302,6 +1325,51 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
                     "ACCUMULATOR leaf must be exactly 32 bytes");
             }
             block.fields.push_back({RungDataType::HASH256, leaf});
+        }
+        break;
+    }
+    case RungBlockType::P2PK_LEGACY:
+    case RungBlockType::P2TR_LEGACY: {
+        // Delegates to EvalSigBlock — same witness as SIG (PUBKEY + SIGNATURE)
+        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions,
+                      btype == RungBlockType::P2PK_LEGACY ? "P2PK_LEGACY" : "P2TR_LEGACY");
+        break;
+    }
+    case RungBlockType::P2PKH_LEGACY:
+    case RungBlockType::P2WPKH_LEGACY: {
+        // Witness: PUBKEY + SIGNATURE (evaluator checks HASH160(pubkey) == committed hash)
+        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions,
+                      btype == RungBlockType::P2PKH_LEGACY ? "P2PKH_LEGACY" : "P2WPKH_LEGACY");
+        break;
+    }
+    case RungBlockType::P2SH_LEGACY: {
+        // Witness: PREIMAGE (serialized inner conditions) + inner witness fields
+        // The preimage is the serialized Ladder conditions that hash to the committed HASH160.
+        // Inner SIG witness fields (PUBKEY + SIGNATURE) are also needed.
+        if (block_spec.exists("preimage")) {
+            auto preimage_data = ParseHex(block_spec["preimage"].get_str());
+            if (preimage_data.empty()) {
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "P2SH_LEGACY requires non-empty preimage hex");
+            }
+            block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
+        }
+        if (block_spec.exists("privkey")) {
+            SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "P2SH_LEGACY");
+        }
+        break;
+    }
+    case RungBlockType::P2WSH_LEGACY: {
+        // Witness: PREIMAGE (serialized inner conditions) + inner witness fields
+        // The preimage is the serialized Ladder conditions that hash to the committed SHA256.
+        if (block_spec.exists("preimage")) {
+            auto preimage_data = ParseHex(block_spec["preimage"].get_str());
+            if (preimage_data.empty()) {
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "P2WSH_LEGACY requires non-empty preimage hex");
+            }
+            block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
+        }
+        if (block_spec.exists("privkey")) {
+            SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "P2WSH_LEGACY");
         }
         break;
     }
@@ -1935,7 +2003,8 @@ static RPCHelpMan pqpubkeycommit()
     return RPCHelpMan{
         "pqpubkeycommit",
         "Compute the SHA256 commitment hash of a post-quantum public key.\n"
-        "Use this to create PUBKEY_COMMIT condition fields for compact UTXO storage.\n",
+        "Informational tool — createrungtx computes commitments automatically from pubkey fields.\n"
+        "Use this to inspect what commitment a given key will produce.\n",
         {
             {"pubkey", RPCArg::Type::STR_HEX, RPCArg::Optional::NO,
              "The full PQ public key (hex)"},

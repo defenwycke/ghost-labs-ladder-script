@@ -19,6 +19,7 @@ struct AggregateProof {
     std::vector<uint256> pubkey_commits;  //!< One per AGGREGATE spend
     std::vector<uint8_t> aggregate_sig;   //!< Single aggregate signature
     RungScheme scheme{RungScheme::SCHNORR}; //!< All spends must use same scheme
+    bool verified{false}; //!< Set true after aggregate sig is verified at block level
 };
 
 /** Verify that a spend_index + pubkey_commit pair is covered by the aggregate proof.

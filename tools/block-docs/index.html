@@ -75,6 +75,7 @@
   .family-compound { color: #f59e0b; }
   .family-governance { color: #8b5cf6; }
   .family-compact { color: #98c379; }
+  .family-legacy { color: #e91e90; }
 
   .intro-text {
     color: var(--text-secondary);
@@ -241,56 +242,6 @@
   </div>
 </div>
 
-<!-- Anchor Family -->
-<div class="family-section">
-  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
-  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
-
-  <div class="index-grid">
-    <a href="anchor.html" class="block-card">
-      <div class="block-card-code">0x0501</div>
-      <div class="block-card-name">ANCHOR</div>
-      <div class="block-card-desc">Generic anchor point. Commits to a 32-byte anchor hash identifying an off-chain structure. Base type for all anchor variants.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-channel.html" class="block-card">
-      <div class="block-card-code">0x0502</div>
-      <div class="block-card-name">ANCHOR_CHANNEL</div>
-      <div class="block-card-desc">Payment channel anchor. Commits to a channel ID and sequence number. Enables channel state binding to on-chain UTXOs.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-pool.html" class="block-card">
-      <div class="block-card-code">0x0503</div>
-      <div class="block-card-name">ANCHOR_POOL</div>
-      <div class="block-card-desc">Liquidity pool anchor. Commits to a pool ID binding the UTXO to a specific liquidity pool or coinpool structure.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-reserve.html" class="block-card">
-      <div class="block-card-code">0x0504</div>
-      <div class="block-card-name">ANCHOR_RESERVE</div>
-      <div class="block-card-desc">Reserve proof anchor. Commits to a minimum reserve amount, providing on-chain proof of reserves for off-chain balances.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-seal.html" class="block-card">
-      <div class="block-card-code">0x0505</div>
-      <div class="block-card-name">ANCHOR_SEAL</div>
-      <div class="block-card-desc">Tamper-evident seal. Single-use commitment that can only be opened once. Used for client-side validation and single-use seals.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-
-    <a href="anchor-oracle.html" class="block-card">
-      <div class="block-card-code">0x0506</div>
-      <div class="block-card-name">ANCHOR_ORACLE</div>
-      <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
-      <div class="block-card-badge badge-anchor">Anchor</div>
-    </a>
-  </div>
-</div>
-
 <!-- Recursion Family -->
 <div class="family-section">
   <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
@@ -337,6 +288,56 @@
       <div class="block-card-name">RECURSE_DECAY</div>
       <div class="block-card-desc">Value-decaying recursion. Each recursive spend must reduce the output value by a committed decay factor, creating a diminishing covenant.</div>
       <div class="block-card-badge badge-recursion">Recursion</div>
+    </a>
+  </div>
+</div>
+
+<!-- Anchor Family -->
+<div class="family-section">
+  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
+  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
+
+  <div class="index-grid">
+    <a href="anchor.html" class="block-card">
+      <div class="block-card-code">0x0501</div>
+      <div class="block-card-name">ANCHOR</div>
+      <div class="block-card-desc">Generic anchor point. Commits to a 32-byte anchor hash identifying an off-chain structure. Base type for all anchor variants.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-channel.html" class="block-card">
+      <div class="block-card-code">0x0502</div>
+      <div class="block-card-name">ANCHOR_CHANNEL</div>
+      <div class="block-card-desc">Payment channel anchor. Commits to a channel ID and sequence number. Enables channel state binding to on-chain UTXOs.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-pool.html" class="block-card">
+      <div class="block-card-code">0x0503</div>
+      <div class="block-card-name">ANCHOR_POOL</div>
+      <div class="block-card-desc">Liquidity pool anchor. Commits to a pool ID binding the UTXO to a specific liquidity pool or coinpool structure.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-reserve.html" class="block-card">
+      <div class="block-card-code">0x0504</div>
+      <div class="block-card-name">ANCHOR_RESERVE</div>
+      <div class="block-card-desc">Reserve proof anchor. Commits to a minimum reserve amount, providing on-chain proof of reserves for off-chain balances.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-seal.html" class="block-card">
+      <div class="block-card-code">0x0505</div>
+      <div class="block-card-name">ANCHOR_SEAL</div>
+      <div class="block-card-desc">Tamper-evident seal. Single-use commitment that can only be opened once. Used for client-side validation and single-use seals.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
+    </a>
+
+    <a href="anchor-oracle.html" class="block-card">
+      <div class="block-card-code">0x0506</div>
+      <div class="block-card-name">ANCHOR_ORACLE</div>
+      <div class="block-card-desc">Oracle attestation anchor. Commits to an oracle public key and event ID. Spending requires the oracle's signed attestation of the event outcome.</div>
+      <div class="block-card-badge badge-anchor">Anchor</div>
     </a>
   </div>
 </div>
@@ -543,6 +544,63 @@
       <div class="block-card-name">ACCUMULATOR</div>
       <div class="block-card-desc">Merkle set membership proof. Verifies that a value belongs to a committed set using sorted-pair Merkle proofs.</div>
       <div class="block-card-badge badge-governance">Governance</div>
+    </a>
+  </div>
+</div>
+
+<!-- Legacy Family -->
+<div class="family-section">
+  <h2 class="family-title family-legacy">Legacy Family — 0x0900</h2>
+  <p class="intro-text">Legacy blocks wrap Bitcoin's original transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) as typed Ladder Script blocks. Same spending semantics, but all fields are typed — closing the arbitrary data surfaces that enable inscription spam. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions.</p>
+
+  <div class="index-grid">
+    <a href="p2pk-legacy.html" class="block-card">
+      <div class="block-card-code">0x0901</div>
+      <div class="block-card-name">P2PK_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Public-Key. Signature verification against a committed public key. Equivalent to the original Bitcoin P2PK output type. Delegates to EvalSigBlock.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2pkh-legacy.html" class="block-card">
+      <div class="block-card-code">0x0902</div>
+      <div class="block-card-name">P2PKH_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Public-Key-Hash. HASH160(pubkey) verification + signature check. The most common Bitcoin address type wrapped as a typed block.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2sh-legacy.html" class="block-card">
+      <div class="block-card-code">0x0903</div>
+      <div class="block-card-name">P2SH_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Script-Hash. HASH160 of inner conditions. PREIMAGE carries serialized Ladder Script conditions — no arbitrary bytes allowed. Recursive inner evaluation.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2wpkh-legacy.html" class="block-card">
+      <div class="block-card-code">0x0904</div>
+      <div class="block-card-name">P2WPKH_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Witness-Public-Key-Hash. SegWit v0 key-hash spending. Same evaluation as P2PKH_LEGACY — distinct type code for migration tracking.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2wsh-legacy.html" class="block-card">
+      <div class="block-card-code">0x0905</div>
+      <div class="block-card-name">P2WSH_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Witness-Script-Hash. SHA256 of inner conditions. SegWit v0 script-hash spending with typed inner conditions. Recursive inner evaluation.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2tr-legacy.html" class="block-card">
+      <div class="block-card-code">0x0906</div>
+      <div class="block-card-name">P2TR_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Taproot key-path spend. Signature against a committed internal key. Delegates to EvalSigBlock. Distinct from P2TR_SCRIPT for script-path.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
+    </a>
+
+    <a href="p2tr-script-legacy.html" class="block-card">
+      <div class="block-card-code">0x0907</div>
+      <div class="block-card-name">P2TR_SCRIPT_LEGACY</div>
+      <div class="block-card-desc">Pay-to-Taproot script-path spend. Closes the primary inscription vector. Revealed script leaf must be valid Ladder Script conditions. Merkle proof verification.</div>
+      <div class="block-card-badge" style="color:#e91e90;border-color:#e91e9040">Legacy</div>
     </a>
   </div>
 </div>

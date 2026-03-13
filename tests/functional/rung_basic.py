@@ -249,6 +249,19 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_key_ref_sig_multi_rung(node)
         self.test_key_ref_sig_negative_wrong_key(node)
 
+        # Legacy block type tests
+        self.test_p2pk_legacy_spend(node)
+        self.test_p2pkh_legacy_spend(node)
+        self.test_p2wpkh_legacy_spend(node)
+        self.test_p2tr_legacy_spend(node)
+        self.test_p2sh_legacy_inner_sig(node)
+        self.test_p2wsh_legacy_inner_sig(node)
+        self.test_negative_p2pkh_wrong_hash(node)
+        self.test_negative_p2sh_malformed_preimage(node)
+        self.test_legacy_plus_covenant(node)
+        self.test_legacy_plus_csv(node)
+        self.test_legacy_mlsc(node)
+
     # =========================================================================
     # Helpers
     # =========================================================================
@@ -6919,6 +6932,520 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         )
         assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
         self.log.info("  ACCUMULATOR negative (wrong leaf) — rejected correctly!")
+
+    # =========================================================================
+    # Legacy block type tests
+    # =========================================================================
+
+    def test_p2pk_legacy_spend(self, node):
+        """P2PK_LEGACY: create output with PUBKEY + SCHEME, spend with sig."""
+        self.log.info("Testing P2PK_LEGACY spend...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # P2PK_LEGACY conditions: PUBKEY (auto-converted to PUBKEY_COMMIT) + SCHEME
+        conditions = [{"blocks": [{"type": "P2PK_LEGACY", "fields": [
+            {"type": "PUBKEY", "hex": pubkey_hex},
+            {"type": "SCHEME", "hex": "01"},  # SCHNORR
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2PK_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2PK_LEGACY", "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2PK_LEGACY spend confirmed!")
+
+    def test_p2pkh_legacy_spend(self, node):
+        """P2PKH_LEGACY: create output with HASH160(pubkey), spend with pubkey + sig."""
+        self.log.info("Testing P2PKH_LEGACY spend...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Compute HASH160(pubkey)
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(pubkey_bytes).digest()).digest()
+
+        # P2PKH_LEGACY conditions: HASH160 (20-byte hash of pubkey)
+        conditions = [{"blocks": [{"type": "P2PKH_LEGACY", "fields": [
+            {"type": "HASH160", "hex": h160.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2PKH_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2PKH_LEGACY", "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2PKH_LEGACY spend confirmed!")
+
+    def test_p2wpkh_legacy_spend(self, node):
+        """P2WPKH_LEGACY: same as P2PKH (delegates to same evaluator)."""
+        self.log.info("Testing P2WPKH_LEGACY spend...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Compute HASH160(pubkey)
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(pubkey_bytes).digest()).digest()
+
+        conditions = [{"blocks": [{"type": "P2WPKH_LEGACY", "fields": [
+            {"type": "HASH160", "hex": h160.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2WPKH_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2WPKH_LEGACY", "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2WPKH_LEGACY spend confirmed!")
+
+    def test_p2tr_legacy_spend(self, node):
+        """P2TR_LEGACY: key-path spend (delegates to EvalSigBlock)."""
+        self.log.info("Testing P2TR_LEGACY spend...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # P2TR_LEGACY conditions: PUBKEY (auto-converted to PUBKEY_COMMIT) + SCHEME
+        conditions = [{"blocks": [{"type": "P2TR_LEGACY", "fields": [
+            {"type": "PUBKEY", "hex": pubkey_hex},
+            {"type": "SCHEME", "hex": "01"},  # SCHNORR
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2TR_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2TR_LEGACY", "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2TR_LEGACY spend confirmed!")
+
+    def _build_inner_sig_conditions(self, pubkey_hex):
+        """Build CONDITIONS-context serialized bytes for a SIG block.
+
+        Format (implicit SIG_CONDITIONS layout):
+          01           # 1 rung
+          01           # 1 block
+          00           # SIG micro-header (slot 0)
+          <32 bytes>   # PUBKEY_COMMIT = SHA256(pubkey)
+          01           # SCHEME = SCHNORR
+          01 01 01     # Coil: UNLOCK, INLINE, SCHNORR
+          00           # Address length = 0
+          00           # Coil conditions count = 0
+        """
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        pubkey_commit = hashlib.sha256(pubkey_bytes).digest()
+
+        inner = bytearray()
+        inner.append(0x01)          # 1 rung
+        inner.append(0x01)          # 1 block
+        inner.append(0x00)          # SIG micro-header slot 0
+        inner.extend(pubkey_commit) # PUBKEY_COMMIT (32 bytes)
+        inner.append(0x01)          # SCHEME = SCHNORR
+        inner.append(0x01)          # Coil type = UNLOCK
+        inner.append(0x01)          # Attestation = INLINE
+        inner.append(0x01)          # Scheme = SCHNORR
+        inner.append(0x00)          # Address length = 0
+        inner.append(0x00)          # Coil conditions count = 0
+        return bytes(inner)
+
+    def test_p2sh_legacy_inner_sig(self, node):
+        """P2SH_LEGACY: inner SIG conditions, spend with preimage + pubkey + sig."""
+        self.log.info("Testing P2SH_LEGACY with inner SIG conditions...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Build inner conditions (CONDITIONS-context serialized SIG block)
+        inner_bytes = self._build_inner_sig_conditions(pubkey_hex)
+
+        # Compute HASH160 of inner conditions
+        h160 = hashlib.new('ripemd160', hashlib.sha256(inner_bytes).digest()).digest()
+
+        # P2SH_LEGACY conditions: HASH160 of serialized inner conditions
+        conditions = [{"blocks": [{"type": "P2SH_LEGACY", "fields": [
+            {"type": "HASH160", "hex": h160.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2SH_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        # Witness: PREIMAGE (inner conditions) + PUBKEY + SIGNATURE
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2SH_LEGACY",
+                                       "preimage": inner_bytes.hex(),
+                                       "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2SH_LEGACY inner SIG spend confirmed!")
+
+    def test_p2wsh_legacy_inner_sig(self, node):
+        """P2WSH_LEGACY: inner SIG conditions, spend with preimage + pubkey + sig."""
+        self.log.info("Testing P2WSH_LEGACY with inner SIG conditions...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Build inner conditions (CONDITIONS-context serialized SIG block)
+        inner_bytes = self._build_inner_sig_conditions(pubkey_hex)
+
+        # Compute SHA256 of inner conditions
+        h256 = hashlib.sha256(inner_bytes).digest()
+
+        # P2WSH_LEGACY conditions: HASH256 (SHA256) of serialized inner conditions
+        conditions = [{"blocks": [{"type": "P2WSH_LEGACY", "fields": [
+            {"type": "HASH256", "hex": h256.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2WSH_LEGACY output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        # Witness: PREIMAGE (inner conditions) + PUBKEY + SIGNATURE
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2WSH_LEGACY",
+                                       "preimage": inner_bytes.hex(),
+                                       "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2WSH_LEGACY inner SIG spend confirmed!")
+
+    def test_negative_p2pkh_wrong_hash(self, node):
+        """Negative: P2PKH_LEGACY with wrong HASH160 → rejection."""
+        self.log.info("Testing negative: P2PKH_LEGACY wrong HASH160...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Use a completely wrong HASH160 (not derived from this pubkey)
+        wrong_hash = os.urandom(20)
+
+        conditions = [{"blocks": [{"type": "P2PKH_LEGACY", "fields": [
+            {"type": "HASH160", "hex": wrong_hash.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": [{"blocks": [{
+                "type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_pubkey}]
+            }]}]}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2PKH_LEGACY", "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+
+        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
+        self.log.info("  P2PKH_LEGACY wrong HASH160 correctly rejected!")
+
+    def test_negative_p2sh_malformed_preimage(self, node):
+        """Negative: P2SH_LEGACY with garbage preimage that passes HASH160 but fails deser."""
+        self.log.info("Testing negative: P2SH_LEGACY malformed preimage...")
+
+        # Create garbage inner conditions bytes that will fail deserialization
+        garbage = os.urandom(32)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(garbage).digest()).digest()
+
+        # P2SH conditions: HASH160 matches the garbage
+        conditions = [{"blocks": [{"type": "P2SH_LEGACY", "fields": [
+            {"type": "HASH160", "hex": h160.hex()},
+        ]}]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+
+        output_amount = amount - Decimal("0.001")
+        privkey_wif, pubkey_hex = make_keypair()
+        dest_wif, dest_pubkey = make_keypair()
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": [{"blocks": [{
+                "type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_pubkey}]
+            }]}]}]
+        )
+        # Provide garbage as PREIMAGE — HASH160 matches but deserialization fails
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [{"type": "P2SH_LEGACY",
+                                       "preimage": garbage.hex(),
+                                       "privkey": privkey_wif}]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+
+        assert_raises_rpc_error(-26, None, node.sendrawtransaction, sign_result["hex"])
+        self.log.info("  P2SH_LEGACY malformed preimage correctly rejected!")
+
+    def test_legacy_plus_covenant(self, node):
+        """Multi-block rung: P2PKH_LEGACY + AMOUNT_LOCK in same rung."""
+        self.log.info("Testing P2PKH_LEGACY + AMOUNT_LOCK compound...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Compute HASH160(pubkey)
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(pubkey_bytes).digest()).digest()
+
+        min_sats = 10000       # 0.0001 BTC
+        max_sats = 200000000   # 2.0 BTC
+
+        conditions = [{"blocks": [
+            {"type": "P2PKH_LEGACY", "fields": [
+                {"type": "HASH160", "hex": h160.hex()},
+            ]},
+            {"type": "AMOUNT_LOCK", "fields": [
+                {"type": "NUMERIC", "hex": numeric_hex(min_sats)},
+                {"type": "NUMERIC", "hex": numeric_hex(max_sats)},
+            ]},
+        ]}]
+
+        # Use a specific amount within the AMOUNT_LOCK range
+        lock_amount = Decimal("1.0")
+        txid, vout, amount, spk = self.bootstrap_v4_output(
+            node, conditions, output_amount=lock_amount)
+        self.log.info(f"  P2PKH_LEGACY+AMOUNT_LOCK output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "P2PKH_LEGACY", "privkey": privkey_wif},
+                {"type": "AMOUNT_LOCK"},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2PKH_LEGACY + AMOUNT_LOCK compound spend confirmed!")
+
+    def test_legacy_plus_csv(self, node):
+        """Multi-block rung: P2WPKH_LEGACY + CSV in same rung."""
+        self.log.info("Testing P2WPKH_LEGACY + CSV compound...")
+
+        privkey_wif, pubkey_hex = make_keypair()
+
+        # Compute HASH160(pubkey)
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(pubkey_bytes).digest()).digest()
+
+        csv_blocks = 10
+
+        conditions = [{"blocks": [
+            {"type": "P2WPKH_LEGACY", "fields": [
+                {"type": "HASH160", "hex": h160.hex()},
+            ]},
+            {"type": "CSV", "fields": [
+                {"type": "NUMERIC", "hex": numeric_hex(csv_blocks)},
+            ]},
+        ]}]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  P2WPKH_LEGACY+CSV output: {txid}:{vout}")
+
+        # Mine for CSV maturity
+        self.generate(node, csv_blocks)
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout, "sequence": csv_blocks}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "blocks": [
+                {"type": "P2WPKH_LEGACY", "privkey": privkey_wif},
+                {"type": "CSV"},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  P2WPKH_LEGACY + CSV compound spend confirmed!")
+
+    def test_legacy_mlsc(self, node):
+        """Multi-rung (OR logic): Rung 0 = P2PKH_LEGACY, Rung 1 = SIG + CSV. Spend via rung 0."""
+        self.log.info("Testing legacy MLSC (P2PKH_LEGACY OR SIG+CSV)...")
+
+        key_a_wif, key_a_pubkey = make_keypair()
+        key_b_wif, key_b_pubkey = make_keypair()
+
+        # Compute HASH160(key_a)
+        key_a_bytes = bytes.fromhex(key_a_pubkey)
+        h160 = hashlib.new('ripemd160', hashlib.sha256(key_a_bytes).digest()).digest()
+
+        csv_blocks = 50
+
+        # Rung 0: P2PKH_LEGACY(key_a)
+        # Rung 1: SIG(key_b) + CSV(50)
+        conditions = [
+            {"blocks": [{"type": "P2PKH_LEGACY", "fields": [
+                {"type": "HASH160", "hex": h160.hex()},
+            ]}]},
+            {"blocks": [
+                {"type": "SIG", "fields": [{"type": "PUBKEY", "hex": key_b_pubkey}]},
+                {"type": "CSV", "fields": [{"type": "NUMERIC", "hex": numeric_hex(csv_blocks)}]},
+            ]},
+        ]
+
+        txid, vout, amount, spk = self.bootstrap_v4_output(node, conditions)
+        self.log.info(f"  Legacy MLSC output: {txid}:{vout}")
+
+        output_amount = amount - Decimal("0.001")
+        dest_wif, dest_pubkey = make_keypair()
+        dest_conditions = [{"blocks": [{"type": "SIG", "fields": [
+            {"type": "PUBKEY", "hex": dest_pubkey}
+        ]}]}]
+
+        # Spend via rung 0 (P2PKH_LEGACY) — no CSV wait needed
+        result = node.createrungtx(
+            [{"txid": txid, "vout": vout}],
+            [{"amount": output_amount, "conditions": dest_conditions}]
+        )
+        sign_result = node.signrungtx(
+            result["hex"],
+            [{"input": 0, "rung": 0, "blocks": [
+                {"type": "P2PKH_LEGACY", "privkey": key_a_wif},
+            ]}],
+            [{"amount": amount, "scriptPubKey": spk}]
+        )
+        assert sign_result["complete"]
+
+        spend_txid = node.sendrawtransaction(sign_result["hex"])
+        self.generate(node, 1)
+        tx_info = node.getrawtransaction(spend_txid, True)
+        assert tx_info["confirmations"] >= 1
+        self.log.info("  Legacy MLSC spend via rung 0 (P2PKH_LEGACY) confirmed!")
 
     def bootstrap_v4_output_with_relays(self, node, conditions, relays, output_amount=None):
         """Create and confirm a v4 output with conditions + relays.

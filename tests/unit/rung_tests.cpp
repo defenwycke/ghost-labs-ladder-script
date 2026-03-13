@@ -764,8 +764,8 @@ BOOST_AUTO_TEST_CASE(inversion_apply_basic)
     BOOST_CHECK(ApplyInversion(EvalResult::UNSATISFIED, true) == EvalResult::SATISFIED);
     // ERROR never flips
     BOOST_CHECK(ApplyInversion(EvalResult::ERROR, true) == EvalResult::ERROR);
-    // UNKNOWN inverted → SATISFIED
-    BOOST_CHECK(ApplyInversion(EvalResult::UNKNOWN_BLOCK_TYPE, true) == EvalResult::SATISFIED);
+    // UNKNOWN inverted → ERROR (unknown types must never satisfy)
+    BOOST_CHECK(ApplyInversion(EvalResult::UNKNOWN_BLOCK_TYPE, true) == EvalResult::ERROR);
 }
 
 BOOST_AUTO_TEST_CASE(inversion_sig_normal_satisfied_inverted_unsatisfied)
@@ -9119,6 +9119,1158 @@ BOOST_AUTO_TEST_CASE(coil_covenant_conditions_reject_witness_types)
         // (it's witness context since it's in the witness stack)
         BOOST_CHECK(true); // Not a policy violation in witness encoding
     }
+}
+
+// ============================================================================
+// Legacy family tests (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT)
+// ============================================================================
+
+// -- Type registration tests --
+
+BOOST_AUTO_TEST_CASE(legacy_block_types_known)
+{
+    BOOST_CHECK(IsKnownBlockType(0x0901)); // P2PK_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0902)); // P2PKH_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0903)); // P2SH_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0904)); // P2WPKH_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0905)); // P2WSH_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0906)); // P2TR_LEGACY
+    BOOST_CHECK(IsKnownBlockType(0x0907)); // P2TR_SCRIPT_LEGACY
+}
+
+BOOST_AUTO_TEST_CASE(legacy_block_type_names)
+{
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2PK_LEGACY), "P2PK_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2PKH_LEGACY), "P2PKH_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2SH_LEGACY), "P2SH_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2WPKH_LEGACY), "P2WPKH_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2WSH_LEGACY), "P2WSH_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2TR_LEGACY), "P2TR_LEGACY");
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::P2TR_SCRIPT_LEGACY), "P2TR_SCRIPT_LEGACY");
+}
+
+BOOST_AUTO_TEST_CASE(legacy_micro_header_slots)
+{
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2PK_LEGACY), 0x35);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2PKH_LEGACY), 0x36);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2SH_LEGACY), 0x37);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2WPKH_LEGACY), 0x38);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2WSH_LEGACY), 0x39);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2TR_LEGACY), 0x3A);
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::P2TR_SCRIPT_LEGACY), 0x3B);
+}
+
+// -- Implicit layout tests --
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2pk)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2PK_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 2);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::PUBKEY_COMMIT);
+    BOOST_CHECK(cond.fields[1].type == RungDataType::SCHEME);
+    auto& wit = GetImplicitLayout(RungBlockType::P2PK_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 2);
+    BOOST_CHECK(wit.fields[0].type == RungDataType::PUBKEY);
+    BOOST_CHECK(wit.fields[1].type == RungDataType::SIGNATURE);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2pkh)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2PKH_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 1);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::HASH160);
+    BOOST_CHECK_EQUAL(cond.fields[0].fixed_size, 20);
+    auto& wit = GetImplicitLayout(RungBlockType::P2PKH_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 2);
+    BOOST_CHECK(wit.fields[0].type == RungDataType::PUBKEY);
+    BOOST_CHECK(wit.fields[1].type == RungDataType::SIGNATURE);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2sh)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2SH_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 1);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::HASH160);
+    // P2SH has no implicit witness layout (variable inner conditions)
+    auto& wit = GetImplicitLayout(RungBlockType::P2SH_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 0);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2wpkh)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2WPKH_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 1);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::HASH160);
+    auto& wit = GetImplicitLayout(RungBlockType::P2WPKH_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 2);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2wsh)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2WSH_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 1);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::HASH256);
+    BOOST_CHECK_EQUAL(cond.fields[0].fixed_size, 32);
+    auto& wit = GetImplicitLayout(RungBlockType::P2WSH_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 0);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2tr)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2TR_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 2);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::PUBKEY_COMMIT);
+    BOOST_CHECK(cond.fields[1].type == RungDataType::SCHEME);
+    auto& wit = GetImplicitLayout(RungBlockType::P2TR_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 2);
+}
+
+BOOST_AUTO_TEST_CASE(legacy_implicit_layout_p2tr_script)
+{
+    auto& cond = GetImplicitLayout(RungBlockType::P2TR_SCRIPT_LEGACY, 1);
+    BOOST_CHECK_EQUAL(cond.count, 2);
+    BOOST_CHECK(cond.fields[0].type == RungDataType::HASH256);
+    BOOST_CHECK(cond.fields[1].type == RungDataType::PUBKEY_COMMIT);
+    auto& wit = GetImplicitLayout(RungBlockType::P2TR_SCRIPT_LEGACY, 0);
+    BOOST_CHECK_EQUAL(wit.count, 0);
+}
+
+// -- Serialization roundtrip tests --
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2pk_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2PK_LEGACY;
+    auto pk = MakePubkey();
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    BOOST_CHECK(!bytes.empty());
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2PK_LEGACY);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2pkh_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2PKH_LEGACY);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 3u);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2sh_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2SH_LEGACY);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2wsh_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2WSH_LEGACY);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2tr_script_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2TR_SCRIPT_LEGACY);
+}
+
+// -- Evaluator tests: P2PK_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2pk_legacy_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    RungBlock block;
+    block.type = RungBlockType::P2PK_LEGACY;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2pk_legacy_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+
+    auto pk = MakePubkey();
+    RungBlock block;
+    block.type = RungBlockType::P2PK_LEGACY;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2pk_legacy_missing_field)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2PK_LEGACY;
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    // Missing SIGNATURE
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::ERROR);
+}
+
+// -- Evaluator tests: P2PKH_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    // Compute HASH160(pk)
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pk).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_wrong_hash)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()}); // Wrong hash
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_missing_field)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    // Missing PUBKEY and SIGNATURE
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_sig_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+
+    auto pk = MakePubkey();
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pk).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+// -- Evaluator tests: P2WPKH_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2wpkh_legacy_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pk).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2WPKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2WPKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2wpkh_legacy_wrong_hash)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    RungBlock block;
+    block.type = RungBlockType::P2WPKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2WPKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+// -- Evaluator tests: P2TR_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_legacy_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    RungBlock block;
+    block.type = RungBlockType::P2TR_LEGACY;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2TRLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_legacy_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+
+    auto pk = MakePubkey();
+    RungBlock block;
+    block.type = RungBlockType::P2TR_LEGACY;
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2TRLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+// -- Evaluator tests: P2SH_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_missing_fields)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    // Missing PREIMAGE
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_wrong_hash)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+// -- Evaluator tests: P2WSH_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_missing_fields)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    // Missing PREIMAGE
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_wrong_hash)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+// -- Evaluator tests: P2TR_SCRIPT_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_missing_fields)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+    // Missing PREIMAGE
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_wrong_hash)
+{
+    MockSignatureChecker checker;
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+// -- EvalBlock dispatch tests --
+
+BOOST_AUTO_TEST_CASE(eval_block_dispatch_legacy)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    ScriptExecutionData execdata;
+
+    // P2PK_LEGACY via EvalBlock
+    {
+        RungBlock block;
+        block.type = RungBlockType::P2PK_LEGACY;
+        block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+        block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
+
+    // P2PKH_LEGACY via EvalBlock
+    {
+        unsigned char hash160[CHash160::OUTPUT_SIZE];
+        CHash160().Write(pk).Finalize(hash160);
+        std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+        RungBlock block;
+        block.type = RungBlockType::P2PKH_LEGACY;
+        block.fields.push_back({RungDataType::HASH160, hash160_vec});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
+
+    // P2WPKH_LEGACY via EvalBlock
+    {
+        unsigned char hash160[CHash160::OUTPUT_SIZE];
+        CHash160().Write(pk).Finalize(hash160);
+        std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+        RungBlock block;
+        block.type = RungBlockType::P2WPKH_LEGACY;
+        block.fields.push_back({RungDataType::HASH160, hash160_vec});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
+
+    // P2TR_LEGACY via EvalBlock
+    {
+        RungBlock block;
+        block.type = RungBlockType::P2TR_LEGACY;
+        block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+        block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
+}
+
+// -- Inversion test --
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_inverted)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pk).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.inverted = true;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    // SATISFIED inverted → UNSATISFIED
+    BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::UNSATISFIED);
+}
+
+// -- Policy test --
+
+BOOST_AUTO_TEST_CASE(legacy_is_base_block_type)
+{
+    BOOST_CHECK(IsBaseBlockType(0x0901)); // P2PK_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0902)); // P2PKH_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0903)); // P2SH_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0904)); // P2WPKH_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0905)); // P2WSH_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0906)); // P2TR_LEGACY
+    BOOST_CHECK(IsBaseBlockType(0x0907)); // P2TR_SCRIPT_LEGACY
+}
+
+// -- ECDSA path test for P2PKH_LEGACY --
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_ecdsa)
+{
+    MockSignatureChecker checker;
+    checker.ecdsa_result = true;
+
+    auto pk = MakePubkey();
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(pk).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    // ECDSA sig size (71 bytes)
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(71)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+}
+
+// -- Missing serialization roundtrips: P2WPKH and P2TR --
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2wpkh_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2WPKH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, MakeHash160()});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2WPKH_LEGACY);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 3u);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_p2tr_legacy)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::P2TR_LEGACY;
+    auto pk = MakePubkey();
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error));
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::P2TR_LEGACY);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 4u);
+}
+
+// -- P2SH_LEGACY: successful inner-conditions evaluation --
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_inner_conditions_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    // Build inner conditions: a simple SIG block (conditions-only side)
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    // Serialize inner conditions
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+
+    // Compute HASH160 of serialized inner conditions
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(inner_bytes).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    // Build outer P2SH block with matching hash + inner PREIMAGE + witness fields
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    // Witness fields for the inner SIG block
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_malformed_inner_conditions)
+{
+    MockSignatureChecker checker;
+
+    // Build a PREIMAGE that is NOT valid serialized Ladder conditions
+    std::vector<uint8_t> garbage(32, 0xFF);
+
+    // Compute HASH160 of garbage so hash check passes
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(garbage).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, garbage});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    // Hash matches but deserialization of inner conditions should fail → ERROR
+    BOOST_CHECK(EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+// -- P2WSH_LEGACY: successful inner-conditions evaluation --
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_inner_conditions_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    // Build inner conditions: a simple SIG block
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+
+    // Compute SHA256 of serialized inner conditions
+    unsigned char hash256[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(hash256);
+    std::vector<uint8_t> hash256_vec(hash256, hash256 + 32);
+
+    // Build outer P2WSH block
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, hash256_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_malformed_inner_conditions)
+{
+    MockSignatureChecker checker;
+
+    std::vector<uint8_t> garbage(32, 0xFF);
+    unsigned char hash256[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(garbage.data(), garbage.size()).Finalize(hash256);
+    std::vector<uint8_t> hash256_vec(hash256, hash256 + 32);
+
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, hash256_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, garbage});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+// -- P2TR_SCRIPT_LEGACY: successful inner-conditions evaluation --
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_inner_conditions_satisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    // Build inner conditions: a simple SIG block
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+
+    // For single-leaf tree: Merkle root = SHA256(leaf)
+    unsigned char leaf_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(leaf_hash);
+    std::vector<uint8_t> merkle_root(leaf_hash, leaf_hash + 32);
+
+    // Internal key commitment (arbitrary 32 bytes)
+    std::vector<uint8_t> internal_key_commit(32, 0xAA);
+
+    // Build outer P2TR_SCRIPT block
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, merkle_root});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, internal_key_commit});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_malformed_inner)
+{
+    MockSignatureChecker checker;
+
+    std::vector<uint8_t> garbage(32, 0xFF);
+    unsigned char leaf_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(garbage.data(), garbage.size()).Finalize(leaf_hash);
+    std::vector<uint8_t> merkle_root(leaf_hash, leaf_hash + 32);
+
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, merkle_root});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+    block.fields.push_back({RungDataType::PREIMAGE, garbage});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+// -- Recursion depth limit tests --
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_recursion_depth_limit)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    // Build innermost conditions: a simple SIG block
+    LadderWitness innermost;
+    Rung innermost_rung;
+    RungBlock sig_block;
+    sig_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    sig_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    sig_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    innermost_rung.blocks.push_back(sig_block);
+    innermost.rungs.push_back(innermost_rung);
+    auto innermost_bytes = SerializeLadderWitness(innermost, SerializationContext::CONDITIONS);
+
+    // Build middle P2SH that wraps the innermost
+    unsigned char hash160_inner[CHash160::OUTPUT_SIZE];
+    CHash160().Write(innermost_bytes).Finalize(hash160_inner);
+
+    LadderWitness middle;
+    Rung middle_rung;
+    RungBlock middle_block;
+    middle_block.type = RungBlockType::P2SH_LEGACY;
+    middle_block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(hash160_inner, hash160_inner + 20)});
+    middle_rung.blocks.push_back(middle_block);
+    middle.rungs.push_back(middle_rung);
+    auto middle_bytes = SerializeLadderWitness(middle, SerializationContext::CONDITIONS);
+
+    // Build outer P2SH that wraps the middle (depth = 3 total: outer → middle → innermost)
+    unsigned char hash160_middle[CHash160::OUTPUT_SIZE];
+    CHash160().Write(middle_bytes).Finalize(hash160_middle);
+
+    RungBlock outer_block;
+    outer_block.type = RungBlockType::P2SH_LEGACY;
+    outer_block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(hash160_middle, hash160_middle + 20)});
+    outer_block.fields.push_back({RungDataType::PREIMAGE, middle_bytes});
+    // Add witness fields for the innermost SIG
+    outer_block.fields.push_back({RungDataType::PUBKEY, pk});
+    outer_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    // Outer starts at depth 1, middle at depth 2, innermost would be depth 3 > MAX_LEGACY_INNER_DEPTH(2)
+    // The middle P2SH deserialization succeeds but its inner evaluation hits depth limit
+    EvalResult result = EvalP2SHLegacyBlock(outer_block, checker, SigVersion::LADDER, execdata, ctx);
+    // Should not be SATISFIED — either ERROR from depth limit or UNSATISFIED
+    BOOST_CHECK(result != EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_recursion_depth_limit)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    // Build innermost conditions: a simple SIG block
+    LadderWitness innermost;
+    Rung innermost_rung;
+    RungBlock sig_block;
+    sig_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    sig_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    sig_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    innermost_rung.blocks.push_back(sig_block);
+    innermost.rungs.push_back(innermost_rung);
+    auto innermost_bytes = SerializeLadderWitness(innermost, SerializationContext::CONDITIONS);
+
+    // Build middle P2WSH that wraps the innermost
+    unsigned char hash256_inner[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(innermost_bytes.data(), innermost_bytes.size()).Finalize(hash256_inner);
+
+    LadderWitness middle;
+    Rung middle_rung;
+    RungBlock middle_block;
+    middle_block.type = RungBlockType::P2WSH_LEGACY;
+    middle_block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash256_inner, hash256_inner + 32)});
+    middle_rung.blocks.push_back(middle_block);
+    middle.rungs.push_back(middle_rung);
+    auto middle_bytes = SerializeLadderWitness(middle, SerializationContext::CONDITIONS);
+
+    // Build outer P2WSH wrapping the middle
+    unsigned char hash256_middle[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(middle_bytes.data(), middle_bytes.size()).Finalize(hash256_middle);
+
+    RungBlock outer_block;
+    outer_block.type = RungBlockType::P2WSH_LEGACY;
+    outer_block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash256_middle, hash256_middle + 32)});
+    outer_block.fields.push_back({RungDataType::PREIMAGE, middle_bytes});
+    outer_block.fields.push_back({RungDataType::PUBKEY, pk});
+    outer_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    EvalResult result = EvalP2WSHLegacyBlock(outer_block, checker, SigVersion::LADDER, execdata, ctx);
+    BOOST_CHECK(result != EvalResult::SATISFIED);
+}
+
+// -- P2SH/P2WSH inner sig unsatisfied --
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_inner_sig_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false; // Signature will fail
+
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+    unsigned char hash160[CHash160::OUTPUT_SIZE];
+    CHash160().Write(inner_bytes).Finalize(hash160);
+    std::vector<uint8_t> hash160_vec(hash160, hash160 + 20);
+
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    // Hash matches, inner deserializes OK, but sig fails
+    BOOST_CHECK(EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_inner_sig_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+    unsigned char hash256[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(hash256);
+    std::vector<uint8_t> hash256_vec(hash256, hash256 + 32);
+
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, hash256_vec});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+// -- P2TR_SCRIPT_LEGACY inner sig unsatisfied --
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_inner_sig_unsatisfied)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = false;
+
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    auto pk = MakePubkey();
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+    unsigned char leaf_hash[CSHA256::OUTPUT_SIZE];
+    CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(leaf_hash);
+    std::vector<uint8_t> merkle_root(leaf_hash, leaf_hash + 32);
+
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, merkle_root});
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+    block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+    block.fields.push_back({RungDataType::PUBKEY, pk});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
+}
+
+// -- P2SH/P2WSH/P2TR_SCRIPT dispatch through EvalBlock --
+
+BOOST_AUTO_TEST_CASE(eval_block_dispatch_legacy_inner_conditions)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    auto pk = MakePubkey();
+
+    // Build inner SIG conditions
+    LadderWitness inner_ladder;
+    Rung inner_rung;
+    RungBlock inner_block;
+    inner_block.type = RungBlockType::SIG;
+    inner_block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
+    inner_block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    inner_rung.blocks.push_back(inner_block);
+    inner_ladder.rungs.push_back(inner_rung);
+    auto inner_bytes = SerializeLadderWitness(inner_ladder, SerializationContext::CONDITIONS);
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    // P2SH via EvalBlock
+    {
+        unsigned char hash160[CHash160::OUTPUT_SIZE];
+        CHash160().Write(inner_bytes).Finalize(hash160);
+
+        RungBlock block;
+        block.type = RungBlockType::P2SH_LEGACY;
+        block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(hash160, hash160 + 20)});
+        block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+    }
+
+    // P2WSH via EvalBlock
+    {
+        unsigned char hash256[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(hash256);
+
+        RungBlock block;
+        block.type = RungBlockType::P2WSH_LEGACY;
+        block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash256, hash256 + 32)});
+        block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+    }
+
+    // P2TR_SCRIPT via EvalBlock
+    {
+        unsigned char leaf_hash[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(inner_bytes.data(), inner_bytes.size()).Finalize(leaf_hash);
+
+        RungBlock block;
+        block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+        block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(leaf_hash, leaf_hash + 32)});
+        block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(32, 0xAA)});
+        block.fields.push_back({RungDataType::PREIMAGE, inner_bytes});
+        block.fields.push_back({RungDataType::PUBKEY, pk});
+        block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+        BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
+    }
+}
+
+// -- P2PKH_LEGACY with wrong-size HASH160 --
+
+BOOST_AUTO_TEST_CASE(eval_p2pkh_legacy_bad_hash160_size)
+{
+    MockSignatureChecker checker;
+    checker.schnorr_result = true;
+
+    RungBlock block;
+    block.type = RungBlockType::P2PKH_LEGACY;
+    // 19 bytes — wrong size
+    block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(19, 0xDD)});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    BOOST_CHECK(EvalP2PKHLegacyBlock(block, checker, SigVersion::LADDER, execdata) == EvalResult::ERROR);
+}
+
+// -- P2WSH_LEGACY with wrong-size HASH256 --
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_bad_hash256_size)
+{
+    MockSignatureChecker checker;
+
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    // 31 bytes — wrong size
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(31, 0xCC)});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+// -- P2TR_SCRIPT_LEGACY with wrong-size PUBKEY_COMMIT --
+
+BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_bad_commit_size)
+{
+    MockSignatureChecker checker;
+
+    RungBlock block;
+    block.type = RungBlockType::P2TR_SCRIPT_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    // 31 bytes — wrong size for PUBKEY_COMMIT
+    block.fields.push_back({RungDataType::PUBKEY_COMMIT, std::vector<uint8_t>(31, 0xAA)});
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -45,6 +45,9 @@ def parse_types_h():
         'UNLOCK', 'UNLOCK_TO', 'COVENANT', 'INLINE', 'AGGREGATE',
         'DEFERRED', 'SCHNORR', 'ECDSA', 'FALCON512', 'FALCON1024',
         'DILITHIUM3', 'SPHINCS_SHA',
+        'COMPACT_SIG',             # alias for SIG (same code 0x0001)
+        'MICRO_HEADER_ESCAPE',     # internal marker, not a user-facing block
+        'MICRO_HEADER_ESCAPE_INV', # internal marker, not a user-facing block
     }
     for m in re.finditer(r'(\w+)\s*=\s*(0x[0-9a-fA-F]+)', text):
         name, code = m.group(1), int(m.group(2), 16)
@@ -81,6 +84,7 @@ FAMILIES = {
     'PLC':        (0x0600, 0x06FF),
     'Compound':   (0x0700, 0x07FF),
     'Governance': (0x0800, 0x08FF),
+    'Legacy':     (0x0900, 0x09FF),
 }
 
 
@@ -97,25 +101,26 @@ def block_family(code):
 class TestTypesH(unittest.TestCase):
     """Verify types.h internal consistency."""
 
-    def test_exactly_48_block_types(self):
-        self.assertEqual(len(CANONICAL_BLOCKS), 48,
-                         f"Expected 48 block types, got {len(CANONICAL_BLOCKS)}: {sorted(CANONICAL_BLOCKS.keys())}")
+    def test_exactly_60_block_types(self):
+        self.assertEqual(len(CANONICAL_BLOCKS), 60,
+                         f"Expected 60 block types, got {len(CANONICAL_BLOCKS)}: {sorted(CANONICAL_BLOCKS.keys())}")
 
     def test_no_duplicate_codes(self):
         codes = list(CANONICAL_BLOCKS.values())
         self.assertEqual(len(codes), len(set(codes)),
                          f"Duplicate type codes found")
 
-    def test_9_families_represented(self):
+    def test_10_families_represented(self):
         families_used = set()
         for code in CANONICAL_BLOCKS.values():
             families_used.add(block_family(code))
-        self.assertEqual(len(families_used), 9,
-                         f"Expected 9 families, got {families_used}")
+        self.assertEqual(len(families_used), 10,
+                         f"Expected 10 families, got {families_used}")
 
     def test_family_block_counts(self):
-        expected = {'Signature': 3, 'Timelock': 4, 'Hash': 3, 'Covenant': 3,
-                    'Recursion': 6, 'Anchor': 6, 'PLC': 14, 'Compound': 3, 'Governance': 6}
+        expected = {'Signature': 5, 'Timelock': 4, 'Hash': 3, 'Covenant': 3,
+                    'Recursion': 6, 'Anchor': 6, 'PLC': 14, 'Compound': 6, 'Governance': 6,
+                    'Legacy': 7}
         actual = {}
         for code in CANONICAL_BLOCKS.values():
             fam = block_family(code)
@@ -146,9 +151,21 @@ class TestTypesH(unittest.TestCase):
             'ONE_SHOT': 0x0661,
             'RATE_LIMIT': 0x0671,
             'COSIGN': 0x0681,
+            'MUSIG_THRESHOLD': 0x0004,
+            'KEY_REF_SIG': 0x0005,
             'TIMELOCKED_SIG': 0x0701,
+            'PTLC': 0x0704,
+            'CLTV_SIG': 0x0705,
+            'TIMELOCKED_MULTISIG': 0x0706,
             'EPOCH_GATE': 0x0801,
             'ACCUMULATOR': 0x0806,
+            'P2PK_LEGACY': 0x0901,
+            'P2PKH_LEGACY': 0x0902,
+            'P2SH_LEGACY': 0x0903,
+            'P2WPKH_LEGACY': 0x0904,
+            'P2WSH_LEGACY': 0x0905,
+            'P2TR_LEGACY': 0x0906,
+            'P2TR_SCRIPT_LEGACY': 0x0907,
         }
         for name, expected_code in critical.items():
             self.assertEqual(CANONICAL_BLOCKS[name], expected_code,
@@ -162,7 +179,7 @@ class TestEngineBlockDefs(unittest.TestCase):
     def setUpClass(cls):
         cls.engine_text = ENGINE.read_text()
 
-    def test_getTypeHex_has_all_48_blocks(self):
+    def test_getTypeHex_has_all_60_blocks(self):
         # Extract getTypeHex map entries
         m = re.search(r'function getTypeHex\(type\)\s*\{[\s\S]*?const map = \{([\s\S]*?)\};', self.engine_text)
         self.assertIsNotNone(m, "getTypeHex function not found")
@@ -181,8 +198,8 @@ class TestEngineBlockDefs(unittest.TestCase):
         # Each block has type: 'NAME' — count all unique block type entries
         block_types = re.findall(r"type:\s*'([A-Z][A-Z0-9_]+)'", self.engine_text)
         unique_types = set(block_types)
-        self.assertGreaterEqual(len(unique_types), 48,
-                                f"Engine defines {len(unique_types)} unique block types, expected >= 48")
+        self.assertGreaterEqual(len(unique_types), 60,
+                                f"Engine defines {len(unique_types)} unique block types, expected >= 60")
 
     def test_no_watch_mode_references(self):
         self.assertNotIn("watch", self.engine_text.lower().split("function")[0] if "function" in self.engine_text else "",
@@ -192,10 +209,11 @@ class TestEngineBlockDefs(unittest.TestCase):
 
 
 class TestBlockReferencePages(unittest.TestCase):
-    """Verify all 48 HTML block reference pages match types.h."""
+    """Verify all 60 HTML block reference pages match types.h."""
 
     BLOCK_FILE_MAP = {
         'SIG': 'sig', 'MULTISIG': 'multisig', 'ADAPTOR_SIG': 'adaptor-sig',
+        'MUSIG_THRESHOLD': 'musig-threshold', 'KEY_REF_SIG': 'key-ref-sig',
         'CSV': 'csv', 'CSV_TIME': 'csv-time', 'CLTV': 'cltv', 'CLTV_TIME': 'cltv-time',
         'HASH_PREIMAGE': 'hash-preimage', 'HASH160_PREIMAGE': 'hash160-preimage', 'TAGGED_HASH': 'tagged-hash',
         'CTV': 'ctv', 'VAULT_LOCK': 'vault-lock', 'AMOUNT_LOCK': 'amount-lock',
@@ -211,12 +229,17 @@ class TestBlockReferencePages(unittest.TestCase):
         'COMPARE': 'compare', 'SEQUENCER': 'sequencer', 'ONE_SHOT': 'one-shot',
         'RATE_LIMIT': 'rate-limit', 'COSIGN': 'cosign',
         'TIMELOCKED_SIG': 'timelocked-sig', 'HTLC': 'htlc', 'HASH_SIG': 'hash-sig',
+        'PTLC': 'ptlc', 'CLTV_SIG': 'cltv-sig', 'TIMELOCKED_MULTISIG': 'timelocked-multisig',
         'EPOCH_GATE': 'epoch-gate', 'WEIGHT_LIMIT': 'weight-limit',
         'INPUT_COUNT': 'input-count', 'OUTPUT_COUNT': 'output-count',
         'RELATIVE_VALUE': 'relative-value', 'ACCUMULATOR': 'accumulator',
+        'P2PK_LEGACY': 'p2pk-legacy', 'P2PKH_LEGACY': 'p2pkh-legacy',
+        'P2SH_LEGACY': 'p2sh-legacy', 'P2WPKH_LEGACY': 'p2wpkh-legacy',
+        'P2WSH_LEGACY': 'p2wsh-legacy', 'P2TR_LEGACY': 'p2tr-legacy',
+        'P2TR_SCRIPT_LEGACY': 'p2tr-script-legacy',
     }
 
-    def test_all_48_pages_exist(self):
+    def test_all_60_pages_exist(self):
         for name, filename in self.BLOCK_FILE_MAP.items():
             path = DOCS_BLOCKS / f"{filename}.html"
             self.assertTrue(path.exists(), f"Missing block page: {path}")
@@ -319,10 +342,14 @@ class TestDocsIndex(unittest.TestCase):
         self.assertNotIn("co-signing gate", self.text.lower(),
                          "COSIGN should not be described as 'co-signing gate'")
 
-    def test_all_48_blocks_listed(self):
+    def test_all_60_blocks_listed(self):
         for name in CANONICAL_BLOCKS:
             self.assertIn(f"'{name}'", self.text,
                           f"Block {name} not found in docs SPA index")
+
+    def test_sidebar_says_all_60_blocks(self):
+        self.assertIn('All 60 Blocks', self.text,
+                      "Docs SPA sidebar should say 'All 60 Blocks'")
 
 
 class TestIndexPages(unittest.TestCase):
@@ -433,13 +460,64 @@ class TestLandingPage(unittest.TestCase):
     def setUpClass(cls):
         cls.text = LANDING.read_text() if LANDING.exists() else ""
 
-    def test_48_blocks_9_families(self):
-        self.assertIn('48 block', self.text, "Landing page should mention 48 blocks")
-        self.assertIn('nine', self.text.lower(), "Landing page should mention nine families")
+    def test_60_blocks_10_families(self):
+        self.assertIn('60 block', self.text, "Landing page should mention 60 blocks")
+        self.assertIn('ten', self.text.lower(), "Landing page should mention ten families")
 
     def test_version_4(self):
         self.assertIn('Version 4', self.text, "Landing page should reference Version 4")
         self.assertNotIn('Version 3', self.text, "Landing page should NOT reference Version 3")
+
+
+class TestLegacyBlockPages(unittest.TestCase):
+    """Verify the 7 legacy block reference pages exist with correct metadata."""
+
+    LEGACY_BLOCKS = {
+        'P2PK_LEGACY':          ('p2pk-legacy',          0x0901),
+        'P2PKH_LEGACY':         ('p2pkh-legacy',         0x0902),
+        'P2SH_LEGACY':          ('p2sh-legacy',          0x0903),
+        'P2WPKH_LEGACY':        ('p2wpkh-legacy',        0x0904),
+        'P2WSH_LEGACY':         ('p2wsh-legacy',         0x0905),
+        'P2TR_LEGACY':          ('p2tr-legacy',           0x0906),
+        'P2TR_SCRIPT_LEGACY':   ('p2tr-script-legacy',   0x0907),
+    }
+
+    def test_all_7_legacy_pages_exist(self):
+        for name, (filename, _code) in self.LEGACY_BLOCKS.items():
+            path = DOCS_BLOCKS / f"{filename}.html"
+            self.assertTrue(path.exists(),
+                            f"Missing legacy block page: {path}")
+
+    def test_legacy_type_codes(self):
+        for name, (filename, expected_code) in self.LEGACY_BLOCKS.items():
+            path = DOCS_BLOCKS / f"{filename}.html"
+            if not path.exists():
+                continue
+            text = path.read_text()
+            expected_hex = f"0x{expected_code:04x}"
+            m = re.search(r'TYPE\s+(0x[0-9A-Fa-f]+)', text)
+            self.assertIsNotNone(m, f"{filename}.html: no TYPE code found")
+            actual = m.group(1).lower()
+            self.assertEqual(actual, expected_hex,
+                             f"{filename}.html: TYPE {actual} != expected {expected_hex}")
+
+    def test_legacy_family_badge(self):
+        for name, (filename, _code) in self.LEGACY_BLOCKS.items():
+            path = DOCS_BLOCKS / f"{filename}.html"
+            if not path.exists():
+                continue
+            text = path.read_text()
+            # Check for Legacy family badge (case-insensitive)
+            m = re.search(r'LEGACY\s+FAMILY', text, re.IGNORECASE)
+            self.assertIsNotNone(m,
+                                 f"{filename}.html: missing 'LEGACY FAMILY' badge")
+
+    def test_legacy_pages_in_block_docs_mirror(self):
+        """Legacy pages must exist in both docs/blocks/ and block-docs/."""
+        for name, (filename, _code) in self.LEGACY_BLOCKS.items():
+            mirror = BLOCK_DOCS / f"{filename}.html"
+            self.assertTrue(mirror.exists(),
+                            f"Missing legacy mirror page: {mirror}")
 
 
 class TestWireFormatMath(unittest.TestCase):

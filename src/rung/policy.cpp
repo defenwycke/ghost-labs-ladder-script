@@ -33,6 +33,14 @@ bool IsBaseBlockType(uint16_t block_type)
     case RungBlockType::PTLC:
     case RungBlockType::CLTV_SIG:
     case RungBlockType::TIMELOCKED_MULTISIG:
+    // Legacy family (wrapped Bitcoin transaction types)
+    case RungBlockType::P2PK_LEGACY:
+    case RungBlockType::P2PKH_LEGACY:
+    case RungBlockType::P2SH_LEGACY:
+    case RungBlockType::P2WPKH_LEGACY:
+    case RungBlockType::P2WSH_LEGACY:
+    case RungBlockType::P2TR_LEGACY:
+    case RungBlockType::P2TR_SCRIPT_LEGACY:
         return true;
     default:
         return false;

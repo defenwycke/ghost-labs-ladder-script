@@ -138,6 +138,7 @@
     .family-plc { color: #98c379; }
     .family-compound { color: #f59e0b; }
     .family-governance { color: #8b5cf6; }
+    .family-legacy { color: #e91e90; }
     .family-compact { color: #98c379; }
 
     .badge-signature { color: #e6a817; background: rgba(230, 168, 23, 0.1); }
@@ -149,6 +150,7 @@
     .badge-plc { color: #98c379; background: rgba(152, 195, 121, 0.1); }
     .badge-compound { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
     .badge-governance { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+    .badge-legacy { color: #e91e90; background: rgba(233, 30, 144, 0.1); }
 
     /* Block detail page styles (when loaded via AJAX) */
     .block-detail-back {
@@ -296,7 +298,7 @@
       <a href="#README" class="sidebar-link" data-doc="README.md" data-title="README">README</a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-label">Block Reference</div>
-      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 53 Blocks</a>
+      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 60 Blocks</a>
       <div class="sidebar-divider"></div>
       <div class="sidebar-label">Transaction Examples</div>
       <a href="#TX_INDEX" class="sidebar-link" data-doc="__TX_INDEX__" data-title="Transaction Examples">All Examples</a>
@@ -422,6 +424,19 @@
           { code: '0x0804', name: 'OUTPUT_COUNT', file: 'output-count', desc: 'Bounds on number of outputs in the spending transaction.' },
           { code: '0x0805', name: 'RELATIVE_VALUE', file: 'relative-value', desc: 'Anti-siphon ratio enforcement between input and output values.' },
           { code: '0x0806', name: 'ACCUMULATOR', file: 'accumulator', desc: 'Merkle set membership proof using sorted-pair Merkle proofs.' },
+        ]
+      },
+      {
+        name: 'Legacy Family', range: '0x0900', cls: 'legacy',
+        intro: 'Legacy blocks wrap Bitcoin\u2019s original transaction types as typed Ladder Script blocks. They preserve spending semantics while closing data-embedding surfaces. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions.',
+        blocks: [
+          { code: '0x0901', name: 'P2PK_LEGACY', file: 'p2pk-legacy', desc: 'P2PK wrapped \u2014 PUBKEY_COMMIT + signature verification.' },
+          { code: '0x0902', name: 'P2PKH_LEGACY', file: 'p2pkh-legacy', desc: 'P2PKH wrapped \u2014 HASH160(pubkey) check + signature verify.' },
+          { code: '0x0903', name: 'P2SH_LEGACY', file: 'p2sh-legacy', desc: 'P2SH wrapped \u2014 inner script must be valid Ladder conditions.' },
+          { code: '0x0904', name: 'P2WPKH_LEGACY', file: 'p2wpkh-legacy', desc: 'P2WPKH wrapped \u2014 delegates to P2PKH evaluator.' },
+          { code: '0x0905', name: 'P2WSH_LEGACY', file: 'p2wsh-legacy', desc: 'P2WSH wrapped \u2014 SHA256 of inner Ladder conditions.' },
+          { code: '0x0906', name: 'P2TR_LEGACY', file: 'p2tr-legacy', desc: 'P2TR key-path wrapped \u2014 same as SIG block.' },
+          { code: '0x0907', name: 'P2TR_SCRIPT_LEGACY', file: 'p2tr-script-legacy', desc: 'P2TR script-path wrapped \u2014 closes the inscription vector.' },
         ]
       },
       {
