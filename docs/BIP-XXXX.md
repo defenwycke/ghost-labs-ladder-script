@@ -936,6 +936,8 @@ PUBKEY_COMMIT values are always computed by the node from validated public keys 
 
 The combined effect is that **no condition field across all 60 block types accepts arbitrary user-chosen bytes**. Every commitment stored in the UTXO set is a deterministic hash function of validated input data. The node rejects raw hash/commitment values for block types that support auto-conversion, forcing all data through the node-computed path.
 
+**Normative rule:** In `RUNG_TX`, all hash commitments stored in the UTXO set are computed exclusively by the node from validated preimages. No hash field accepts user-supplied values directly. Arbitrary data embedding is structurally impossible regardless of transaction construction method. This property is enforced at the consensus layer — not by mempool policy — and cannot be bypassed by miners or custom transaction construction software.
+
 ### Post-Quantum Library Dependency
 
 Post-quantum signature verification uses the Open Quantum Safe project's liboqs library. The dependency is structured to minimise consensus risk:
