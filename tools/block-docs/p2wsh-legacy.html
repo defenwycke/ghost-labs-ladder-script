@@ -64,14 +64,14 @@
         <td class="field-type">HASH256</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA256 commitment to the inner script</td>
+        <td class="field-desc">SHA256 commitment to the inner script. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE (serialized Ladder Script conditions) and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">var</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Serialized Ladder Script conditions (the inner script)</td>
+        <td class="field-desc">Serialized Ladder Script conditions (the inner script) &mdash; provided by the user. The node derives HASH256 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">[inner witness]</td>
@@ -189,6 +189,7 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Same anti-spam properties as P2SH_LEGACY &mdash; inner script must be valid Ladder Script.</li>
+    <li>The HASH256 field is <strong>node-computed</strong>: the user supplies PREIMAGE (the inner script) and the node derives the hash commitment automatically. Submitting a raw HASH256 value directly is rejected.</li>
     <li>Uses SHA256 instead of HASH160 for the script hash, matching Bitcoin's P2WSH design.</li>
     <li>Recursion depth limited to 2.</li>
   </ul>

@@ -332,13 +332,14 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
                 }
                 RungDataType dtype = static_cast<RungDataType>(type_byte);
 
-                // Diff fields must be witness-side types (PUBKEY, SIGNATURE, PREIMAGE, SCHEME)
+                // Diff fields must be witness-side types (PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY, SCHEME)
                 if (dtype != RungDataType::PUBKEY &&
                     dtype != RungDataType::SIGNATURE &&
                     dtype != RungDataType::PREIMAGE &&
+                    dtype != RungDataType::SCRIPT_BODY &&
                     dtype != RungDataType::SCHEME) {
                     error = "diff witness field type " + DataTypeName(dtype) +
-                            " not allowed (must be PUBKEY, SIGNATURE, PREIMAGE, or SCHEME)";
+                            " not allowed (must be PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY, or SCHEME)";
                     return false;
                 }
 

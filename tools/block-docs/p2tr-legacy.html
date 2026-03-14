@@ -64,7 +64,7 @@
         <td class="field-type">PUBKEY_COMMIT</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key</td>
+        <td class="field-desc">SHA-256 commitment to the signing public key. <strong>Node-computed</strong> &mdash; the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">scheme</td>
@@ -191,6 +191,7 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Key-path only &mdash; for script-path see P2TR_SCRIPT_LEGACY (0x0907).</li>
+    <li>PUBKEY_COMMIT is <strong>node-computed</strong>: the user supplies PUBKEY and the node derives SHA256(PUBKEY) automatically. Submitting a raw PUBKEY_COMMIT value directly is rejected.</li>
     <li>Delegates to EvalSigBlock internally.</li>
     <li>Closes key-path data surfaces while preserving Taproot's key-path efficiency.</li>
   </ul>

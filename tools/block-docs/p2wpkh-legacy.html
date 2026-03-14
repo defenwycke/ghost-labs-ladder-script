@@ -64,14 +64,14 @@
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">RIPEMD160(SHA256(pubkey)) commitment</td>
+        <td class="field-desc">RIPEMD160(SHA256(pubkey)) commitment. <strong>Node-computed</strong> &mdash; the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">pubkey</td>
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Public key revealed at spend time</td>
+        <td class="field-desc">Public key &mdash; provided by the user. The node derives HASH160 from this key at creation time. Revealed at spend time.</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>
@@ -186,6 +186,7 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Functionally identical to P2PKH_LEGACY.</li>
+    <li>The HASH160 field is <strong>node-computed</strong>: the user supplies PUBKEY and the node derives the hash commitment automatically. Submitting a raw HASH160 value directly is rejected.</li>
     <li>Kept as a separate type code to represent the distinct segwit migration path.</li>
     <li>In Bitcoin, P2WPKH moved witness data outside the transaction body for fee savings. In Ladder Script, the distinction is semantic only.</li>
   </ul>

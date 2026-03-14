@@ -2502,6 +2502,7 @@ EvalResult EvalP2SHLegacyBlock(const RungBlock& block,
     // P2SH_LEGACY: HASH160(inner_conditions) == committed hash, then eval inner
     const RungField* hash160_field = FindField(block, RungDataType::HASH160);
     const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+    if (!preimage_field) preimage_field = FindField(block, RungDataType::SCRIPT_BODY);
 
     if (!hash160_field || !preimage_field) {
         return EvalResult::ERROR;
@@ -2530,6 +2531,7 @@ EvalResult EvalP2WSHLegacyBlock(const RungBlock& block,
     // P2WSH_LEGACY: SHA256(inner_conditions) == committed hash, then eval inner
     const RungField* hash256_field = FindField(block, RungDataType::HASH256);
     const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+    if (!preimage_field) preimage_field = FindField(block, RungDataType::SCRIPT_BODY);
 
     if (!hash256_field || !preimage_field) {
         return EvalResult::ERROR;
@@ -2563,6 +2565,7 @@ EvalResult EvalP2TRScriptLegacyBlock(const RungBlock& block,
     const RungField* hash256_field = FindField(block, RungDataType::HASH256);
     const RungField* pubkey_commit = FindField(block, RungDataType::PUBKEY_COMMIT);
     const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+    if (!preimage_field) preimage_field = FindField(block, RungDataType::SCRIPT_BODY);
 
     if (!hash256_field || !pubkey_commit || !preimage_field) {
         return EvalResult::ERROR;

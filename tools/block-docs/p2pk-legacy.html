@@ -64,7 +64,7 @@
         <td class="field-type">PUBKEY_COMMIT</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key</td>
+        <td class="field-desc">SHA-256 commitment to the signing public key. <strong>Node-computed</strong> &mdash; the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">scheme</td>
@@ -195,6 +195,7 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Delegates to EvalSigBlock internally. All signature schemes supported via SCHEME field.</li>
+    <li>PUBKEY_COMMIT is <strong>node-computed</strong>: the user supplies PUBKEY and the node derives SHA256(PUBKEY) automatically. Submitting a raw PUBKEY_COMMIT value directly is rejected.</li>
     <li>Wraps legacy P2PK semantics &mdash; no new data surfaces.</li>
     <li>All signature schemes (Schnorr, ECDSA, PQ) supported via the SCHEME routing field.</li>
     <li>Closes the arbitrary data surface present in raw P2PK outputs.</li>

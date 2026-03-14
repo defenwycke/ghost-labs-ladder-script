@@ -64,14 +64,14 @@
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">RIPEMD160(SHA256(preimage)) commitment to the inner script</td>
+        <td class="field-desc">RIPEMD160(SHA256(preimage)) commitment to the inner script. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE (serialized Ladder Script conditions) and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">var</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Serialized Ladder Script conditions (the inner script)</td>
+        <td class="field-desc">Serialized Ladder Script conditions (the inner script) &mdash; provided by the user. The node derives HASH160 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">[inner witness]</td>
@@ -189,6 +189,7 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Inner conditions must deserialize as valid Ladder Script &mdash; arbitrary bytes are rejected.</li>
+    <li>The HASH160 field is <strong>node-computed</strong>: the user supplies PREIMAGE (the inner script) and the node derives the hash commitment automatically. Submitting a raw HASH160 value directly is rejected.</li>
     <li>Recursion depth limited to 2 to prevent unbounded nesting.</li>
     <li>Prevents the arbitrary data embedding that plagues Bitcoin P2SH.</li>
     <li>The inner script is only revealed at spend time, preserving script privacy until then.</li>

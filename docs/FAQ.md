@@ -522,7 +522,7 @@ they can never recover.
 
 Micro-headers are a wire format v3 optimization. Instead of encoding a block's
 type as a 2-byte `uint16_t`, frequently used blocks get a 1-byte *slot index*
-(0x00 to 0x34). All 53 current block types have assigned slots. The evaluator
+(0x00 to 0x3B). All 60 current block types have assigned slots. The evaluator
 maps slot indices to full type codes via a compile-time lookup table.
 
 This saves 1 byte per block in the common case. Inverted blocks that have a
@@ -552,7 +552,7 @@ and a 1-byte `scheme` selector. At deserialisation this is expanded into a
 standard rung with a single SIG block. The evaluator never sees the compact
 form — it processes the resolved SIG block normally. COMPACT_SIG saves a few
 wire bytes for the dominant single-signer pattern. The total block type count
-remains 53.
+remains 60.
 
 ---
 

@@ -124,7 +124,7 @@ Each block begins with a single header byte:
 | `0x80` | Escape to full header: followed by `[block_type: uint16_t LE]` + `[n_fields: varint]` (inverted=false) |
 | `0x81` | Escape to full header with inverted=true: followed by `[block_type: uint16_t LE]` + `[n_fields: varint]` |
 
-All 53 current block types fit in micro-header slots 0x00--0x34. Inverted blocks that have a micro-header slot use `0x81` escape + type instead of slot + inversion byte.
+All 60 current block types fit in micro-header slots 0x00--0x3B. Inverted blocks that have a micro-header slot use `0x81` escape + type instead of slot + inversion byte.
 
 When a block uses a micro-header AND has an implicit field table for the current serialization context, field count and per-field type bytes are omitted entirely (see Section 3.4).
 
@@ -159,6 +159,7 @@ Per-type field data encoding:
 | PUBKEY (0x01) | `CompactSize(len)` + len bytes (1--2048) |
 | SIGNATURE (0x06) | `CompactSize(len)` + len bytes (1--50000) |
 | PREIMAGE (0x05) | `CompactSize(len)` + len bytes (1--252) |
+| SCRIPT_BODY (0x0A) | `CompactSize(len)` + len bytes (1--10000) |
 | SPEND_INDEX (0x07) | `CompactSize(4)` + 4 bytes |
 
 ### 3.4 Implicit Field Layouts
@@ -243,7 +244,7 @@ FOR EACH diff:
 - **No chaining**: The source input's witness must not itself be a diff witness. Only one level of indirection is permitted.
 - **Coil never inherited**: The spending input always provides its own fresh coil. Inheriting destination addresses from another input would be a security footgun.
 - **Relays inherited**: Relays are copied wholesale from the source witness. The diff witness wire format omits the relay section entirely.
-- **Allowed diff field types**: Only witness-side data types are permitted in diffs: PUBKEY (`0x01`), SIGNATURE (`0x06`), PREIMAGE (`0x05`), and SCHEME (`0x09`). Condition-only types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SPEND_INDEX) are rejected during deserialization.
+- **Allowed diff field types**: Only witness-side data types are permitted in diffs: PUBKEY (`0x01`), SIGNATURE (`0x06`), PREIMAGE (`0x05`), SCRIPT_BODY (`0x0A`), and SCHEME (`0x09`). Condition-only types (PUBKEY_COMMIT, HASH256, HASH160, NUMERIC, SPEND_INDEX) are rejected during deserialization.
 - **Type matching at resolution**: Each diff's `data_type` must match the type of the field it replaces in the source witness. Mismatches are rejected.
 
 #### Resolution Process

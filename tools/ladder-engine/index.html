@@ -2601,7 +2601,7 @@ const BLOCK_FAMILIES = [
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex', witnessOnly: true }
       ]},
       { type: 'P2SH_LEGACY', label: 'P2SH', desc: 'P2SH wrapped — provide inner conditions, node computes HASH160', fields: [
-        { name: 'preimage', dataType: 'PREIMAGE', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions — node computes HASH160' },
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 10KB) — node computes HASH160' },
         { name: 'hash160', dataType: 'HASH160', label: 'Script Hash (read-only)', placeholder: 'Auto-computed by node from inner conditions', computed: true }
       ]},
       { type: 'P2WPKH_LEGACY', label: 'P2WPKH', desc: 'P2WPKH wrapped — provide pubkey, node computes HASH160 (segwit version)', fields: [
@@ -2610,7 +2610,7 @@ const BLOCK_FAMILIES = [
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex', witnessOnly: true }
       ]},
       { type: 'P2WSH_LEGACY', label: 'P2WSH', desc: 'P2WSH wrapped — provide inner conditions, node computes SHA256', fields: [
-        { name: 'preimage', dataType: 'PREIMAGE', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions — node computes SHA256' },
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 10KB) — node computes SHA256' },
         { name: 'hash256', dataType: 'HASH256', label: 'Script Hash (read-only)', placeholder: 'Auto-computed by node from inner conditions', computed: true }
       ]},
       { type: 'P2TR_LEGACY', label: 'P2TR', desc: 'P2TR key-path wrapped — public key + signature (same as SIG)', fields: [
@@ -2619,7 +2619,7 @@ const BLOCK_FAMILIES = [
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: '01=Schnorr', optional: true }
       ]},
       { type: 'P2TR_SCRIPT_LEGACY', label: 'P2TR_S', desc: 'P2TR script-path wrapped — provide inner conditions + internal key, node computes hashes', fields: [
-        { name: 'preimage', dataType: 'PREIMAGE', label: 'Script Leaf (serialized)', placeholder: 'Serialized Ladder Script conditions — node computes Merkle root' },
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Script Leaf (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 10KB) — node computes Merkle root' },
         { name: 'hash256', dataType: 'HASH256', label: 'Script Tree Root (read-only)', placeholder: 'Auto-computed by node from script leaf', computed: true },
         { name: 'internal_key', dataType: 'PUBKEY', label: 'Internal Public Key', placeholder: '33-byte compressed pubkey (node computes PUBKEY_COMMIT)' }
       ]},
@@ -2646,6 +2646,7 @@ const DATA_TYPE_SIZES = {
   HASH256: { min: 32, max: 32, note: 'SHA-256 digest' },
   HASH160: { min: 20, max: 20, note: 'RIPEMD160(SHA256()) digest' },
   PREIMAGE: { min: 1, max: 252, note: 'Hash preimage (witness only)' },
+  SCRIPT_BODY: { min: 1, max: 10000, note: 'Serialized inner conditions for P2SH/P2WSH/P2TR_SCRIPT (witness only, exceeds PREIMAGE 252B limit)' },
   SIGNATURE: { min: 1, max: 50000, note: 'Schnorr 64-65B, ECDSA 8-72B, PQ up to ~3300B' },
   SPEND_INDEX: { min: 4, max: 4, note: 'uint32 LE index reference' },
   NUMERIC: { min: 1, max: 4, note: 'Unsigned 32-bit integer, little-endian' },
@@ -2701,11 +2702,11 @@ const BLOCK_RULES = {
   OUTPUT_REF: 'References a named output coil from another rung.',
   P2PK_LEGACY: 'Legacy P2PK wrapped as a Ladder Script block. Same evaluation as SIG — PUBKEY_COMMIT verified, then Schnorr/ECDSA/PQ signature check. Closes arbitrary data surfaces by requiring typed fields.',
   P2PKH_LEGACY: 'Legacy P2PKH wrapped. Computes HASH160(pubkey) and compares to the committed hash. If match, verifies signature. Bridges legacy pay-to-pubkey-hash semantics into typed fields.',
-  P2SH_LEGACY: 'Legacy P2SH wrapped. HASH160 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions that are deserialized and evaluated. Prevents arbitrary script embedding.',
+  P2SH_LEGACY: 'Legacy P2SH wrapped. HASH160 of inner conditions must match. SCRIPT_BODY carries serialized Ladder Script conditions (up to 10KB) that are deserialized and evaluated. Prevents arbitrary script embedding.',
   P2WPKH_LEGACY: 'Legacy P2WPKH wrapped. Identical evaluation to P2PKH — HASH160(pubkey) check + signature verify. Represents the segwit migration path.',
-  P2WSH_LEGACY: 'Legacy P2WSH wrapped. SHA256 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions. Same pattern as P2SH but with SHA256 hash.',
+  P2WSH_LEGACY: 'Legacy P2WSH wrapped. SHA256 of inner conditions must match. SCRIPT_BODY carries serialized Ladder Script conditions (up to 10KB). Same pattern as P2SH but with SHA256 hash.',
   P2TR_LEGACY: 'Legacy P2TR key-path wrapped. Same evaluation as SIG — key-path Taproot spend with typed fields. Closes key-path data surfaces.',
-  P2TR_SCRIPT_LEGACY: 'Legacy P2TR script-path wrapped. HASH256 is Merkle root of script tree, PUBKEY_COMMIT is internal key. Revealed leaf (PREIMAGE) must be valid Ladder Script conditions. Closes the primary inscription/data-embedding vector.',
+  P2TR_SCRIPT_LEGACY: 'Legacy P2TR script-path wrapped. HASH256 is Merkle root of script tree, PUBKEY_COMMIT is internal key. Revealed leaf (SCRIPT_BODY) must be valid Ladder Script conditions (up to 10KB). Closes the primary inscription/data-embedding vector.',
 };
 
 // Realistic test data for every block type — deterministic fake keys/hashes
@@ -3061,8 +3062,8 @@ BlockRegistry.P2PKH_LEGACY.evaluate = (block, simState) => {
 
 BlockRegistry.P2SH_LEGACY.evaluate = (block) => {
   if (block.innerBlocks && block.innerBlocks.length > 0) return 'satisfied';
-  const preimage = (block.values.preimage || '').trim();
-  if (!preimage) return 'unsatisfied';
+  const sb = (block.values.script_body || block.values.preimage || '').trim();
+  if (!sb) return 'unsatisfied';
   return 'satisfied';
 };
 
@@ -3074,8 +3075,8 @@ BlockRegistry.P2WPKH_LEGACY.evaluate = (block, simState) => {
 
 BlockRegistry.P2WSH_LEGACY.evaluate = (block) => {
   if (block.innerBlocks && block.innerBlocks.length > 0) return 'satisfied';
-  const preimage = (block.values.preimage || '').trim();
-  if (!preimage) return 'unsatisfied';
+  const sb = (block.values.script_body || block.values.preimage || '').trim();
+  if (!sb) return 'unsatisfied';
   return 'satisfied';
 };
 
@@ -3085,9 +3086,9 @@ BlockRegistry.P2TR_LEGACY.evaluate = (block, simState) =>
 BlockRegistry.P2TR_SCRIPT_LEGACY.evaluate = (block) => {
   if (block.innerBlocks && block.innerBlocks.length > 0 && (block.values.internal_key || '').trim()) return 'satisfied';
   const ikey = (block.values.internal_key || '').trim();
-  const preimage = (block.values.preimage || '').trim();
+  const sb = (block.values.script_body || block.values.preimage || '').trim();
   if (!ikey) return 'error';
-  if (!preimage) return 'unsatisfied';
+  if (!sb) return 'unsatisfied';
   return 'satisfied';
 };
 
@@ -3148,11 +3149,11 @@ BlockRegistry.RELATIVE_VALUE.testData = () => ({ numerator: '9', denominator: '1
 BlockRegistry.ACCUMULATOR.testData = () => ({ merkle_root: TEST_HASH256 });
 BlockRegistry.P2PK_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
 BlockRegistry.P2PKH_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
-BlockRegistry.P2SH_LEGACY.testData = () => ({ preimage: TEST_PREIMAGE });
+BlockRegistry.P2SH_LEGACY.testData = () => ({ script_body: TEST_PREIMAGE });
 BlockRegistry.P2WPKH_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
-BlockRegistry.P2WSH_LEGACY.testData = () => ({ preimage: TEST_PREIMAGE });
+BlockRegistry.P2WSH_LEGACY.testData = () => ({ script_body: TEST_PREIMAGE });
 BlockRegistry.P2TR_LEGACY.testData = () => ({ pubkey: TEST_PUBKEYS[0] });
-BlockRegistry.P2TR_SCRIPT_LEGACY.testData = () => ({ preimage: TEST_PREIMAGE, internal_key: TEST_PUBKEYS[0] });
+BlockRegistry.P2TR_SCRIPT_LEGACY.testData = () => ({ script_body: TEST_PREIMAGE, internal_key: TEST_PUBKEYS[0] });
 
 // ─── Output roles ───
 // 'none' | 'recurse' | 'mutation' | 'split' | 'ctv' | 'validation'
@@ -3359,7 +3360,8 @@ function _findInnerKey(block, keyLookup) {
 
 BlockRegistry.P2SH_LEGACY.buildSigner = (block, keyLookup, preimages, opts) => {
   const entry = { type: 'P2SH_LEGACY' };
-  if (block.values.preimage) entry.preimage = block.values.preimage;
+  if (block.values.script_body) entry.script_body = block.values.script_body;
+  else if (block.values.preimage) entry.preimage = block.values.preimage;
   const key = _findInnerKey(block, keyLookup);
   if (key) entry.privkey = key.privkey;
   return entry;
@@ -3367,7 +3369,8 @@ BlockRegistry.P2SH_LEGACY.buildSigner = (block, keyLookup, preimages, opts) => {
 
 BlockRegistry.P2WSH_LEGACY.buildSigner = (block, keyLookup, preimages, opts) => {
   const entry = { type: 'P2WSH_LEGACY' };
-  if (block.values.preimage) entry.preimage = block.values.preimage;
+  if (block.values.script_body) entry.script_body = block.values.script_body;
+  else if (block.values.preimage) entry.preimage = block.values.preimage;
   const key = _findInnerKey(block, keyLookup);
   if (key) entry.privkey = key.privkey;
   return entry;
@@ -3375,7 +3378,8 @@ BlockRegistry.P2WSH_LEGACY.buildSigner = (block, keyLookup, preimages, opts) => 
 
 BlockRegistry.P2TR_SCRIPT_LEGACY.buildSigner = (block, keyLookup, preimages, opts) => {
   const entry = { type: 'P2TR_SCRIPT_LEGACY' };
-  if (block.values.preimage) entry.preimage = block.values.preimage;
+  if (block.values.script_body) entry.script_body = block.values.script_body;
+  else if (block.values.preimage) entry.preimage = block.values.preimage;
   const key = _findInnerKey(block, keyLookup);
   if (key) entry.privkey = key.privkey;
   return entry;
@@ -3963,6 +3967,8 @@ function exportBlockFields(block) {
       fields.push({ type: 'HASH160', hex: val });
     } else if (f.dataType === 'PREIMAGE') {
       fields.push({ type: 'PREIMAGE', hex: val });
+    } else if (f.dataType === 'SCRIPT_BODY') {
+      fields.push({ type: 'SCRIPT_BODY', hex: val });
     } else if (f.dataType === 'SCHEME' && val) {
       const schemeMap = { SCHNORR: '01', ECDSA: '02', FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
       fields.push({ type: 'SCHEME', hex: schemeMap[val] || '01' });
@@ -4008,6 +4014,9 @@ function wireFieldsToValues(wireBlock) {
       values[fd.name] = wf.hex;
       fi++;
     } else if (fd.dataType === 'PREIMAGE' && wf.type === 'PREIMAGE') {
+      values[fd.name] = wf.hex;
+      fi++;
+    } else if (fd.dataType === 'SCRIPT_BODY' && wf.type === 'SCRIPT_BODY') {
       values[fd.name] = wf.hex;
       fi++;
     } else {
@@ -5581,7 +5590,8 @@ const FIELD_TOOLTIP = {
   SIGNATURE: 'Digital signature — produced at spend time by signing with the private key',
   HASH256: 'SHA-256 hash — 32 bytes (64 hex chars)',
   HASH160: 'HASH160 = RIPEMD160(SHA256(data)) — 20 bytes (40 hex chars)',
-  PREIMAGE: 'Preimage data that hashes to the commitment — revealed at spend time',
+  PREIMAGE: 'Preimage data that hashes to the commitment — revealed at spend time (max 252 bytes)',
+  SCRIPT_BODY: 'Serialized inner conditions — up to 10KB, used for P2SH/P2WSH/P2TR_SCRIPT inner scripts',
   SCHEME: 'Signature scheme — SCHNORR (default), ECDSA, or post-quantum (FALCON, DILITHIUM, SPHINCS+)',
   PUBKEY_COMMIT: 'SHA-256 commitment to a public key — computed automatically by the node',
   BLOCK_HEIGHT: 'Bitcoin block height — e.g. 860000',
@@ -5598,6 +5608,7 @@ const FIELD_TOOLTIP = {
   group_size: 'Total number of signers in the MuSig group',
   hash: 'Hash value — the preimage must hash to this to satisfy the condition',
   hash160: 'HASH160 of the public key — RIPEMD160(SHA256(pubkey)), 20 bytes (40 hex chars)',
+  script_body: 'Serialized Ladder Script conditions — the inner script for P2SH/P2WSH/P2TR_SCRIPT (up to 10KB)',
   hash256: 'SHA-256 hash commitment — 32 bytes (64 hex chars)',
   blocks: 'Number of blocks to wait before this condition can be satisfied',
   height: 'Block height at which this condition becomes valid',
@@ -7583,7 +7594,7 @@ const EXAMPLES = [
         { type: 'P2WPKH_LEGACY', values: { pubkey: FAKE.pk1, signature: '' } },
       ], output: { name: 'HOT_SPEND', type: 'standard' } },
       { label: 'VAULT', blocks: [
-        { type: 'P2SH_LEGACY', values: { preimage: '' },
+        { type: 'P2SH_LEGACY', values: { script_body: '' },
           innerBlocks: [{ id: uid(), type: 'SIG', values: { pubkey: FAKE.pk2 } }] },
       ], output: { name: 'VAULT_UNLOCK', type: 'standard' } },
       { label: 'COLD', blocks: [
@@ -7609,7 +7620,7 @@ const EXAMPLES = [
         { type: 'P2TR_LEGACY', values: { pubkey: FAKE.pk1, signature: '' } },
       ], output: { name: 'KEY_PATH', type: 'standard' } },
       { label: 'SCRIPT', blocks: [
-        { type: 'P2TR_SCRIPT_LEGACY', values: { preimage: '', internal_key: FAKE.pk2 },
+        { type: 'P2TR_SCRIPT_LEGACY', values: { script_body: '', internal_key: FAKE.pk2 },
           innerBlocks: [{ id: uid(), type: 'SIG', values: { pubkey: FAKE.pk3 } }] },
       ], output: { name: 'SCRIPT_PATH', type: 'standard' } },
       { label: 'PQ_SAFE', blocks: [

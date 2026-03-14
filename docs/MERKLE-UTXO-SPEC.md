@@ -54,7 +54,7 @@ For a ladder with N rungs, the spending witness includes only O(log N) proof has
 | MAST path privacy | Binary Merkle tree over rungs; unused paths stay hidden |
 | Witness size reduction | Reveal only exercised path + O(log N) proof hashes |
 | Quantum-safe key hiding | PUBKEY_COMMIT preserved; raw pubkeys never appear until spend |
-| Evaluator compatibility | All 53 block evaluators unchanged |
+| Evaluator compatibility | All 60 block evaluators unchanged |
 
 ### 2.4 Inline Conditions (`0xC1`)
 
@@ -380,7 +380,7 @@ This is comparable to Bitcoin P2TR outputs (43 bytes) and identical for all scri
 | 2-of-3 Multisig | 225 vB | P2WSH 2-of-3 | ~201 vB | +12% |
 | HTLC (2 paths) | 199 vB | P2TR scriptpath | ~175 vB | +14% |
 
-MLSC is **12–23% heavier** than equivalent Bitcoin transactions. This overhead comes from typed fields, block headers, and coil metadata — the cost of Ladder Script's richer expressiveness (53 block types, PQ support, covenants, recursion, PLC blocks).
+MLSC is **12–23% heavier** than equivalent Bitcoin transactions. This overhead comes from typed fields, block headers, and coil metadata — the cost of Ladder Script's richer expressiveness (60 block types, PQ support, covenants, recursion, PLC blocks).
 
 ### 5.5 Creating Transaction Savings
 
@@ -525,7 +525,7 @@ bool DeserializeMLSCWitness(const std::vector<uint8_t>& data,
 
 ### 8.3 Evaluator Impact
 
-**None.** All 53 block evaluators operate on deserialised `RungBlock` and `RungField` structs. These structs are populated identically whether the source is inline conditions (`0xC1`) or revealed conditions from a spending witness (`0xC2`). The evaluation functions receive the same in-memory structures and produce the same results. No evaluator modifications are needed.
+**None.** All 60 block evaluators operate on deserialised `RungBlock` and `RungField` structs. These structs are populated identically whether the source is inline conditions (`0xC1`) or revealed conditions from a spending witness (`0xC2`). The evaluation functions receive the same in-memory structures and produce the same results. No evaluator modifications are needed.
 
 ### 8.4 Inline Compatibility
 
@@ -685,5 +685,5 @@ Fake conditions (arbitrary data disguised as PUBKEY_COMMITs) produce unspendable
 - **Fake data:** Never touches the network — dies with the spammer
 - **Privacy:** Unused paths permanently hidden behind Merkle proof hashes
 - **Weight:** 12–23% heavier than Bitcoin equivalents; 11–73% lighter than inline Ladder Script over full lifecycle
-- **Evaluators:** All 53 block types unchanged
+- **Evaluators:** All 60 block types unchanged
 - **Quantum resistance:** Preserved — pubkeys hidden until spend time

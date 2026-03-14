@@ -301,6 +301,7 @@ static bool ParseDataType(const std::string& name, RungDataType& out)
     if (name == "SPEND_INDEX")   { out = RungDataType::SPEND_INDEX; return true; }
     if (name == "NUMERIC")       { out = RungDataType::NUMERIC; return true; }
     if (name == "SCHEME")        { out = RungDataType::SCHEME; return true; }
+    if (name == "SCRIPT_BODY")   { out = RungDataType::SCRIPT_BODY; return true; }
     // Backward compat: accept old name LOCKTIME as alias for NUMERIC
     if (name == "LOCKTIME")      { out = RungDataType::NUMERIC; return true; }
     return false;
@@ -390,6 +391,22 @@ static RungBlock ParseBlockSpec(const UniValue& block_obj, bool conditions_only)
             RungField hash_field;
             if (block.type == RungBlockType::HASH160_PREIMAGE ||
                 block.type == RungBlockType::P2SH_LEGACY) {
+                hash_field.type = RungDataType::HASH160;
+                hash_field.data.resize(CHash160::OUTPUT_SIZE);
+                CHash160().Write(field.data).Finalize(hash_field.data.data());
+            } else {
+                hash_field.type = RungDataType::HASH256;
+                hash_field.data.resize(CSHA256::OUTPUT_SIZE);
+                CSHA256().Write(field.data.data(), field.data.size()).Finalize(hash_field.data.data());
+            }
+            block.fields.push_back(std::move(hash_field));
+            continue;
+        }
+        // Auto-convert SCRIPT_BODY to hash commitment in conditions (same as PREIMAGE but allows up to 10000 bytes).
+        // Used for P2SH/P2WSH/P2TR_SCRIPT inner conditions that exceed PREIMAGE's 252-byte limit.
+        if (conditions_only && field.type == RungDataType::SCRIPT_BODY) {
+            RungField hash_field;
+            if (block.type == RungBlockType::P2SH_LEGACY) {
                 hash_field.type = RungDataType::HASH160;
                 hash_field.data.resize(CHash160::OUTPUT_SIZE);
                 CHash160().Write(field.data).Finalize(hash_field.data.data());

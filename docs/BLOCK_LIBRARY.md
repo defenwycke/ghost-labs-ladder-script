@@ -1,6 +1,6 @@
 # Ladder Script Block Library
 
-Complete reference for all 53 Ladder Script block types. Each block evaluates a single
+Complete reference for all 60 Ladder Script block types. Each block evaluates a single
 spending condition within a rung. Blocks are combined with AND logic within a rung and
 OR logic across rungs (first satisfied rung wins).
 
@@ -3065,12 +3065,12 @@ Wraps P2PKH (pay-to-pubkey-hash). Computes HASH160(pubkey), compares to committe
 
 **Family:** Legacy
 
-Wraps P2SH (pay-to-script-hash). HASH160 of inner conditions must match. PREIMAGE carries serialized Ladder Script conditions that are deserialized and evaluated. Recursion depth limited to 2.
+Wraps P2SH (pay-to-script-hash). HASH160 of inner conditions is node-computed from the provided script body. SCRIPT_BODY (or PREIMAGE for scripts ≤252 bytes) carries serialized Ladder Script conditions that are deserialized and evaluated. Recursion depth limited to 2. Raw HASH160 input is rejected.
 
 | Field | Data Type | Size | Side | Description |
 |-------|-----------|------|------|-------------|
-| hash160 | HASH160 | 20 B | Conditions | HASH160 of serialized inner conditions |
-| preimage | PREIMAGE | var | Witness | Serialized Ladder Script conditions |
+| hash160 | HASH160 | 20 B | Conditions | HASH160 of inner conditions (node-computed) |
+| script_body | SCRIPT_BODY | 1-10000 B | Witness | Serialized Ladder Script conditions |
 | (inner fields) | var | var | Witness | Witness fields for inner conditions |
 
 ### 57. P2WPKH_LEGACY (0x0904)
@@ -3089,12 +3089,12 @@ Wraps P2WPKH (pay-to-witness-pubkey-hash). Delegates to P2PKH evaluator — HASH
 
 **Family:** Legacy
 
-Wraps P2WSH (pay-to-witness-script-hash). SHA256 of inner conditions must match. Same pattern as P2SH but with SHA256.
+Wraps P2WSH (pay-to-witness-script-hash). SHA256 of inner conditions is node-computed from the provided script body. Same pattern as P2SH but with SHA256. Raw HASH256 input is rejected.
 
 | Field | Data Type | Size | Side | Description |
 |-------|-----------|------|------|-------------|
-| hash256 | HASH256 | 32 B | Conditions | SHA256 of serialized inner conditions |
-| preimage | PREIMAGE | var | Witness | Serialized Ladder Script conditions |
+| hash256 | HASH256 | 32 B | Conditions | SHA256 of inner conditions (node-computed) |
+| script_body | SCRIPT_BODY | 1-10000 B | Witness | Serialized Ladder Script conditions |
 | (inner fields) | var | var | Witness | Witness fields for inner conditions |
 
 ### 59. P2TR_LEGACY (0x0906)
@@ -3114,13 +3114,13 @@ Wraps P2TR key-path (Taproot). Key-path spend — same evaluation as SIG block. 
 
 **Family:** Legacy
 
-Wraps P2TR script-path (Taproot). This is the critical anti-inscription block — taproot script-path is the primary data-embedding vector. The revealed script leaf must be valid Ladder Script conditions.
+Wraps P2TR script-path (Taproot). This is the critical anti-inscription block — taproot script-path is the primary data-embedding vector. The revealed script leaf must be valid Ladder Script conditions. Both hash commitments are node-computed; raw hash input is rejected.
 
 | Field | Data Type | Size | Side | Description |
 |-------|-----------|------|------|-------------|
-| hash256 | HASH256 | 32 B | Conditions | Merkle root of script tree |
-| pubkey_commit | PUBKEY_COMMIT | 32 B | Conditions | SHA-256(internal_pubkey) |
-| preimage | PREIMAGE | var | Witness | Revealed script leaf (serialized Ladder conditions) |
+| hash256 | HASH256 | 32 B | Conditions | Merkle root of script tree (node-computed) |
+| pubkey_commit | PUBKEY_COMMIT | 32 B | Conditions | SHA-256(internal_pubkey) (node-computed) |
+| script_body | SCRIPT_BODY | 1-10000 B | Witness | Revealed script leaf (serialized Ladder conditions) |
 | (inner fields) | var | var | Witness | Witness fields for inner conditions |
 
 **Evaluation:** SHA256(revealed leaf) must equal HASH256 (Merkle root). Leaf deserializes as Ladder Script conditions and is evaluated with remaining witness fields. Recursion depth limited to 2.
@@ -3157,11 +3157,12 @@ Wire savings: a COMPACT_SIG rung is 34 bytes versus 36+ bytes for an explicitly 
 | 0x07 | SPEND_INDEX | 4 B | 4 B | Spend index reference |
 | 0x08 | NUMERIC | 1 B | 4 B | Numeric value (wire: varint; memory: 4-byte LE unsigned) |
 | 0x09 | SCHEME | 1 B | 1 B | Signature scheme selector |
+| 0x0A | SCRIPT_BODY | 1 B | 10000 B | Serialized inner conditions (witness only) |
 
-Condition data types (allowed in scriptPubKey): PUBKEY, PUBKEY_COMMIT, HASH256,
+Condition data types (allowed in scriptPubKey): PUBKEY_COMMIT, HASH256,
 HASH160, NUMERIC, SCHEME, SPEND_INDEX.
 
-Witness-only data types (not allowed in scriptPubKey conditions): SIGNATURE, PREIMAGE.
+Witness-only data types (not allowed in scriptPubKey conditions): PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY.
 
 ## Appendix: Signature Schemes
 

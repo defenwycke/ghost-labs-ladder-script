@@ -1633,7 +1633,7 @@ BOOST_AUTO_TEST_CASE(eval_adaptor_sig_unsatisfied)
 // Serialization roundtrip for all 39 types
 // ============================================================================
 
-BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_53_types_witness)
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_60_types_witness)
 {
     // Test that every known block type serializes and deserializes correctly
     // in WITNESS context with realistic field layouts matching implicit tables.
@@ -1762,7 +1762,7 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_53_types_witness)
         {RungBlockType::ACCUMULATOR, {{RungDataType::HASH256, h256}}},
     };
 
-    BOOST_CHECK_EQUAL(entries.size(), 53u);
+    BOOST_CHECK_EQUAL(entries.size(), 60u);
 
     for (const auto& entry : entries) {
         LadderWitness ladder;
@@ -1797,9 +1797,9 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_53_types_witness)
     }
 }
 
-BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_53_types_conditions)
+BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_60_types_conditions)
 {
-    // Test CONDITIONS context round-trip for all 53 block types.
+    // Test CONDITIONS context round-trip for all 60 block types.
     // Types with implicit conditions layouts use matching fields.
     // Types without implicit conditions layouts use explicit NUMERIC fields.
 
@@ -1914,7 +1914,7 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_53_types_conditions)
         {RungBlockType::ACCUMULATOR, {{RungDataType::HASH256, h256}}},
     };
 
-    BOOST_CHECK_EQUAL(entries.size(), 53u);
+    BOOST_CHECK_EQUAL(entries.size(), 60u);
 
     for (const auto& entry : entries) {
         LadderWitness ladder;
@@ -10271,6 +10271,151 @@ BOOST_AUTO_TEST_CASE(eval_p2tr_script_legacy_bad_commit_size)
     ScriptExecutionData execdata;
     RungEvalContext ctx;
     BOOST_CHECK(EvalP2TRScriptLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+// ============================================================================
+// SCRIPT_BODY data type tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(script_body_is_known_data_type)
+{
+    BOOST_CHECK(IsKnownDataType(0x0A));
+}
+
+BOOST_AUTO_TEST_CASE(script_body_is_not_condition_data_type)
+{
+    BOOST_CHECK(!IsConditionDataType(RungDataType::SCRIPT_BODY));
+}
+
+BOOST_AUTO_TEST_CASE(script_body_size_bounds)
+{
+    BOOST_CHECK_EQUAL(FieldMinSize(RungDataType::SCRIPT_BODY), 1u);
+    BOOST_CHECK_EQUAL(FieldMaxSize(RungDataType::SCRIPT_BODY), 10000u);
+}
+
+BOOST_AUTO_TEST_CASE(script_body_data_type_name)
+{
+    BOOST_CHECK_EQUAL(DataTypeName(RungDataType::SCRIPT_BODY), "SCRIPT_BODY");
+}
+
+BOOST_AUTO_TEST_CASE(script_body_field_validation)
+{
+    // Valid: 1 byte
+    RungField f1{RungDataType::SCRIPT_BODY, std::vector<uint8_t>(1, 0xAA)};
+    std::string reason;
+    BOOST_CHECK(f1.IsValid(reason));
+
+    // Valid: 10000 bytes (max)
+    RungField f2{RungDataType::SCRIPT_BODY, std::vector<uint8_t>(10000, 0xBB)};
+    BOOST_CHECK(f2.IsValid(reason));
+
+    // Invalid: 0 bytes
+    RungField f3{RungDataType::SCRIPT_BODY, std::vector<uint8_t>()};
+    BOOST_CHECK(!f3.IsValid(reason));
+
+    // Invalid: 10001 bytes (over max)
+    RungField f4{RungDataType::SCRIPT_BODY, std::vector<uint8_t>(10001, 0xCC)};
+    BOOST_CHECK(!f4.IsValid(reason));
+}
+
+// -- P2SH_LEGACY with SCRIPT_BODY instead of PREIMAGE --
+
+BOOST_AUTO_TEST_CASE(eval_p2sh_legacy_script_body)
+{
+    MockSignatureChecker checker;
+
+    // Build a serialized inner conditions payload (a simple SIG block)
+    RungBlock inner_sig;
+    inner_sig.type = RungBlockType::SIG;
+    inner_sig.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(MakePubkey())});
+
+    // Serialize the inner conditions
+    LadderWitness inner_witness;
+    Rung inner_rung;
+    inner_rung.blocks.push_back(inner_sig);
+    inner_witness.rungs.push_back(inner_rung);
+
+    std::vector<uint8_t> serialized;
+    std::string error;
+    bool ok = SerializeLadderWitness(inner_witness, serialized, error, SerializationContext::CONDITIONS);
+    BOOST_CHECK(ok);
+
+    // Compute HASH160 of the serialized inner conditions
+    std::vector<uint8_t> hash160(CHash160::OUTPUT_SIZE);
+    CHash160().Write(serialized).Finalize(hash160.data());
+
+    // Build P2SH block with SCRIPT_BODY (instead of PREIMAGE)
+    RungBlock block;
+    block.type = RungBlockType::P2SH_LEGACY;
+    block.fields.push_back({RungDataType::HASH160, hash160});
+    block.fields.push_back({RungDataType::SCRIPT_BODY, serialized});
+    // Add witness fields for inner SIG block
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    // The sig won't verify with MockSignatureChecker, but the hash should match
+    // and inner deserialization should succeed — result depends on inner eval
+    EvalResult result = EvalP2SHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx);
+    // MockSignatureChecker returns false for sigs, so inner SIG block → UNSATISFIED
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+// -- P2WSH_LEGACY with SCRIPT_BODY --
+
+BOOST_AUTO_TEST_CASE(eval_p2wsh_legacy_script_body)
+{
+    MockSignatureChecker checker;
+
+    // Build and serialize inner conditions
+    RungBlock inner_sig;
+    inner_sig.type = RungBlockType::SIG;
+    inner_sig.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(MakePubkey())});
+
+    LadderWitness inner_witness;
+    Rung inner_rung;
+    inner_rung.blocks.push_back(inner_sig);
+    inner_witness.rungs.push_back(inner_rung);
+
+    std::vector<uint8_t> serialized;
+    std::string error;
+    bool ok = SerializeLadderWitness(inner_witness, serialized, error, SerializationContext::CONDITIONS);
+    BOOST_CHECK(ok);
+
+    // Compute SHA256 of the serialized inner conditions
+    std::vector<uint8_t> hash256(CSHA256::OUTPUT_SIZE);
+    CSHA256().Write(serialized.data(), serialized.size()).Finalize(hash256.data());
+
+    // Build P2WSH block with SCRIPT_BODY
+    RungBlock block;
+    block.type = RungBlockType::P2WSH_LEGACY;
+    block.fields.push_back({RungDataType::HASH256, hash256});
+    block.fields.push_back({RungDataType::SCRIPT_BODY, serialized});
+    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    EvalResult result = EvalP2WSHLegacyBlock(block, checker, SigVersion::LADDER, execdata, ctx);
+    BOOST_CHECK(result == EvalResult::UNSATISFIED);
+}
+
+// -- SCRIPT_BODY exceeding PREIMAGE limit --
+
+BOOST_AUTO_TEST_CASE(script_body_exceeds_preimage_limit)
+{
+    // Verify that SCRIPT_BODY allows data larger than PREIMAGE's 252-byte limit
+    RungField preimage_field{RungDataType::PREIMAGE, std::vector<uint8_t>(253, 0xAA)};
+    std::string reason;
+    BOOST_CHECK(!preimage_field.IsValid(reason)); // PREIMAGE rejects 253 bytes
+
+    RungField script_field{RungDataType::SCRIPT_BODY, std::vector<uint8_t>(253, 0xAA)};
+    BOOST_CHECK(script_field.IsValid(reason)); // SCRIPT_BODY accepts 253 bytes
+
+    // And up to 10000
+    RungField big_script{RungDataType::SCRIPT_BODY, std::vector<uint8_t>(5000, 0xBB)};
+    BOOST_CHECK(big_script.IsValid(reason));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

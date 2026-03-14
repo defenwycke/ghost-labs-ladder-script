@@ -123,6 +123,7 @@ enum class RungDataType : uint8_t {
     SPEND_INDEX   = 0x07, //!< Spend index reference: 4 bytes
     NUMERIC       = 0x08, //!< Numeric value (threshold, locktime, etc.): 1-4 bytes
     SCHEME        = 0x09, //!< Signature scheme selector: 1 byte
+    SCRIPT_BODY   = 0x0A, //!< Serialized inner conditions: 1-10000 bytes (witness-only; node computes hash for conditions)
 };
 
 // Backward-compatible alias
@@ -210,7 +211,7 @@ inline bool IsKnownBlockType(uint16_t b)
 /** Returns true if the byte is a known RungDataType. */
 inline bool IsKnownDataType(uint8_t b)
 {
-    return b >= 0x01 && b <= 0x09;
+    return b >= 0x01 && b <= 0x0A;
 }
 
 // Backward-compatible alias
@@ -225,6 +226,7 @@ inline size_t FieldMinSize(RungDataType type)
     case RungDataType::HASH256:       return 32;
     case RungDataType::HASH160:       return 20;
     case RungDataType::PREIMAGE:      return 1;
+    case RungDataType::SCRIPT_BODY:   return 1;
     case RungDataType::SIGNATURE:     return 1;
     case RungDataType::SPEND_INDEX:   return 4;
     case RungDataType::NUMERIC:       return 1;
@@ -242,6 +244,7 @@ inline size_t FieldMaxSize(RungDataType type)
     case RungDataType::HASH256:       return 32;
     case RungDataType::HASH160:       return 20;
     case RungDataType::PREIMAGE:      return 252;
+    case RungDataType::SCRIPT_BODY:   return 10000;
     case RungDataType::SIGNATURE:     return 50000;
     case RungDataType::SPEND_INDEX:   return 4;
     case RungDataType::NUMERIC:       return 4;
@@ -327,6 +330,7 @@ inline std::string DataTypeName(RungDataType type)
     case RungDataType::HASH256:       return "HASH256";
     case RungDataType::HASH160:       return "HASH160";
     case RungDataType::PREIMAGE:      return "PREIMAGE";
+    case RungDataType::SCRIPT_BODY:   return "SCRIPT_BODY";
     case RungDataType::SIGNATURE:     return "SIGNATURE";
     case RungDataType::SPEND_INDEX:   return "SPEND_INDEX";
     case RungDataType::NUMERIC:       return "NUMERIC";

@@ -1,6 +1,6 @@
 # Building with Ladder Script: Patterns and Possibilities
 
-Ladder Script's 53 block types across 9 families compose into an enormous design space. Because evaluation follows simple AND/OR logic (all blocks in a rung must pass, first satisfied rung wins), complex spending policies emerge from combining simple primitives. This document explores what can be built.
+Ladder Script's 60 block types across 10 families compose into an enormous design space. Because evaluation follows simple AND/OR logic (all blocks in a rung must pass, first satisfied rung wins), complex spending policies emerge from combining simple primitives. This document explores what can be built.
 
 Each pattern below lists the specific blocks involved, explains why the combination works, and notes practical considerations. Where rung numbers are shown, Rung 0 is tried first and evaluation short-circuits on the first satisfied rung.
 
@@ -662,4 +662,4 @@ The real power is composition. Each pattern above is a building block. A single 
 
 With AND within rungs and OR across rungs, any boolean combination of these primitives is expressible. Multiple rungs create fallback paths. Block inversion (the `inverted` flag on any block) creates ceiling guards (a block that must *not* be satisfied). Recursion creates persistent state machines. Compound blocks and diff witnesses keep it efficient. MLSC keeps it private.
 
-The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 53 typed blocks, AND/OR logic, and the expressiveness that emerges from their combination.
+The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 60 typed blocks, AND/OR logic, and the expressiveness that emerges from their combination.

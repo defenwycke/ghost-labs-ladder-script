@@ -296,8 +296,9 @@ Every field in a Ladder Script witness or conditions structure has one of the fo
 | `0x07` | SPEND_INDEX | 4 | 4 | Both | Index reference (uint32 LE) for aggregate attestation |
 | `0x08` | NUMERIC | 1 | 4 | Both | Unsigned 32-bit integer. Encoded on wire as CompactSize(value); stored internally as 4-byte LE. |
 | `0x09` | SCHEME | 1 | 1 | Both | Signature scheme selector byte |
+| `0x0A` | SCRIPT_BODY | 1 | 10,000 | Witness | Serialized inner conditions (P2SH/P2WSH/P2TR_SCRIPT inner scripts exceeding PREIMAGE's 252-byte limit) |
 
-The SIGNATURE maximum of 50,000 bytes accommodates all post-quantum signature schemes including SPHINCS_SHA (~7,856 bytes) and Dilithium3 (3,293 bytes) with headroom. The PUBKEY maximum of 2,048 bytes accommodates FALCON-1024 public keys (1,793 bytes).
+The SIGNATURE maximum of 50,000 bytes accommodates all post-quantum signature schemes including SPHINCS_SHA (~7,856 bytes) and Dilithium3 (3,293 bytes) with headroom. The PUBKEY maximum of 2,048 bytes accommodates FALCON-1024 public keys (1,793 bytes). The SCRIPT_BODY type extends PREIMAGE for complex inner conditions in legacy wrapping blocks: multi-rung scripts serialized as Ladder Script conditions that exceed 252 bytes.
 
 Data type validity is checked by `IsKnownDataType()`. Unknown data type codes cause deserialization failure.
 
@@ -823,7 +824,7 @@ Nodes that have not upgraded treat version 4 transactions as anyone-can-spend, c
 
 ## Reference Implementation
 
-The reference implementation is located in the `src/rung/` directory:
+The reference implementation is located in the `src/rung/` directory. A step-by-step review guide (`docs/REVIEW_GUIDE.md`) provides a recommended reading order — start with `types.h` for the type system, then pick any single block evaluator to understand the pattern before reviewing the full set.
 
 | File | Purpose |
 |------|---------|
@@ -861,8 +862,8 @@ The line count is higher because Ladder Script replaces the entire Script evalua
 
 The implementation includes comprehensive test coverage across two layers:
 
-**Unit tests** (`src/test/rung_tests.cpp`): 422 test cases covering:
-- Field validation for all 9 data types with boundary conditions
+**Unit tests** (`src/test/rung_tests.cpp`): 430 test cases covering:
+- Field validation for all 10 data types with boundary conditions
 - Serialization round-trips for all 60 block types
 - Deserialization rejection of malformed inputs (empty, truncated, trailing bytes, oversized, unknown types)
 - Block evaluation for all 60 block types
@@ -945,8 +946,9 @@ PUBKEY_COMMIT values are always computed by the node from validated public keys 
 **Hash preimage commitments** follow the same model. For HASH_PREIMAGE, HASH160_PREIMAGE, HTLC, and HASH_SIG blocks, the node computes the hash commitment from a user-supplied preimage:
 
 - **HASH_PREIMAGE / HASH_SIG / HTLC:** User provides `PREIMAGE` → node computes `HASH256 = SHA256(preimage)` and stores the hash in conditions.
-- **HASH160_PREIMAGE / P2SH_LEGACY:** User provides `PREIMAGE` → node computes `HASH160 = RIPEMD160(SHA256(preimage))` and stores the hash in conditions.
-- **P2WSH_LEGACY / P2TR_SCRIPT_LEGACY:** User provides `PREIMAGE` (serialized inner conditions) → node computes `HASH256 = SHA256(preimage)` and stores the hash in conditions.
+- **HASH160_PREIMAGE:** User provides `PREIMAGE` → node computes `HASH160 = RIMEMD160(SHA256(preimage))` and stores the hash in conditions.
+- **P2SH_LEGACY:** User provides `SCRIPT_BODY` or `PREIMAGE` → node computes `HASH160 = RIPEMD160(SHA256(data))` and stores the hash in conditions.
+- **P2WSH_LEGACY / P2TR_SCRIPT_LEGACY:** User provides `SCRIPT_BODY` or `PREIMAGE` (serialized inner conditions) → node computes `HASH256 = SHA256(data)` and stores the hash in conditions. `SCRIPT_BODY` supports inner conditions up to 10,000 bytes, removing the 252-byte `PREIMAGE` limitation.
 
 **Legacy block key commitments** extend the PUBKEY auto-conversion:
 

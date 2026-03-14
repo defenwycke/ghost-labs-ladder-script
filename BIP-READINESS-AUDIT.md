@@ -8,7 +8,7 @@
 ## FIXED (commit `6c98ba6`)
 
 - **C-1** FIXED: PUBKEY removed from allowed condition types in whitepaper + BIP (only PUBKEY_COMMIT)
-- **C-3** FIXED: "54 Blocks" → "53 Blocks" in docs index
+- **C-3** FIXED: "54 Blocks" → "60 Blocks" in docs index
 - **C-4** FIXED: HTLC type code 0x0030 → 0x0702 in adaptor-sig-swap doc
 - **M-1** FIXED: Whitepaper section 2.4 now lists all 9 families with correct ranges
 - **M-3** FIXED: Wire format "(v3)" clarified as "serialization encoding version 3"
@@ -30,7 +30,7 @@
 ### Critical
 
 #### C-2: FIXED — BIP Deployment section added
-- Full "Deployment" section added to BIP-XXXX.md with BIP-9 Speedy Trial parameters (90% threshold, 90-day timeout), simultaneous activation of all 53 block types, and soft fork compatibility note.
+- Full "Deployment" section added to BIP-XXXX.md with BIP-9 Speedy Trial parameters (90% threshold, 90-day timeout), simultaneous activation of all 60 block types, and soft fork compatibility note.
 
 #### C-5: FIXED — 12 block types now have full test coverage
 - **C++ unit tests:** 16 new eval tests for compound family (TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG) — positive, negative (bad sig/preimage), and CSV/CLTV failure cases.
@@ -43,9 +43,9 @@
 - 34 field name changes across 19 block types in `ladder-script-builder.html`
 - Builder JSON now uses canonical Engine/RPC names throughout
 
-#### M-6: FIXED — Serialization round-trip tests for all 53 block types
-- `serialize_roundtrip_all_53_types_witness` — witness context round-trip for every block type
-- `serialize_roundtrip_all_53_types_conditions` — conditions context round-trip for every block type
+#### M-6: FIXED — Serialization round-trip tests for all 60 block types
+- `serialize_roundtrip_all_60_types_witness` — witness context round-trip for every block type
+- `serialize_roundtrip_all_60_types_conditions` — conditions context round-trip for every block type
 - Additional round-trip tests: multi-rung, inverted blocks, coil data, multi-field
 
 #### M-7: FIXED — Consensus-critical size limit boundary tests added
@@ -83,7 +83,7 @@
 - 8 attack classes enumerated: type confusion, data smuggling, witness bloat/DoS, signature replay, quantum key extraction, recursive non-termination, inversion-masked errors, forward-compatibility exploitation.
 
 #### m-5: FIXED — Micro-header table added to whitepaper Section 3.2
-- Full 53-slot lookup table added with encoding modes (micro-header, escape, escape+inverted).
+- Full 60-slot lookup table added with encoding modes (micro-header, escape, escape+inverted).
 - Implicit field layout behavior described; references BIP for per-type encoding details.
 
 #### m-6: FIXED — Whitepaper references expanded to 14 entries
@@ -99,12 +99,12 @@
 
 ## WHAT PASSED CLEAN
 
-- **All 53 block-docs pages** — type codes, field definitions, evaluation logic, wire format all verified correct. Zero discrepancies.
+- **All 60 block-docs pages** — type codes, field definitions, evaluation logic, wire format all verified correct. Zero discrepancies.
 - **All 6 transaction example docs** — block types, witness structures, scriptPubKey prefixes, byte counts, verification grids, dates, nav links all accurate.
-- **Engine block type coverage** — all 53 types present with correct type codes.
+- **Engine block type coverage** — all 60 types present with correct type codes.
 - **Engine signature scheme mapping** — SCHNORR=0x01 through SPHINCS_SHA=0x13 correct.
 - **Engine data type size constraints** — match types.h field specifications.
-- **Ladder-script info page** — 53 block types verified, all families correct, all codes correct. Only 1 error found (PQ key size, now fixed).
+- **Ladder-script info page** — 60 block types verified, all families correct, all codes correct. Only 1 error found (PQ key size, now fixed).
 - **BIP document** — has Rationale, Backwards Compatibility, Reference Implementation, Security Considerations, Test Vectors, Copyright sections. Wire format fully specified with micro-header table. Much more complete than initially reported.
 
 ---
@@ -131,7 +131,7 @@ EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR
 - Coil COVENANT and UNLOCK_TO types end-to-end
 
 ### Missing infrastructure tests:
-- Serialization round-trips for all 53 block types
+- Serialization round-trips for all 60 block types
 - 0xC1 prefix and tx version 4 identification
 - MAX_RUNGS, MAX_BLOCKS_PER_RUNG boundary enforcement
 

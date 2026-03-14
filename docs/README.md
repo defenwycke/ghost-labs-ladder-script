@@ -29,6 +29,7 @@ cryptography, and stateful smart contracts.
 | [MERKLE-UTXO-SPEC.md](MERKLE-UTXO-SPEC.md) | Merkelised Ladder Script Conditions (MLSC): Merkle root outputs, witness reveal, data embedding resistance |
 | [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) | Activation strategy and deployment considerations |
 | [FAQ.md](FAQ.md) | Frequently asked questions organised by topic |
+| [REVIEW_GUIDE.md](REVIEW_GUIDE.md) | Reviewer quick-start: recommended reading order, file map, what to look for |
 
 ---
 
@@ -53,7 +54,7 @@ cryptography, and stateful smart contracts.
 
 ## Block Type Overview
 
-Ladder Script defines 53 block types across 9 families. Each block evaluates a
+Ladder Script defines 60 block types across 10 families. Each block evaluates a
 single spending condition within a rung.
 
 | Family | Range | Block Types |

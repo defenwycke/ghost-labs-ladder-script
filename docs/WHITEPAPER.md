@@ -8,7 +8,7 @@
 
 Ladder Script is a typed, structured transaction format for Bitcoin (transaction version 4) that replaces opcode-based scripting with a declarative block model inspired by industrial Programmable Logic Controllers (PLC). Every byte in a Ladder Script witness is typed. Every condition is a named block with validated fields. Evaluation follows deterministic ladder logic: AND within rungs, OR across rungs, first match wins.
 
-The design eliminates the classes of bugs inherent to stack-based scripting (type confusion, push-data ambiguity, implicit coercion) by requiring that all data conform to one of nine declared data types with enforced size constraints. Spending conditions are not computed; they are stated. The result is a transaction format that is auditable by inspection, verifiable in bounded time, and extensible without opcode proliferation.
+The design eliminates the classes of bugs inherent to stack-based scripting (type confusion, push-data ambiguity, implicit coercion) by requiring that all data conform to one of ten declared data types with enforced size constraints. Spending conditions are not computed; they are stated. The result is a transaction format that is auditable by inspection, verifiable in bounded time, and extensible without opcode proliferation.
 
 ---
 
@@ -52,7 +52,7 @@ Ladder Script brings this philosophy to Bitcoin transactions.
 
 ### 2.1 Typed Fields Over Raw Bytes
 
-Every byte in a Ladder Script witness belongs to one of nine declared data types:
+Every byte in a Ladder Script witness belongs to one of ten declared data types:
 
 | Data Type | Code | Size (bytes) | Purpose |
 |-----------|------|-------------|---------|
@@ -65,6 +65,7 @@ Every byte in a Ladder Script witness belongs to one of nine declared data types
 | SPEND_INDEX | 0x07 | 4 | Index reference into the transaction |
 | NUMERIC | 0x08 | 1--4 | Numeric value (threshold, timelock, amount) |
 | SCHEME | 0x09 | 1 | Signature scheme selector |
+| SCRIPT_BODY | 0x0A | 1--10,000 | Serialized inner conditions (witness only) |
 
 There is no generic "push data" operation. Data that does not conform to a declared type with valid size constraints is rejected at deserialization. This is enforced by `FieldMinSize()` and `FieldMaxSize()` bounds checking during witness parsing.
 
@@ -364,17 +365,17 @@ Legacy Bitcoin transaction types wrapped as typed Ladder Script blocks. Each blo
 
 **P2PKH_LEGACY (0x0902):** P2PKH wrapped. User provides PUBKEY; the node computes HASH160 = RIPEMD160(SHA256(pubkey)) and stores it in conditions. Raw HASH160 input is rejected. Witness: PUBKEY + SIGNATURE. The witness PUBKEY must hash to the committed HASH160 value, and the SIGNATURE must verify against that key.
 
-**P2SH_LEGACY (0x0903):** P2SH wrapped. User provides PREIMAGE (serialized Ladder Script conditions); the node computes HASH160 = RIPEMD160(SHA256(preimage)) and stores it in conditions. Raw HASH160 input is rejected. Witness: PREIMAGE + inner witness. The PREIMAGE must deserialize as valid Ladder Script conditions. Inner witness satisfies those conditions. Recursion depth limited to 2.
+**P2SH_LEGACY (0x0903):** P2SH wrapped. User provides SCRIPT_BODY (serialized Ladder Script conditions, up to 10KB) or PREIMAGE (up to 252 bytes); the node computes HASH160 = RIPEMD160(SHA256(data)) and stores it in conditions. Raw HASH160 input is rejected. Witness: SCRIPT_BODY + inner witness. The inner data must deserialize as valid Ladder Script conditions. Inner witness satisfies those conditions. Recursion depth limited to 2.
 
 **P2WPKH_LEGACY (0x0904):** P2WPKH wrapped. User provides PUBKEY; the node computes HASH160 (same as P2PKH_LEGACY). Raw HASH160 input is rejected. Witness: PUBKEY + SIGNATURE. Delegates to P2PKH_LEGACY evaluation.
 
-**P2WSH_LEGACY (0x0905):** P2WSH wrapped. User provides PREIMAGE (serialized Ladder Script conditions); the node computes HASH256 = SHA256(preimage) and stores it in conditions. Raw HASH256 input is rejected. Witness: PREIMAGE + inner witness. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
+**P2WSH_LEGACY (0x0905):** P2WSH wrapped. User provides SCRIPT_BODY (serialized Ladder Script conditions, up to 10KB) or PREIMAGE (up to 252 bytes); the node computes HASH256 = SHA256(data) and stores it in conditions. Raw HASH256 input is rejected. Witness: SCRIPT_BODY + inner witness. The inner data must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
 
 **P2TR_LEGACY (0x0906):** P2TR key-path wrapped. Conditions: PUBKEY_COMMIT + SCHEME. User provides PUBKEY; the node computes PUBKEY_COMMIT = SHA256(pubkey). Witness: PUBKEY + SIGNATURE. Verification uses Schnorr (BIP-340) by default.
 
-**P2TR_SCRIPT_LEGACY (0x0907):** P2TR script-path wrapped. User provides PUBKEY (internal key) and PREIMAGE (script leaf); the node computes PUBKEY_COMMIT = SHA256(pubkey) and HASH256 = SHA256(preimage). Raw hash input is rejected. Witness: PREIMAGE + inner witness. The PREIMAGE must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
+**P2TR_SCRIPT_LEGACY (0x0907):** P2TR script-path wrapped. User provides PUBKEY (internal key) and SCRIPT_BODY (script leaf, up to 10KB); the node computes PUBKEY_COMMIT = SHA256(pubkey) and HASH256 = SHA256(script_body). Raw hash input is rejected. Witness: SCRIPT_BODY + inner witness. The inner data must deserialize as valid Ladder Script conditions. Recursion depth limited to 2.
 
-For all legacy block types, hash commitments stored in conditions are computed exclusively by the node from validated inputs. No hash field accepts user-supplied values directly. For P2SH_LEGACY, P2WSH_LEGACY, and P2TR_SCRIPT_LEGACY, the PREIMAGE must additionally deserialize as a valid `RungConditions` structure — arbitrary byte sequences are rejected at deserialization. The recursion depth is limited to 2, preventing unbounded nesting while allowing one level of script wrapping.
+For all legacy block types, hash commitments stored in conditions are computed exclusively by the node from validated inputs. No hash field accepts user-supplied values directly. For P2SH_LEGACY, P2WSH_LEGACY, and P2TR_SCRIPT_LEGACY, the SCRIPT_BODY (or PREIMAGE) must additionally deserialize as a valid `RungConditions` structure — arbitrary byte sequences are rejected at deserialization. The recursion depth is limited to 2, preventing unbounded nesting while allowing one level of script wrapping.
 
 ---
 
@@ -486,7 +487,7 @@ This property is uniform across all 60 block types. No condition field accepts a
 
 ### 8.1 vs OP_CTV (BIP-119)
 
-OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 53. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, structured extensibility) that OP_CTV does not address.
+OP_CTV adds a single opcode for template-based covenants. Ladder Script includes CTV functionality as one block type (0x0301) among 60. The CTV block evaluator computes the identical BIP-119 template hash and verifies it against the committed value. Ladder Script subsumes OP_CTV while providing the additional infrastructure (typed fields, named blocks, structured extensibility) that OP_CTV does not address.
 
 ### 8.2 vs OP_CAT
 
@@ -500,7 +501,7 @@ Simplicity and Ladder Script share the goal of replacing Bitcoin Script with a m
 
 | Property | Bitcoin Script | Ladder Script |
 |----------|---------------|---------------|
-| Data typing | Untyped byte arrays | 9 declared types with size bounds |
+| Data typing | Untyped byte arrays | 10 declared types with size bounds |
 | Control flow | Imperative (IF/ELSE/ENDIF) | Declarative (AND within rung, OR across rungs) |
 | Extensibility | New opcodes (soft fork) | New block types (same wire format) |
 | Static analysis | Requires execution simulation | Conditions enumerable by parsing |

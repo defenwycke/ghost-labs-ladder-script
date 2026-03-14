@@ -64,21 +64,21 @@
         <td class="field-type">HASH256</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Merkle root of the script tree</td>
+        <td class="field-desc">Merkle root of the script tree. <strong>Node-computed</strong> &mdash; the node derives this from the PREIMAGE (script leaf). Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">pubkey_commit</td>
         <td class="field-type">PUBKEY_COMMIT</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Internal key commitment (SHA-256 of internal pubkey)</td>
+        <td class="field-desc">Internal key commitment (SHA-256 of internal pubkey). <strong>Node-computed</strong> &mdash; the user provides PUBKEY (internal key) and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">var</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Revealed script leaf (serialized Ladder Script conditions)</td>
+        <td class="field-desc">Revealed script leaf (serialized Ladder Script conditions) &mdash; provided by the user. The node derives HASH256 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">[inner witness]</td>
@@ -199,6 +199,7 @@
   <ul class="doc-notes">
     <li>Closes the taproot inscription vector &mdash; the primary data-embedding surface in Bitcoin today.</li>
     <li>Revealed script leaf must deserialize as valid Ladder Script conditions. Arbitrary data is rejected.</li>
+    <li>Both PUBKEY_COMMIT and HASH256 are <strong>node-computed</strong>: the user provides PUBKEY (internal key) and PREIMAGE (script leaf), and the node derives both commitments automatically. Submitting raw hash values directly is rejected.</li>
     <li>Recursion depth limited to 2.</li>
     <li>PUBKEY_COMMIT is the internal key commitment, used for key-path/script-path binding.</li>
     <li>For key-path-only spending, see P2TR_LEGACY (0x0906).</li>

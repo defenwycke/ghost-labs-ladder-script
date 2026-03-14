@@ -28,6 +28,7 @@ bool IsConditionDataType(RungDataType type)
     case RungDataType::PUBKEY:
     case RungDataType::SIGNATURE:
     case RungDataType::PREIMAGE:
+    case RungDataType::SCRIPT_BODY:
         return false;
     }
     return false;

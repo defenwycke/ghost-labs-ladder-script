@@ -70,14 +70,14 @@
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Expected RIPEMD160(SHA256) hash value</td>
+        <td class="field-desc">Expected RIPEMD160(SHA256) hash value. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">1-252 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value</td>
+        <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value &mdash; provided by the user. The node derives HASH160 from this data at creation time.</td>
       </tr>
     </tbody>
   </table>

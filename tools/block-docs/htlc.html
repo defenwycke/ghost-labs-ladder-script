@@ -65,7 +65,7 @@
         <td class="field-type">HASH256</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 hash that the preimage must match</td>
+        <td class="field-desc">SHA-256 hash that the preimage must match. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">timelock</td>
@@ -86,7 +86,7 @@
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">1-252 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Preimage whose SHA-256 hash must equal the hash field</td>
+        <td class="field-desc">Preimage whose SHA-256 hash must equal the hash field &mdash; provided by the user. The node derives HASH256 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">pubkey</td>
