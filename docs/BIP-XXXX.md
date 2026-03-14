@@ -838,6 +838,25 @@ The reference implementation is located in the `src/rung/` directory:
 | `pq_verify.h` / `pq_verify.cpp` | Post-quantum signature verification via liboqs (FALCON-512/1024, Dilithium3). |
 | `rpc.cpp` | RPC commands: `createrung`, `decoderung`, `validateladder`, `createrungtx`, `signrungtx`, `computectvhash`, `pqkeygen`, `pqpubkeycommit`, `extractadaptorsecret`. |
 
+### Implementation Footprint
+
+Despite activating 60 block types across 10 families, Ladder Script's consensus footprint is smaller and more contained than previous soft forks:
+
+| Metric | SegWit (BIP 141/143/144) | Taproot (BIP 340/341/342) | Ladder Script |
+|--------|--------------------------|---------------------------|---------------|
+| **Consensus files changed** | 80 | 44 | 19 |
+| **Lines added** | +5,305 | +2,985 | +9,846 |
+| **Lines removed** | -571 | -121 | 0 |
+| **Files outside new code** | ~60 | ~30 | ~5 |
+| **Test lines** | (included above) | (included above) | +20,521 |
+| **Core PRs** | PR #8149 | PR #19953 + secp256k1 #558 | Single patch |
+
+**Key difference: containment.** SegWit modified 80 existing files across `src/script/`, `src/consensus/`, `src/primitives/`, `src/wallet/`, `src/net_processing.cpp`, and the serialization layer. Taproot modified 44 files across similar directories plus a prerequisite Schnorr module in libsecp256k1 (+2,445 lines across 20 files).
+
+Ladder Script adds 19 new files in a single directory (`src/rung/`) and touches approximately 5 existing files for integration (transaction validation dispatch, RPC registration, build system). Removing `src/rung/` restores Bitcoin Core to its unmodified state. No existing consensus logic, serialization code, or wallet code is altered.
+
+The line count is higher because Ladder Script replaces the entire Script evaluation model rather than extending it. But the review surface is modular: each block type is a self-contained evaluator function (~20-80 lines) with its own field layout and test cases. A reviewer can audit one block type without understanding the others.
+
 ## Test Vectors
 
 The implementation includes comprehensive test coverage across two layers:
