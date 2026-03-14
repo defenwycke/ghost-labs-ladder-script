@@ -2158,10 +2158,9 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         """HYSTERESIS_VALUE: input amount must be within [low, high] band."""
         self.log.info("Testing HYSTERESIS_VALUE spend...")
 
-        # Set band: 0.1 BTC to ~21.4 BTC (max int32 in sats)
-        # Note: ReadNumeric casts through int32, so 0xFFFFFFFF becomes -1
+        # Set band: 0.1 BTC to ~42.9 BTC (max uint32 in sats)
         low_sats = 10_000_000   # 0.1 BTC
-        high_sats = 0x7FFFFFFF  # ~21.4 BTC (max int32)
+        high_sats = 0xFFFFFFFF  # ~42.9 BTC (max uint32)
 
         conditions = [{"blocks": [{"type": "HYSTERESIS_VALUE", "fields": [
             {"type": "NUMERIC", "hex": numeric_hex(high_sats)},
@@ -2199,8 +2198,8 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         """RATE_LIMIT: output amount must be within per-block limit."""
         self.log.info("Testing RATE_LIMIT spend...")
 
-        max_per_block = 0x7FFFFFFF  # ~21.4 BTC per block limit (max int32)
-        accumulation_cap = 0x7FFFFFFF  # same
+        max_per_block = 0xFFFFFFFF  # ~42.9 BTC per block limit (max uint32)
+        accumulation_cap = 0xFFFFFFFF  # same
         refill_blocks = 10
 
         conditions = [{"blocks": [{"type": "RATE_LIMIT", "fields": [
