@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEGACY P2PKH + RECOVERY &mdash; Transaction Examples</title>
+<link rel="stylesheet" href="../blocks/style.css">
+<style>
+  .tx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .tx-box { background: #0a0a0a; border: 1px solid #242424; border-radius: 10px; padding: 18px; }
+  .tx-box-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; color: #888; }
+  .tx-box-label .arrow-right { color: #f7931a; }
+  .tx-box-label .arrow-left { color: #00d4ff; }
+  .tx-field { margin-bottom: 10px; }
+  .tx-field:last-child { margin-bottom: 0; }
+  .tx-field-name { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; margin-bottom: 2px; }
+  .tx-field-value { font-size: 13px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; word-break: break-all; }
+  .tx-field-value.txid { font-size: 11px; color: #f7931a; }
+  .tx-field-value.highlight { color: #00ff88; }
+
+  .witness-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .witness-seg { display: flex; align-items: center; justify-content: center; font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #050505; }
+  .witness-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .witness-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #888; }
+  .witness-legend-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+  .verify-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+  .verify-item { background: #0a0a0a; border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; padding: 14px; text-align: center; }
+  .verify-label { font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .verify-value { font-size: 16px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; color: #00ff88; }
+  .verify-check { font-size: 11px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #00ff88; margin-top: 4px; }
+
+  .scheme-badge { display: inline-block; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 3px 10px; border-radius: 5px; letter-spacing: 0.5px; }
+
+  .rung-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .rung-row { display: flex; align-items: stretch; gap: 0; }
+  .rung-label-box { width: 80px; min-width: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .rung-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+  .rung-block { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.5px; }
+  .rung-arrow { font-size: 11px; color: #444; margin: 0 2px; }
+  .rung-output { font-size: 9px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 600; padding: 6px 10px; border-radius: 4px; letter-spacing: 0.5px; background: rgba(0, 255, 136, 0.08); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); margin-left: auto; }
+
+  .output-diagram { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .output-row { display: flex; align-items: stretch; gap: 0; }
+  .output-label-box { width: 80px; min-width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 1px; border-radius: 6px 0 0 6px; padding: 10px 6px; }
+  .output-amount { font-size: 8px; font-weight: 400; margin-top: 2px; opacity: 0.7; }
+  .output-blocks { display: flex; gap: 4px; flex: 1; padding: 8px; background: #0a0a0a; border: 1px solid #242424; border-left: none; border-radius: 0 6px 6px 0; align-items: center; flex-wrap: wrap; }
+
+  .rung-block.sig { background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2); }
+  .rung-block.time { background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2); }
+  .rung-block.legacy { background: rgba(233, 30, 144, 0.08); color: #e91e90; border: 1px solid rgba(233, 30, 144, 0.2); }
+
+  .json-block { background: #141414; border: 1px solid #1a1a1a; border-radius: 10px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  .json-block pre { margin: 0; font-family: 'Geist Mono', 'IBM Plex Mono', monospace; color: #ccc; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #00d4ff; }
+  .json-str { color: #00ff88; }
+  .json-num { color: #f7931a; }
+
+  @media (max-width: 640px) {
+    .tx-pair { grid-template-columns: 1fr; }
+    .verify-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-content">
+
+<div class="block-title-section">
+  <div class="block-type-code">TRANSACTION EXAMPLE &middot; LEGACY P2PKH</div>
+  <h1 class="block-title">LEGACY P2PKH + RECOVERY</h1>
+  <p class="block-subtitle">P2PKH legacy spending with a time-locked recovery path. Legacy Bitcoin address semantics wrapped as typed Ladder Script blocks &mdash; same spending logic, no arbitrary data surfaces.</p>
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <span class="scheme-badge" style="background: rgba(233, 30, 144, 0.08); color: #e91e90; border: 1px solid rgba(233, 30, 144, 0.2);">P2PKH_LEGACY &middot; TYPE 0x0902</span>
+    <span class="scheme-badge" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">CSV &middot; TYPE 0x03</span>
+    <span class="scheme-badge" style="background: rgba(230, 168, 23, 0.08); color: #e6a817; border: 1px solid rgba(230, 168, 23, 0.2);">SIG &middot; TYPE 0x00</span>
+  </div>
+</div>
+
+
+
+<!-- Rung Diagram -->
+<div class="doc-section">
+  <div class="section-label">Rung Structure</div>
+  <p class="section-text">Two rungs: SPEND provides standard P2PKH semantics via a legacy block. RECOVER activates after ~1 year (52560 blocks) with a separate recovery key.</p>
+
+  <div class="rung-diagram">
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(233, 30, 144, 0.08); color: #e91e90; border: 1px solid rgba(233, 30, 144, 0.2);">SPEND</div>
+      <div class="rung-blocks">
+        <div class="rung-block legacy">P2PKH_LEGACY</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PAYMENT</div>
+      </div>
+    </div>
+    <div class="rung-row">
+      <div class="rung-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">RECOVER</div>
+      <div class="rung-blocks">
+        <div class="rung-block time">CSV (52560)</div><div class="rung-arrow">+</div>
+        <div class="rung-block sig">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">RECOVERY</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section">
+  <div class="section-label">Output Structure</div>
+  <p class="section-text">The funding transaction creates outputs matching each rung&rsquo;s security policy.</p>
+  <div class="output-diagram">
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(233, 30, 144, 0.08); color: #e91e90; border: 1px solid rgba(233, 30, 144, 0.2);">VOUT 0<div class="output-amount">50,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block legacy">P2PKH_LEGACY</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">PAYMENT</div>
+      </div>
+    </div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(247, 147, 26, 0.08); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2);">VOUT 1<div class="output-amount">50,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block time">CSV (52560)</div><div class="rung-arrow">+</div><div class="rung-block sig">SIG</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">RECOVERY</div>
+      </div>
+    </div>
+    <div class="output-row">
+      <div class="output-label-box" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">VOUT 2<div class="output-amount">1,249,898,000 sats</div></div>
+      <div class="output-blocks">
+        <div class="rung-block" style="background: rgba(100, 100, 100, 0.1); color: #888; border: 1px solid rgba(100, 100, 100, 0.2);">SIG (wallet)</div>
+        <div class="rung-arrow">&rarr;</div>
+        <div class="rung-output">CHANGE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Verification -->
+<div class="doc-section">
+  <div class="section-label">Verification Steps</div>
+  <div class="verify-grid">
+    <div class="verify-item">
+      <div class="verify-label">HASH160 Check</div>
+      <div class="verify-value">RIPEMD160(SHA256(pubkey))</div>
+      <div class="verify-check">matches committed hash</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Signature Verify</div>
+      <div class="verify-value">ECDSA / Schnorr</div>
+      <div class="verify-check">valid against pubkey</div>
+    </div>
+    <div class="verify-item">
+      <div class="verify-label">Fee</div>
+      <div class="verify-value">1,000 sats</div>
+      <div class="verify-check">50,000 &minus; 49,000</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="doc-section">
+  <div class="section-label">How Legacy P2PKH + Recovery Works</div>
+
+  <div class="eval-box">
+    <div class="eval-step">
+      <div class="eval-step-num">1.</div>
+      <div class="eval-step-text">P2PKH_LEGACY wraps the classic Pay-to-Public-Key-Hash pattern as a typed Ladder Script block. The conditions commit to a 20-byte HASH160 of the spending public key.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">2.</div>
+      <div class="eval-step-text">To spend via Rung 0, the witness provides the full compressed public key and a signature. The evaluator computes RIPEMD160(SHA256(pubkey)) and verifies it matches the committed hash, then validates the signature.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">3.</div>
+      <div class="eval-step-text">If the primary key is lost, Rung 1 activates after 52560 blocks (~1 year). The CSV block enforces the relative timelock via nSequence, and the SIG block requires a valid signature from the recovery key.</div>
+    </div>
+    <div class="eval-step">
+      <div class="eval-step-num">4.</div>
+      <div class="eval-step-text">By wrapping P2PKH as a typed block, legacy address semantics are preserved without exposing arbitrary scriptSig data surfaces. The block type enforces exactly one spending pattern &mdash; no script injection possible.</div>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="doc-section">
+  <div class="section-label">RPC JSON Example</div>
+  <div class="json-block">
+    <pre>{
+  <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2&quot;</span>,
+  <span class="json-key">&quot;version&quot;</span>: <span class="json-num">4</span>,
+  <span class="json-key">&quot;size&quot;</span>: <span class="json-num">312</span>,
+  <span class="json-key">&quot;vsize&quot;</span>: <span class="json-num">228</span>,
+  <span class="json-key">&quot;locktime&quot;</span>: <span class="json-num">0</span>,
+  <span class="json-key">&quot;vin&quot;</span>: [
+    {
+      <span class="json-key">&quot;txid&quot;</span>: <span class="json-str">&quot;f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d&quot;</span>,
+      <span class="json-key">&quot;vout&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptSig&quot;</span>: {
+        <span class="json-key">&quot;asm&quot;</span>: <span class="json-str">&quot;&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;&quot;</span>
+      },
+      <span class="json-key">&quot;txinwitness&quot;</span>: [
+        &quot;010100090221024f8a3e...pubkey_33B...40sig_64B...0101010000&quot;
+      ],
+      <span class="json-key">&quot;sequence&quot;</span>: <span class="json-num">4294967294</span>
+    }
+  ],
+  <span class="json-key">&quot;vout&quot;</span>: [
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0005</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">0</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qyqq...)&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c101000902...hash160_20B...0101010000&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    },
+    {
+      <span class="json-key">&quot;value&quot;</span>: <span class="json-num">0.0005</span>,
+      <span class="json-key">&quot;n&quot;</span>: <span class="json-num">1</span>,
+      <span class="json-key">&quot;scriptPubKey&quot;</span>: {
+        <span class="json-key">&quot;desc&quot;</span>: <span class="json-str">&quot;addr(rung1qypq...)&quot;</span>,
+        <span class="json-key">&quot;hex&quot;</span>: <span class="json-str">&quot;c1010203fd50cd...csv_block...sig_commit...0101010000&quot;</span>,
+        <span class="json-key">&quot;type&quot;</span>: <span class="json-str">&quot;rung_conditions&quot;</span>
+      }
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+
+<!-- Nav -->
+<div class="doc-nav">
+  <span onclick="if(window.parent !== window) window.parent.location.hash='TX_INDEX'; else window.location.href='../index.html#TX_INDEX';">&#8592; All Transaction Examples</span>
+  <span onclick="if(window.parent !== window) window.parent.postMessage({loadTx:'legacy-p2sh-multisig-vault'},'*'); else window.location.href='legacy-p2sh-multisig-vault.html';">Legacy P2SH Multisig Vault &#8594;</span>
+</div>
+
+</div>
+
+</body>
+</html>

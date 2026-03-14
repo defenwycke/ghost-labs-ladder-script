@@ -11373,7 +11373,7 @@ ${ladderRows.map(r => `
           <button className={`mode-tab ${mode === 'spend' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'spend' })} title={showTooltips ? 'Spend existing RUNG outputs on signet' : undefined} style={mode === 'spend' ? { color: 'var(--cyan)', borderBottomColor: 'var(--cyan)' } : {}}>SPEND</button>
         </div>
         <div className="header-actions">
-          <button className="header-btn" onClick={() => window.open('../docs/index.html', '_blank')} title={showTooltips ? 'Open the Ladder Script engine guide in a new window' : undefined}>HELP</button>
+          <button className="header-btn" onClick={() => window.open('../docs/index.html#ENGINE_GUIDE', '_blank')} title={showTooltips ? 'Open the Ladder Script engine guide in a new window' : undefined}>HELP</button>
           <button className="header-btn primary" onClick={() => dispatch({ type: 'SET_SHOW_EXAMPLES', value: true })} title={showTooltips ? 'Load pre-built example programs' : undefined}>EXAMPLES</button>
           <button className="header-btn" onClick={handleImport} title={showTooltips ? 'Import createrungtx JSON from clipboard' : undefined}>IMPORT</button>
           <button className="header-btn" onClick={handleCopyJson} title={showTooltips ? 'Validate and copy wire-format JSON to clipboard' : undefined}>COPY JSON</button>

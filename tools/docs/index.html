@@ -142,17 +142,17 @@
     }
     .family-intro { font-size: 14px; color: var(--gray-400); line-height: 1.7; margin-bottom: 16px; max-width: 640px; }
 
-    .family-signature { color: #e6a817; }
-    .family-timelock { color: #39a5b7; }
-    .family-hash { color: #b070b0; }
-    .family-covenant { color: #e06c75; }
-    .family-anchor { color: #56b6c2; }
-    .family-recursion { color: #e5c07b; }
-    .family-plc { color: #98c379; }
-    .family-compound { color: #f59e0b; }
-    .family-governance { color: #8b5cf6; }
-    .family-legacy { color: #e91e90; }
-    .family-compact { color: #98c379; }
+    .md .family-signature, .family-signature { color: #e6a817; }
+    .md .family-timelock, .family-timelock { color: #39a5b7; }
+    .md .family-hash, .family-hash { color: #b070b0; }
+    .md .family-covenant, .family-covenant { color: #e06c75; }
+    .md .family-anchor, .family-anchor { color: #56b6c2; }
+    .md .family-recursion, .family-recursion { color: #e5c07b; }
+    .md .family-plc, .family-plc { color: #98c379; }
+    .md .family-compound, .family-compound { color: #f59e0b; }
+    .md .family-governance, .family-governance { color: #8b5cf6; }
+    .md .family-legacy, .family-legacy { color: #e91e90; }
+    .md .family-compact, .family-compact { color: #98c379; }
 
     .badge-signature { color: #e6a817; background: rgba(230, 168, 23, 0.1); }
     .badge-timelock { color: #39a5b7; background: rgba(57, 165, 183, 0.1); }
@@ -545,6 +545,15 @@
           { file: 'single-sig-sphincs', name: 'Single SIG (SPHINCS+)', desc: 'NIST FIPS 205 SLH-DSA. Hash-based stateless signatures (~50,000 bytes). Most conservative PQ assumption — SHA-256 only.', date: '2026-03-13', scheme: 'SPHINCS+-SHA2' },
           { file: 'quantum-safe-vault', name: 'Quantum-Safe Vault', desc: 'PQ vault with Falcon-512 hot spend, Dilithium3+Falcon recovery with CSV delay. Multi-scheme PQ protection.', date: '2026-03-13', scheme: 'FALCON-512' },
           { file: 'quantum-vault-children', name: 'Quantum Vault + Children', desc: 'PQ vault with RECURSE_SPLIT creating child UTXOs. Emergency multisig + CSV sweep. Full PQ inheritance.', date: '2026-03-13', scheme: 'FALCON-512' },
+        ]
+      },
+      {
+        name: 'Legacy Wrapped', color: '#e91e90',
+        intro: 'Legacy Bitcoin transaction types (P2PKH, P2SH, P2WPKH, P2TR) wrapped as typed Ladder Script blocks. Same spending semantics, no arbitrary data surfaces. Demonstrates migration from legacy scripts to Ladder Script composability.',
+        txs: [
+          { file: 'legacy-p2pkh-recovery', name: 'Legacy P2PKH + Recovery', desc: 'P2PKH legacy spend with time-locked recovery path. HASH160(pubkey) verification wrapped in typed fields.', date: '2026-03-14', scheme: 'P2PKH_LEGACY' },
+          { file: 'legacy-p2sh-multisig-vault', name: 'Legacy P2SH Multisig Vault', desc: 'P2SH wrapping inner Ladder Script conditions. P2WPKH hot spend, P2SH vault with PREIMAGE reveal, CLTV cold sweep.', date: '2026-03-14', scheme: 'P2SH_LEGACY' },
+          { file: 'p2tr-taproot-migration', name: 'P2TR Taproot Migration', desc: 'Taproot key-path and script-path legacy blocks with PQ-safe FALCON-512 emergency recovery. Closes inscription vector.', date: '2026-03-14', scheme: 'P2TR_LEGACY' },
         ]
       },
     ];
