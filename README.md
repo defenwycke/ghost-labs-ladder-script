@@ -12,22 +12,30 @@ Bitcoin Script is a stack machine where every element is an opaque byte array. A
 
 Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error -- not policy, not non-standard, a *parse error*.
 
-The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and every pending covenant proposal as individual block types within a unified system.
+## How it works
+
+The name and structure are borrowed from ladder logic, the programming model used in industrial PLCs (programmable logic controllers) for decades. A spending policy is a ladder. Each rung is a possible spending path containing typed condition blocks. Blocks on the same rung are AND -- all must be satisfied. Rungs are OR -- the first satisfied rung authorises the spend.
+
+The output format is **MLSC** (Merkelized Ladder Script Conditions): a 33-byte scriptPubKey (`0xC2 || merkle_root`) regardless of policy complexity. Only the exercised spending path is revealed at spend time. Unused paths stay permanently hidden. The UTXO footprint is 40 bytes per entry.
+
+Transaction version 4 (`RUNG_TX`). Soft fork activation -- non-upgraded nodes see v4 as anyone-can-spend, the same upgrade path as SegWit and Taproot.
 
 ## What makes it different
 
 **Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" -- a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
 
-**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. Conditions contain zero user-chosen bytes -- every field is a hash digest or bounded numeric. Public keys are folded into the Merkle leaf hash (merkle_pub_key), not stored in conditions. Preimage fields are limited to 2 per witness. There is no push-data opcode. If it doesn't parse as a typed field, it doesn't enter the mempool.
+**Anti-spam hardening.** Nine data types, enforced at the deserialiser before any cryptographic operation. Three coordinated defenses close all practical data embedding surfaces: `merkle_pub_key` folds public keys into the Merkle leaf hash (no writable pubkey field in conditions), selective inversion prevents key-consuming blocks from being inverted, and hash lock deprecation removes standalone preimage blocks. If it doesn't parse as a typed field, it doesn't enter the mempool.
 
-**Post-quantum ready.** FALCON-512 signatures work today. All keys are folded into the Merkle leaf (merkle_pub_key) -- zero key bytes in the UTXO set regardless of key size. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs (theoretical max depth ~4.3 billion spends).
+**Post-quantum signatures.** FALCON-512, FALCON-1024, Dilithium3, and SPHINCS+ are native signature schemes, implemented and running on the live signet. A single SCHEME field on any signature block routes verification to classical Schnorr or any PQ algorithm. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs. Incremental migration without a flag day.
 
-**Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
+**Wire efficiency.** Compound blocks collapse common multi-block patterns (HTLC, PTLC, TIMELOCKED_MULTISIG) into single blocks. Relays allow shared conditions across rungs without duplication. Template references let inputs inherit conditions with field-level diffs.
+
+**Legacy migration.** Seven legacy block types wrap P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR key-path, and P2TR script-path as typed Ladder Script blocks. Identical spending semantics, fully typed fields. Designed for a three-phase migration: coexistence, legacy-in-blocks, then sunset of raw legacy formats.
 
 ## 59 Block Types
 
-| Category | Blocks |
-|----------|--------|
+| Family | Blocks |
+|--------|--------|
 | Signature | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG |
 | Timelock | CSV, CSV_TIME, CLTV, CLTV_TIME |
 | Hash | TAGGED_HASH |
@@ -41,44 +49,69 @@ The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and eve
 
 ## Try it
 
-Open `tools/ladder-engine/index.html` in a browser. Load an example, switch to SIMULATE, step through evaluation. The RPC tab shows the wire-format JSON.
+The [Ladder Engine](https://bitcoinghost.org/labs/ladder-engine.html) is a browser-based visual builder. Load an example from the preset library, switch to SIMULATE, step through evaluation. The RPC tab shows the wire-format JSON. The SIGNET tab lets you fund, sign, and broadcast transactions on the live signet.
 
-Or use the hosted version at [bitcoinghost.org/labs/ladder-engine.html](https://bitcoinghost.org/labs/ladder-engine.html).
+## Tests
+
+- **437 unit tests** (`src/test/rung_tests.cpp`) -- serialization, evaluation, all 59 block types, inversion, anti-spam, PQ signatures, legacy blocks
+- **229 functional tests** across 6 test suites -- end-to-end RPC flows, P2P relay, MLSC Merkle proofs, PQ block stress tests, signet integration
+
+```bash
+# Unit tests
+make -j2 && src/test/test_bitcoin --run_test=rung_tests
+
+# Functional tests
+python3 tests/functional/rung_basic.py
+python3 tests/functional/rung_mlsc.py
+python3 tests/functional/rung_pq_block.py
+python3 tests/functional/rung_signet.py
+python3 tests/functional/rung_p2p.py
+python3 tests/functional/rung_key_ref_sig.py
+```
 
 ## Repository
 
 ```
-src/rung/          C++ reference implementation (20 files)
-tests/             Unit tests, fuzz target, 4 functional test suites
-patches/           Diff for applying to Bitcoin Core v30
-docs/              BIP draft, block library, examples, FAQ, glossary
-tools/             Visual builder and simulator
-proxy/             FastAPI signet proxy for live testing
+src/rung/              C++ reference implementation (19 files)
+tests/                 Unit tests, fuzz target, 6 functional test suites
+patches/               Diff for applying to Bitcoin Core v30.1
+docs/                  BIP draft, block library, examples, FAQ, glossary
+tools/                 Ladder Engine, block reference docs, tx preset docs
+proxy/                 FastAPI signet proxy for live testing
 ```
 
 ## Documentation
 
-- [Block Library](docs/BLOCK_LIBRARY.md) -- all 59 blocks with fields and semantics
 - [BIP Draft](docs/BIP-XXXX.md) -- formal Bitcoin Improvement Proposal
-- [Examples](docs/EXAMPLES.md) -- 8 worked scenarios with JSON
+- [Block Library](docs/BLOCK_LIBRARY.md) -- all 59 blocks with fields and semantics
+- [Examples](docs/EXAMPLES.md) -- worked scenarios with RPC JSON
+- [Review Guide](docs/REVIEW_GUIDE.md) -- recommended reading order for the C++
+- [Engine Guide](docs/ENGINE_GUIDE.md) -- how to use the visual builder
+- [FAQ](docs/FAQ.md) -- common questions
+- [Glossary](docs/GLOSSARY.md) -- terminology reference
+- [Integration](docs/INTEGRATION.md) -- wallet and application integration guide
 - [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) -- spec deviations and why
+
+## Reference Implementation
+
+| File | Purpose |
+|------|---------|
+| `src/rung/types.h` | Core types: block types, data types, schemes, structs |
+| `src/rung/evaluator.cpp` | Block evaluators for all 59 types, rung/ladder logic |
+| `src/rung/serialize.cpp` | Wire format with micro-headers and implicit fields |
+| `src/rung/conditions.cpp` | MLSC Merkle tree, `merkle_pub_key` leaf computation |
+| `src/rung/sighash.cpp` | Tagged sighash computation |
+| `src/rung/pq_verify.cpp` | Post-quantum signature verification (liboqs) |
+| `src/rung/adaptor.cpp` | Adaptor signature support |
+| `src/rung/aggregate.cpp` | Block-level signature aggregation |
+| `src/rung/rpc.cpp` | RPC commands: `createrung`, `createrungtx`, `signrungtx`, etc. |
+| `src/rung/policy.cpp` | Mempool policy enforcement |
 
 ## Links
 
-| Resource | Path |
-|----------|------|
-| Ladder Engine (visual tool) | `tools/ladder-engine/index.html` |
-| Block Reference (visual docs) | `tools/block-docs/index.html` |
-| Rung evaluator (C++) | `src/rung/evaluator.cpp` |
-| Rung types and enums | `src/rung/types.h` |
-| Conditions (de)serialization | `src/rung/conditions.cpp` |
-| Wire format serialization | `src/rung/serialize.cpp` |
-| Sighash computation | `src/rung/sighash.cpp` |
-| RPC interface | `src/rung/rpc.cpp` |
-| PQ signature verification | `src/rung/pq_verify.cpp` |
-| Adaptor signature support | `src/rung/adaptor.cpp` |
-| Policy validation | `src/rung/policy.cpp` |
-| Unit tests | `src/test/rung_tests.cpp` |
+- [Ladder Engine (hosted)](https://bitcoinghost.org/labs/ladder-engine.html) -- build and broadcast on signet
+- [Block Reference (hosted)](https://bitcoinghost.org/labs/block-docs/) -- visual docs for all block types
+- [Ladder Script Overview](https://bitcoinghost.org/labs/ladder-script.html) -- how it works, use cases, diagrams
 
 ## License
 
