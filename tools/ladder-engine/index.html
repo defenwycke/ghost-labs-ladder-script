@@ -7840,26 +7840,27 @@ const SESSION_LOG_KEY = 'ghost_session_txlog';
 const SESSION_LOG_MAX = 50;
 
 // Save a new fund entry. Each entry holds fund JSON and (later) its spend JSON.
-function saveSessionTx({ fundTxid, label, timestamp, fundJson }) {
+function saveSessionTx({ fundTxid, label, timestamp, fundJson, fundSize }) {
   try {
     const log = JSON.parse(localStorage.getItem(SESSION_LOG_KEY) || '[]');
-    log.unshift({ fundTxid, label: label || '', timestamp: timestamp || Date.now(), fundJson: fundJson || null, spendTxid: null, spendJson: null });
+    log.unshift({ fundTxid, label: label || '', timestamp: timestamp || Date.now(), fundJson: fundJson || null, fundSize: fundSize || null, spendTxid: null, spendJson: null, spendSize: null });
     if (log.length > SESSION_LOG_MAX) log.length = SESSION_LOG_MAX;
     localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(log));
   } catch (e) { console.warn('Failed to save session tx:', e); }
 }
 
 // Attach spend JSON to the fund entry it spends from.
-function updateSessionTxSpend(fundTxid, spendTxid, spendJson) {
+function updateSessionTxSpend(fundTxid, spendTxid, spendJson, spendSize) {
   try {
     const log = JSON.parse(localStorage.getItem(SESSION_LOG_KEY) || '[]');
     const entry = log.find(e => e.fundTxid === fundTxid);
     if (entry) {
       entry.spendTxid = spendTxid;
       entry.spendJson = spendJson;
+      if (spendSize) entry.spendSize = spendSize;
     } else {
       // Fund was created before Review tab existed -- create a standalone entry
-      log.unshift({ fundTxid, label: 'Spend ' + fundTxid.substring(0, 8) + '..', timestamp: Date.now(), fundJson: null, spendTxid: spendTxid, spendJson: spendJson });
+      log.unshift({ fundTxid, label: 'Spend ' + fundTxid.substring(0, 8) + '..', timestamp: Date.now(), fundJson: null, spendTxid: spendTxid, spendJson: spendJson, fundSize: null, spendSize: spendSize || null });
       if (log.length > SESSION_LOG_MAX) log.length = SESSION_LOG_MAX;
     }
     localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(log));
@@ -7874,6 +7875,28 @@ function loadSessionLog() {
 function clearSessionLog() {
   localStorage.removeItem(SESSION_LOG_KEY);
 }
+
+// Seed the session log with a demo entry if empty (quantum vault fund+spend pair)
+function seedSessionLogIfEmpty() {
+  try {
+    const existing = JSON.parse(localStorage.getItem(SESSION_LOG_KEY) || '[]');
+    if (existing.length > 0) return;
+    const demoFund = {"inputs":[{"txid":"89159a8a99e218278a63befdafb212a17c18b867f72e73a611eb563ee48ad213","vout":0}],"outputs":[{"amount":0.0015,"conditions":[{"blocks":[{"type":"SIG","fields":[{"type":"PUBKEY","hex":"0915747de2b59fa07eb11248874c3029ba7037bb833a4084d1a78cdcb33952d65483e9b2566873523c94ce59828a741a93741b364a9907426a1924dc005de480554666633b997d4442c1f1ee43804e622833ca134e6ac0b441c25f1c1142bb185a1caca0f9478aa9c5f198fe1ed26ed50e82f106f506ddc31206c557af661aa1de0cf9f54a3c66f96811ab53188dc29422f820ca1d7451c27403d0487456a09a2ff8975eec2183272e5909ce1111c1cd30cd1da630ae9e50696882ca0952356e2ae41ae48c4a018ba38c82af541d48069c0ecdafe1de5132698e7a8d3a55cccd4795c20c60fb6fa20d7dda8add01697acd1739dbc2ae933a6bfbdddcdf3f9e42543f623884fe7ae1c3279ab9701db98d88243ded281b690f8e3310c3f5c40a404ef57cea6d839db9b60c0ba4007c6789b3d4ecdf512ffea0e284e75c855107a412a529bf616f96c69e6d6219088aa6d9d47b984c0a411411ab995f06c86fed353271d38a9bbf65d105d65a1f4595295331fd0b378328f0a38c665aac1e008af1cc77929daa30eaea8163986f39bce2c1b352b83b2fc830980ca368c76f3d8810aa98e4d4226256f0611ad638685d9f27ec660525aa747aadd2e8604e477bbb0a71bdd93c7733d27c5b9d7a5a83298e0e5a3a58d0ab2628b85e31db68127a2e2e939415093a68dd462fd02b88e17854a725865d821a2139275ca2809643c1e4d767c2045a55107383c473e0c798ad75160211e1a38e1566fceb5667558076085aa2cbcc2588aa1922cb9418c505c728e643a02210791f8d62af5c6a86dfe0f6925a3b54a51714657e7a62824e804fa0a2c162c48d8d2130f9512bb200ecdda416acde5f9e3883f7d7fa861c6c3740a54f259e3656759ffb6b20d098a2d7a91d7c7d536e95535a2d1483e889fb73327fd46413c8bc9dac57344fa611dd3cb8f72fa850008675a165db562876303c5a2e2ad225f0ed4d7aa4894d95278b6abdd19017f32f60aaf09b500f1d304e823337160b313d6435f37e8aa03e80606791d9476ea501214047ce2eba9dc7a74f5d74ca45b51a942360559fa270d3ddbd08b2974faf0476947c15378e5b568678aab096156ec407f93c158648deb0ba7a2afa1c005deab95f46347988f6212c3c17f606e0682ca2a5a15ae2a39d9fb9ba8796810c23ab94077485dd1a2059a956316c3853eaa4392b1889ae68501748515db46962835bc39f60ccbb5b5a8bf90780bbe72b090e0d4c8769575e6455f89ce5e295d3"},{"type":"SCHEME","hex":"10"}]},{"type":"AMOUNT_LOCK","fields":[{"type":"NUMERIC","hex":"10270000"},{"type":"NUMERIC","hex":"404b4c00"}]}]}],"coil":{"type":"UNLOCK","attestation":"INLINE","scheme":"FALCON512"}},{"amount":0.001499,"conditions":[{"blocks":[{"type":"CSV","fields":[{"type":"NUMERIC","hex":"50cd0000"}]},{"type":"SIG","fields":[{"type":"PUBKEY","hex":"092e5029c06c44927e81e0d7b9c699b3723f469ad35003d48ed279ac303e22fd5a03cd2c4b5d5b78b16ad8afc11080b00aca742415036c1fda48f5c0d8a4cc8681b18633ff9cc64ef808f1348dba28b54dca0e420a671dbba223226d1866c2f7a852d13ff531c18f657d906e5d2bf30f907e7605f4fb839c7a4c3a35ae06017099d193871a9ebd9e9499c41f804cc5605606c88da5202f667cd7970ee58d2bb45879564031b38c80b563ce49960143af7f3025d11080ff5c3207c9ea58e46b094e20a0157aa9012712c81907b2ce11f5806fda066ab8ca68cf2d92213887ecec1b73141254e84c198b28ae904541191661b0464b160c4381c748e1a5460e58506bb3a0c93ece21f902ae547f5a7be804d5cd387cb90406ab7f7daa2a5983dcd3b7210b06d304270c3e51370b8e1607f13392d41bc07af4bfe7d05a765408a5aab111602b841e50df57304fc1b017256a0a942c3a09880f311fcdb649210ce9739d8417790e3c34d5e9d4b169b24779fbf03a1fe49931a590839d5a2f05b08480927f73e19205f4cca707dd6530342cd33b4c78dbf6c14a99510e69544801687801a70529fd9eddaa8b82e78a3b76ff985b2c1a076962288c66e9773672e7609be9ad94dc82dbc9057a647f53159b659e9422870101df0ae168699cce45a579762a1f55543295e90745945eb27099c87c164792cd8d59d09f5e05d24a224509b005784e893ec4108fdd687772ab6103562882230ee876a90013cca32bb31c8980614c881cb4b5d6c74376171dcd18ccad8aafbe70d3422ecab3ca8c7378ed915a842258c5e4a149a40eab3b475c42eab864802691080ed991062ee77e612ae5760d8659acb34b6a6142ba01a58a6dd72b325687a8ce02faa4c98aa07000421d2693bbd1c2a997f9a38216622abb2e755b94e96a474e6354351b4f47feee863fa2e741115f49498f0a94a19252e50d6d44307900a550fd9ae91f46a68e4f3619aeeb4e0db07d01f516d9469c307ebea5b1acf30dfa0a0064063e993a783941229a99bdc6a921e44fb8c6b6c44323d0a56294d2e85cb432092ee29a4c4fa07448a9e96b2b281a7ab1c5ea5b3a42ef05e48521058c0b36872dec7a88b647c568fc40f2e15a4d857b6b6eafa8385e27b284f217f5ca9b2fa914513e6ffab830b3c39a0369aa423b344de77966098065fc132d3b540f118160a847581df8ab1de3902e5081efc6c7267a1c449d81705fc4d4e659e1285969019b7162efa6109ab53b57ba"},{"type":"SCHEME","hex":"10"}]}]}],"coil":{"type":"UNLOCK","attestation":"INLINE","scheme":"FALCON512"}},{"amount":0.0005,"conditions":[{"blocks":[{"type":"SIG","fields":[{"type":"PUBKEY","hex":"0915747de2b59fa07eb11248874c3029ba7037bb833a4084d1a78cdcb33952d65483e9b2566873523c94ce59828a741a93741b364a9907426a1924dc005de480554666633b997d4442c1f1ee43804e622833ca134e6ac0b441c25f1c1142bb185a1caca0f9478aa9c5f198fe1ed26ed50e82f106f506ddc31206c557af661aa1de0cf9f54a3c66f96811ab53188dc29422f820ca1d7451c27403d0487456a09a2ff8975eec2183272e5909ce1111c1cd30cd1da630ae9e50696882ca0952356e2ae41ae48c4a018ba38c82af541d48069c0ecdafe1de5132698e7a8d3a55cccd4795c20c60fb6fa20d7dda8add01697acd1739dbc2ae933a6bfbdddcdf3f9e42543f623884fe7ae1c3279ab9701db98d88243ded281b690f8e3310c3f5c40a404ef57cea6d839db9b60c0ba4007c6789b3d4ecdf512ffea0e284e75c855107a412a529bf616f96c69e6d6219088aa6d9d47b984c0a411411ab995f06c86fed353271d38a9bbf65d105d65a1f4595295331fd0b378328f0a38c665aac1e008af1cc77929daa30eaea8163986f39bce2c1b352b83b2fc830980ca368c76f3d8810aa98e4d4226256f0611ad638685d9f27ec660525aa747aadd2e8604e477bbb0a71bdd93c7733d27c5b9d7a5a83298e0e5a3a58d0ab2628b85e31db68127a2e2e939415093a68dd462fd02b88e17854a725865d821a2139275ca2809643c1e4d767c2045a55107383c473e0c798ad75160211e1a38e1566fceb5667558076085aa2cbcc2588aa1922cb9418c505c728e643a02210791f8d62af5c6a86dfe0f6925a3b54a51714657e7a62824e804fa0a2c162c48d8d2130f9512bb200ecdda416acde5f9e3883f7d7fa861c6c3740a54f259e3656759ffb6b20d098a2d7a91d7c7d536e95535a2d1483e889fb73327fd46413c8bc9dac57344fa611dd3cb8f72fa850008675a165db562876303c5a2e2ad225f0ed4d7aa4894d95278b6abdd19017f32f60aaf09b500f1d304e823337160b313d6435f37e8aa03e80606791d9476ea501214047ce2eba9dc7a74f5d74ca45b51a942360559fa270d3ddbd08b2974faf0476947c15378e5b568678aab096156ec407f93c158648deb0ba7a2afa1c005deab95f46347988f6212c3c17f606e0682ca2a5a15ae2a39d9fb9ba8796810c23ab94077485dd1a2059a956316c3853eaa4392b1889ae68501748515db46962835bc39f60ccbb5b5a8bf90780bbe72b090e0d4c8769575e6455f89ce5e295d3"},{"type":"SCHEME","hex":"10"}]},{"type":"SIG","fields":[{"type":"PUBKEY","hex":"097b3836a804decb08764d8653489a00d59672d515e00f0cb6c1148c61b63ddc5656d4cab6517c036a196492cd3b592948b95d7073d2a3a4382d167e53a8c4d0ac513e94ccd32b01dddd2a835d6e0f980315b46da03b76e86bbb09f0a8aeff7812a1d3a4c1c0b3c527c85fd85c4b371201bf75a7791d2fe5a09d6d72591e11b128f4e335643e8700c5aa1989ae8e688ee61c2d1db14076f1581308bfee2e22d841eb2c0d3e7773a548bca6a5b28cdae4582c0274a1507b51224621ebcfa50c04e5a238a8d93ad6fdd673970d7e96ada2ba509d482406723e0fe0b60ddbe064c633bde568f3fd095a6eb9c0d9d819629a58c357cf9ff08c7ad542cb8c4d077c3a87bd08505de5f6572d80dca36cc1ab344b396e1efee000d2f5bc3417c46a5117b539727a5aad6c3636fbc95d0e78438604824769f8714af4c2d50856bfb93825682bcb4c900756855eb1051d39d43811a3284ca4e8e29427a73cbdf8740edc9b15db78ad9ec2767ac41691402061191b52ab53008a7a83364c0d062a4d5e52100f06b2d283172e82fb69f4a600df6e607f3026cbbbcc41b06646273d20db59ac255648658f7544a821d81fe3163e80b4ddcb125cbc60d1639f4d73292e682a16213ec6edb3c1cd83b64c6e165fc2807d3141b0a32c4192b5f0e49a533e8bdc119080a01723ca1f65c053b66e644c7a9a51400155eda9a1559a1f453f37f8da7ea948709698d19485e8ad943395fb29d1886bff40d28c8c5879dc9513490287362b47bb9ddc33e82a9ecb0efd0ec98951bcb3c57e18558baba101fae80dc2665346b90901cc6aa3f2c003f0591b516956506d411bbbfc98244821fe18907cb1320a0f1025fab7215c48459655d91fc68d907423d6e3e9a1a77a5bc858547d0e86c684d899d36ff449e586034130309797bb92df8f92b6f4471d704ae8661538d1c06b7e0a9559092932c49d709d671789cdd670ac068c396188c350ab0d164e58c99ea3751f151579878b5873c88171c495b50d21220045e2c4996a9aa986870b75357d10c74b7e8409d601a3e89c6b6944e9c9117c28ba1d9a87a19797b4e673622711194c633a6129e68ffd9fe65780277c16b5c664cfb2484900b8cfd0316da0c7fb0561be5370428a3a87367aaaa1218ec8ea63503b22c28769aa119f772b9d6d568cddc7d48a707529502193972f4e1969733399294af422c4314004baa51558c5df54bc9ea4f8745af5a3c4c2b188afb114e1e7d70a976b7ffe07023e51cb"},{"type":"SCHEME","hex":"10"}]}]}],"coil":{"type":"UNLOCK","attestation":"INLINE","scheme":"FALCON512"}},{"amount":49.99649734,"conditions":[{"blocks":[{"type":"SIG","fields":[{"type":"PUBKEY","hex":"0290c02aa767bdf32f11f43bfeefb37b5d2af06d6724b1b9b3acf594e2c50406cb"},{"type":"SCHEME","hex":"10"}]}]}],"coil":{"type":"UNLOCK","attestation":"INLINE","scheme":"FALCON512"}}]};
+    const demoSpend = {"txid":"pending","version":4,"size":1182,"vin":[{"txid":"24ffe8d0ed0a67a215ef117923e108851cd9712a3d95bdb2fd3e05194d99c2b9","vout":0,"sequence":4294967294}],"vout":[{"value":0.00149,"n":0,"scriptPubKey":{"type":"rung","conditions":[{"blocks":[{"type":"SIG","fields":[{"type":"PUBKEY","hex":"0290c02aa767bdf32f11f43bfeefb37b5d2af06d6724b1b9b3acf594e2c50406cb"}]}]}]}}],"rungs":[{"n_blocks":2,"blocks":[{"block_type":"SIG","inverted":false,"conditions":[{"type":"SCHEME","hex":"10"}],"witness":[{"type":"PUBKEY","hex":"0915747de2b59fa07eb11248874c3029ba7037bb833a4084d1a78cdcb33952d65483e9b2566873523c94ce59828a741a93741b364a9907426a1924dc005de480554666633b997d4442c1f1ee43804e622833ca134e6ac0b441c25f1c1142bb185a1caca0f9478aa9c5f198fe1ed26ed50e82f106f506ddc31206c557af661aa1de0cf9f54a3c66f96811ab53188dc29422f820ca1d7451c27403d0487456a09a2ff8975eec2183272e5909ce1111c1cd30cd1da630ae9e50696882ca0952356e2ae41ae48c4a018ba38c82af541d48069c0ecdafe1de5132698e7a8d3a55cccd4795c20c60fb6fa20d7dda8add01697acd1739dbc2ae933a6bfbdddcdf3f9e42543"},{"type":"SIG","hex":"3045022100...falcon512_signature_690_bytes..."}]},{"block_type":"AMOUNT_LOCK","inverted":false,"conditions":[{"type":"NUMERIC","hex":"10270000"},{"type":"NUMERIC","hex":"404b4c00"}],"witness":[]}]}],"locktime":0};
+    const seed = [{
+      fundTxid: '24ffe8d0ed0a67a215ef117923e108851cd9712a3d95bdb2fd3e05194d99c2b9',
+      label: 'Quantum Vault -- 4 rungs, Falcon-512',
+      timestamp: Date.now(),
+      fundJson: demoFund,
+      fundSize: 4182,
+      spendTxid: 'pending',
+      spendJson: demoSpend,
+      spendSize: 1182
+    }];
+    localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(seed));
+  } catch (e) { /* ignore */ }
+}
+seedSessionLogIfEmpty();
 
 // ═══════════════════════════════════════════════════════════════
 // REGTEST PANEL
@@ -8847,9 +8870,14 @@ function SignetPanel() {
     if (data) {
       setTxid(data.txid);
       addToHistory('broadcast', data.txid, rungs.length + ' rungs');
-      // Save to session log for Review tab
-      const fundPayload = exportCreateRungtx(rungs, txOutputs, txInputs, locktime);
-      saveSessionTx({ fundTxid: data.txid, label: rungs.length + ' rungs', fundJson: fundPayload });
+      // Save to session log for Review tab (decoded tx with full wire data)
+      const fundSize = hex ? Math.floor(hex.length / 2) : null;
+      let fundPayload = exportCreateRungtx(rungs, txOutputs, txInputs, locktime);
+      try {
+        const decoded = await apiCallBase('/api/ladder/tx/' + data.txid);
+        if (decoded) fundPayload = decoded;
+      } catch (e) { /* use createrungtx fallback */ }
+      saveSessionTx({ fundTxid: data.txid, label: rungs.length + ' rungs', fundJson: fundPayload, fundSize });
       setTimeout(refreshWallet, 2000);
       refreshMempool();
       // Save record via Record Module so SPEND tab can find this output
@@ -10201,8 +10229,14 @@ function SpendPanel() {
       }
 
       setSpendResult({ txid: bcResult.txid, amount: sendSats, scheme, destAddress: dest });
-      // Save to session log for Review tab
-      updateSessionTxSpend(txid, bcResult.txid, createPayload);
+      // Save decoded tx (with witness) to session log for Review tab
+      const spendSize = signResult.hex ? Math.floor(signResult.hex.length / 2) : null;
+      let decodedSpend = createPayload; // fallback
+      try {
+        const decoded = await apiCall('/api/ladder/tx/' + bcResult.txid, undefined, true);
+        if (decoded) decodedSpend = decoded;
+      } catch (e) { /* use createPayload fallback */ }
+      updateSessionTxSpend(txid, bcResult.txid, decodedSpend, spendSize);
 
     } catch (e) {
       addLog('ERROR: ' + e.message, 'err');
@@ -10571,7 +10605,7 @@ function ReviewPanel() {
   });
 
   return (
-    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+    <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 0 }}>
       {/* TX List Sidebar */}
       <div style={{ width: 260, minWidth: 260, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
         <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -10601,7 +10635,7 @@ function ReviewPanel() {
                 <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 'auto' }}>{timeAgo(tx.timestamp)}</span>
               </div>
               <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {tx.fundTxid.substring(0, 24)}...
+                {(tx.fundTxid || '').substring(0, 24)}...
               </div>
               {tx.label && <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>{tx.label}</div>}
             </div>
@@ -10641,7 +10675,7 @@ function ReviewPanel() {
               {/* Fund JSON */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)' }}>
                 <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-tertiary)' }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: 'var(--green-bright)' }}>FUND JSON (createrungtx)</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: 'var(--green-bright)' }}>FUND TX{selected.fundSize ? (' (' + (selected.fundSize >= 1000 ? (selected.fundSize / 1000).toFixed(1) + ' kB' : selected.fundSize + ' B') + ')') : ''}</span>
                   {fundStr && <button style={{ background: 'none', border: '1px solid var(--border)', color: copiedKey === 'review-fund' ? 'var(--green-bright)' : 'var(--text-dim)', cursor: 'pointer', fontSize: 9, padding: '2px 8px' }}
                     onClick={() => copyWithFeedback(fundStr, 'review-fund')}>
                     {copiedKey === 'review-fund' ? 'COPIED' : 'COPY'}
@@ -10658,7 +10692,7 @@ function ReviewPanel() {
               {/* Spend JSON */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-tertiary)' }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: 'var(--cyan)' }}>SPEND JSON (createrungtx)</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, color: 'var(--cyan)' }}>SPEND TX{selected.spendSize ? (' (' + (selected.spendSize >= 1000 ? (selected.spendSize / 1000).toFixed(1) + ' kB' : selected.spendSize + ' B') + ')') : ''}</span>
                   {spendStr && <button style={{ background: 'none', border: '1px solid var(--border)', color: copiedKey === 'review-spend' ? 'var(--green-bright)' : 'var(--text-dim)', cursor: 'pointer', fontSize: 9, padding: '2px 8px' }}
                     onClick={() => copyWithFeedback(spendStr, 'review-spend')}>
                     {copiedKey === 'review-spend' ? 'COPIED' : 'COPY'}
@@ -12029,7 +12063,7 @@ ${ladderRows.map(r => `
       </div>
 
       {/* Register Table --hidden in signet modes for more space */}
-      {mode !== 'send' && mode !== 'spend' && <RegisterTable fullSimState={fullSimState} />}
+      {mode !== 'send' && mode !== 'spend' && mode !== 'review' && <RegisterTable fullSimState={fullSimState} />}
 
       {/* Status Bar */}
       <div className="status-bar">
