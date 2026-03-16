@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COUNTER_UP — LADDER SCRIPT Block Reference</title>
+<title>COUNTER_UP  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0633 &middot; PLC FAMILY</div>
   <h1 class="block-title">COUNTER_UP</h1>
-  <p class="block-subtitle">Up counter with event signer. SATISFIED while the current count is below the target (still counting). Requires a valid public key or commitment to authorize count increments. No Tapscript equivalent exists.</p>
+  <p class="block-subtitle">Up counter with event signer. SATISFIED while the current count is below the target (still counting). Requires a valid public key to authorize count increments. No Tapscript equivalent exists.</p>
   <span class="block-family-badge badge-plc">PLC</span>
   <span class="invertible-badge inv-yes">Invertible</span>
 </div>
@@ -57,12 +57,12 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">event_signer</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key or commitment of the authorized event signer</td></tr>
+      <tr><td class="field-name">event_signer</td><td class="field-type">DATA</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key of the authorized event signer</td></tr>
       <tr><td class="field-name">current</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Current counter value (NUMERIC[0])</td></tr>
       <tr><td class="field-name">target</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Target count value (NUMERIC[1])</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">The event signer field must be present as either a PUBKEY or PUBKEY_COMMIT. Both NUMERIC fields are required.</p>
+  <p class="section-text" style="margin-top:12px">The event signer field must be present as a DATA field. Both NUMERIC fields are required.</p>
 </div>
 
 <!-- Wire Format -->
@@ -73,7 +73,7 @@
       <span class="wire-segment wire-type">0x0633</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey">DATA &middot; 32B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-bytes">Conditions = 48 bytes</span>
@@ -95,7 +95,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> or <span class="eval-keyword">PUBKEY_COMMIT</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Read <span class="eval-keyword">current</span> (NUMERIC[0]) and <span class="eval-keyword">target</span> (NUMERIC[1]). If fewer than 2 NUMERIC fields &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">If current &lt; 0 or target &lt; 0 &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">If current &lt; target &rarr; <span class="eval-result-sat">SATISFIED</span> (still counting)</span></div>
@@ -109,7 +109,7 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing PUBKEY / PUBKEY_COMMIT field</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing PUBKEY field</td><td class="r-err">ERROR</td></tr>
       <tr><td>Fewer than 2 NUMERIC fields</td><td class="r-err">ERROR</td></tr>
       <tr><td>current &lt; 0 or target &lt; 0</td><td class="r-err">ERROR</td></tr>
       <tr><td>current &ge; target</td><td class="r-unsat">UNSATISFIED</td></tr>
@@ -126,12 +126,12 @@
   <span class="json-key">"type"</span>: <span class="json-str">"COUNTER_UP"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"DATA"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">3</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">10</span> }
   ]
 }</pre></div>
-  <p class="section-text" style="margin-top:12px">This creates a signed up counter that remains SATISFIED until 10 authorized events have been recorded. The event signer's pubkey must match the commitment.</p>
+  <p class="section-text" style="margin-top:12px">This creates a signed up counter that remains SATISFIED until 10 authorized events have been recorded. The event signer's pubkey must be provided.</p>
 </div>
 
 <!-- Example -->

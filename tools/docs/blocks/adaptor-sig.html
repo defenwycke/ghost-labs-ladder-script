@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADAPTOR_SIG — LADDER SCRIPT Block Reference</title>
+<title>ADAPTOR_SIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">ADAPTOR_SIG</h1>
   <p class="block-subtitle">Adaptor signature verification. Requires a signing key, an adaptor point, and an adapted signature. Enables scriptless scripts and atomic protocols without hash locks.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -63,25 +63,17 @@
     </thead>
     <tbody>
       <tr>
-        <td class="field-name">signing_key_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key</td>
+        <td class="field-name" colspan="5" style="color:#888;font-style:italic;">Signing key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td>
       </tr>
       <tr>
-        <td class="field-name">adaptor_point_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the adaptor point</td>
+        <td class="field-name" colspan="5" style="color:#888;font-style:italic;">Adaptor point bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td>
       </tr>
       <tr>
         <td class="field-name">signing_key</td>
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Signing public key (x-only 32B or compressed 33B). The adaptor point is NOT revealed in the witness &mdash; the adaptor secret is applied off-chain to produce the adapted signature.</td>
+        <td class="field-desc">Signing public key (x-only 32B or compressed 33B). The adaptor point is NOT revealed in the witness  -- the adaptor secret is applied off-chain to produce the adapted signature.</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>
@@ -104,8 +96,8 @@
       <span class="wire-segment wire-type" style="min-width:60px">0x0003</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:140px">COMMIT (key) &middot; 32B</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:150px">COMMIT (adaptor) &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:140px">merkle_pub_key (key) &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:150px">merkle_pub_key (adaptor) &middot; 32B</span>
       <span class="wire-bytes">= 72 bytes</span>
     </div>
   </div>
@@ -136,7 +128,7 @@
   <div class="eval-box">
     <div class="eval-step">
       <span class="eval-step-num">1.</span>
-      <span class="eval-step-text">Resolve both <span class="eval-keyword">PUBKEY_COMMIT</span> fields: verify SHA256(signing_key) and SHA256(adaptor_point) match their respective commitments. If either mismatches &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Resolve both <span class="eval-keyword">merkle_pub_key</span> bindings: verify SHA256(signing_key) and SHA256(adaptor_point) match their respective Merkle leaf commitments. If either mismatches &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
@@ -159,11 +151,11 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing PUBKEY_COMMIT, PUBKEY, or SIGNATURE fields</td><td class="r-err">ERROR</td></tr>
-      <tr><td>Fewer than 2 PUBKEY_COMMIT in conditions</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing merkle_pub_key binding, PUBKEY, or SIGNATURE fields</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Fewer than 2 merkle_pub_key bindings</td><td class="r-err">ERROR</td></tr>
       <tr><td>Adaptor point not valid x-only point</td><td class="r-err">ERROR</td></tr>
-      <tr><td>Signing key commitment mismatch</td><td class="r-unsat">UNSATISFIED</td></tr>
-      <tr><td>Adaptor point commitment mismatch</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>Signing key merkle_pub_key mismatch</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>Adaptor point merkle_pub_key mismatch</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Adapted signature verification fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Adapted signature valid</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -179,8 +171,8 @@
   <span class="json-key">"type"</span>: <span class="json-str">"ADAPTOR_SIG"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes (signing key)"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes (adaptor point)"</span> }
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes (signing key)"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes (adaptor point)"</span> }
   ]
 }</pre></div>
 

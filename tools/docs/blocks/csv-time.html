@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSV_TIME — LADDER SCRIPT Block Reference</title>
+<title>CSV_TIME  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -63,7 +63,7 @@
       <tr><td class="field-name">sequence_value</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">BIP 68 sequence value with time flag (512-second units)</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields required — evaluation uses the input sequence number and median-time-past from the transaction context.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields required  -- evaluation uses the input sequence number and median-time-past from the transaction context.</p>
 </div>
 
 <!-- Wire Format -->
@@ -96,7 +96,7 @@
   <div class="eval-box">
     <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Read <span class="eval-keyword">sequence_value</span> from NUMERIC field (time-based BIP 68 encoding). Negative &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">If <span class="eval-keyword">SEQUENCE_LOCKTIME_DISABLE_FLAG</span> is set &rarr; <span class="eval-result-sat">SATISFIED</span> (disabled)</span></div>
-    <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text"><span class="eval-keyword">CheckSequence</span>(value) — value interpreted as 512-second units. If fails &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text"><span class="eval-keyword">CheckSequence</span>(value)  -- value interpreted as 512-second units. If fails &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">Pass &rarr; <span class="eval-result-sat">SATISFIED</span></span></div>
   </div>
 </div>

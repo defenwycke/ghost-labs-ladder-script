@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANCHOR_CHANNEL — LADDER SCRIPT Block Reference</title>
+<title>ANCHOR_CHANNEL  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -56,8 +56,8 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">local_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Local channel pubkey</td></tr>
-      <tr><td class="field-name">remote_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Remote channel pubkey</td></tr>
+      <tr><td class="field-name">local_key</td><td class="field-type">DATA</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Local channel pubkey</td></tr>
+      <tr><td class="field-name">remote_key</td><td class="field-type">DATA</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Remote channel pubkey</td></tr>
       <tr><td class="field-name">commitment_number</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Channel commitment number (must be &gt; 0)</td></tr>
     </tbody>
   </table>
@@ -94,7 +94,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Extract <span class="eval-keyword">PUBKEY</span> / <span class="eval-keyword">PUBKEY_COMMIT</span> fields. Need exactly 2 channel keys.</span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Extract <span class="eval-keyword">PUBKEY</span> fields. Need exactly 2 channel keys.</span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">If fewer than 2 pubkeys &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">Read <span class="eval-keyword">commitment_number</span> from NUMERIC field</span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">If commitment_number &le; 0 &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>

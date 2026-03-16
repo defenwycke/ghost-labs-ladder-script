@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PTLC — LADDER SCRIPT Block Reference</title>
+<title>PTLC -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">PTLC</h1>
   <p class="block-subtitle">Point Time Locked Contract. Combines an adaptor signature verification with a relative timelock (CSV) in a single block. Collapses the ADAPTOR_SIG + CSV two-block pattern for payment channel constructions.</p>
   <span class="block-family-badge badge-compound">Compound</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -65,19 +65,13 @@
       <tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr>
     </thead>
     <tbody>
-      <tr>
-        <td class="field-name">pubkey_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key</td>
-      </tr>
+      <tr><td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td></tr>
       <tr>
         <td class="field-name">adaptor_point</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
+        <td class="field-type">POINT</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Commitment to the adaptor point (the secret-bearing curve point)</td>
+        <td class="field-desc">Adaptor point (the secret-bearing curve point)</td>
       </tr>
       <tr>
         <td class="field-name">timelock</td>
@@ -91,7 +85,7 @@
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Public key (must hash to pubkey_commit)</td>
+        <td class="field-desc">Public key (verified via merkle_pub_key binding)</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>
@@ -117,7 +111,7 @@
   <div class="eval-box">
     <div class="eval-step">
       <span class="eval-step-num">1.</span>
-      <span class="eval-step-text">Verify <span class="eval-keyword">PUBKEY_COMMIT</span> = SHA256(PUBKEY). If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Verify <span class="eval-keyword">merkle_pub_key</span> binding -- PUBKEY must match the key folded into the Merkle leaf hash. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
@@ -141,7 +135,7 @@
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Missing required fields</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT != SHA256(PUBKEY)</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>merkle_pub_key mismatch (PUBKEY not in Merkle leaf)</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Adaptor signature verification fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>CSV sequence check fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Adaptor sig valid AND timelock elapsed</td><td class="r-sat">SATISFIED</td></tr>
@@ -158,8 +152,8 @@
   <span class="json-key">"type"</span>: <span class="json-str">"PTLC"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d4e5f6...32 bytes"</span> },
+    <span style="color:#888">// pubkey bound via merkle_pub_key (folded into Merkle leaf hash)</span>
+    { <span class="json-key">"type"</span>: <span class="json-str">"ADAPTOR_POINT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d4e5f6...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">144</span> }
   ]
 }</pre></div>

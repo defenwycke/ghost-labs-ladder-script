@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KEY_REF_SIG — LADDER SCRIPT Block Reference</title>
+<title>KEY_REF_SIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">KEY_REF_SIG</h1>
   <p class="block-subtitle">Signature verification using a key commitment referenced from a relay block. Enables cross-rung key sharing without duplicating pubkey commitments, saving ~30 bytes per reference.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -54,7 +54,7 @@
       <!-- Relay block -->
       <rect x="160" y="140" width="200" height="40" rx="2" fill="#2a2a2a" stroke="#e8a83860" stroke-width="1"/>
       <text x="260" y="155" text-anchor="middle" fill="#e8a838" font-family="Share Tech Mono" font-size="10" letter-spacing="1">RELAY[idx]</text>
-      <text x="260" y="170" text-anchor="middle" fill="#777" font-family="IBM Plex Mono" font-size="9">PUBKEY_COMMIT + SCHEME</text>
+      <text x="260" y="170" text-anchor="middle" fill="#777" font-family="IBM Plex Mono" font-size="9">merkle_pub_key + SCHEME</text>
       <!-- Annotation -->
       <text x="450" y="170" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">Key resolved from relay &rarr; verify signature</text>
     </svg>
@@ -88,7 +88,7 @@
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Full public key (verified against relay's PUBKEY_COMMIT via SHA-256)</td>
+        <td class="field-desc">Full public key (verified against relay's merkle_pub_key via SHA-256)</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>
@@ -134,7 +134,7 @@
     </div>
   </div>
 
-  <p class="section-text">Compared to a standalone SIG block (144 bytes), KEY_REF_SIG saves ~25 bytes per reference by sharing the relay's PUBKEY_COMMIT. Each additional rung using the same key saves the full 38-byte conditions cost.</p>
+  <p class="section-text">Compared to a standalone SIG block (144 bytes), KEY_REF_SIG saves ~25 bytes per reference by sharing the relay's merkle_pub_key. Each additional rung using the same key saves the full 38-byte conditions cost.</p>
 </div>
 
 <!-- Evaluation Logic -->
@@ -151,11 +151,11 @@
     </div>
     <div class="eval-step">
       <span class="eval-step-num">3.</span>
-      <span class="eval-step-text">Resolve target block: <span class="eval-keyword">relays[relay_index].blocks[block_index]</span>. Extract <span class="eval-keyword">PUBKEY_COMMIT</span> and <span class="eval-keyword">SCHEME</span> from target.</span>
+      <span class="eval-step-text">Resolve target block: <span class="eval-keyword">relays[relay_index].blocks[block_index]</span>. Extract <span class="eval-keyword">merkle_pub_key</span> and <span class="eval-keyword">SCHEME</span> from target.</span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">4.</span>
-      <span class="eval-step-text">Verify SHA256(witness <span class="eval-keyword">PUBKEY</span>) == target <span class="eval-keyword">PUBKEY_COMMIT</span>. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Verify SHA256(witness <span class="eval-keyword">PUBKEY</span>) == target <span class="eval-keyword">merkle_pub_key</span>. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">5.</span>
@@ -178,9 +178,9 @@
       <tr><td>Relay context unavailable or relay_refs missing</td><td class="r-err">ERROR</td></tr>
       <tr><td>relay_index not in rung's relay_refs</td><td class="r-err">ERROR</td></tr>
       <tr><td>relay_index or block_index out of bounds</td><td class="r-err">ERROR</td></tr>
-      <tr><td>Target block missing PUBKEY_COMMIT</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Target block missing merkle_pub_key</td><td class="r-err">ERROR</td></tr>
       <tr><td>Witness missing PUBKEY or SIGNATURE</td><td class="r-err">ERROR</td></tr>
-      <tr><td>SHA256(PUBKEY) != PUBKEY_COMMIT</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>SHA256(PUBKEY) != merkle_pub_key</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature verification fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature valid against resolved key</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -205,7 +205,7 @@
   <div class="json-block"><pre>{
   <span class="json-key">"type"</span>: <span class="json-str">"SIG"</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"SCHEME"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"01"</span> }
   ]
 }</pre></div>
@@ -227,7 +227,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Multi-Path Key Sharing</div>
-    <div class="use-case-desc">A single key commitment stored in a relay is referenced by multiple rungs. For example, the same hot-wallet key can authorize both an immediate spend (rung 0) and a timelocked recovery (rung 1) without duplicating the 32-byte PUBKEY_COMMIT in each rung's conditions.</div>
+    <div class="use-case-desc">A single key commitment stored in a relay is referenced by multiple rungs. For example, the same hot-wallet key can authorize both an immediate spend (rung 0) and a timelocked recovery (rung 1) without duplicating the 32-byte merkle_pub_key in each rung's conditions.</div>
   </div>
 
   <div class="use-case">
@@ -237,7 +237,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Relay-Based Key Management</div>
-    <div class="use-case-desc">A relay defines the authorized signer (via PUBKEY_COMMIT + SCHEME). Multiple rungs can reference the same relay to enforce that the same key is used across different spending paths with different additional conditions (timelocks, hashlock, etc.).</div>
+    <div class="use-case-desc">A relay defines the authorized signer (via merkle_pub_key + SCHEME). Multiple rungs can reference the same relay to enforce that the same key is used across different spending paths with different additional conditions (timelocks, hashlock, etc.).</div>
   </div>
 </div>
 

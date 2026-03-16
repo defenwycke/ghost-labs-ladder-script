@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HASH_SIG — LADDER SCRIPT Block Reference</title>
+<title>HASH_SIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
   <h1 class="block-title">HASH_SIG</h1>
   <p class="block-subtitle">Hash preimage verification combined with signature check in a single block. Collapses the HASH_PREIMAGE + SIG two-block pattern, saving 8 bytes on wire.</p>
   <span class="block-family-badge badge-compound">Compound</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -53,12 +53,12 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">pubkey_commit</td><td class="field-type">PUBKEY_COMMIT</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">SHA-256 commitment to the signing public key</td></tr>
-      <tr><td class="field-name">hash</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">SHA-256 hash the preimage must match. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td></tr>
+      <tr><td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td></tr>
+      <tr><td class="field-name">hash</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">SHA-256 hash the preimage must match. <strong>Node-computed</strong>  -- the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td></tr>
       <tr><td class="field-name">scheme</td><td class="field-type">SCHEME</td><td class="field-size">1 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Signature scheme identifier (0x01 = Schnorr, 0x02 = ECDSA). Routes to post-quantum verifier when PQ scheme set.</td></tr>
       <tr><td class="field-name">pubkey</td><td class="field-type">PUBKEY</td><td class="field-size">32-33 B</td><td class="field-side-w">Witness</td><td class="field-desc">Public key matching the commitment</td></tr>
       <tr><td class="field-name">signature</td><td class="field-type">SIGNATURE</td><td class="field-size">64-65 B</td><td class="field-side-w">Witness</td><td class="field-desc">Schnorr signature over the transaction</td></tr>
-      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">1-252 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field &mdash; provided by the user. The node derives HASH256 from this data at creation time.</td></tr>
+      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">1-252 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field  -- provided by the user. The node derives HASH256 from this data at creation time.</td></tr>
     </tbody>
   </table>
 </div>
@@ -71,7 +71,7 @@
       <span class="wire-segment wire-type">0x0703</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey">merkle_pub_key &middot; in leaf</span>
       <span class="wire-segment wire-field-hash">HASH256 &middot; 32B</span>
       <span class="wire-segment wire-field-sig">SCHEME &middot; 1B</span>
       <span class="wire-bytes">Conditions = 73 bytes</span>
@@ -97,7 +97,7 @@
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
     <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Compute SHA256(<span class="eval-keyword">PREIMAGE</span>). If != <span class="eval-keyword">HASH256</span> &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
-    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Verify <span class="eval-keyword">PUBKEY_COMMIT</span> = SHA256(PUBKEY). If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Verify <span class="eval-keyword">merkle_pub_key</span> binding -- PUBKEY must match the key folded into the Merkle leaf hash. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">Verify <span class="eval-keyword">SIGNATURE</span> against PUBKEY. If invalid &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">Both passed &rarr; <span class="eval-result-sat">SATISFIED</span></span></div>
   </div>
@@ -110,7 +110,7 @@
   <div class="json-block"><pre>{
   <span class="json-key">"type"</span>: <span class="json-str">"HASH_SIG"</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    <span style="color:#888">// pubkey bound via merkle_pub_key (folded into Merkle leaf hash)</span>
     { <span class="json-key">"type"</span>: <span class="json-str">"HASH256"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"e3b0c442...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"SCHEME"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"01"</span> }
   ]
@@ -131,11 +131,11 @@
   <div class="section-label">Use Cases</div>
   <div class="use-case">
     <div class="use-case-title">Atomic Swap Claim Path</div>
-    <div class="use-case-desc">Counterparty reveals the hash preimage and signs in a single step. No timelock needed — the timeout path uses a separate TIMELOCKED_SIG rung.</div>
+    <div class="use-case-desc">Counterparty reveals the hash preimage and signs in a single step. No timelock needed -- the timeout path uses a separate TIMELOCKED_SIG rung.</div>
   </div>
   <div class="use-case">
     <div class="use-case-title">Secret-Gated Signing</div>
-    <div class="use-case-desc">Require both knowledge of a secret (preimage) and possession of a private key. Neither alone is sufficient — dual-factor spending authorization.</div>
+    <div class="use-case-desc">Require both knowledge of a secret (preimage) and possession of a private key. Neither alone is sufficient -- dual-factor spending authorization.</div>
   </div>
 </div>
 

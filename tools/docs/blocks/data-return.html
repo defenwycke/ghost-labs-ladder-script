@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DATA_RETURN — LADDER SCRIPT Block Reference</title>
+<title>DATA_RETURN  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0507 &middot; ANCHOR FAMILY</div>
   <h1 class="block-title">DATA_RETURN</h1>
-  <p class="block-subtitle">Typed replacement for OP_RETURN. Commits up to 80 bytes of arbitrary data in an unspendable output. Evaluator always returns ERROR &mdash; the output can never be spent, only created. Maximum one DATA_RETURN output per transaction (consensus-enforced).</p>
+  <p class="block-subtitle">Typed replacement for OP_RETURN. Commits up to 80 bytes of arbitrary data in an unspendable output. Evaluator always returns ERROR  -- the output can never be spent, only created. Maximum one DATA_RETURN output per transaction (consensus-enforced).</p>
   <span class="block-family-badge badge-anchor">Anchor</span>
   <span class="invertible-badge inv-no">Not Invertible</span>
 </div>
@@ -51,10 +51,10 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">data</td><td class="field-type">DATA (0x0B)</td><td class="field-size">1&ndash;80 bytes</td><td class="field-side-c">Conditions</td><td class="field-desc">Arbitrary data payload. Maximum 80 bytes (matches legacy OP_RETURN limit). Minimum 1 byte &mdash; empty DATA_RETURN is rejected.</td></tr>
+      <tr><td class="field-name">data</td><td class="field-type">DATA (0x0B)</td><td class="field-size">1&ndash;80 bytes</td><td class="field-side-c">Conditions</td><td class="field-desc">Arbitrary data payload. Maximum 80 bytes (matches legacy OP_RETURN limit). Minimum 1 byte  -- empty DATA_RETURN is rejected.</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields. DATA_RETURN is a conditions-only block &mdash; it is unspendable by design.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields. DATA_RETURN is a conditions-only block  -- it is unspendable by design.</p>
 </div>
 
 <!-- Wire Format -->
@@ -80,7 +80,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">DATA_RETURN is <strong>unspendable</strong> &mdash; evaluator always returns <span class="eval-result-err">ERROR</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">DATA_RETURN is <strong>unspendable</strong>  -- evaluator always returns <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Any attempt to spend a DATA_RETURN output fails at consensus</span></div>
   </div>
   <p class="section-text" style="margin-top:12px">DATA_RETURN outputs exist only to commit data on-chain. They are never evaluated as spending conditions. The evaluator returning ERROR ensures they cannot be spent even if referenced by mistake.</p>
@@ -90,10 +90,10 @@
 <div class="doc-section">
   <div class="section-label">Consensus Rules</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text"><strong>Zero value</strong> &mdash; output <code>nValue</code> must be exactly 0 satoshis</span></div>
-    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text"><strong>Max one per tx</strong> &mdash; at most one DATA_RETURN output per v4 transaction</span></div>
-    <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text"><strong>Single rung, single block</strong> &mdash; the output conditions must contain exactly one rung with exactly one DATA_RETURN block, no relays</span></div>
-    <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text"><strong>MLSC exemption</strong> &mdash; DATA_RETURN via 0xC1 inline conditions is allowed on mainnet even when RUNG_VERIFY_MLSC_ONLY is active (since MLSC trees cannot contain unspendable leaves)</span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text"><strong>Zero value</strong>  -- output <code>nValue</code> must be exactly 0 satoshis</span></div>
+    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text"><strong>Max one per tx</strong>  -- at most one DATA_RETURN output per v4 transaction</span></div>
+    <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text"><strong>Single rung, single block</strong>  -- the output conditions must contain exactly one rung with exactly one DATA_RETURN block, no relays</span></div>
+    <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text"><strong>MLSC exemption</strong>  -- DATA_RETURN via 0xC1 inline conditions is allowed on mainnet even when RUNG_VERIFY_MLSC_ONLY is active (since MLSC trees cannot contain unspendable leaves)</span></div>
   </div>
 </div>
 
@@ -131,7 +131,7 @@
   </div>
   <div class="use-case">
     <div class="use-case-title">Commitment Anchoring</div>
-    <div class="use-case-desc">Commit a hash digest (32 bytes) to anchor off-chain state on-chain. The 80-byte limit fits a hash plus a protocol tag. Unlike the ANCHOR block, DATA_RETURN outputs are unspendable and zero-value &mdash; they don't lock any coins.</div>
+    <div class="use-case-desc">Commit a hash digest (32 bytes) to anchor off-chain state on-chain. The 80-byte limit fits a hash plus a protocol tag. Unlike the ANCHOR block, DATA_RETURN outputs are unspendable and zero-value  -- they don't lock any coins.</div>
   </div>
   <div class="use-case">
     <div class="use-case-title">Anti-spam OP_RETURN Replacement</div>

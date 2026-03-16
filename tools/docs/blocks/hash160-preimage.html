@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HASH160_PREIMAGE — LADDER SCRIPT Block Reference</title>
+<title>HASH160_PREIMAGE -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,12 @@
   <h1 class="block-title">HASH160_PREIMAGE</h1>
   <p class="block-subtitle">RIPEMD160(SHA-256) hash preimage verification. Uses the same double-hash as Bitcoin addresses for compact 20-byte hash commitments.</p>
   <span class="block-family-badge badge-hash">Hash</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Invertible</span>
+</div>
+
+<div class="doc-section" style="background:#3a1a1a;border:1px solid #ff4444;padding:16px 20px;margin-bottom:24px;">
+  <div style="color:#ff4444;font-weight:600;margin-bottom:8px;">DEPRECATED</div>
+  <div style="color:#ccc;">This block type is rejected at consensus during deserialization. Use <a href="htlc.html" style="color:#ff6d00;">HTLC</a> or <a href="hash-sig.html" style="color:#ff6d00;">HASH_SIG</a> compound blocks instead, which combine hash verification with a mandatory signature.</div>
 </div>
 
 <!-- Ladder Diagram -->
@@ -70,7 +75,7 @@
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Expected RIPEMD160(SHA256) hash value. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td>
+        <td class="field-desc">Expected RIPEMD160(SHA256) hash value. <strong>Node-computed</strong>  -- the user provides PREIMAGE and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">witness_hash</td>
@@ -84,7 +89,7 @@
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">1-252 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value &mdash; provided by the user. The node derives HASH160 from this data at creation time.</td>
+        <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value  -- provided by the user. The node derives HASH160 from this data at creation time.</td>
       </tr>
     </tbody>
   </table>

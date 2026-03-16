@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Block Reference — LADDER SCRIPT</title>
+<title>Block Reference -- LADDER SCRIPT</title>
 <link rel="stylesheet" href="style.css">
 <style>
   .index-grid {
@@ -107,14 +107,14 @@
 
 <!-- Signature Family -->
 <div class="family-section">
-  <h2 class="family-title family-signature">Signature Family — 0x0001</h2>
-  <p class="intro-text">Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization — every spend ultimately requires at least one signature check.</p>
+  <h2 class="family-title family-signature">Signature Family -- 0x0001</h2>
+  <p class="intro-text">Signature blocks verify cryptographic signatures against public keys bound via merkle_pub_key. The foundation of UTXO authorization -- every spend ultimately requires at least one signature check.</p>
 
   <div class="index-grid">
     <a href="sig.html" class="block-card">
       <div class="block-card-code">0x0001</div>
       <div class="block-card-name">SIG</div>
-      <div class="block-card-desc">Single Schnorr signature verification against a committed public key. The most fundamental block type. Equivalent to OP_CHECKSIG in Tapscript.</div>
+      <div class="block-card-desc">Single signature verification against a public key bound via merkle_pub_key. Supports Schnorr, ECDSA, and post-quantum schemes. The most fundamental block type. Equivalent to OP_CHECKSIG in Tapscript.</div>
       <div class="block-card-badge badge-anchor">Signature</div>
     </a>
 
@@ -142,7 +142,7 @@
     <a href="key-ref-sig.html" class="block-card">
       <div class="block-card-code">0x0005</div>
       <div class="block-card-name">KEY_REF_SIG</div>
-      <div class="block-card-desc">Signature using a key commitment from a relay block. Enables cross-rung key sharing without duplicating pubkey commitments, saving ~30 bytes per reference.</div>
+      <div class="block-card-desc">Signature using a key commitment from a relay block. Enables cross-rung key sharing without duplicating key bindings, saving wire bytes per reference.</div>
       <div class="block-card-badge badge-anchor">Signature</div>
     </a>
   </div>
@@ -150,8 +150,8 @@
 
 <!-- Timelock Family -->
 <div class="family-section">
-  <h2 class="family-title family-timelock">Timelock Family — 0x0100</h2>
-  <p class="intro-text">Timelock blocks enforce temporal constraints on spending — either relative to when the UTXO was confirmed (CSV) or absolute block height / timestamp (CLTV). Direct Tapscript equivalents exist for all four types.</p>
+  <h2 class="family-title family-timelock">Timelock Family -- 0x0100</h2>
+  <p class="intro-text">Timelock blocks enforce temporal constraints on spending -- either relative to when the UTXO was confirmed (CSV) or absolute block height / timestamp (CLTV). Direct Tapscript equivalents exist for all four types.</p>
 
   <div class="index-grid">
     <a href="csv.html" class="block-card">
@@ -186,21 +186,21 @@
 
 <!-- Hash Family -->
 <div class="family-section">
-  <h2 class="family-title family-hash">Hash Family — 0x0200</h2>
-  <p class="intro-text">Hash blocks verify knowledge of a preimage that produces a committed hash digest. Used for hash locks, atomic swaps, and commitment schemes. HASH_PREIMAGE has a direct Tapscript equivalent; HASH160 and TAGGED_HASH do not.</p>
+  <h2 class="family-title family-hash">Hash Family -- 0x0200</h2>
+  <p class="intro-text">Hash blocks verify knowledge of a preimage that produces a committed hash digest. Used for commitment schemes and domain-separated verification. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated -- use HTLC or HASH_SIG compound blocks instead.</p>
 
   <div class="index-grid">
-    <a href="hash-preimage.html" class="block-card">
+    <a href="hash-preimage.html" class="block-card" style="opacity:0.5">
       <div class="block-card-code">0x0201</div>
       <div class="block-card-name">HASH_PREIMAGE</div>
-      <div class="block-card-desc">SHA-256 hash preimage verification. Conditions commit to a 32-byte hash; witness provides the preimage. Equivalent to OP_SHA256 OP_EQUAL.</div>
+      <div class="block-card-desc">DEPRECATED -- rejected at consensus. Use HTLC or HASH_SIG instead. SHA-256 hash preimage verification.</div>
       <div class="block-card-badge badge-hash">Hash</div>
     </a>
 
-    <a href="hash160-preimage.html" class="block-card">
+    <a href="hash160-preimage.html" class="block-card" style="opacity:0.5">
       <div class="block-card-code">0x0202</div>
       <div class="block-card-name">HASH160_PREIMAGE</div>
-      <div class="block-card-desc">RIPEMD160(SHA256) hash preimage verification. 20-byte digest saves 12 bytes on wire vs HASH_PREIMAGE. Used for address-based hash locks.</div>
+      <div class="block-card-desc">DEPRECATED -- rejected at consensus. Use HTLC or HASH_SIG instead. RIPEMD160(SHA256) hash preimage verification.</div>
       <div class="block-card-badge badge-hash">Hash</div>
     </a>
 
@@ -215,8 +215,8 @@
 
 <!-- Covenant Family -->
 <div class="family-section">
-  <h2 class="family-title family-covenant">Covenant Family — 0x0300</h2>
-  <p class="intro-text">Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself. They enable pre-committed transaction templates, tiered vault custody, and output value restrictions &mdash; capabilities that have no direct Tapscript equivalent.</p>
+  <h2 class="family-title family-covenant">Covenant Family -- 0x0300</h2>
+  <p class="intro-text">Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself. They enable pre-committed transaction templates, tiered vault custody, and output value restrictions  -- capabilities that have no direct Tapscript equivalent.</p>
 
   <div class="index-grid">
     <a href="ctv.html" class="block-card">
@@ -244,8 +244,8 @@
 
 <!-- Recursion Family -->
 <div class="family-section">
-  <h2 class="family-title family-recursion">Recursion Family — 0x0400</h2>
-  <p class="intro-text">Recursion blocks create self-referencing covenants — outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
+  <h2 class="family-title family-recursion">Recursion Family -- 0x0400</h2>
+  <p class="intro-text">Recursion blocks create self-referencing covenants -- outputs that enforce spending back into the same (or modified) covenant structure. They enable stateful contracts, progressive value decay, and bounded iteration without Turing-completeness.</p>
 
   <div class="index-grid">
     <a href="recurse-same.html" class="block-card">
@@ -265,7 +265,7 @@
     <a href="recurse-until.html" class="block-card">
       <div class="block-card-code">0x0403</div>
       <div class="block-card-name">RECURSE_UNTIL</div>
-      <div class="block-card-desc">Conditional recursion — continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
+      <div class="block-card-desc">Conditional recursion -- continues recursing until a termination condition is met. Enables bounded loops with explicit exit criteria.</div>
       <div class="block-card-badge badge-recursion">Recursion</div>
     </a>
 
@@ -279,7 +279,7 @@
     <a href="recurse-split.html" class="block-card">
       <div class="block-card-code">0x0405</div>
       <div class="block-card-name">RECURSE_SPLIT</div>
-      <div class="block-card-desc">Recursive split — one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
+      <div class="block-card-desc">Recursive split -- one input covenant fans out into multiple output covenants. Enables tree-structured recursive expansion.</div>
       <div class="block-card-badge badge-recursion">Recursion</div>
     </a>
 
@@ -294,8 +294,8 @@
 
 <!-- Anchor Family -->
 <div class="family-section">
-  <h2 class="family-title family-anchor">Anchor Family — 0x0500</h2>
-  <p class="intro-text">Anchor blocks commit to external state references — channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
+  <h2 class="family-title family-anchor">Anchor Family -- 0x0500</h2>
+  <p class="intro-text">Anchor blocks commit to external state references -- channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals. They bridge on-chain UTXOs to off-chain protocols and external data sources.</p>
 
   <div class="index-grid">
     <a href="anchor.html" class="block-card">
@@ -351,8 +351,8 @@
 
 <!-- PLC Family -->
 <div class="family-section">
-  <h2 class="family-title family-plc">PLC Family — 0x0600</h2>
-  <p class="intro-text">PLC (Programmable Logic Controller) blocks bring industrial automation primitives to Bitcoin script. Hysteresis, timers, latches, counters, comparators, sequencers, and rate limiters — deterministic state machines for UTXO spending policy.</p>
+  <h2 class="family-title family-plc">PLC Family -- 0x0600</h2>
+  <p class="intro-text">PLC (Programmable Logic Controller) blocks bring industrial automation primitives to Bitcoin script. Hysteresis, timers, latches, counters, comparators, sequencers, and rate limiters -- deterministic state machines for UTXO spending policy.</p>
 
   <div class="index-grid">
     <a href="hysteresis-fee.html" class="block-card">
@@ -435,7 +435,7 @@
     <a href="one-shot.html" class="block-card">
       <div class="block-card-code">0x0661</div>
       <div class="block-card-name">ONE_SHOT</div>
-      <div class="block-card-desc">Single-pulse trigger. Allows exactly one spend, then permanently disables. The simplest state machine — a one-time authorization token.</div>
+      <div class="block-card-desc">Single-pulse trigger. Allows exactly one spend, then permanently disables. The simplest state machine -- a one-time authorization token.</div>
       <div class="block-card-badge badge-plc">PLC</div>
     </a>
 
@@ -457,7 +457,7 @@
 
 <!-- Compound Family -->
 <div class="family-section">
-  <h2 class="family-title family-compound">Compound Family — 0x0700</h2>
+  <h2 class="family-title family-compound">Compound Family -- 0x0700</h2>
   <p class="intro-text">Compound blocks collapse common multi-block patterns into single blocks, reducing wire overhead by eliminating duplicate block headers. Each compound block performs the evaluation of its constituent blocks in sequence.</p>
 
   <div class="index-grid">
@@ -471,14 +471,14 @@
     <a href="htlc.html" class="block-card">
       <div class="block-card-code">0x0702</div>
       <div class="block-card-name">HTLC</div>
-      <div class="block-card-desc">Hash Time Locked Contract — hash preimage verification + relative timelock + signature in one block. Replaces 3 blocks. Saves 16 bytes.</div>
+      <div class="block-card-desc">Hash Time Locked Contract -- hash preimage verification + relative timelock + signature in one block. Replaces 3 blocks. Saves 16 bytes.</div>
       <div class="block-card-badge badge-compound">Compound</div>
     </a>
 
     <a href="hash-sig.html" class="block-card">
       <div class="block-card-code">0x0703</div>
       <div class="block-card-name">HASH_SIG</div>
-      <div class="block-card-desc">Hash preimage verification combined with signature check. Replaces HASH_PREIMAGE + SIG. Saves 8 bytes on wire.</div>
+      <div class="block-card-desc">Hash preimage verification combined with signature check. The recommended replacement for deprecated HASH_PREIMAGE. Saves 8 bytes vs separate blocks.</div>
       <div class="block-card-badge badge-compound">Compound</div>
     </a>
 
@@ -507,14 +507,14 @@
 
 <!-- Governance Family -->
 <div class="family-section">
-  <h2 class="family-title family-governance">Governance Family — 0x0800</h2>
+  <h2 class="family-title family-governance">Governance Family -- 0x0800</h2>
   <p class="intro-text">Governance blocks enforce transaction-level constraints that have no Tapscript equivalent. They inspect the spending transaction's structure, weight, input/output counts, and value ratios to enforce spending policies at the consensus level.</p>
 
   <div class="index-grid">
     <a href="epoch-gate.html" class="block-card">
       <div class="block-card-code">0x0801</div>
       <div class="block-card-name">EPOCH_GATE</div>
-      <div class="block-card-desc">Periodic spending windows — allows spending only during specific portions of each epoch. Uses block height modular arithmetic.</div>
+      <div class="block-card-desc">Periodic spending windows -- allows spending only during specific portions of each epoch. Uses block height modular arithmetic.</div>
       <div class="block-card-badge badge-governance">Governance</div>
     </a>
 
@@ -557,8 +557,8 @@
 
 <!-- Legacy Family -->
 <div class="family-section">
-  <h2 class="family-title family-legacy">Legacy Family — 0x0900</h2>
-  <p class="intro-text">Legacy blocks wrap Bitcoin's original transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) as typed Ladder Script blocks. Same spending semantics, but all fields are typed — closing the arbitrary data surfaces that enable inscription spam. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions.</p>
+  <h2 class="family-title family-legacy">Legacy Family -- 0x0900</h2>
+  <p class="intro-text">Legacy blocks wrap Bitcoin's original transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) as typed Ladder Script blocks. Same spending semantics, but all fields are typed -- closing the arbitrary data surfaces that enable inscription spam. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions.</p>
 
   <div class="index-grid">
     <a href="p2pk-legacy.html" class="block-card">
@@ -578,14 +578,14 @@
     <a href="p2sh-legacy.html" class="block-card">
       <div class="block-card-code">0x0903</div>
       <div class="block-card-name">P2SH_LEGACY</div>
-      <div class="block-card-desc">Pay-to-Script-Hash. HASH160 of inner conditions. PREIMAGE carries serialized Ladder Script conditions — no arbitrary bytes allowed. Recursive inner evaluation.</div>
+      <div class="block-card-desc">Pay-to-Script-Hash. HASH160 of inner conditions. PREIMAGE carries serialized Ladder Script conditions -- no arbitrary bytes allowed. Recursive inner evaluation.</div>
       <div class="block-card-badge" style="color:#00e5ff;border-color:#00e5ff40">Legacy</div>
     </a>
 
     <a href="p2wpkh-legacy.html" class="block-card">
       <div class="block-card-code">0x0904</div>
       <div class="block-card-name">P2WPKH_LEGACY</div>
-      <div class="block-card-desc">Pay-to-Witness-Public-Key-Hash. SegWit v0 key-hash spending. Same evaluation as P2PKH_LEGACY — distinct type code for migration tracking.</div>
+      <div class="block-card-desc">Pay-to-Witness-Public-Key-Hash. SegWit v0 key-hash spending. Same evaluation as P2PKH_LEGACY -- distinct type code for migration tracking.</div>
       <div class="block-card-badge" style="color:#00e5ff;border-color:#00e5ff40">Legacy</div>
     </a>
 
@@ -608,21 +608,6 @@
       <div class="block-card-name">P2TR_SCRIPT_LEGACY</div>
       <div class="block-card-desc">Pay-to-Taproot script-path spend. Closes the primary inscription vector. Revealed script leaf must be valid Ladder Script conditions. Merkle proof verification.</div>
       <div class="block-card-badge" style="color:#00e5ff;border-color:#00e5ff40">Legacy</div>
-    </a>
-  </div>
-</div>
-
-<!-- Compact Encodings -->
-<div class="family-section">
-  <h2 class="family-title family-compact">Compact Encodings</h2>
-  <p class="intro-text">Compact encodings are wire format optimisations that replace an entire rung (one or more blocks) with a fixed-size inline payload. They use the <code>n_blocks == 0</code> sentinel within a rung to signal compact data. Compact rungs resolve to equivalent standard blocks at evaluation time. They are not counted as separate block types.</p>
-
-  <div class="index-grid">
-    <a href="compact-sig.html" class="block-card">
-      <div class="block-card-code">COMPACT 0x01</div>
-      <div class="block-card-name">COMPACT_SIG</div>
-      <div class="block-card-desc">Compact single-key signature rung. Stores PUBKEY_COMMIT (32B) and SCHEME (1B) inline with no block overhead. Resolves to a SIG block at evaluation. Used for change outputs and simple single-key spending.</div>
-      <div class="block-card-badge" style="color:#98c379;border-color:#98c37940">Compact</div>
     </a>
   </div>
 </div>

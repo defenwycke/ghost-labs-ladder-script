@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CTV — LADDER SCRIPT Block Reference</title>
+<title>CTV  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0301 &middot; COVENANT FAMILY</div>
   <h1 class="block-title">CTV</h1>
-  <p class="block-subtitle">CheckTemplateVerify (BIP-119). Verifies the spending transaction matches a committed template hash. The template hash covers version, locktime, scriptSigs hash, input count, sequences hash, output count, outputs hash, and input index. No witness data required &mdash; the template is computed directly from the transaction.</p>
+  <p class="block-subtitle">CheckTemplateVerify (BIP-119). Verifies the spending transaction matches a committed template hash. The template hash covers version, locktime, scriptSigs hash, input count, sequences hash, output count, outputs hash, and input index. No witness data required  -- the template is computed directly from the transaction.</p>
   <span class="block-family-badge badge-covenant">Covenant</span>
   <span class="invertible-badge inv-yes">Invertible</span>
 </div>
@@ -39,7 +39,7 @@
       <text x="300" y="38" text-anchor="middle" fill="#e06c75" font-family="Share Tech Mono" font-size="13" letter-spacing="2">CTV</text>
       <!-- Template hash field -->
       <rect x="190" y="50" width="220" height="24" rx="1" fill="#2a1a2a" stroke="#5a3a5a" stroke-width="1"/>
-      <text x="300" y="66" text-anchor="middle" fill="#b070b0" font-family="IBM Plex Mono" font-size="9">HASH256 (32B) &mdash; template hash</text>
+      <text x="300" y="66" text-anchor="middle" fill="#b070b0" font-family="IBM Plex Mono" font-size="9">HASH256 (32B)  -- template hash</text>
       <!-- Label -->
       <text x="300" y="140" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">ComputeCTVHash(tx, input_index) == committed_hash &rarr; SATISFIED</text>
     </svg>
@@ -55,7 +55,7 @@
       <tr><td class="field-name">template_hash</td><td class="field-type">HASH256</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">BIP-119 template hash commitment. Covers version, locktime, scriptSigs, input count, sequences, output count, outputs, and input index.</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields required &mdash; the template hash is computed directly from the spending transaction context.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields required  -- the template hash is computed directly from the spending transaction context.</p>
 </div>
 
 <!-- Wire Format -->

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MUSIG_THRESHOLD — LADDER SCRIPT Block Reference</title>
+<title>MUSIG_THRESHOLD -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">MUSIG_THRESHOLD</h1>
   <p class="block-subtitle">MuSig2/FROST aggregate threshold signature verification. M-of-N signers produce a single aggregate Schnorr signature off-chain. On-chain footprint is identical to single-sig (~131 bytes) regardless of M or N.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -66,11 +66,7 @@
     </thead>
     <tbody>
       <tr>
-        <td class="field-name">pubkey_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the aggregate public key (MuSig2/FROST combined key)</td>
+        <td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td>
       </tr>
       <tr>
         <td class="field-name">threshold_m</td>
@@ -91,7 +87,7 @@
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Aggregate public key (must hash to pubkey_commit)</td>
+        <td class="field-desc">Aggregate public key (must hash to merkle_pub_key)</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>
@@ -114,7 +110,7 @@
       <span class="wire-segment wire-type" style="min-width:60px">0x0004</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:160px">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:160px">merkle_pub_key &middot; 32B</span>
       <span class="wire-segment wire-field-num" style="min-width:80px">NUMERIC M</span>
       <span class="wire-segment wire-field-num" style="min-width:80px">NUMERIC N</span>
       <span class="wire-bytes">= 42 bytes</span>
@@ -151,7 +147,7 @@
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
-      <span class="eval-step-text">Verify <span class="eval-keyword">PUBKEY_COMMIT</span> = SHA256(PUBKEY). If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Verify <span class="eval-keyword">merkle_pub_key</span> binding: SHA256(PUBKEY) must match the Merkle leaf commitment. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">3.</span>
@@ -177,7 +173,7 @@
       <tr><td>Missing required fields</td><td class="r-err">ERROR</td></tr>
       <tr><td>M = 0 or M > N or N > 100</td><td class="r-err">ERROR</td></tr>
       <tr><td>PQ signature scheme requested</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT != SHA256(PUBKEY)</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>merkle_pub_key != SHA256(PUBKEY)</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Schnorr signature verification fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Aggregate key matches commitment AND signature valid</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -193,7 +189,7 @@
   <span class="json-key">"type"</span>: <span class="json-str">"MUSIG_THRESHOLD"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">2</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">3</span> }
   ]
@@ -216,7 +212,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Privacy-Preserving Multisig</div>
-    <div class="use-case-desc">A 3-of-5 corporate treasury uses MUSIG_THRESHOLD. On-chain, the spend looks identical to a single-sig P2TR output &mdash; no observer can distinguish it from a solo wallet or determine the threshold policy.</div>
+    <div class="use-case-desc">A 3-of-5 corporate treasury uses MUSIG_THRESHOLD. On-chain, the spend looks identical to a single-sig P2TR output  -- no observer can distinguish it from a solo wallet or determine the threshold policy.</div>
   </div>
 
   <div class="use-case">

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COUNTER_DOWN — LADDER SCRIPT Block Reference</title>
+<title>COUNTER_DOWN  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -61,11 +61,11 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">event_signer</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key (or commitment) of the party authorized to decrement the counter</td></tr>
+      <tr><td class="field-name">event_signer</td><td class="field-type">DATA</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key of the party authorized to decrement the counter</td></tr>
       <tr><td class="field-name">count</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Current counter value (decremented by RECURSE_MODIFIED each spend)</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">The event signer key must be present as a PUBKEY or PUBKEY_COMMIT field. The evaluator checks key presence, not signature verification (signature checking is handled by a separate SIG block on the same rung).</p>
+  <p class="section-text" style="margin-top:12px">The event signer key must be present as a DATA field. The evaluator checks key presence, not signature verification (signature checking is handled by a separate SIG block on the same rung).</p>
 </div>
 
 <!-- Wire Format -->
@@ -76,7 +76,7 @@
       <span class="wire-segment wire-type">0x0631</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey">DATA &middot; 32B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-bytes">Conditions = 43 bytes</span>
     </div>
@@ -99,7 +99,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> or <span class="eval-keyword">PUBKEY_COMMIT</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Read <span class="eval-keyword">count</span> from NUMERIC field. If no NUMERIC field &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">If count &lt; 0 &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">If count &gt; 0 &rarr; <span class="eval-result-sat">SATISFIED</span> (counter active, can decrement)</span></div>
@@ -113,7 +113,7 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing PUBKEY/PUBKEY_COMMIT field</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing PUBKEY field</td><td class="r-err">ERROR</td></tr>
       <tr><td>No NUMERIC field</td><td class="r-err">ERROR</td></tr>
       <tr><td>count &lt; 0</td><td class="r-err">ERROR</td></tr>
       <tr><td>count == 0 (countdown done)</td><td class="r-unsat">UNSATISFIED</td></tr>
@@ -130,7 +130,7 @@
   <span class="json-key">"type"</span>: <span class="json-str">"COUNTER_DOWN"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"9c4a88...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"DATA"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"9c4a88...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">5</span> }
   ]
 }</pre></div>

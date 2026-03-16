@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LATCH_RESET — LADDER SCRIPT Block Reference</title>
+<title>LATCH_RESET  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -57,12 +57,12 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">resetter_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key (or commitment) of the party authorized to reset the latch</td></tr>
+      <tr><td class="field-name">resetter_key</td><td class="field-type">DATA</td><td class="field-size">32-33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key of the party authorized to reset the latch</td></tr>
       <tr><td class="field-name">state</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Current latch state: 0 = unset, &ge; 1 = set</td></tr>
       <tr><td class="field-name">delay_blocks</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Optional delay parameter (block count) for reset timing</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">The resetter key must be present as a PUBKEY or PUBKEY_COMMIT field. The evaluator checks key presence, not signature verification (signature checking is handled by a separate SIG block on the same rung). Two NUMERIC fields (state and delay_blocks) are required.</p>
+  <p class="section-text" style="margin-top:12px">The resetter key must be present as a DATA field. The evaluator checks key presence, not signature verification (signature checking is handled by a separate SIG block on the same rung). Two NUMERIC fields (state and delay_blocks) are required.</p>
 </div>
 
 <!-- Wire Format -->
@@ -73,7 +73,7 @@
       <span class="wire-segment wire-type">0x0622</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey">DATA &middot; 32B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 1B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-bytes">Conditions = 44 bytes</span>
@@ -97,7 +97,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> or <span class="eval-keyword">PUBKEY_COMMIT</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Check for at least 1 <span class="eval-keyword">PUBKEY</span> field. If missing &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">Read <span class="eval-keyword">state</span> and <span class="eval-keyword">delay_blocks</span> from NUMERIC fields. If fewer than 2 NUMERIC fields &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">If delay_blocks &lt; 0 &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">If state &ge; 1 &rarr; <span class="eval-result-sat">SATISFIED</span> (latch can be reset)</span></div>
@@ -111,7 +111,7 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing PUBKEY/PUBKEY_COMMIT field</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing PUBKEY field</td><td class="r-err">ERROR</td></tr>
       <tr><td>Fewer than 2 NUMERIC fields</td><td class="r-err">ERROR</td></tr>
       <tr><td>delay_blocks &lt; 0</td><td class="r-err">ERROR</td></tr>
       <tr><td>state == 0 (already unset)</td><td class="r-unsat">UNSATISFIED</td></tr>
@@ -128,7 +128,7 @@
   <span class="json-key">"type"</span>: <span class="json-str">"LATCH_RESET"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"DATA"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">1</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">144</span> }
   ]

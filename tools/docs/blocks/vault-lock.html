@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VAULT_LOCK — LADDER SCRIPT Block Reference</title>
+<title>VAULT_LOCK  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -62,10 +62,10 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">recovery_commit</td><td class="field-type">PUBKEY_COMMIT</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Commitment to the recovery (cold) public key. Can authorize immediate spend.</td></tr>
-      <tr><td class="field-name">hot_commit</td><td class="field-type">PUBKEY_COMMIT</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Commitment to the hot (day-to-day) public key. Requires CSV delay.</td></tr>
+      <tr><td class="field-name">recovery_commit</td><td class="field-type">DATA</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Commitment to the recovery (cold) public key. Can authorize immediate spend.</td></tr>
+      <tr><td class="field-name">hot_commit</td><td class="field-type">DATA</td><td class="field-size">32 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Commitment to the hot (day-to-day) public key. Requires CSV delay.</td></tr>
       <tr><td class="field-name">hot_delay</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks the hot key path must wait (CSV relative timelock).</td></tr>
-      <tr><td class="field-name">signer_key</td><td class="field-type">PUBKEY</td><td class="field-size">32-33 B</td><td class="field-side-w">Witness</td><td class="field-desc">Public key of the signer &mdash; either the recovery key or the hot key. Only the key being used is revealed; the evaluator checks which commitment it matches.</td></tr>
+      <tr><td class="field-name">signer_key</td><td class="field-type">PUBKEY</td><td class="field-size">32-33 B</td><td class="field-side-w">Witness</td><td class="field-desc">Public key of the signer  -- either the recovery key or the hot key. Only the key being used is revealed; the evaluator checks which commitment it matches.</td></tr>
       <tr><td class="field-name">signature</td><td class="field-type">SIGNATURE</td><td class="field-size">64-65 B</td><td class="field-side-w">Witness</td><td class="field-desc">Signature from the revealed key (recovery or hot).</td></tr>
     </tbody>
   </table>
@@ -79,8 +79,8 @@
       <span class="wire-segment wire-type">0x0302</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">3</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 34B</span>
-      <span class="wire-segment wire-field-pubkey">PUBKEY_COMMIT &middot; 34B</span>
+      <span class="wire-segment wire-field-pubkey">DATA &middot; 34B</span>
+      <span class="wire-segment wire-field-pubkey">DATA &middot; 34B</span>
       <span class="wire-segment wire-field-num">NUMERIC &middot; 3B</span>
       <span class="wire-bytes">Conditions &asymp; 78 bytes</span>
     </div>
@@ -135,8 +135,8 @@
   <span class="json-key">"type"</span>: <span class="json-str">"VAULT_LOCK"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"value"</span>: <span class="json-str">"aabb...recovery_commit_hex..."</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"value"</span>: <span class="json-str">"ccdd...hot_commit_hex..."</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"DATA"</span>, <span class="json-key">"value"</span>: <span class="json-str">"aabb...recovery_commit_hex..."</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"DATA"</span>, <span class="json-key">"value"</span>: <span class="json-str">"ccdd...hot_commit_hex..."</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">144</span> }
   ]
 }</pre></div>

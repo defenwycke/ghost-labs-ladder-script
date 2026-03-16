@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P2PK_LEGACY — LADDER SCRIPT Block Reference</title>
+<title>P2PK_LEGACY -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,9 +22,9 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0901 &middot; LEGACY FAMILY</div>
   <h1 class="block-title">P2PK_LEGACY</h1>
-  <p class="block-subtitle">Legacy P2PK (pay-to-public-key) wrapped as a typed Ladder Script block. Same evaluation as SIG &mdash; PUBKEY_COMMIT verified, then signature check. Closes arbitrary data surfaces.</p>
+  <p class="block-subtitle">Legacy P2PK (pay-to-public-key) wrapped as a typed Ladder Script block. Same evaluation as SIG -- merkle_pub_key verified, then signature check. Closes arbitrary data surfaces.</p>
   <span class="block-family-badge" style="color: #00e5ff; border-color: #00e5ff40;">Legacy</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -59,13 +59,7 @@
       <tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr>
     </thead>
     <tbody>
-      <tr>
-        <td class="field-name">pubkey_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key. <strong>Node-computed</strong> &mdash; the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
-      </tr>
+      <tr><td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td></tr>
       <tr>
         <td class="field-name">scheme</td>
         <td class="field-type">SCHEME</td>
@@ -101,7 +95,7 @@
       <span class="wire-segment wire-type" style="min-width:60px">0x0901</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:160px">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:160px">merkle_pub_key &middot; in leaf</span>
       <span class="wire-segment wire-field-sig" style="min-width:80px">SCHEME &middot; 1B</span>
       <span class="wire-bytes">= 39 bytes</span>
     </div>
@@ -133,7 +127,7 @@
   <div class="eval-box">
     <div class="eval-step">
       <span class="eval-step-num">1.</span>
-      <span class="eval-step-text">Verify <span class="eval-keyword">PUBKEY_COMMIT</span> = SHA256(PUBKEY). If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Verify <span class="eval-keyword">merkle_pub_key</span> binding -- PUBKEY must match the key folded into the Merkle leaf hash. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
@@ -157,8 +151,8 @@
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
       <tr><td>Missing PUBKEY or SIGNATURE</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT present but PUBKEY missing</td><td class="r-err">ERROR</td></tr>
-      <tr><td>SHA256(PUBKEY) != PUBKEY_COMMIT</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>merkle_pub_key binding present but PUBKEY missing</td><td class="r-err">ERROR</td></tr>
+      <tr><td>merkle_pub_key mismatch (PUBKEY not in Merkle leaf)</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature valid</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -174,7 +168,7 @@
   <span class="json-key">"type"</span>: <span class="json-str">"P2PK_LEGACY"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    <span style="color:#888">// pubkey bound via merkle_pub_key (folded into Merkle leaf hash)</span>
     { <span class="json-key">"type"</span>: <span class="json-str">"SCHEME"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"01"</span> }
   ]
 }</pre></div>
@@ -195,8 +189,8 @@
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
     <li>Delegates to EvalSigBlock internally. All signature schemes supported via SCHEME field.</li>
-    <li>PUBKEY_COMMIT is <strong>node-computed</strong>: the user supplies PUBKEY and the node derives SHA256(PUBKEY) automatically. Submitting a raw PUBKEY_COMMIT value directly is rejected.</li>
-    <li>Wraps legacy P2PK semantics &mdash; no new data surfaces.</li>
+    <li>Public key is bound via <strong>merkle_pub_key</strong>: the key is folded into the Merkle leaf hash, not stored as a separate conditions field.</li>
+    <li>Wraps legacy P2PK semantics  -- no new data surfaces.</li>
     <li>All signature schemes (Schnorr, ECDSA, PQ) supported via the SCHEME routing field.</li>
     <li>Closes the arbitrary data surface present in raw P2PK outputs.</li>
   </ul>

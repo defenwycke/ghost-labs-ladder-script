@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIG — LADDER SCRIPT Block Reference</title>
+<title>SIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">SIG</h1>
   <p class="block-subtitle">Single signature verification. Supports Schnorr (BIP-340), ECDSA, and post-quantum schemes via the SCHEME field. The fundamental spending primitive.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -60,11 +60,7 @@
     </thead>
     <tbody>
       <tr>
-        <td class="field-name">pubkey_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to the signing public key</td>
+        <td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td>
       </tr>
       <tr>
         <td class="field-name">pubkey</td>
@@ -101,7 +97,7 @@
       <span class="wire-segment wire-type" style="min-width:60px">0x0001</span>
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:160px">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:160px">merkle_pub_key &middot; 32B</span>
       <span class="wire-segment wire-field-sig" style="min-width:80px">SCHEME &middot; 1B</span>
       <span class="wire-bytes">= 39 bytes</span>
     </div>
@@ -133,7 +129,7 @@
   <div class="eval-box">
     <div class="eval-step">
       <span class="eval-step-num">1.</span>
-      <span class="eval-step-text">Verify <span class="eval-keyword">PUBKEY_COMMIT</span> = SHA256(PUBKEY). If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Verify <span class="eval-keyword">merkle_pub_key</span> binding: SHA256(PUBKEY) must match the Merkle leaf commitment. If mismatch &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
@@ -156,10 +152,10 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing PUBKEY_COMMIT or SIGNATURE</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT present but PUBKEY missing</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing merkle_pub_key binding or SIGNATURE</td><td class="r-err">ERROR</td></tr>
+      <tr><td>merkle_pub_key bound but PUBKEY missing</td><td class="r-err">ERROR</td></tr>
       <tr><td>Signature size out of range</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT != SHA256(PUBKEY)</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>merkle_pub_key != SHA256(PUBKEY)</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature verification fails</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Signature valid</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -175,7 +171,6 @@
   <span class="json-key">"type"</span>: <span class="json-str">"SIG"</span>,
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
     { <span class="json-key">"type"</span>: <span class="json-str">"SCHEME"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"01"</span> }
   ]
 }</pre></div>
@@ -197,7 +192,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Single-Key Spending</div>
-    <div class="use-case-desc">The most common spending condition. A single public key controls a UTXO. The owner provides a signature to spend. Equivalent to P2PKH or P2WPKH but with pubkey commitment privacy.</div>
+    <div class="use-case-desc">The most common spending condition. A single public key controls a UTXO. The owner provides a signature to spend. Equivalent to P2PKH or P2WPKH but with merkle_pub_key privacy.</div>
   </div>
 
   <div class="use-case">

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AMOUNT_LOCK — LADDER SCRIPT Block Reference</title>
+<title>AMOUNT_LOCK  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0303 &middot; COVENANT FAMILY</div>
   <h1 class="block-title">AMOUNT_LOCK</h1>
-  <p class="block-subtitle">Output amount range check. Verifies that the output value falls within a committed minimum and maximum range: min_sats &le; output_amount &le; max_sats. No witness data required &mdash; the output amount is read directly from the transaction context.</p>
+  <p class="block-subtitle">Output amount range check. Verifies that the output value falls within a committed minimum and maximum range: min_sats &le; output_amount &le; max_sats. No witness data required  -- the output amount is read directly from the transaction context.</p>
   <span class="block-family-badge badge-covenant">Covenant</span>
   <span class="invertible-badge inv-yes">Invertible</span>
 </div>
@@ -67,7 +67,7 @@
       <tr><td class="field-name">max_sats</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Maximum output amount in satoshis (inclusive). Must be &ge; min_sats.</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields required &mdash; the output amount is read directly from the spending transaction context.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields required  -- the output amount is read directly from the spending transaction context.</p>
 </div>
 
 <!-- Wire Format -->
@@ -167,7 +167,7 @@
   </div>
   <div class="use-case">
     <div class="use-case-title">Inverted: Value Exclusion Zones</div>
-    <div class="use-case-desc">With the inverted flag, the block rejects outputs within the range &mdash; useful for excluding specific value bands. For example, preventing outputs in a range known to correlate with specific payment amounts for privacy reasons.</div>
+    <div class="use-case-desc">With the inverted flag, the block rejects outputs within the range  -- useful for excluding specific value bands. For example, preventing outputs in a range known to correlate with specific payment amounts for privacy reasons.</div>
   </div>
 </div>
 

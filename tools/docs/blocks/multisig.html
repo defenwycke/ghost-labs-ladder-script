@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MULTISIG — LADDER SCRIPT Block Reference</title>
+<title>MULTISIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,9 +22,9 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0002 &middot; SIGNATURE FAMILY</div>
   <h1 class="block-title">MULTISIG</h1>
-  <p class="block-subtitle">M-of-N threshold signature verification. Multiple pubkey commitments are locked in conditions with a threshold. The witness provides N pubkeys and M valid signatures to satisfy the block.</p>
+  <p class="block-subtitle">M-of-N threshold signature verification. Multiple pubkeys are bound via merkle_pub_key with a threshold. The witness provides N pubkeys and M valid signatures to satisfy the block.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -54,7 +54,7 @@
       <text x="425" y="66" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="10" font-weight="600">...</text>
       <!-- Annotation -->
       <text x="300" y="140" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">At least M of N signatures must be valid</text>
-      <text x="300" y="158" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">Pubkeys resolved via SHA-256 commitment match</text>
+      <text x="300" y="158" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">Pubkeys resolved via merkle_pub_key binding</text>
     </svg>
   </div>
 </div>
@@ -75,11 +75,7 @@
         <td class="field-desc">Required number of valid signatures (M)</td>
       </tr>
       <tr>
-        <td class="field-name">pubkey_commit[0..N]</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B each</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">SHA-256 commitment to each of the N public keys</td>
+        <td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public keys bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td>
       </tr>
       <tr>
         <td class="field-name">pubkey[0..N]</td>
@@ -117,9 +113,9 @@
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">4</span>
       <span class="wire-segment wire-field-num" style="min-width:90px">NUMERIC &middot; 3B</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:100px">COMMIT &middot; 32B</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:100px">COMMIT &middot; 32B</span>
-      <span class="wire-segment wire-field-pubkey" style="min-width:100px">COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:100px">merkle_pub_key &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:100px">merkle_pub_key &middot; 32B</span>
+      <span class="wire-segment wire-field-pubkey" style="min-width:100px">merkle_pub_key &middot; 32B</span>
       <span class="wire-bytes">= 111 bytes</span>
     </div>
   </div>
@@ -144,7 +140,7 @@
     </div>
   </div>
 
-  <p class="section-text">Wire size scales linearly: N pubkey commits in conditions + N pubkeys + M signatures in witness.</p>
+  <p class="section-text">Wire size scales linearly: N merkle_pub_key bindings + N pubkeys + M signatures in witness.</p>
 </div>
 
 <!-- Evaluation Logic -->
@@ -157,7 +153,7 @@
     </div>
     <div class="eval-step">
       <span class="eval-step-num">2.</span>
-      <span class="eval-step-text">Resolve each <span class="eval-keyword">PUBKEY_COMMIT</span> to a witness PUBKEY via SHA256 match. If any commit unresolved &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
+      <span class="eval-step-text">Resolve each <span class="eval-keyword">merkle_pub_key</span> binding to a witness PUBKEY via Merkle leaf hash match. If any binding unresolved &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span>
     </div>
     <div class="eval-step">
       <span class="eval-step-num">3.</span>
@@ -176,10 +172,10 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing NUMERIC or PUBKEY_COMMIT fields</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing NUMERIC or merkle_pub_key fields</td><td class="r-err">ERROR</td></tr>
       <tr><td>Threshold M &lt; 1 or M &gt; N</td><td class="r-err">ERROR</td></tr>
       <tr><td>Fewer than N pubkeys in witness</td><td class="r-err">ERROR</td></tr>
-      <tr><td>PUBKEY_COMMIT resolution fails for any key</td><td class="r-unsat">UNSATISFIED</td></tr>
+      <tr><td>merkle_pub_key resolution fails for any key</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>Fewer than M valid signatures</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>M or more valid signatures from distinct keys</td><td class="r-sat">SATISFIED</td></tr>
     </tbody>
@@ -196,9 +192,9 @@
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
     { <span class="json-key">"type"</span>: <span class="json-str">"NUMERIC"</span>, <span class="json-key">"value"</span>: <span class="json-num">2</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"9c4a88...32 bytes"</span> }
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"d7e2f1...32 bytes"</span> },
+    { <span class="json-key">"type"</span>: <span class="json-str">"merkle_pub_key"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"9c4a88...32 bytes"</span> }
   ]
 }</pre></div>
 

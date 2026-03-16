@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P2SH_LEGACY — LADDER SCRIPT Block Reference</title>
+<title>P2SH_LEGACY -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0903 &middot; LEGACY FAMILY</div>
   <h1 class="block-title">P2SH_LEGACY</h1>
-  <p class="block-subtitle">Legacy P2SH (pay-to-script-hash) wrapped as a typed Ladder Script block. Inner script must be valid Ladder Script conditions &mdash; no arbitrary bytes allowed. Closes the P2SH data-embedding surface.</p>
+  <p class="block-subtitle">Legacy P2SH (pay-to-script-hash) wrapped as a typed Ladder Script block. Inner script must be valid Ladder Script conditions  -- no arbitrary bytes allowed. Closes the P2SH data-embedding surface.</p>
   <span class="block-family-badge" style="color: #00e5ff; border-color: #00e5ff40;">Legacy</span>
   <span class="invertible-badge inv-yes">Invertible</span>
 </div>
@@ -64,14 +64,14 @@
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">RIPEMD160(SHA256(preimage)) commitment to the inner script. <strong>Node-computed</strong> &mdash; the user provides PREIMAGE (serialized Ladder Script conditions) and the node computes this field automatically. Raw hash input is rejected.</td>
+        <td class="field-desc">RIPEMD160(SHA256(preimage)) commitment to the inner script. <strong>Node-computed</strong>  -- the user provides PREIMAGE (serialized Ladder Script conditions) and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">var</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Serialized Ladder Script conditions (the inner script) &mdash; provided by the user. The node derives HASH160 from this data at creation time.</td>
+        <td class="field-desc">Serialized Ladder Script conditions (the inner script)  -- provided by the user. The node derives HASH160 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">[inner witness]</td>
@@ -188,7 +188,7 @@
 <div class="doc-section">
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
-    <li>Inner conditions must deserialize as valid Ladder Script &mdash; arbitrary bytes are rejected.</li>
+    <li>Inner conditions must deserialize as valid Ladder Script  -- arbitrary bytes are rejected.</li>
     <li>The HASH160 field is <strong>node-computed</strong>: the user supplies PREIMAGE (the inner script) and the node derives the hash commitment automatically. Submitting a raw HASH160 value directly is rejected.</li>
     <li>Recursion depth limited to 2 to prevent unbounded nesting.</li>
     <li>Prevents the arbitrary data embedding that plagues Bitcoin P2SH.</li>

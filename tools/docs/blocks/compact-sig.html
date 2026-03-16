@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COMPACT_SIG — LADDER SCRIPT Block Reference</title>
+<title>COMPACT_SIG -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,6 +25,11 @@
   <p class="block-subtitle">Compact rung encoding for single-key signature conditions. Stores PUBKEY_COMMIT and SCHEME directly on the rung with no block overhead. Resolves to a standard SIG block at evaluation time. Primarily used for change outputs and single-key spending.</p>
   <span class="block-family-badge" style="color: #ff1744; border-color: #ff174440;">Signature</span>
   <span class="block-family-badge" style="color: #98c379; border-color: #98c37940;">Compact</span>
+</div>
+
+<div class="doc-section" style="background:#3a1a1a;border:1px solid #ff4444;padding:16px 20px;margin-bottom:24px;">
+  <div style="color:#ff4444;font-weight:600;margin-bottom:8px;">REMOVED</div>
+  <div style="color:#ccc;">COMPACT_SIG encoding has been removed. Standard SIG blocks with merkle_pub_key replace this functionality.</div>
 </div>
 
 <!-- Ladder Diagram -->
@@ -95,7 +100,7 @@
     </tbody>
   </table>
 
-  <p class="section-text" style="margin-top:16px">The witness for a compact SIG rung uses a <strong>normal SIG block</strong> with PUBKEY and SIGNATURE fields &mdash; the compact encoding only applies to the conditions side.</p>
+  <p class="section-text" style="margin-top:16px">The witness for a compact SIG rung uses a <strong>normal SIG block</strong> with PUBKEY and SIGNATURE fields  -- the compact encoding only applies to the conditions side.</p>
 
   <table class="field-table" style="margin-top:12px">
     <thead>
@@ -136,7 +141,7 @@
   </div>
 
   <p class="section-text" style="margin-top:16px; margin-bottom:8px">
-    The <code style="color:#98c379">0x00</code> byte is the <code>n_blocks</code> sentinel &mdash; zero blocks signals compact encoding.
+    The <code style="color:#98c379">0x00</code> byte is the <code>n_blocks</code> sentinel  -- zero blocks signals compact encoding.
     The <code style="color:#98c379">0x01</code> byte is the compact type (COMPACT_SIG).
     PUBKEY_COMMIT and SCHEME follow as raw bytes with no field headers.
   </p>
@@ -166,7 +171,7 @@
     </tbody>
   </table>
 
-  <p class="section-text" style="margin-top:12px">Wire size is identical for the minimal case. The benefit of compact encoding is <strong>structural simplification</strong> &mdash; compact rungs have no block array, no block headers, and no field type tags. This eliminates parsing ambiguity and makes compact rungs trivially identifiable at the wire level. When used with MLSC, compact rungs produce smaller Merkle leaves (35 bytes serialised vs 35 bytes for an equivalent micro-header SIG block &mdash; tied in the common case, but compact avoids the implicit-layout machinery).</p>
+  <p class="section-text" style="margin-top:12px">Wire size is identical for the minimal case. The benefit of compact encoding is <strong>structural simplification</strong>  -- compact rungs have no block array, no block headers, and no field type tags. This eliminates parsing ambiguity and makes compact rungs trivially identifiable at the wire level. When used with MLSC, compact rungs produce smaller Merkle leaves (35 bytes serialised vs 35 bytes for an equivalent micro-header SIG block  -- tied in the common case, but compact avoids the implicit-layout machinery).</p>
 </div>
 
 <!-- Evaluation Logic -->
@@ -280,7 +285,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Simple Single-Key Spending</div>
-    <div class="use-case-desc">Any UTXO that requires only a single signature can use COMPACT_SIG. The encoding is semantically identical to a SIG block &mdash; it resolves to one at evaluation time &mdash; but signals intent as a lightweight spending condition.</div>
+    <div class="use-case-desc">Any UTXO that requires only a single signature can use COMPACT_SIG. The encoding is semantically identical to a SIG block  -- it resolves to one at evaluation time  -- but signals intent as a lightweight spending condition.</div>
   </div>
 
   <div class="use-case">
@@ -305,7 +310,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Post-MLSC Spam Safety</div>
-    <div class="use-case-desc">Before MLSC, compact encodings in conditions raised spam concerns &mdash; full conditions were embedded in scriptPubKey. Post-MLSC, the scriptPubKey is always a fixed 33-byte Merkle root (0xC2 + 32B), regardless of conditions complexity. Compact encoding cannot increase the UTXO set footprint.</div>
+    <div class="use-case-desc">Before MLSC, compact encodings in conditions raised spam concerns  -- full conditions were embedded in scriptPubKey. Post-MLSC, the scriptPubKey is always a fixed 33-byte Merkle root (0xC2 + 32B), regardless of conditions complexity. Compact encoding cannot increase the UTXO set footprint.</div>
   </div>
 </div>
 

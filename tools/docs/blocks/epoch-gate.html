@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EPOCH_GATE — LADDER SCRIPT Block Reference</title>
+<title>EPOCH_GATE  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0801 &middot; GOVERNANCE FAMILY</div>
   <h1 class="block-title">EPOCH_GATE</h1>
-  <p class="block-subtitle">Periodic spending windows — allows a UTXO to be spent only during specific portions of each epoch. Uses block height modular arithmetic to create recurring open/closed gates. No Tapscript equivalent exists.</p>
+  <p class="block-subtitle">Periodic spending windows  -- allows a UTXO to be spent only during specific portions of each epoch. Uses block height modular arithmetic to create recurring open/closed gates. No Tapscript equivalent exists.</p>
   <span class="block-family-badge badge-governance">Governance</span>
   <span class="invertible-badge inv-yes">Invertible</span>
 </div>
@@ -66,7 +66,7 @@
       <tr><td class="field-name">window_size</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of blocks at start of epoch where spending is allowed (must be &le; epoch_size)</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields required — evaluation uses only the current block height from the evaluation context.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields required  -- evaluation uses only the current block height from the evaluation context.</p>
 </div>
 
 <!-- Wire Format -->
@@ -162,7 +162,7 @@
   </div>
   <div class="use-case">
     <div class="use-case-title">Inverted: Lockout Periods</div>
-    <div class="use-case-desc">With the inverted flag, spending is <em>blocked</em> during the window — creating mandatory hold periods. Useful for vesting schedules where tokens can only be moved outside of lockout windows.</div>
+    <div class="use-case-desc">With the inverted flag, spending is <em>blocked</em> during the window  -- creating mandatory hold periods. Useful for vesting schedules where tokens can only be moved outside of lockout windows.</div>
   </div>
 </div>
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P2PKH_LEGACY — LADDER SCRIPT Block Reference</title>
+<title>P2PKH_LEGACY -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h1 class="block-title">P2PKH_LEGACY</h1>
   <p class="block-subtitle">Legacy P2PKH (pay-to-pubkey-hash) wrapped as a typed Ladder Script block. Verifies HASH160(pubkey) matches committed hash, then checks signature.</p>
   <span class="block-family-badge" style="color: #00e5ff; border-color: #00e5ff40;">Legacy</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -59,19 +59,20 @@
       <tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr>
     </thead>
     <tbody>
+      <tr><td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td></tr>
       <tr>
         <td class="field-name">hash160</td>
         <td class="field-type">HASH160</td>
         <td class="field-size">20 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">RIPEMD160(SHA256(pubkey)) commitment. <strong>Node-computed</strong> &mdash; the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
+        <td class="field-desc">RIPEMD160(SHA256(pubkey)) commitment. <strong>Node-computed</strong>  -- the user provides PUBKEY and the node computes this field automatically. Raw hash input is rejected.</td>
       </tr>
       <tr>
         <td class="field-name">pubkey</td>
         <td class="field-type">PUBKEY</td>
         <td class="field-size">32-33 B</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Public key &mdash; provided by the user. The node derives HASH160 from this key at creation time. Revealed at spend time.</td>
+        <td class="field-desc">Public key  -- provided by the user. The node derives HASH160 from this key at creation time. Revealed at spend time.</td>
       </tr>
       <tr>
         <td class="field-name">signature</td>

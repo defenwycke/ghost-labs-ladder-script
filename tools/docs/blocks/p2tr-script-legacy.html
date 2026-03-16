@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P2TR_SCRIPT_LEGACY — LADDER SCRIPT Block Reference</title>
+<title>P2TR_SCRIPT_LEGACY -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,9 +22,9 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0907 &middot; LEGACY FAMILY</div>
   <h1 class="block-title">P2TR_SCRIPT_LEGACY</h1>
-  <p class="block-subtitle">Legacy P2TR script-path (Taproot) wrapped as a typed Ladder Script block. This is the critical block &mdash; taproot script-path is the primary inscription/data-embedding vector today. The revealed script leaf must be valid Ladder Script conditions.</p>
+  <p class="block-subtitle">Legacy P2TR script-path (Taproot) wrapped as a typed Ladder Script block. This is the critical block -- taproot script-path is the primary inscription/data-embedding vector today. The revealed script leaf must be valid Ladder Script conditions.</p>
   <span class="block-family-badge" style="color: #00e5ff; border-color: #00e5ff40;">Legacy</span>
-  <span class="invertible-badge inv-yes">Invertible</span>
+  <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
 
 <!-- Ladder Diagram -->
@@ -64,21 +64,15 @@
         <td class="field-type">HASH256</td>
         <td class="field-size">32 B</td>
         <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Merkle root of the script tree. <strong>Node-computed</strong> &mdash; the node derives this from the PREIMAGE (script leaf). Raw hash input is rejected.</td>
+        <td class="field-desc">Merkle root of the script tree. <strong>Node-computed</strong>  -- the node derives this from the PREIMAGE (script leaf). Raw hash input is rejected.</td>
       </tr>
-      <tr>
-        <td class="field-name">pubkey_commit</td>
-        <td class="field-type">PUBKEY_COMMIT</td>
-        <td class="field-size">32 B</td>
-        <td class="field-side-c">Conditions</td>
-        <td class="field-desc">Internal key commitment (SHA-256 of internal pubkey). <strong>Node-computed</strong> &mdash; the user provides PUBKEY (internal key) and the node computes this field automatically. Raw hash input is rejected.</td>
-      </tr>
+      <tr><td class="field-name" colspan="5" style="color:#888;font-style:italic;">Public key bound via merkle_pub_key (folded into Merkle leaf hash, not stored in conditions)</td></tr>
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
         <td class="field-size">var</td>
         <td class="field-side-w">Witness</td>
-        <td class="field-desc">Revealed script leaf (serialized Ladder Script conditions) &mdash; provided by the user. The node derives HASH256 from this data at creation time.</td>
+        <td class="field-desc">Revealed script leaf (serialized Ladder Script conditions)  -- provided by the user. The node derives HASH256 from this data at creation time.</td>
       </tr>
       <tr>
         <td class="field-name">[inner witness]</td>
@@ -102,7 +96,7 @@
       <span class="wire-segment wire-inv">0</span>
       <span class="wire-segment wire-count">2</span>
       <span class="wire-segment wire-field-pubkey" style="min-width:130px">HASH256 &middot; 32B</span>
-      <span class="wire-segment wire-field-sig" style="min-width:160px">PUBKEY_COMMIT &middot; 32B</span>
+      <span class="wire-segment wire-field-sig" style="min-width:160px">merkle_pub_key &middot; in leaf</span>
       <span class="wire-bytes">= 70 bytes</span>
     </div>
   </div>
@@ -156,8 +150,8 @@
   <table class="result-table">
     <thead><tr><th>Condition</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td>Missing HASH256, PUBKEY_COMMIT, or PREIMAGE</td><td class="r-err">ERROR</td></tr>
-      <tr><td>HASH256 or PUBKEY_COMMIT wrong size</td><td class="r-err">ERROR</td></tr>
+      <tr><td>Missing HASH256 or PREIMAGE</td><td class="r-err">ERROR</td></tr>
+      <tr><td>HASH256 wrong size</td><td class="r-err">ERROR</td></tr>
       <tr><td>SHA256(PREIMAGE) != HASH256 (Merkle root)</td><td class="r-unsat">UNSATISFIED</td></tr>
       <tr><td>PREIMAGE fails to deserialize as Ladder conditions</td><td class="r-err">ERROR</td></tr>
       <tr><td>Inner conditions evaluation fails</td><td class="r-unsat">UNSATISFIED</td></tr>
@@ -177,7 +171,7 @@
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
     { <span class="json-key">"type"</span>: <span class="json-str">"HASH256"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"e3b0c4...32 bytes (Merkle root)"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PUBKEY_COMMIT"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"a3b1c4...32 bytes (internal key)"</span> }
+    <span style="color:#888">// internal key bound via merkle_pub_key (folded into Merkle leaf hash)</span>
   ]
 }</pre></div>
 
@@ -197,11 +191,11 @@
 <div class="doc-section">
   <div class="section-label">Notes</div>
   <ul class="doc-notes">
-    <li>Closes the taproot inscription vector &mdash; the primary data-embedding surface in Bitcoin today.</li>
+    <li>Closes the taproot inscription vector  -- the primary data-embedding surface in Bitcoin today.</li>
     <li>Revealed script leaf must deserialize as valid Ladder Script conditions. Arbitrary data is rejected.</li>
-    <li>Both PUBKEY_COMMIT and HASH256 are <strong>node-computed</strong>: the user provides PUBKEY (internal key) and PREIMAGE (script leaf), and the node derives both commitments automatically. Submitting raw hash values directly is rejected.</li>
+    <li>Internal key is bound via <strong>merkle_pub_key</strong>: the key is folded into the Merkle leaf hash, not stored as a separate conditions field. HASH256 is <strong>node-computed</strong>: the user provides PREIMAGE (script leaf), and the node derives the commitment automatically.</li>
     <li>Recursion depth limited to 2.</li>
-    <li>PUBKEY_COMMIT is the internal key commitment, used for key-path/script-path binding.</li>
+    <li>Internal key is bound via merkle_pub_key, used for key-path/script-path binding.</li>
     <li>For key-path-only spending, see P2TR_LEGACY (0x0906).</li>
   </ul>
 </div>

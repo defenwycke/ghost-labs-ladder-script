@@ -324,50 +324,6 @@ body {
   letter-spacing: 0.5px;
 }
 
-.compact-toggle {
-  position: relative;
-  margin-top: 4px;
-  margin-left: 44px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  z-index: 2;
-  user-select: none;
-}
-.compact-toggle input[type="checkbox"] {
-  width: 10px;
-  height: 10px;
-  accent-color: var(--green);
-  cursor: pointer;
-  margin: 0;
-}
-.compact-toggle-label {
-  font-size: 8px;
-  font-family: var(--font-display);
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.compact-toggle:hover .compact-toggle-label {
-  color: var(--green);
-}
-.compact-badge {
-  position: relative;
-  display: inline-block;
-  margin-top: 2px;
-  margin-left: 44px;
-  font-size: 8px;
-  font-family: var(--font-display);
-  color: #000;
-  background: var(--green-bright);
-  padding: 1px 5px;
-  border-radius: 2px;
-  letter-spacing: 1px;
-  font-weight: 700;
-  z-index: 2;
-  line-height: 12px;
-}
 
 .rung-content {
   display: flex;
@@ -675,7 +631,7 @@ body {
   color: var(--green-bright);
 }
 
-/* Input contact (left side of rung — same shape as condition blocks) */
+/* Input contact (left side of rung --same shape as condition blocks) */
 .input-contact {
   display: flex;
   align-items: center;
@@ -975,7 +931,7 @@ body {
   overflow-y: auto;
   line-height: 1.5;
 }
-/* Highlighted JSON — line-level annotations */
+/* Highlighted JSON --line-level annotations */
 .json-highlighted .jhl-line {
   display: flex;
   line-height: 1.6;
@@ -992,20 +948,20 @@ body {
   flex: 1;
   white-space: pre;
 }
-/* Neutral — dim default */
+/* Neutral --dim default */
 .json-highlighted .jhl-line { color: var(--text-dim); }
-/* Executed output — green text */
+/* Executed output --green text */
 .json-highlighted .jhl-executed { color: #00ff88; }
 .json-highlighted .jhl-executed .jhl-gutter { color: #00ff8860; }
-/* Blocked output — red, dim */
+/* Blocked output --red, dim */
 .json-highlighted .jhl-blocked { color: var(--red); opacity: 0.4; }
-/* Active context — slightly brighter than neutral */
+/* Active context --slightly brighter than neutral */
 .json-highlighted .jhl-active-context { color: var(--text-secondary); }
-/* Passed block — bright green */
+/* Passed block --bright green */
 .json-highlighted .jhl-passed { color: #00ff88; background: #00ff8808; }
-/* Failed block — red */
+/* Failed block --red */
 .json-highlighted .jhl-failed { color: var(--red); background: #f8514910; }
-/* Cursor — current block, pulsing */
+/* Cursor --current block, pulsing */
 .json-highlighted .jhl-cursor {
   color: #fff;
   background: #00ff8818;
@@ -1216,7 +1172,7 @@ body {
   animation: powerPulse 2s ease-in-out infinite;
 }
 
-/* Scan animation — green highlight for active evaluation point */
+/* Scan animation --green highlight for active evaluation point */
 @keyframes scanPulse {
   0% { box-shadow: inset 0 0 8px #00ff8840, 0 0 6px #00ff8830; }
   50% { box-shadow: inset 0 0 16px #00ff8880, 0 0 12px #00ff8860; }
@@ -1484,7 +1440,7 @@ body {
 .rung.spent {
   pointer-events: none;
 }
-/* Executed path — green, full visibility */
+/* Executed path --green, full visibility */
 .rung.spent-executed {
   opacity: 0.75;
 }
@@ -1519,7 +1475,7 @@ body {
   z-index: 10;
   pointer-events: none;
 }
-/* Blocked path — red, dimmed */
+/* Blocked path --red, dimmed */
 .rung.spent-blocked {
   opacity: 0.4;
 }
@@ -2326,7 +2282,7 @@ const BLOCK_FAMILIES = [
   {
     name: 'SIGNATURE', color: '#ff1744',
     blocks: [
-      { type: 'SIG', label: 'SIG', desc: 'Single signature check — Schnorr, ECDSA, or post-quantum', fields: [
+      { type: 'SIG', label: 'SIG', desc: 'Single signature check --Schnorr, ECDSA, or post-quantum', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
@@ -2339,12 +2295,12 @@ const BLOCK_FAMILIES = [
         { name: 'signing_key', dataType: 'PUBKEY', label: 'Signing Key', placeholder: '02abcdef...' },
         { name: 'adaptor_point', dataType: 'PUBKEY', label: 'Adaptor Point', placeholder: '32-byte x-only hex' }
       ]},
-      { type: 'MUSIG_THRESHOLD', label: 'MUSIG_THR', desc: 'MuSig2/FROST aggregate threshold — M-of-N produces single Schnorr sig', fields: [
+      { type: 'MUSIG_THRESHOLD', label: 'MUSIG_THR', desc: 'MuSig2/FROST aggregate threshold --M-of-N produces single Schnorr sig', fields: [
         { name: 'agg_pubkey', dataType: 'PUBKEY', label: 'Aggregate Key', placeholder: '02abcdef... (combined MuSig2/FROST key)' },
         { name: 'threshold', dataType: 'NUMERIC', label: 'Threshold (M)', placeholder: '2' },
         { name: 'group_size', dataType: 'NUMERIC', label: 'Group Size (N)', placeholder: '3' }
       ]},
-      { type: 'KEY_REF_SIG', label: 'KEY_REF_SIG', desc: 'Signature using key commitment from a relay block — cross-rung key sharing', fields: [
+      { type: 'KEY_REF_SIG', label: 'KEY_REF_SIG', desc: 'Signature using key commitment from a relay block --cross-rung key sharing', fields: [
         { name: 'relay_index', dataType: 'NUMERIC', label: 'Relay Index', placeholder: '0' },
         { name: 'block_index', dataType: 'NUMERIC', label: 'Block Index', placeholder: '0' }
       ]},
@@ -2416,7 +2372,7 @@ const BLOCK_FAMILIES = [
       { type: 'RECURSE_UNTIL', label: 'REC_UNTIL', desc: 'Recursive until target block height reached', fields: [
         { name: 'target_height', dataType: 'NUMERIC', label: 'Target Height', placeholder: '850000' }
       ]},
-      { type: 'RECURSE_COUNT', label: 'REC_COUNT', desc: 'Recursive countdown — terminates at zero', fields: [
+      { type: 'RECURSE_COUNT', label: 'REC_COUNT', desc: 'Recursive countdown --terminates at zero', fields: [
         { name: 'remaining', dataType: 'NUMERIC', label: 'Remaining', placeholder: '10' }
       ]},
       { type: 'RECURSE_SPLIT', label: 'REC_SPLIT', desc: 'Recursive output splitting with min sats', fields: [
@@ -2472,11 +2428,11 @@ const BLOCK_FAMILIES = [
         { name: 'high_sats', dataType: 'NUMERIC', label: 'High (sats)', placeholder: '100000' },
         { name: 'low_sats', dataType: 'NUMERIC', label: 'Low (sats)', placeholder: '5000' }
       ]},
-      { type: 'TIMER_CONTINUOUS', label: 'TMR_CONT', desc: 'Continuous block timer — elapsed vs target', fields: [
+      { type: 'TIMER_CONTINUOUS', label: 'TMR_CONT', desc: 'Continuous block timer --elapsed vs target', fields: [
         { name: 'accumulated', dataType: 'NUMERIC', label: 'Accumulated', placeholder: '0' },
         { name: 'target', dataType: 'NUMERIC', label: 'Target', placeholder: '144' }
       ]},
-      { type: 'TIMER_OFF_DELAY', label: 'TMR_OFF', desc: 'Off-delay timer — hold after trigger expires', fields: [
+      { type: 'TIMER_OFF_DELAY', label: 'TMR_OFF', desc: 'Off-delay timer --hold after trigger expires', fields: [
         { name: 'remaining', dataType: 'NUMERIC', label: 'Remaining', placeholder: '10' }
       ]},
       { type: 'LATCH_SET', label: 'LATCH_S', desc: 'State latch activation (0 → 1)', fields: [
@@ -2488,33 +2444,33 @@ const BLOCK_FAMILIES = [
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '1' },
         { name: 'delay', dataType: 'NUMERIC', label: 'Delay', placeholder: '6' }
       ]},
-      { type: 'COUNTER_DOWN', label: 'CTR_DN', desc: 'Decrementing counter — satisfied while > 0', fields: [
+      { type: 'COUNTER_DOWN', label: 'CTR_DN', desc: 'Decrementing counter --satisfied while > 0', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Event Key', placeholder: '02abc...' },
         { name: 'count', dataType: 'NUMERIC', label: 'Count', placeholder: '5' }
       ]},
-      { type: 'COUNTER_PRESET', label: 'CTR_PRE', desc: 'Approval accumulator — satisfied until preset', fields: [
+      { type: 'COUNTER_PRESET', label: 'CTR_PRE', desc: 'Approval accumulator --satisfied until preset', fields: [
         { name: 'current', dataType: 'NUMERIC', label: 'Current', placeholder: '0' },
         { name: 'preset', dataType: 'NUMERIC', label: 'Preset', placeholder: '10' }
       ]},
-      { type: 'COUNTER_UP', label: 'CTR_UP', desc: 'Incrementing counter — satisfied until target', fields: [
+      { type: 'COUNTER_UP', label: 'CTR_UP', desc: 'Incrementing counter --satisfied until target', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Event Key', placeholder: '02abc...' },
         { name: 'current', dataType: 'NUMERIC', label: 'Current', placeholder: '0' },
         { name: 'target', dataType: 'NUMERIC', label: 'Target', placeholder: '10' }
       ]},
-      { type: 'COMPARE', label: 'COMPARE', desc: 'Comparator — EQ, NEQ, GT, LT, GTE, LTE, IN_RANGE', fields: [
+      { type: 'COMPARE', label: 'COMPARE', desc: 'Comparator --EQ, NEQ, GT, LT, GTE, LTE, IN_RANGE', fields: [
         { name: 'operator', dataType: 'NUMERIC', label: 'Op (1-7)', placeholder: '1' },
         { name: 'value_b', dataType: 'NUMERIC', label: 'Value B', placeholder: '5000' },
         { name: 'value_c', dataType: 'NUMERIC', label: 'Value C (IN_RANGE upper)', placeholder: '10000' }
       ]},
-      { type: 'SEQUENCER', label: 'SEQ', desc: 'Step sequencer — current step vs total', fields: [
+      { type: 'SEQUENCER', label: 'SEQ', desc: 'Step sequencer --current step vs total', fields: [
         { name: 'current', dataType: 'NUMERIC', label: 'Current Step', placeholder: '0' },
         { name: 'total', dataType: 'NUMERIC', label: 'Total Steps', placeholder: '5' }
       ]},
-      { type: 'ONE_SHOT', label: 'ONE_SHOT', desc: 'Single-use activation — fires once then locks', fields: [
+      { type: 'ONE_SHOT', label: 'ONE_SHOT', desc: 'Single-use activation --fires once then locks', fields: [
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '0' },
         { name: 'commitment', dataType: 'HASH256', label: 'Commitment', placeholder: '32-byte hex' }
       ]},
-      { type: 'RATE_LIMIT', label: 'RATE_LIM', desc: 'Rate limiter — max spend per window', fields: [
+      { type: 'RATE_LIMIT', label: 'RATE_LIM', desc: 'Rate limiter --max spend per window', fields: [
         { name: 'max_per_block', dataType: 'NUMERIC', label: 'Max/Block', placeholder: '50000' },
         { name: 'acc_cap', dataType: 'NUMERIC', label: 'Acc. Cap', placeholder: '200000' },
         { name: 'refill_blocks', dataType: 'NUMERIC', label: 'Refill Blocks', placeholder: '144' }
@@ -2527,34 +2483,34 @@ const BLOCK_FAMILIES = [
   {
     name: 'COMPOUND', color: '#ffffff',
     blocks: [
-      { type: 'TIMELOCKED_SIG', label: 'TL_SIG', desc: 'SIG + CSV combined — signature with relative timelock', fields: [
+      { type: 'TIMELOCKED_SIG', label: 'TL_SIG', desc: 'SIG + CSV combined --signature with relative timelock', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
-      { type: 'HTLC', label: 'HTLC', desc: 'Hash + Timelock + Sig — Lightning HTLC / atomic swap', fields: [
-        { name: 'preimage', dataType: 'PREIMAGE', label: 'Payment Preimage', placeholder: 'Hex secret — node computes payment hash' },
+      { type: 'HTLC', label: 'HTLC', desc: 'Hash + Timelock + Sig --Lightning HTLC / atomic swap', fields: [
+        { name: 'preimage', dataType: 'PREIMAGE', label: 'Payment Preimage', placeholder: 'Hex secret --node computes payment hash' },
         { name: 'hash', dataType: 'HASH256', label: 'Payment Hash (read-only)', placeholder: 'Auto-computed by node from preimage', computed: true },
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'blocks', dataType: 'NUMERIC', label: 'Timeout (blocks)', placeholder: '144' }
       ]},
-      { type: 'HASH_SIG', label: 'HASH_SIG', desc: 'Hash preimage + Signature — atomic swap claim', fields: [
-        { name: 'preimage', dataType: 'PREIMAGE', label: 'Preimage (secret)', placeholder: 'Hex data — node computes SHA256 hash' },
+      { type: 'HASH_SIG', label: 'HASH_SIG', desc: 'Hash preimage + Signature --atomic swap claim', fields: [
+        { name: 'preimage', dataType: 'PREIMAGE', label: 'Preimage (secret)', placeholder: 'Hex data --node computes SHA256 hash' },
         { name: 'hash', dataType: 'HASH256', label: 'Hash (read-only)', placeholder: 'Auto-computed by node from preimage', computed: true },
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
-      { type: 'PTLC', label: 'PTLC', desc: 'Point Time Locked Contract — adaptor sig + CSV for payment channels', fields: [
+      { type: 'PTLC', label: 'PTLC', desc: 'Point Time Locked Contract --adaptor sig + CSV for payment channels', fields: [
         { name: 'signing_key', dataType: 'PUBKEY', label: 'Signing Key', placeholder: '02abcdef...' },
         { name: 'adaptor_point', dataType: 'PUBKEY', label: 'Adaptor Point', placeholder: '32-byte x-only hex' },
         { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' }
       ]},
-      { type: 'CLTV_SIG', label: 'CLTV_SIG', desc: 'SIG + CLTV combined — signature with absolute timelock', fields: [
+      { type: 'CLTV_SIG', label: 'CLTV_SIG', desc: 'SIG + CLTV combined --signature with absolute timelock', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
         { name: 'height', dataType: 'NUMERIC', label: 'Lock Height', placeholder: '850000' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
-      { type: 'TIMELOCKED_MULTISIG', label: 'TL_MULTI', desc: 'MULTISIG + CSV combined — M-of-N with relative timelock', fields: [
+      { type: 'TIMELOCKED_MULTISIG', label: 'TL_MULTI', desc: 'MULTISIG + CSV combined --M-of-N with relative timelock', fields: [
         { name: 'threshold', dataType: 'NUMERIC', label: 'Threshold (M)', placeholder: '2' },
         { name: 'pubkeys', dataType: 'PUBKEY', label: 'Public Keys', placeholder: '02ab..., 03cd...', multi: true },
         { name: 'blocks', dataType: 'NUMERIC', label: 'Timelock (blocks)', placeholder: '144' },
@@ -2565,7 +2521,7 @@ const BLOCK_FAMILIES = [
   {
     name: 'GOVERNANCE', color: '#9e9e9e',
     blocks: [
-      { type: 'EPOCH_GATE', label: 'EPOCH', desc: 'Periodic spending window — spendable only in epoch windows', fields: [
+      { type: 'EPOCH_GATE', label: 'EPOCH', desc: 'Periodic spending window --spendable only in epoch windows', fields: [
         { name: 'epoch_size', dataType: 'NUMERIC', label: 'Epoch Size (blocks)', placeholder: '2016' },
         { name: 'window_size', dataType: 'NUMERIC', label: 'Window Size (blocks)', placeholder: '144' }
       ]},
@@ -2593,36 +2549,36 @@ const BLOCK_FAMILIES = [
   {
     name: 'LEGACY', color: '#00e5ff',
     blocks: [
-      { type: 'P2PK_LEGACY', label: 'P2PK', desc: 'P2PK wrapped — public key + signature verification (same as SIG)', fields: [
+      { type: 'P2PK_LEGACY', label: 'P2PK', desc: 'P2PK wrapped --public key + signature verification (same as SIG)', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: '64-byte Schnorr sig hex' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: '01=Schnorr', optional: true }
       ]},
-      { type: 'P2PKH_LEGACY', label: 'P2PKH', desc: 'P2PKH wrapped — provide pubkey, node computes HASH160 commitment', fields: [
-        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex — node computes HASH160' },
+      { type: 'P2PKH_LEGACY', label: 'P2PKH', desc: 'P2PKH wrapped --provide pubkey, node computes HASH160 commitment', fields: [
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex --node computes HASH160' },
         { name: 'hash160', dataType: 'HASH160', label: 'HASH160 (read-only)', placeholder: 'Auto-computed by node from pubkey', computed: true },
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex', witnessOnly: true }
       ]},
-      { type: 'P2SH_LEGACY', label: 'P2SH', desc: 'P2SH wrapped — provide inner conditions, node computes HASH160', fields: [
-        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) — node computes HASH160' },
+      { type: 'P2SH_LEGACY', label: 'P2SH', desc: 'P2SH wrapped --provide inner conditions, node computes HASH160', fields: [
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) --node computes HASH160' },
         { name: 'hash160', dataType: 'HASH160', label: 'Script Hash (read-only)', placeholder: 'Auto-computed by node from inner conditions', computed: true }
       ]},
-      { type: 'P2WPKH_LEGACY', label: 'P2WPKH', desc: 'P2WPKH wrapped — provide pubkey, node computes HASH160 (segwit version)', fields: [
-        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex — node computes HASH160' },
+      { type: 'P2WPKH_LEGACY', label: 'P2WPKH', desc: 'P2WPKH wrapped --provide pubkey, node computes HASH160 (segwit version)', fields: [
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex --node computes HASH160' },
         { name: 'hash160', dataType: 'HASH160', label: 'HASH160 (read-only)', placeholder: 'Auto-computed by node from pubkey', computed: true },
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: 'Schnorr or ECDSA sig hex', witnessOnly: true }
       ]},
-      { type: 'P2WSH_LEGACY', label: 'P2WSH', desc: 'P2WSH wrapped — provide inner conditions, node computes SHA256', fields: [
-        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) — node computes SHA256' },
+      { type: 'P2WSH_LEGACY', label: 'P2WSH', desc: 'P2WSH wrapped --provide inner conditions, node computes SHA256', fields: [
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Inner Conditions (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) --node computes SHA256' },
         { name: 'hash256', dataType: 'HASH256', label: 'Script Hash (read-only)', placeholder: 'Auto-computed by node from inner conditions', computed: true }
       ]},
-      { type: 'P2TR_LEGACY', label: 'P2TR', desc: 'P2TR key-path wrapped — public key + signature (same as SIG)', fields: [
+      { type: 'P2TR_LEGACY', label: 'P2TR', desc: 'P2TR key-path wrapped --public key + signature (same as SIG)', fields: [
         { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '33-byte compressed pubkey hex' },
         { name: 'signature', dataType: 'SIGNATURE', label: 'Signature', placeholder: '64-byte Schnorr sig hex' },
         { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: '01=Schnorr', optional: true }
       ]},
-      { type: 'P2TR_SCRIPT_LEGACY', label: 'P2TR_S', desc: 'P2TR script-path wrapped — provide inner conditions + internal key, node computes hashes', fields: [
-        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Script Leaf (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) — node computes Merkle root' },
+      { type: 'P2TR_SCRIPT_LEGACY', label: 'P2TR_S', desc: 'P2TR script-path wrapped --provide inner conditions + internal key, node computes hashes', fields: [
+        { name: 'script_body', dataType: 'SCRIPT_BODY', label: 'Script Leaf (serialized)', placeholder: 'Serialized Ladder Script conditions (up to 520 bytes) --node computes Merkle root' },
         { name: 'hash256', dataType: 'HASH256', label: 'Script Tree Root (read-only)', placeholder: 'Auto-computed by node from script leaf', computed: true },
         { name: 'internal_key', dataType: 'PUBKEY', label: 'Internal Public Key', placeholder: '33-byte compressed pubkey (folded into Merkle leaf)' }
       ]},
@@ -2679,7 +2635,7 @@ const BLOCK_RULES = {
   RECURSE_UNTIL: 'Recursive until block_height >= target. Below target, output must re-encumber identically.',
   RECURSE_COUNT: 'Countdown: output must carry count-1. Terminates (SATISFIED) when count reaches 0.',
   RECURSE_SPLIT: 'Output splitting with min sats enforcement. max_splits decrements per level.',
-  RECURSE_DECAY: 'Like RECURSE_MODIFIED but negates all deltas — parameter decreases per spend.',
+  RECURSE_DECAY: 'Like RECURSE_MODIFIED but negates all deltas --parameter decreases per spend.',
   ANCHOR: 'Generic anchor tag. Requires at least one field. Structural validation only.',
   ANCHOR_CHANNEL: 'Lightning channel anchor. Requires 2 pubkeys (local, remote).',
   ANCHOR_POOL: 'Pool anchor with VTXO tree root hash.',
@@ -2708,13 +2664,13 @@ const BLOCK_RULES = {
   P2PK_LEGACY: 'Legacy P2PK wrapped as a Ladder Script block. Same evaluation as SIG. Pubkey folded into Merkle leaf, then Schnorr/ECDSA/PQ signature check. Closes arbitrary data surfaces by requiring typed fields.',
   P2PKH_LEGACY: 'Legacy P2PKH wrapped. Computes HASH160(pubkey) and compares to the committed hash. If match, verifies signature. Bridges legacy pay-to-pubkey-hash semantics into typed fields.',
   P2SH_LEGACY: 'Legacy P2SH wrapped. HASH160 of inner conditions must match. SCRIPT_BODY carries serialized Ladder Script conditions (up to 520 bytes) that are deserialized and evaluated. Prevents arbitrary script embedding.',
-  P2WPKH_LEGACY: 'Legacy P2WPKH wrapped. Identical evaluation to P2PKH — HASH160(pubkey) check + signature verify. Represents the segwit migration path.',
+  P2WPKH_LEGACY: 'Legacy P2WPKH wrapped. Identical evaluation to P2PKH --HASH160(pubkey) check + signature verify. Represents the segwit migration path.',
   P2WSH_LEGACY: 'Legacy P2WSH wrapped. SHA256 of inner conditions must match. SCRIPT_BODY carries serialized Ladder Script conditions (up to 520 bytes). Same pattern as P2SH but with SHA256 hash.',
-  P2TR_LEGACY: 'Legacy P2TR key-path wrapped. Same evaluation as SIG — key-path Taproot spend with typed fields. Closes key-path data surfaces.',
+  P2TR_LEGACY: 'Legacy P2TR key-path wrapped. Same evaluation as SIG --key-path Taproot spend with typed fields. Closes key-path data surfaces.',
   P2TR_SCRIPT_LEGACY: 'Legacy P2TR script-path wrapped. HASH256 is Merkle root of script tree, internal key folded into Merkle leaf. Revealed leaf (SCRIPT_BODY) must be valid Ladder Script conditions (up to 520 bytes). Closes the primary inscription/data-embedding vector.',
 };
 
-// Realistic test data for every block type — deterministic fake keys/hashes
+// Realistic test data for every block type --deterministic fake keys/hashes
 const TEST_PUBKEYS = [
   '02a1633cafcc01ebfb6d78e39f687a1f0995c62fc95f51ead10a02ee0be551b5dc',
   '03b0da749730dc9b4b1f4a14d6902877a92541f5368778853d9c4a0cb7802dcfb2',
@@ -2749,7 +2705,7 @@ function createBlock(type) {
 }
 
 function createRung() {
-  return { id: uid(), label: '', blocks: [], output: { name: '', type: 'standard', txOutputId: null, wireType: 'UNLOCK', attestation: 'INLINE', scheme: 'SCHNORR' }, txInputIds: [], outputRefs: [], inputName: '', compact: false };
+  return { id: uid(), label: '', blocks: [], output: { name: '', type: 'standard', txOutputId: null, wireType: 'UNLOCK', attestation: 'INLINE', scheme: 'SCHNORR' }, txInputIds: [], outputRefs: [], inputName: '' };
 }
 
 function rungDisplayName(rung, index) {
@@ -2772,14 +2728,14 @@ function getCoilSymbol(type) {
 
 // Wire-level coil types (C++ RPC format)
 const WIRE_COIL_TYPES = [
-  { value: 'UNLOCK', label: 'UNLOCK — Standard spend' },
-  { value: 'UNLOCK_TO', label: 'UNLOCK_TO — Spend to address + conditions' },
-  { value: 'COVENANT', label: 'COVENANT — Constrain spending tx' },
+  { value: 'UNLOCK', label: 'UNLOCK --Standard spend' },
+  { value: 'UNLOCK_TO', label: 'UNLOCK_TO --Spend to address + conditions' },
+  { value: 'COVENANT', label: 'COVENANT --Constrain spending tx' },
 ];
 const ATTESTATION_TYPES = [
-  { value: 'INLINE', label: 'INLINE — Sigs in witness' },
-  { value: 'AGGREGATE', label: 'AGGREGATE — Block-level aggregate' },
-  { value: 'DEFERRED', label: 'DEFERRED — Template hash' },
+  { value: 'INLINE', label: 'INLINE --Sigs in witness' },
+  { value: 'AGGREGATE', label: 'AGGREGATE --Block-level aggregate' },
+  { value: 'DEFERRED', label: 'DEFERRED --Template hash' },
 ];
 const SCHEME_TYPES = [
   { value: 'SCHNORR', label: 'SCHNORR (BIP-340)' },
@@ -3421,8 +3377,8 @@ function isValidHex(s, exactBytes) {
 }
 
 function validateLadder(rungs, txInputs, txOutputs, locktime) {
-  const errors = [];   // fatal — blocks export
-  const warnings = []; // non-fatal — advisory
+  const errors = [];   // fatal --blocks export
+  const warnings = []; // non-fatal --advisory
 
   // ── TX INPUTS ──
   const validInputs = txInputs.filter(i => i.txid);
@@ -3463,7 +3419,7 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
     if (isNaN(amt) || amt <= 0) {
       errors.push(`Output ${idx + 1}: amount must be greater than 0`);
     } else if (amt < 546) {
-      errors.push(`Output ${idx + 1}: amount ${amt} sats is below dust limit (546) — transaction will be rejected by the network`);
+      errors.push(`Output ${idx + 1}: amount ${amt} sats is below dust limit (546) --transaction will be rejected by the network`);
     } else if (amt > 2100000000000000) {
       errors.push(`Output ${idx + 1}: amount exceeds maximum supply`);
     }
@@ -3477,7 +3433,7 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
 
   // ── RUNGS ──
   if (rungs.length === 0 || (rungs.length === 1 && rungs[0].blocks.length === 0)) {
-    errors.push('No conditions defined — add at least one block to a rung');
+    errors.push('No conditions defined --add at least one block to a rung');
   }
   if (rungs.length > 8) {
     errors.push(`${rungs.length} rungs exceeds maximum of 8`);
@@ -3509,7 +3465,7 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
         relayRefs.set(ri, rung.outputRefs.map(r => r.trim().toUpperCase()));
       }
     } else {
-      // Non-relay rung — check output assignment
+      // Non-relay rung --check output assignment
       if (rung.output.txOutputId !== null && rung.output.txOutputId !== undefined) {
         outputsWithRungs.add(rung.output.txOutputId);
       }
@@ -3696,7 +3652,7 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
             errors.push(`${bLabel}: denominator cannot be zero`);
           }
           if (!isNaN(num) && !isNaN(den) && num > den) {
-            errors.push(`${bLabel}: numerator (${num}) exceeds denominator (${den}) — ratio > 100%`);
+            errors.push(`${bLabel}: numerator (${num}) exceeds denominator (${den}) --ratio > 100%`);
           }
           break;
         }
@@ -3730,7 +3686,7 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
         case 'RECURSE_DECAY': {
           const rem = parseInt(v.remaining || v.max_depth);
           if (!isNaN(rem) && rem === 0) {
-            warnings.push(`${bLabel}: counter is 0 — condition will terminate immediately`);
+            warnings.push(`${bLabel}: counter is 0 --condition will terminate immediately`);
           }
           break;
         }
@@ -3783,13 +3739,13 @@ function validateLadder(rungs, txInputs, txOutputs, locktime) {
   // ── UNASSIGNED OUTPUTS ──
   validOutputs.forEach((o, idx) => {
     if (!outputsWithRungs.has(o.id)) {
-      warnings.push(`Output ${idx + 1}: no rungs assigned — output will have no spending conditions`);
+      warnings.push(`Output ${idx + 1}: no rungs assigned --output will have no spending conditions`);
     }
   });
 
   // ── MISSING CHANGE OUTPUT ──
   if (validInputs.length > 0 && validOutputs.length === 1) {
-    warnings.push('Only 1 output defined — no change output. Any excess input value will be lost to fees.');
+    warnings.push('Only 1 output defined --no change output. Any excess input value will be lost to fees.');
   }
   return { errors, warnings };
 }
@@ -3871,7 +3827,7 @@ const _rmd160 = (() => {
     return out;
   };
 })();
-/** Compute HASH160 = RIPEMD160(SHA256(data)) — async due to SubtleCrypto SHA256 */
+/** Compute HASH160 = RIPEMD160(SHA256(data)) --async due to SubtleCrypto SHA256 */
 async function computeHash160(hexData) {
   const sha = await sha256Bytes(hexToBytes(hexData));
   return bytesToHex(_rmd160(sha));
@@ -3931,24 +3887,6 @@ function rungsToConditions(storedRungs) {
 }
 
 // Export a single block to wire format (shared by both export functions)
-function isCompactSigEligible(rung) {
-  const nonRefBlocks = rung.blocks.filter(b => b.type !== 'OUTPUT_REF');
-  if (nonRefBlocks.length !== 1 || nonRefBlocks[0].type !== 'SIG') return false;
-  // PQ schemes must use full block encoding, not compact
-  const scheme = nonRefBlocks[0].values?.scheme || rung.output?.scheme || 'SCHNORR';
-  if (scheme !== 'SCHNORR' && scheme !== 'ECDSA') return false;
-  return true;
-}
-
-function exportCompactSig(rung) {
-  const sigBlock = rung.blocks.find(b => b.type === 'SIG');
-  return {
-    compact_type: 'COMPACT_SIG',
-    pubkey: sigBlock.values.pubkey || '',
-    scheme: sigBlock.values.scheme || rung.output?.scheme || 'SCHNORR'
-  };
-}
-
 function exportBlockFields(block) {
   const def = getBlockDef(block.type);
   const fields = [];
@@ -3984,7 +3922,7 @@ function exportBlockFields(block) {
   return out;
 }
 
-// Reverse of exportBlockFields — converts wire format {type, fields:[{type,hex}]} back to record format {type, values:{fieldName: value}}
+// Reverse of exportBlockFields --converts wire format {type, fields:[{type,hex}]} back to record format {type, values:{fieldName: value}}
 function wireFieldsToValues(wireBlock) {
   const def = getBlockDef(wireBlock.type);
   const values = {};
@@ -4053,10 +3991,6 @@ function exportCreateRungtx(rungs, txOutputs, txInputs, locktime) {
 
   // Build relays array for wire format
   const relays = relayRungs.map(r => {
-    // Compact rung encoding: single SIG block → COMPACT_SIG
-    if (r.compact && isCompactSigEligible(r)) {
-      return exportCompactSig(r);
-    }
     const relay = {
       blocks: r.blocks
         .filter(b => b.type !== 'OUTPUT_REF')
@@ -4083,8 +4017,8 @@ function exportCreateRungtx(rungs, txOutputs, txInputs, locktime) {
     }
   });
 
-  // Build outputs — each output gets its conditions from assigned rungs
-  // In v4 RUNG_TX, every output MUST have at least one condition — skip empty ones
+  // Build outputs --each output gets its conditions from assigned rungs
+  // In v4 RUNG_TX, every output MUST have at least one condition --skip empty ones
   const outputs = txOutputs
     .filter(o => rungsByOutput.has(o.id))
     .map(o => {
@@ -4093,10 +4027,6 @@ function exportCreateRungtx(rungs, txOutputs, txInputs, locktime) {
 
       // Build conditions: each rung becomes an entry in the conditions array
       const conditions = assignedRungs.map(rung => {
-        // Compact rung encoding: single SIG block → COMPACT_SIG
-        if (rung.compact && isCompactSigEligible(rung)) {
-          return exportCompactSig(rung);
-        }
         const cond = {
           blocks: rung.blocks
             .filter(b => b.type !== 'OUTPUT_REF')
@@ -4151,9 +4081,6 @@ function exportCreateRungtx(rungs, txOutputs, txInputs, locktime) {
 // Export UI-friendly format (for debugging / display)
 function exportConditions(rungs, txOutputs, txInputs) {
   return rungs.map((rung, ri) => {
-    if (rung.compact && isCompactSigEligible(rung)) {
-      return { ...(rung.label ? { label: rung.label } : {}), ...exportCompactSig(rung) };
-    }
     return {
       ...(rung.label ? { label: rung.label } : {}),
       blocks: rung.blocks.map(exportBlockFields)
@@ -4604,7 +4531,7 @@ function OutputModal({ rung, rungIndex, onChange, txOutputs, onClose }) {
             <div className="block-modal-section">
               <div className="block-modal-section-title">RELAY COIL</div>
               <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-                Relay coil — conditions evaluated and cached, not tied to a TX output. Other rungs reference this relay via their input contact.
+                Relay coil --conditions evaluated and cached, not tied to a TX output. Other rungs reference this relay via their input contact.
               </div>
             </div>
           ) : (
@@ -4664,7 +4591,7 @@ function OutputModal({ rung, rungIndex, onChange, txOutputs, onClose }) {
                   <option value="">— none —</option>
                   {(txOutputs || []).map((o, idx) => (
                     <option key={o.id} value={o.id}>
-                      VOUT {idx}: {o.address ? (o.address.length > 20 ? o.address.substring(0, 10) + '...' + o.address.slice(-6) : o.address) : '(no addr)'} — {(parseInt(o.amount) || 0).toLocaleString()} sats
+                      VOUT {idx}: {o.address ? (o.address.length > 20 ? o.address.substring(0, 10) + '...' + o.address.slice(-6) : o.address) : '(no addr)'} --{(parseInt(o.amount) || 0).toLocaleString()} sats
                     </option>
                   ))}
                 </select>
@@ -4752,7 +4679,7 @@ function BlockModal({ block, onChange, onClose, rungs }) {
                 checked={block.inverted}
                 onChange={(e) => onChange(block.id, '__inverted', e.target.checked)}
               />
-              <label htmlFor="modal-inverted">INVERTED (NOT) — flips SATISFIED ↔ UNSATISFIED</label>
+              <label htmlFor="modal-inverted">INVERTED (NOT) --flips SATISFIED ↔ UNSATISFIED</label>
             </div>
             {def.fields.map(field => {
               if (block.type === 'OUTPUT_REF' && field.name === 'ref_name') {
@@ -4807,7 +4734,7 @@ function BlockModal({ block, onChange, onClose, rungs }) {
               );
             })}
             {def.fields.length === 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No configurable fields — structural block.</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No configurable fields --structural block.</div>
             )}
           </div>
 
@@ -4868,7 +4795,7 @@ function BlockModal({ block, onChange, onClose, rungs }) {
                   <option value="">+ ADD INNER BLOCK...</option>
                   {ALLOWED_INNER_TYPES.map(t => {
                     const d = getBlockDef(t);
-                    return <option key={t} value={t}>{d?.label || t} — {d?.desc?.substring(0, 50)}</option>;
+                    return <option key={t} value={t}>{d?.label || t} --{d?.desc?.substring(0, 50)}</option>;
                   })}
                 </select>
               </div>
@@ -5021,7 +4948,7 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
     }
   }, [rung, onDropBlock, onReorderBlock]);
 
-  // Handle drop on the entire rung (fallback — appends to end)
+  // Handle drop on the entire rung (fallback --appends to end)
   const handleRungDrop = useCallback((e) => {
     e.preventDefault();
     setDropSlot(null);
@@ -5092,7 +5019,7 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
           onDragStart={simMode ? undefined : (e) => { e.dataTransfer.setData('rungdragidx', String(rungIndex)); e.dataTransfer.effectAllowed = 'move'; }}
           onDoubleClick={() => { if (!simMode) setEditing(true); }}
           onClick={() => { if (simMode && !isSpent && onStartScanFrom) onStartScanFrom(rungIndex); }}
-          title={tips ? (simMode ? (isSpent ? 'SPENT — cannot simulate' : 'Click to start step-through for this rung') : 'Drag to reorder · Double-click to rename') : undefined}
+          title={tips ? (simMode ? (isSpent ? 'SPENT --cannot simulate' : 'Click to start step-through for this rung') : 'Drag to reorder · Double-click to rename') : undefined}
         >{displayName}</span>
       )}
       <div className="rung-content">
@@ -5103,7 +5030,7 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
           onDoubleClick={(e) => { if (!simMode) { e.stopPropagation(); setEditingInputName(true); setTimeout(() => inputNoteRef.current?.focus(), 0); } }}
           onContextMenu={(e) => { if (!simMode) { e.preventDefault(); e.stopPropagation(); onInputContextMenu?.(e.clientX, e.clientY, rung); } }}
           onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
-          title={tips ? (simMode ? 'Input contact — TX inputs feeding this rung' : 'Click to select · Double-click to name · Right-click for options') : undefined}
+          title={tips ? (simMode ? 'Input contact --TX inputs feeding this rung' : 'Click to select · Double-click to name · Right-click for options') : undefined}
         >
           <span className="contact-bracket-left">─┤</span>
           <div className="input-contact-body">
@@ -5201,7 +5128,7 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
           onContextMenu={(e) => { if (!simMode) { e.preventDefault(); e.stopPropagation(); onOutputContextMenu?.(e.clientX, e.clientY, rung); } }}
           onMouseDown={(e) => { if (e.button === 2) e.stopPropagation(); }}
           style={{ cursor: 'pointer', position: 'relative' }}
-          title={tips ? (simMode ? 'Output coil — rung result' : 'Click to select · Right-click for options') : undefined}
+          title={tips ? (simMode ? 'Output coil --rung result' : 'Click to select · Right-click for options') : undefined}
         >
           <span className="coil-symbol">{getCoilSymbol(rung.output.type)}</span>
           {(rung.output.name || rung.output.txOutputId) && (
@@ -5219,7 +5146,7 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
           )}
           {!rung.output.txOutputId && !isCoilReferenced && rung.output.type !== 'relay' && <span className="coil-warn" title="No TX output assigned">⚠</span>}
           {simMode && !isSpent && !isSteppingThrough && onExecuteRung && (
-            <span className={`coil-execute ${rungEnergized ? '' : 'coil-execute-dim'}`} onClick={(e) => { e.stopPropagation(); onExecuteRung(rung.id); }} title={tips ? (rungEnergized ? 'Execute this rung — marks as spent, cascades to shared inputs' : 'Force-execute — skip step-through, mark spent immediately') : undefined}>{rungEnergized ? 'EXECUTE' : 'FORCE'}</span>
+            <span className={`coil-execute ${rungEnergized ? '' : 'coil-execute-dim'}`} onClick={(e) => { e.stopPropagation(); onExecuteRung(rung.id); }} title={tips ? (rungEnergized ? 'Execute this rung --marks as spent, cascades to shared inputs' : 'Force-execute --skip step-through, mark spent immediately') : undefined}>{rungEnergized ? 'EXECUTE' : 'FORCE'}</span>
           )}
           {stepCoilReached && (
             <span className="coil-execute" style={{ color: '#00ff88', borderColor: '#00ff88' }}>SPENT</span>
@@ -5227,15 +5154,6 @@ function RungView({ rung, rungIndex, rungCount, selectedBlock, selectedCoil, sel
         </div>
         <div className="rail-right" />
       </div>
-      {isCompactSigEligible(rung) && !simMode && (
-        <label className="compact-toggle" title="Encode as COMPACT_SIG — single SIG rung uses compact wire format" onClick={(e) => e.stopPropagation()}>
-          <input type="checkbox" checked={!!rung.compact} onChange={(e) => onRungChange?.(rung.id, 'compact', e.target.checked)} />
-          <span className="compact-toggle-label">Compact</span>
-        </label>
-      )}
-      {rung.compact && isCompactSigEligible(rung) && (
-        <span className="compact-badge">COMPACT</span>
-      )}
       {!simMode && (
         <div className="rung-controls">
           {rungIndex > 0 && <div className="rung-ctrl-btn" onClick={() => onMoveRung?.(rungIndex, rungIndex - 1)} title="Move rung up">▲</div>}
@@ -5457,12 +5375,12 @@ function LadderView({ scanSequence, fullSimState, energizedOutputs, energizedRun
           <button className="zoom-btn" onClick={() => setZoom(z => Math.round(Math.max(0.3, z - 0.1) * 10) / 10)} title="Zoom out">−</button>
           <span className="zoom-level" onClick={resetView} style={{ cursor: 'pointer' }} title="Click to reset zoom">{Math.round(zoom * 100)}%</span>
           <button className="zoom-btn" onClick={() => setZoom(z => Math.round(Math.min(3, z + 0.1) * 10) / 10)} title="Zoom in">+</button>
-          <button className="zoom-btn" onClick={resetView} title="Reset view — zoom 100% and re-centre">⌂</button>
-          {!simMode && <button className="zoom-btn" onClick={onJustifyLeft} title="Justify left — pack all blocks to the left">⫷</button>}
+          <button className="zoom-btn" onClick={resetView} title="Reset view --zoom 100% and re-centre">⌂</button>
+          {!simMode && <button className="zoom-btn" onClick={onJustifyLeft} title="Justify left --pack all blocks to the left">⫷</button>}
         </div>
         <div style={{ flex: 1 }} />
         {!simMode && <button className="ladder-toolbar-btn" onClick={onAddRung}>+ RUNG</button>}
-        {!simMode && <button className="ladder-toolbar-btn" onClick={onAddChangeRung} style={{ color: 'var(--green-bright)', borderColor: 'var(--green-dim)' }} title="Add a compact SIG change output rung">+ CHANGE</button>}
+        {!simMode && <button className="ladder-toolbar-btn" onClick={onAddChangeRung} style={{ color: 'var(--green-bright)', borderColor: 'var(--green-dim)' }} title="Add a SIG change output rung">+ CHANGE</button>}
         {!simMode && <button className="ladder-toolbar-btn" onClick={onFillAllTestData} style={{ color: 'var(--cyan)', borderColor: 'rgba(0,212,255,0.3)' }} title="Fill all blocks with valid test data">FILL TEST DATA</button>}
         {!simMode && <button className="ladder-toolbar-btn" onClick={onClear} style={{ color: 'var(--red)', borderColor: 'var(--red-dim)' }} title="Clear all rungs and start fresh">CLEAR</button>}
         <button className="ladder-toolbar-btn" onClick={onToggleFullscreen} title={fullscreen ? 'Exit fullscreen (F11)' : 'Fullscreen (F11)'}>{fullscreen ? '⊡' : '⊞'}</button>
@@ -5591,60 +5509,60 @@ function LadderView({ scanSequence, fullSimState, energizedOutputs, energizedRun
 
 const FIELD_TOOLTIP = {
   // By dataType
-  PUBKEY: 'Compressed public key — 33 bytes (66 hex chars), starts with 02 or 03',
-  SIGNATURE: 'Digital signature — produced at spend time by signing with the private key',
-  HASH256: 'SHA-256 hash — 32 bytes (64 hex chars)',
-  HASH160: 'HASH160 = RIPEMD160(SHA256(data)) — 20 bytes (40 hex chars)',
-  PREIMAGE: 'Preimage data that hashes to the commitment — revealed at spend time (max 252 bytes)',
-  SCRIPT_BODY: 'Serialized inner conditions — up to 520 bytes, used for P2SH/P2WSH/P2TR_SCRIPT inner scripts',
-  SCHEME: 'Signature scheme — SCHNORR (default), ECDSA, or post-quantum (FALCON, DILITHIUM, SPHINCS+)',
+  PUBKEY: 'Compressed public key --33 bytes (66 hex chars), starts with 02 or 03',
+  SIGNATURE: 'Digital signature --produced at spend time by signing with the private key',
+  HASH256: 'SHA-256 hash --32 bytes (64 hex chars)',
+  HASH160: 'HASH160 = RIPEMD160(SHA256(data)) --20 bytes (40 hex chars)',
+  PREIMAGE: 'Preimage data that hashes to the commitment --revealed at spend time (max 252 bytes)',
+  SCRIPT_BODY: 'Serialized inner conditions --up to 520 bytes, used for P2SH/P2WSH/P2TR_SCRIPT inner scripts',
+  SCHEME: 'Signature scheme --SCHNORR (default), ECDSA, or post-quantum (FALCON, DILITHIUM, SPHINCS+)',
   PUBKEY_COMMIT: 'Reserved. No longer used (pubkeys folded into Merkle leaf).',
-  BLOCK_HEIGHT: 'Bitcoin block height — e.g. 860000',
-  TIMESTAMP: 'Unix timestamp in seconds — e.g. 1700000000',
+  BLOCK_HEIGHT: 'Bitcoin block height --e.g. 860000',
+  TIMESTAMP: 'Unix timestamp in seconds --e.g. 1700000000',
   BLOCK_COUNT: 'Number of blocks to wait (relative timelock)',
   TIME_SECONDS: 'Number of seconds to wait (relative timelock, granularity 512s)',
   // By field name
-  pubkey: 'Compressed public key — 33 bytes (66 hex chars), starts with 02 or 03',
+  pubkey: 'Compressed public key --33 bytes (66 hex chars), starts with 02 or 03',
   pubkeys: 'Comma-separated list of compressed public keys (33 bytes each)',
-  signing_key: 'The signer\'s compressed public key — 33 bytes hex',
-  agg_pubkey: 'Aggregated MuSig public key — the combined key of all signers',
-  adaptor_point: 'Adaptor point for the adaptor signature — 32 bytes hex',
+  signing_key: 'The signer\'s compressed public key --33 bytes hex',
+  agg_pubkey: 'Aggregated MuSig public key --the combined key of all signers',
+  adaptor_point: 'Adaptor point for the adaptor signature --32 bytes hex',
   threshold: 'Minimum number of signatures required (e.g. 2 of 3)',
   group_size: 'Total number of signers in the MuSig group',
-  hash: 'Hash value — the preimage must hash to this to satisfy the condition',
-  hash160: 'HASH160 of the public key — RIPEMD160(SHA256(pubkey)), 20 bytes (40 hex chars)',
-  script_body: 'Serialized Ladder Script conditions — the inner script for P2SH/P2WSH/P2TR_SCRIPT (up to 520 bytes)',
-  hash256: 'SHA-256 hash commitment — 32 bytes (64 hex chars)',
+  hash: 'Hash value --the preimage must hash to this to satisfy the condition',
+  hash160: 'HASH160 of the public key --RIPEMD160(SHA256(pubkey)), 20 bytes (40 hex chars)',
+  script_body: 'Serialized Ladder Script conditions --the inner script for P2SH/P2WSH/P2TR_SCRIPT (up to 520 bytes)',
+  hash256: 'SHA-256 hash commitment --32 bytes (64 hex chars)',
   blocks: 'Number of blocks to wait before this condition can be satisfied',
   height: 'Block height at which this condition becomes valid',
   delay: 'Delay in blocks before the action takes effect',
-  recovery_key: 'Recovery public key — used to claw back funds if the hot key is compromised',
-  hot_key: 'Hot spending key — used for day-to-day transactions',
-  template_hash: 'CTV template hash — SHA-256 of the committed transaction template',
-  internal_key: 'Internal public key for Taproot key-path — 33 bytes compressed',
-  preimage: 'Secret preimage data — provide this and the node computes the hash commitment automatically',
-  oracle_pk: 'Oracle\'s public key — the oracle that attests to external data',
-  state: 'Current state value — typically 0 (unset) or 1 (set)',
+  recovery_key: 'Recovery public key --used to claw back funds if the hot key is compromised',
+  hot_key: 'Hot spending key --used for day-to-day transactions',
+  template_hash: 'CTV template hash --SHA-256 of the committed transaction template',
+  internal_key: 'Internal public key for Taproot key-path --33 bytes compressed',
+  preimage: 'Secret preimage data --provide this and the node computes the hash commitment automatically',
+  oracle_pk: 'Oracle\'s public key --the oracle that attests to external data',
+  state: 'Current state value --typically 0 (unset) or 1 (set)',
   count: 'Current counter value',
   current: 'Current counter value',
-  target: 'Target counter value — condition satisfied when counter reaches this',
-  commitment: 'Hash commitment — one-shot blocks become invalid after first use',
+  target: 'Target counter value --condition satisfied when counter reaches this',
+  commitment: 'Hash commitment --one-shot blocks become invalid after first use',
   conditions_hash: 'Hash of the conditions being co-signed',
-  merkle_root: 'Merkle root of the accumulator set — computed from leaves',
+  merkle_root: 'Merkle root of the accumulator set --computed from leaves',
   merkle_leaves: 'Comma-separated list of leaf hashes for the Merkle tree',
-  tag: 'Tag string for tagged hash — domain separator',
-  data: 'Anchor data — 32 bytes hex',
+  tag: 'Tag string for tagged hash --domain separator',
+  data: 'Anchor data --32 bytes hex',
   local_key: 'Local channel party\'s public key',
   remote_key: 'Remote channel party\'s public key',
-  pool_id: 'Pool identifier — 32-byte hex',
-  asset_id: 'Asset identifier for the seal — 32 bytes hex',
+  pool_id: 'Pool identifier --32-byte hex',
+  asset_id: 'Asset identifier for the seal --32 bytes hex',
   state_hash: 'Current state hash of the sealed asset',
   threshold_n: 'Required signatures (n of m)',
   threshold_m: 'Total guardians (n of m)',
   guardian_hash: 'Hash of the guardian set',
-  ref_name: 'Name of the output/relay to reference — must match a coil name or rung label',
-  scheme: 'Signature scheme — SCHNORR (default), ECDSA, or post-quantum',
-  sequence: 'Input sequence number — controls relative timelocks (CSV). Default 0xfffffffe',
+  ref_name: 'Name of the output/relay to reference --must match a coil name or rung label',
+  scheme: 'Signature scheme --SCHNORR (default), ECDSA, or post-quantum',
+  sequence: 'Input sequence number --controls relative timelocks (CSV). Default 0xfffffffe',
 };
 
 function fieldTooltip(field) {
@@ -5674,7 +5592,7 @@ function PropertiesPanel() {
   })) }), [dispatch]);
   const onExpand = useCallback((id) => dispatch({ type: 'SET_EXPANDED_BLOCK', value: id }), [dispatch]);
 
-  // Collect all rung outputs for OUTPUT_REF dropdown (must be before early return — hooks rules)
+  // Collect all rung outputs for OUTPUT_REF dropdown (must be before early return --hooks rules)
   const allOutputs = useMemo(() => {
     if (!rungs) return [];
     const items = [];
@@ -5708,7 +5626,7 @@ function PropertiesPanel() {
     <div>
       <div className="prop-section">
         <div className="prop-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>BLOCK — {block.type}</span>
+          <span>BLOCK --{block.type}</span>
           <div style={{ display: 'flex', gap: 4 }}>
             <button className="block-modal-expand-btn" onClick={() => {
               const testVals = generateTestData(block.type);
@@ -5718,12 +5636,12 @@ function PropertiesPanel() {
           </div>
         </div>
         <div className="prop-row">
-          <span className="prop-label" title="Optional label for this block — helps identify it in complex transactions">Name</span>
+          <span className="prop-label" title="Optional label for this block --helps identify it in complex transactions">Name</span>
           <input
             className="prop-input"
             value={block.name || ''}
             placeholder="Label this block..."
-            title="Optional label for this block — helps identify it in complex transactions"
+            title="Optional label for this block --helps identify it in complex transactions"
             onChange={(e) => onChange(block.id, '__name', e.target.value)}
           />
         </div>
@@ -5732,10 +5650,10 @@ function PropertiesPanel() {
             type="checkbox"
             id="inverted"
             checked={block.inverted}
-            title="Invert this condition — SATISFIED becomes UNSATISFIED and vice versa"
+            title="Invert this condition --SATISFIED becomes UNSATISFIED and vice versa"
             onChange={(e) => onChange(block.id, '__inverted', e.target.checked)}
           />
-          <label htmlFor="inverted" title="Invert this condition — SATISFIED becomes UNSATISFIED and vice versa">INVERTED (NOT)</label>
+          <label htmlFor="inverted" title="Invert this condition --SATISFIED becomes UNSATISFIED and vice versa">INVERTED (NOT)</label>
         </div>
       </div>
       {def.fields.length > 0 && (
@@ -5767,11 +5685,11 @@ function PropertiesPanel() {
             if (field.dataType === 'SCHEME') {
               return (
                 <div key={field.name} className="prop-row">
-                  <span className="prop-label" title="Signature scheme — determines the cryptographic algorithm used for signing">{field.label}</span>
+                  <span className="prop-label" title="Signature scheme --determines the cryptographic algorithm used for signing">{field.label}</span>
                   <select
                     className="prop-select"
                     value={block.values[field.name] || ''}
-                    title="Signature scheme — SCHNORR (default BIP-340), ECDSA (legacy), or post-quantum algorithms"
+                    title="Signature scheme --SCHNORR (default BIP-340), ECDSA (legacy), or post-quantum algorithms"
                     onChange={(e) => onChange(block.id, field.name, e.target.value)}
                   >
                     <option value="">SCHNORR (default)</option>
@@ -5861,17 +5779,17 @@ function TxPanel() {
               )}
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Transaction ID of the UTXO to spend — 64 hex characters">TXID</span>
+              <span className="prop-label" title="Transaction ID of the UTXO to spend --64 hex characters">TXID</span>
               <input
                 className="prop-input"
                 value={input.txid}
                 placeholder="64-char hex"
-                title="Transaction ID of the UTXO to spend — 64 hex characters from a previous transaction"
+                title="Transaction ID of the UTXO to spend --64 hex characters from a previous transaction"
                 onChange={(e) => onInputChange(input.id, 'txid', e.target.value)}
               />
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Output index within the referenced transaction — which output to spend">VOUT</span>
+              <span className="prop-label" title="Output index within the referenced transaction --which output to spend">VOUT</span>
               <input
                 className="prop-input"
                 type="number"
@@ -5883,12 +5801,12 @@ function TxPanel() {
               />
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="nSequence — controls relative timelocks (CSV). Default 0xfffffffe enables nLockTime">Sequence</span>
+              <span className="prop-label" title="nSequence --controls relative timelocks (CSV). Default 0xfffffffe enables nLockTime">Sequence</span>
               <input
                 className="prop-input"
                 value={input.sequence || ''}
                 placeholder="0xfffffffe (default)"
-                title="nSequence number — set for CSV relative timelocks. Default 0xfffffffe enables nLockTime without CSV"
+                title="nSequence number --set for CSV relative timelocks. Default 0xfffffffe enables nLockTime without CSV"
                 onChange={(e) => onInputChange(input.id, 'sequence', e.target.value)}
                 style={{ flex: 1 }}
               />
@@ -5912,12 +5830,12 @@ function TxPanel() {
               )}
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Destination Bitcoin address — bc1q... (segwit), bc1p... (taproot), or raw script hex">Address</span>
+              <span className="prop-label" title="Destination Bitcoin address --bc1q... (segwit), bc1p... (taproot), or raw script hex">Address</span>
               <input
                 className="prop-input"
                 value={output.address}
                 placeholder="bc1q... or script hex"
-                title="Destination Bitcoin address — where funds are sent when this output's conditions are satisfied"
+                title="Destination Bitcoin address --where funds are sent when this output's conditions are satisfied"
                 onChange={(e) => onOutputChange(output.id, 'address', e.target.value)}
               />
             </div>
@@ -5928,7 +5846,7 @@ function TxPanel() {
                 type="number"
                 value={output.amount}
                 placeholder="sats"
-                title="Output amount in satoshis — total outputs should be less than total inputs (difference = miner fee)"
+                title="Output amount in satoshis --total outputs should be less than total inputs (difference = miner fee)"
                 onChange={(e) => onOutputChange(output.id, 'amount', e.target.value)}
               />
               <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>sats</span>
@@ -5961,13 +5879,13 @@ function TxPanel() {
           Set for CLTV spends. Block height or unix timestamp.
         </div>
         <div className="prop-row">
-          <span className="prop-label" title="Transaction locktime — block height (< 500M) or unix timestamp (>= 500M). Required for CLTV conditions">nLockTime</span>
+          <span className="prop-label" title="Transaction locktime --block height (< 500M) or unix timestamp (>= 500M). Required for CLTV conditions">nLockTime</span>
           <input
             className="prop-input"
             type="number"
             value={locktime || 0}
             min="0"
-            title="Transaction locktime — set to the CLTV block height or timestamp. 0 = no locktime"
+            title="Transaction locktime --set to the CLTV block height or timestamp. 0 = no locktime"
             onChange={(e) => onLocktimeChange(parseInt(e.target.value) || 0)}
           />
         </div>
@@ -6012,7 +5930,7 @@ function InputPropertiesPanel({ rungId }) {
   return (
     <div>
       <div className="prop-section">
-        <div className="prop-section-title">TX INPUTS — {rungNum}</div>
+        <div className="prop-section-title">TX INPUTS --{rungNum}</div>
         <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.4 }}>
           Select which UTXOs this spending path consumes. Define inputs in the TX tab first.
         </div>
@@ -6124,24 +6042,24 @@ function CoilPropertiesPanel({ rungId }) {
   return (
     <div>
       <div className="prop-section">
-        <div className="prop-section-title">OUTPUT — {rungNum}</div>
+        <div className="prop-section-title">OUTPUT --{rungNum}</div>
         <div className="prop-row">
-          <span className="prop-label" title="Name this spending path — used for cross-referencing between rungs">Name</span>
+          <span className="prop-label" title="Name this spending path --used for cross-referencing between rungs">Name</span>
           <input
             className="prop-input"
             value={rung.output.name}
             placeholder="e.g. SPEND_PATH"
-            title="Name this output/spending path — other rungs can reference it via OUTPUT_REF or relay references"
+            title="Name this output/spending path --other rungs can reference it via OUTPUT_REF or relay references"
             onChange={(e) => onChange(rung.id, 'name', e.target.value.toUpperCase())}
             style={{ textTransform: 'uppercase' }}
           />
         </div>
         <div className="prop-row">
-          <span className="prop-label" title="Coil type — Standard (normal spend), Relay (internal logic, no TX output), Latch/Unlatch (state), etc.">Coil Type</span>
+          <span className="prop-label" title="Coil type --Standard (normal spend), Relay (internal logic, no TX output), Latch/Unlatch (state), etc.">Coil Type</span>
           <select
             className="prop-select"
             value={rung.output.type}
-            title="Coil type — Standard outputs map to TX outputs. Relay coils are internal logic gates referenced by other rungs"
+            title="Coil type --Standard outputs map to TX outputs. Relay coils are internal logic gates referenced by other rungs"
             onChange={(e) => onChange(rung.id, 'type', e.target.value)}
           >
             {COIL_TYPES.map(ct => (
@@ -6155,7 +6073,7 @@ function CoilPropertiesPanel({ rungId }) {
         <div className="prop-section">
           <div className="prop-section-title">RELAY COIL</div>
           <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-            <div style={{ marginBottom: 6 }}>This is a <span style={{ color: 'var(--amber)' }}>relay coil</span> — its conditions are evaluated and cached, but it does not map to a TX output.</div>
+            <div style={{ marginBottom: 6 }}>This is a <span style={{ color: 'var(--amber)' }}>relay coil</span> --its conditions are evaluated and cached, but it does not map to a TX output.</div>
             <div>Other rungs (and relays) can reference this relay via the <span style={{ color: 'var(--amber-dim)' }}>Relay References</span> panel on their input contact, enabling AND composition across rungs.</div>
           </div>
         </div>
@@ -6167,11 +6085,11 @@ function CoilPropertiesPanel({ rungId }) {
               C++ RPC coil settings. These define how the output is unlocked on-chain.
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Wire coil type — UNLOCK (standard spend), UNLOCK_TO (spend to address + conditions), COVENANT (constrain spending tx)">Coil Type</span>
+              <span className="prop-label" title="Wire coil type --UNLOCK (standard spend), UNLOCK_TO (spend to address + conditions), COVENANT (constrain spending tx)">Coil Type</span>
               <select
                 className="prop-select"
                 value={rung.output.wireType || 'UNLOCK'}
-                title="How this output is unlocked on-chain — UNLOCK for standard spends, COVENANT to constrain the spending transaction"
+                title="How this output is unlocked on-chain --UNLOCK for standard spends, COVENANT to constrain the spending transaction"
                 onChange={(e) => onChange(rung.id, 'wireType', e.target.value)}
               >
                 {WIRE_COIL_TYPES.map(ct => (
@@ -6180,7 +6098,7 @@ function CoilPropertiesPanel({ rungId }) {
               </select>
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Attestation mode — how signatures are attached to the witness">Attestation</span>
+              <span className="prop-label" title="Attestation mode --how signatures are attached to the witness">Attestation</span>
               <select
                 className="prop-select"
                 value={rung.output.attestation || 'INLINE'}
@@ -6193,11 +6111,11 @@ function CoilPropertiesPanel({ rungId }) {
               </select>
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Default signature scheme for this rung — can be overridden per block">Scheme</span>
+              <span className="prop-label" title="Default signature scheme for this rung --can be overridden per block">Scheme</span>
               <select
                 className="prop-select"
                 value={rung.output.scheme || 'SCHNORR'}
-                title="Default signature scheme — SCHNORR (BIP-340), ECDSA (legacy), or post-quantum algorithms"
+                title="Default signature scheme --SCHNORR (BIP-340), ECDSA (legacy), or post-quantum algorithms"
                 onChange={(e) => onChange(rung.id, 'scheme', e.target.value)}
               >
                 {SCHEME_TYPES.map(st => (
@@ -6213,17 +6131,17 @@ function CoilPropertiesPanel({ rungId }) {
               Assign a transaction output to this rung. When this spending path is satisfied, these funds are sent.
             </div>
             <div className="prop-row">
-              <span className="prop-label" title="Assign a TX output to this rung — the funds sent when this spending path is satisfied">VOUT</span>
+              <span className="prop-label" title="Assign a TX output to this rung --the funds sent when this spending path is satisfied">VOUT</span>
               <select
                 className="prop-select"
                 value={rung.output.txOutputId || ''}
-                title="Link this rung to a transaction output — defines which funds are released when conditions are met"
+                title="Link this rung to a transaction output --defines which funds are released when conditions are met"
                 onChange={(e) => onChange(rung.id, 'txOutputId', e.target.value ? parseInt(e.target.value) : null)}
               >
                 <option value="">— none —</option>
                 {(txOutputs || []).map((o, idx) => (
                   <option key={o.id} value={o.id}>
-                    VOUT {idx}: {o.address ? (o.address.length > 20 ? o.address.substring(0, 10) + '...' + o.address.slice(-6) : o.address) : '(no addr)'} — {(parseInt(o.amount) || 0).toLocaleString()} sats
+                    VOUT {idx}: {o.address ? (o.address.length > 20 ? o.address.substring(0, 10) + '...' + o.address.slice(-6) : o.address) : '(no addr)'} --{(parseInt(o.amount) || 0).toLocaleString()} sats
                   </option>
                 ))}
               </select>
@@ -6298,7 +6216,7 @@ function HighlightedJson({ scanStep }) {
         const outStart = cursor;
         const outJson = JSON.stringify(output, null, 2);
         const outLineCount = outJson.split('\n').length;
-        // Adjust for indent — each line in the output gets +4 spaces indent in the parent
+        // Adjust for indent --each line in the output gets +4 spaces indent in the parent
         const outEnd = outStart + outLineCount - 1;
         outputRanges.push({ outputIdx: outIdx, startLine: outStart, endLine: outEnd });
 
@@ -6396,7 +6314,7 @@ function HighlightedJson({ scanStep }) {
                 annotations[i].state = result === 'unsatisfied' ? 'failed' : 'passed';
               }
             } else if (bIdx === simActiveStep) {
-              // Current block — cursor here
+              // Current block --cursor here
               for (let i = br.startLine; i <= br.endLine && i < annotations.length; i++) {
                 annotations[i].state = 'cursor';
               }
@@ -6416,7 +6334,7 @@ function HighlightedJson({ scanStep }) {
       }
     }
 
-    // 3. Scan system (play button) — if no step-through is active
+    // 3. Scan system (play button) --if no step-through is active
     if (!simActiveRungId && scanPhase && scanPhase !== 'idle') {
       // Apply scan results: each rung maps to a condition range
       rungCondMap.forEach((rc, rcIdx) => {
@@ -6468,7 +6386,7 @@ function HighlightedJson({ scanStep }) {
             annotations[br.startLine].marker = true;
           }
         } else if (scanStep && scanStep.rung === rungIdx && scanStep.type === 'coil') {
-          // Scanning the coil — mark whole condition as cursor
+          // Scanning the coil --mark whole condition as cursor
           for (let i = condRange.startLine; i <= condRange.endLine && i < annotations.length; i++) {
             if (annotations[i].state === 'neutral' || annotations[i].state === 'active-context') {
               annotations[i].state = 'cursor';
@@ -6476,7 +6394,7 @@ function HighlightedJson({ scanStep }) {
           }
           annotations[condRange.startLine].marker = true;
         } else if (scanStep && scanStep.rung === rungIdx && scanStep.type === 'input') {
-          // Scanning the input — light up the condition context
+          // Scanning the input --light up the condition context
           for (let i = condRange.startLine; i <= condRange.endLine && i < annotations.length; i++) {
             annotations[i].state = 'active-context';
           }
@@ -6716,7 +6634,7 @@ function RegisterTable({ fullSimState }) {
   return (
     <div className="register-area" style={{ maxHeight: expanded ? 200 : 26 }}>
       <div className="register-header" onClick={() => setExpanded(!expanded)}>
-        <span className="register-header-title">REGISTER TABLE — {registers.length} ENTRIES</span>
+        <span className="register-header-title">REGISTER TABLE --{registers.length} ENTRIES</span>
         <span className="register-header-toggle">{expanded ? '▼' : '▲'}</span>
       </div>
       {expanded && (
@@ -6754,7 +6672,7 @@ function RegisterTable({ fullSimState }) {
 // EXAMPLES LIBRARY
 // ═══════════════════════════════════════════════════════════════
 
-// Fake PQ public keys (truncated for display — real Falcon-512 = 897 bytes, Dilithium3 = 1952 bytes)
+// Fake PQ public keys (truncated for display --real Falcon-512 = 897 bytes, Dilithium3 = 1952 bytes)
 const FAKE_PQ = {
   falcon1: 'f512a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0',
   falcon2: 'f512ff00ee11dd22cc33bb44aa5599668877f512ff00ee11dd22cc33bb44aa5599668877ff00ee11dd22cc33bb44aa5599668877ff00ee11dd22cc33bb44aa559966',
@@ -6832,7 +6750,7 @@ const EXAMPLES = [
   },
   {
     title: 'ADAPTOR SIG SWAP',
-    desc: 'Schnorr adaptor signature atomic swap. On-chain adapted sig reveals the adaptor secret for the counterparty to claim.\n\nEXECUTE: Adapted Schnorr signature — broadcasting reveals the secret.\nCANCEL: After 288 blocks, both parties must co-sign to cancel.',
+    desc: 'Schnorr adaptor signature atomic swap. On-chain adapted sig reveals the adaptor secret for the counterparty to claim.\n\nEXECUTE: Adapted Schnorr signature --broadcasting reveals the secret.\nCANCEL: After 288 blocks, both parties must co-sign to cancel.',
     tags: [['ADAPTOR_SIG', 'sig'], ['SIG', 'sig'], ['CSV', 'time']],
     rungs: [
       { label: 'EXECUTE', blocks: [
@@ -6875,7 +6793,7 @@ const EXAMPLES = [
   },
   {
     title: 'VAULT WITH UNVAULT + CLAWBACK',
-    desc: 'Bitcoin vault pattern: hot key spends after CSV delay, recovery key sweeps immediately. VAULT_LOCK is self-contained (sig + delay check).\n\nUNVAULT: Hot key signs, then waits 10 blocks before funds release.\nCLAWBACK: Cold key can immediately sweep — cancels any pending unvault.',
+    desc: 'Bitcoin vault pattern: hot key spends after CSV delay, recovery key sweeps immediately. VAULT_LOCK is self-contained (sig + delay check).\n\nUNVAULT: Hot key signs, then waits 10 blocks before funds release.\nCLAWBACK: Cold key can immediately sweep --cancels any pending unvault.',
     tags: [['VAULT', 'cov']],
     rungs: [
       { label: 'UNVAULT', blocks: [
@@ -7125,7 +7043,7 @@ const EXAMPLES = [
   },
   {
     title: 'QUANTUM-SAFE VAULT',
-    desc: 'Post-quantum secured vault using FALCON-512 signatures. Hot spend via Falcon, cold recovery via Dilithium3 after 1-year CSV. Quantum-resistant key commitment.\n\nPQ_SPEND: Falcon-512 signature with amount lock — quantum-safe daily operations.\nPQ_RECOVER: After 1 year, Dilithium3 key recovers funds.\nHYBRID: Both Falcon-512 + classical Schnorr required — belt-and-suspenders.',
+    desc: 'Post-quantum secured vault using FALCON-512 signatures. Hot spend via Falcon, cold recovery via Dilithium3 after 1-year CSV. Quantum-resistant key commitment.\n\nPQ_SPEND: Falcon-512 signature with amount lock --quantum-safe daily operations.\nPQ_RECOVER: After 1 year, Dilithium3 key recovers funds.\nHYBRID: Both Falcon-512 + classical Schnorr required --belt-and-suspenders.',
     tags: [['FALCON', 'sig'], ['DILITHIUM', 'sig'], ['CSV', 'time'], ['PQ', 'hash']],
     rungs: [
       { label: 'PQ_SPEND', blocks: [
@@ -7202,7 +7120,7 @@ const EXAMPLES = [
   },
   {
     title: 'MUSIG_THRESHOLD TREASURY',
-    desc: 'Corporate 3-of-5 treasury using MuSig2/FROST aggregate signatures. On-chain looks identical to single-sig (~131 bytes). Recovery path via time-locked backup key.\n\nSPEND: 3-of-5 MuSig threshold produces a single aggregate signature.\nRECOVER: After 1 year, backup key can sweep — protects against key loss.',
+    desc: 'Corporate 3-of-5 treasury using MuSig2/FROST aggregate signatures. On-chain looks identical to single-sig (~131 bytes). Recovery path via time-locked backup key.\n\nSPEND: 3-of-5 MuSig threshold produces a single aggregate signature.\nRECOVER: After 1 year, backup key can sweep --protects against key loss.',
     tags: [['MUSIG_THR', 'sig'], ['CSV', 'time'], ['SIG', 'sig']],
     rungs: [
       { label: 'SPEND', blocks: [
@@ -7222,7 +7140,7 @@ const EXAMPLES = [
   },
   {
     title: 'PTLC PAYMENT CHANNEL',
-    desc: 'Scriptless payment channel using Point Time Locked Contracts. Cooperative close via MuSig, unilateral close reveals adaptor secret after CSV timeout.\n\nCOOP: 2-of-2 MuSig aggregate close — both parties agree on final state.\nFORCE: PTLC adaptor sig + 144-block CSV delay — broadcasting reveals the adaptor secret.',
+    desc: 'Scriptless payment channel using Point Time Locked Contracts. Cooperative close via MuSig, unilateral close reveals adaptor secret after CSV timeout.\n\nCOOP: 2-of-2 MuSig aggregate close --both parties agree on final state.\nFORCE: PTLC adaptor sig + 144-block CSV delay --broadcasting reveals the adaptor secret.',
     tags: [['MUSIG_THR', 'sig'], ['PTLC', 'sig'], ['CSV', 'time']],
     rungs: [
       { label: 'COOP', blocks: [
@@ -7241,7 +7159,7 @@ const EXAMPLES = [
   },
   {
     title: 'CLTV_SIG VESTING SCHEDULE',
-    desc: 'Time-locked payouts at specific block heights. Employee vesting with quarterly unlocks using CLTV_SIG compound blocks.\n\nQ1: First quarter vesting — CLTV_SIG unlocks at block 860000 with AMOUNT_LOCK capping payout at 250k sats.\nQ2: Second quarter — same pattern at block 873000, another 250k sats.\nFULL: Final vesting — CLTV_SIG at block 900000 releases the remaining balance with no amount cap.',
+    desc: 'Time-locked payouts at specific block heights. Employee vesting with quarterly unlocks using CLTV_SIG compound blocks.\n\nQ1: First quarter vesting --CLTV_SIG unlocks at block 860000 with AMOUNT_LOCK capping payout at 250k sats.\nQ2: Second quarter --same pattern at block 873000, another 250k sats.\nFULL: Final vesting --CLTV_SIG at block 900000 releases the remaining balance with no amount cap.',
     tags: [['CLTV_SIG', 'sig'], ['AMT_LOCK', 'cov']],
     rungs: [
       { label: 'Q1', blocks: [
@@ -7266,7 +7184,7 @@ const EXAMPLES = [
   },
   {
     title: 'TIMELOCKED_MULTISIG VAULT RECOVERY',
-    desc: 'Hot wallet spend, timelocked 2-of-3 recovery, and emergency cold key. The TIMELOCKED_MULTISIG recovery path requires board quorum after 1-week cooling period.\n\nHOT: Daily spending — single SIG with AMOUNT_LOCK capping at 1M sats.\nBOARD: Recovery path — TIMELOCKED_MULTISIG requires 2-of-3 board keys after 1008-block (~1 week) delay.\nCOLD: Emergency sweep — CSV enforces ~1 year delay, then cold key SIG can move all funds.',
+    desc: 'Hot wallet spend, timelocked 2-of-3 recovery, and emergency cold key. The TIMELOCKED_MULTISIG recovery path requires board quorum after 1-week cooling period.\n\nHOT: Daily spending --single SIG with AMOUNT_LOCK capping at 1M sats.\nBOARD: Recovery path --TIMELOCKED_MULTISIG requires 2-of-3 board keys after 1008-block (~1 week) delay.\nCOLD: Emergency sweep --CSV enforces ~1 year delay, then cold key SIG can move all funds.',
     tags: [['SIG', 'sig'], ['TL_MULTI', 'sig'], ['CSV', 'time']],
     rungs: [
       { label: 'HOT', blocks: [
@@ -7292,7 +7210,7 @@ const EXAMPLES = [
 
   {
     title: 'HTLC COMPACT SWAP',
-    desc: 'Atomic swap using the HTLC compound block — hash + timelock + sig in a single block. Saves 16 bytes over decomposed blocks.\n\nCLAIM: Alice claims with HTLC — reveals hash preimage, provides signature, within 144-block window.\nREFUND: Bob recovers with TIMELOCKED_SIG after 288 blocks if Alice never claims.',
+    desc: 'Atomic swap using the HTLC compound block --hash + timelock + sig in a single block. Saves 16 bytes over decomposed blocks.\n\nCLAIM: Alice claims with HTLC --reveals hash preimage, provides signature, within 144-block window.\nREFUND: Bob recovers with TIMELOCKED_SIG after 288 blocks if Alice never claims.',
     tags: [['HTLC', 'compound'], ['SIG', 'sig']],
     rungs: [
       { label: 'CLAIM', blocks: [
@@ -7312,7 +7230,7 @@ const EXAMPLES = [
 
   {
     title: 'HASH_SIG ATOMIC CLAIM',
-    desc: 'Preimage reveal + signature in one compound block. Ideal for atomic swap claim paths where you need hash verification and authorization together.\n\nCLAIM: HASH_SIG compound — reveal preimage matching hash commitment and sign in one block.\nREFUND: CSV enforces 432-block delay, then sender SIG can reclaim funds.',
+    desc: 'Preimage reveal + signature in one compound block. Ideal for atomic swap claim paths where you need hash verification and authorization together.\n\nCLAIM: HASH_SIG compound --reveal preimage matching hash commitment and sign in one block.\nREFUND: CSV enforces 432-block delay, then sender SIG can reclaim funds.',
     tags: [['HASH_SIG', 'compound'], ['CSV', 'time'], ['SIG', 'sig']],
     rungs: [
       { label: 'CLAIM', blocks: [
@@ -7333,7 +7251,7 @@ const EXAMPLES = [
 
   {
     title: 'GOVERNANCE-GATED TREASURY',
-    desc: 'Treasury output restricted by governance constraints. Spending windows, I/O fanout limits, weight cap, and anti-siphon ratio enforcement.\n\nGOVERNED: SIG + 5 governance blocks — EPOCH_GATE limits spend to a 144-block window per 2016-block epoch, INPUT/OUTPUT_COUNT caps I/O fanout, WEIGHT_LIMIT prevents bloated txs, RELATIVE_VALUE enforces 90% minimum change-back (anti-siphon).\nOVERRIDE: 3-of-4 MULTISIG board override bypasses all governance constraints.',
+    desc: 'Treasury output restricted by governance constraints. Spending windows, I/O fanout limits, weight cap, and anti-siphon ratio enforcement.\n\nGOVERNED: SIG + 5 governance blocks --EPOCH_GATE limits spend to a 144-block window per 2016-block epoch, INPUT/OUTPUT_COUNT caps I/O fanout, WEIGHT_LIMIT prevents bloated txs, RELATIVE_VALUE enforces 90% minimum change-back (anti-siphon).\nOVERRIDE: 3-of-4 MULTISIG board override bypasses all governance constraints.',
     tags: [['EPOCH', 'gov'], ['IN_COUNT', 'gov'], ['OUT_COUNT', 'gov'], ['WT_LIMIT', 'gov'], ['REL_VAL', 'gov'], ['SIG', 'sig']],
     rungs: [
       { label: 'GOVERNED', blocks: [
@@ -7402,7 +7320,7 @@ const EXAMPLES = [
 
   {
     title: 'TIMER WATCHDOG',
-    desc: 'Continuous timer requires N consecutive blocks of activity. Off-delay timer holds authorization after trigger expires. Tagged hash proves domain-separated attestation.\n\nACTIVE: TIMER_CONTINUOUS (inverted — must NOT have reached 144 blocks yet) + SIG + RECURSE_MODIFIED increments the counter each spend, keeping the watchdog alive.\nHELD: TIMER_OFF_DELAY holds authorization for 72 blocks after the trigger expires — grace period.\nEMERG: CSV 1008-block timeout + SIG — if watchdog is never fed, emergency key sweeps.',
+    desc: 'Continuous timer requires N consecutive blocks of activity. Off-delay timer holds authorization after trigger expires. Tagged hash proves domain-separated attestation.\n\nACTIVE: TIMER_CONTINUOUS (inverted --must NOT have reached 144 blocks yet) + SIG + RECURSE_MODIFIED increments the counter each spend, keeping the watchdog alive.\nHELD: TIMER_OFF_DELAY holds authorization for 72 blocks after the trigger expires --grace period.\nEMERG: CSV 1008-block timeout + SIG --if watchdog is never fed, emergency key sweeps.',
     tags: [['TMR_CONT', 'plc'], ['TMR_OFF', 'plc'], ['TAGGED', 'hash'], ['SIG', 'sig']],
     rungs: [
       { label: 'ACTIVE', blocks: [
@@ -7430,7 +7348,7 @@ const EXAMPLES = [
 
   {
     title: 'PRESET COUNTER BOARD VOTE',
-    desc: 'Multi-party approval accumulator. Counter tracks board approvals; once preset (3) is reached, funds release. Hysteresis value band limits payout size.\n\nAPPROVE: COUNTER_PRESET at 0/3 + SIG + HYSTERESIS_VALUE (100k–5M sats band) + RECURSE_MODIFIED increments counter. Each board member casts a vote by spending this rung.\nEXECUTE: COUNTER_PRESET at 3/3 — once 3 votes accumulated, SIG releases the funds.\nCANCEL: 3-of-4 MULTISIG — board supermajority can cancel the vote at any time.',
+    desc: 'Multi-party approval accumulator. Counter tracks board approvals; once preset (3) is reached, funds release. Hysteresis value band limits payout size.\n\nAPPROVE: COUNTER_PRESET at 0/3 + SIG + HYSTERESIS_VALUE (100k–5M sats band) + RECURSE_MODIFIED increments counter. Each board member casts a vote by spending this rung.\nEXECUTE: COUNTER_PRESET at 3/3 --once 3 votes accumulated, SIG releases the funds.\nCANCEL: 3-of-4 MULTISIG --board supermajority can cancel the vote at any time.',
     tags: [['CTR_PRE', 'plc'], ['HYST_VAL', 'plc'], ['SIG', 'sig']],
     rungs: [
       { label: 'APPROVE', blocks: [
@@ -7458,7 +7376,7 @@ const EXAMPLES = [
 
   {
     title: 'ANCHORED CHANNEL + RECURSE_UNTIL',
-    desc: 'Lightning channel with anchor binding and recursive state until target block height. Channel anchor tags the commitment; RECURSE_UNTIL bounds the protocol lifetime.\n\nCOOP: Cooperative close — MUSIG_THRESHOLD 2-of-2 + ANCHOR_CHANNEL binding.\nUPDATE: State update — SIG + ANCHOR_CHANNEL re-binding + RECURSE_UNTIL allows recursive state transitions up to block 950000.\nEXPIRE: Channel expiry — CLTV at block 950000 + SIG closes the channel unilaterally.',
+    desc: 'Lightning channel with anchor binding and recursive state until target block height. Channel anchor tags the commitment; RECURSE_UNTIL bounds the protocol lifetime.\n\nCOOP: Cooperative close --MUSIG_THRESHOLD 2-of-2 + ANCHOR_CHANNEL binding.\nUPDATE: State update --SIG + ANCHOR_CHANNEL re-binding + RECURSE_UNTIL allows recursive state transitions up to block 950000.\nEXPIRE: Channel expiry --CLTV at block 950000 + SIG closes the channel unilaterally.',
     tags: [['A_CHAN', 'anchor'], ['REC_UNTIL', 'rec'], ['MUSIG_THR', 'sig']],
     rungs: [
       { label: 'COOP', blocks: [
@@ -7484,8 +7402,8 @@ const EXAMPLES = [
     inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
   },
   {
-    title: 'SINGLE SIG (COMPACT)',
-    desc: 'Simplest possible RUNG_TX: a single compact-encoded SIG rung. The wire format uses COMPACT_SIG encoding — just the pubkey commit and scheme, no block array. Minimal transaction size.',
+    title: 'SINGLE SIG',
+    desc: 'Simplest possible RUNG_TX: a single SIG rung with one spend path. Minimal transaction size.',
     tags: [['SIG', 'sig']],
     rungs: [
       { label: 'SPEND', blocks: [
@@ -7500,8 +7418,8 @@ const EXAMPLES = [
   },
 
   {
-    title: 'DUAL SIG (COMPACT)',
-    desc: 'Two independent spend paths, each a single compact-encoded SIG rung. Hot key for daily spending, cold key for recovery. Both rungs use COMPACT_SIG wire format — no block arrays needed.',
+    title: 'DUAL SIG',
+    desc: 'Two independent spend paths, each a single SIG rung. Hot key for daily spending, cold key for recovery.',
     tags: [['SIG', 'sig'], ['SIG', 'sig']],
     rungs: [
       { label: 'HOT', blocks: [
@@ -7569,7 +7487,7 @@ const EXAMPLES = [
 
   {
     title: 'LEGACY P2PKH + RECOVERY',
-    desc: 'P2PKH legacy spending with a time-locked recovery path. Demonstrates legacy Bitcoin address semantics wrapped as typed Ladder Script blocks — same spending logic, no arbitrary data surfaces.\n\nSPEND: P2PKH_LEGACY — provide pubkey matching HASH160 commitment + signature. Same as Bitcoin P2PKH but in typed fields.\nRECOVER: CSV 52560-block (~1 year) delay + native SIG recovery key.',
+    desc: 'P2PKH legacy spending with a time-locked recovery path. Demonstrates legacy Bitcoin address semantics wrapped as typed Ladder Script blocks --same spending logic, no arbitrary data surfaces.\n\nSPEND: P2PKH_LEGACY --provide pubkey matching HASH160 commitment + signature. Same as Bitcoin P2PKH but in typed fields.\nRECOVER: CSV 52560-block (~1 year) delay + native SIG recovery key.',
     tags: [['P2PKH', 'legacy'], ['CSV', 'time'], ['SIG', 'sig']],
     rungs: [
       { label: 'SPEND', blocks: [
@@ -7590,7 +7508,7 @@ const EXAMPLES = [
 
   {
     title: 'LEGACY P2SH MULTISIG VAULT',
-    desc: 'P2SH legacy wrapping inner Ladder Script conditions — the PREIMAGE carries serialized conditions that are deserialized and evaluated. Combines with a P2WPKH hot-spend path and CLTV cold sweep.\n\nHOT: P2WPKH_LEGACY — SegWit-wrapped hash-based spend, delegates to P2PKH evaluation internally.\nVAULT: P2SH_LEGACY — HASH160 of inner conditions committed on-chain; PREIMAGE reveals the Ladder Script conditions at spend time.\nCOLD: CLTV at block 900000 + native SIG — absolute timelock cold sweep.',
+    desc: 'P2SH legacy wrapping inner Ladder Script conditions --the PREIMAGE carries serialized conditions that are deserialized and evaluated. Combines with a P2WPKH hot-spend path and CLTV cold sweep.\n\nHOT: P2WPKH_LEGACY --SegWit-wrapped hash-based spend, delegates to P2PKH evaluation internally.\nVAULT: P2SH_LEGACY --HASH160 of inner conditions committed on-chain; PREIMAGE reveals the Ladder Script conditions at spend time.\nCOLD: CLTV at block 900000 + native SIG --absolute timelock cold sweep.',
     tags: [['P2SH', 'legacy'], ['P2WPKH', 'legacy'], ['CLTV', 'time']],
     rungs: [
       { label: 'HOT', blocks: [
@@ -7616,7 +7534,7 @@ const EXAMPLES = [
 
   {
     title: 'P2TR TAPROOT MIGRATION',
-    desc: 'Taproot key-path and script-path legacy blocks composed with native Ladder Script. P2TR key-path for daily spending, P2TR_SCRIPT for governed multisig, and a PQ-safe emergency recovery.\n\nKEY: P2TR_LEGACY key-path — Schnorr signature against the tweaked output key. Fastest taproot spend.\nSCRIPT: P2TR_SCRIPT_LEGACY script-path — reveal a Merkle leaf from the script tree. Inner leaf must be valid Ladder Script conditions (closes inscription vector).\nPQ_SAFE: CSV 26000-block delay + FALCON512 post-quantum SIG — emergency migration to quantum-safe key.',
+    desc: 'Taproot key-path and script-path legacy blocks composed with native Ladder Script. P2TR key-path for daily spending, P2TR_SCRIPT for governed multisig, and a PQ-safe emergency recovery.\n\nKEY: P2TR_LEGACY key-path --Schnorr signature against the tweaked output key. Fastest taproot spend.\nSCRIPT: P2TR_SCRIPT_LEGACY script-path --reveal a Merkle leaf from the script tree. Inner leaf must be valid Ladder Script conditions (closes inscription vector).\nPQ_SAFE: CSV 26000-block delay + FALCON512 post-quantum SIG --emergency migration to quantum-safe key.',
     tags: [['P2TR', 'legacy'], ['P2TR_S', 'legacy'], ['SIG', 'sig']],
     rungs: [
       { label: 'KEY', blocks: [
@@ -7642,7 +7560,7 @@ const EXAMPLES = [
 
   {
     title: 'SINGLE SIG (SPHINCS+)',
-    desc: 'Post-quantum single signature using NIST FIPS 205 SPHINCS+-SHA2 (SLH-DSA). Hash-based stateless signatures (~49,216 bytes). Most conservative PQ assumption — security relies only on hash function strength, not lattice hardness.',
+    desc: 'Post-quantum single signature using NIST FIPS 205 SPHINCS+-SHA2 (SLH-DSA). Hash-based stateless signatures (~49,216 bytes). Most conservative PQ assumption --security relies only on hash function strength, not lattice hardness.',
     tags: [['SPHINCS+', 'sig'], ['PQ', 'hash']],
     rungs: [
       { label: 'SPEND', blocks: [
@@ -7749,17 +7667,8 @@ function decodedToBuilderRungs(data) {
 
   const convertRung = (rd) => {
     const rung = createRung();
-    // Handle COMPACT_SIG import
-    if (rd.compact_type === 'COMPACT_SIG') {
-      const block = createBlock('SIG');
-      block.values.pubkey = rd.pubkey || rd.pubkey_commit || '';
-      block.values.scheme = rd.scheme || 'SCHNORR';
-      rung.blocks = [block];
-      rung.compact = true;
-    } else {
-      const blocksData = rd.blocks || rd.contacts || [];
-      rung.blocks = blocksData.map(convertBlock);
-    }
+    const blocksData = rd.blocks || rd.contacts || [];
+    rung.blocks = blocksData.map(convertBlock);
     const coil = rd.coil || {};
     rung.output.wireType = coil.coil_type || coil.type || 'UNLOCK';
     rung.output.attestation = coil.attestation || 'INLINE';
@@ -7768,7 +7677,7 @@ function decodedToBuilderRungs(data) {
     return rung;
   };
 
-  // Format 1: decoderung output — { rungs: [...] } or { n_rungs, rungs: [...] }
+  // Format 1: decoderung output --{ rungs: [...] } or { n_rungs, rungs: [...] }
   if (data.rungs && Array.isArray(data.rungs)) {
     return { rungs: data.rungs.map(convertRung), txInputs: [], txOutputs: [] };
   }
@@ -7776,7 +7685,7 @@ function decodedToBuilderRungs(data) {
   if (Array.isArray(data) && data.length > 0 && (data[0].blocks || data[0].contacts)) {
     return { rungs: data.map(convertRung), txInputs: [], txOutputs: [] };
   }
-  // Format 3: createrungtx / wire format — { inputs, outputs[].conditions[].blocks[] }
+  // Format 3: createrungtx / wire format --{ inputs, outputs[].conditions[].blocks[] }
   if (data.outputs && Array.isArray(data.outputs)) {
     const txInputs = (data.inputs || []).map(i => ({ id: uid(), txid: i.txid || '', vout: i.vout || 0, sequence: i.sequence !== undefined ? String(i.sequence) : '' }));
     const txOutputs = [];
@@ -7802,7 +7711,7 @@ function decodedToBuilderRungs(data) {
     });
     return { rungs, txInputs, txOutputs };
   }
-  // Format 4: raw tx with version 4 — { version: 4, vin, vout[].rung_conditions }
+  // Format 4: raw tx with version 4 --{ version: 4, vin, vout[].rung_conditions }
   if (data.version === 4 && data.vout) {
     const txInputs = (data.vin || []).map(v => ({ id: uid(), txid: v.txid || '', vout: v.vout || 0, sequence: v.sequence !== undefined ? String(v.sequence) : '' }));
     const txOutputs = [];
@@ -7973,7 +7882,7 @@ function ConvertPanel() {
       <div style={sty.section}>
         <div style={sty.label}>PASTE RUNG TX JSON</div>
         <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 6, lineHeight: 1.5 }}>
-          Paste decoded JSON from <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderung</code>, <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>createrungtx</code>, or <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderawtransaction</code> output to visualize it as a ladder diagram. Works offline — no signet connection needed.
+          Paste decoded JSON from <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderung</code>, <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>createrungtx</code>, or <code style={{ color: 'var(--amber)', background: 'var(--bg-primary)', padding: '0 3px' }}>decoderawtransaction</code> output to visualize it as a ladder diagram. Works offline --no signet connection needed.
         </div>
         <textarea
           style={{ ...sty.input, height: 160, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: 11 }}
@@ -8006,9 +7915,9 @@ function ConvertPanel() {
         <div style={{ color: 'var(--text-dim)', fontSize: 11, lineHeight: 1.7 }}>
           <strong style={{ color: 'var(--text-secondary)' }}>Supported formats:</strong>
           <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
-            <li><code style={{ color: 'var(--amber)' }}>decoderung</code> output — decoded witness/conditions with block_type, params</li>
-            <li><code style={{ color: 'var(--amber)' }}>createrungtx</code> format — inputs, outputs with conditions and blocks</li>
-            <li><code style={{ color: 'var(--amber)' }}>decoderawtransaction</code> output — raw tx with scriptPubKey</li>
+            <li><code style={{ color: 'var(--amber)' }}>decoderung</code> output --decoded witness/conditions with block_type, params</li>
+            <li><code style={{ color: 'var(--amber)' }}>createrungtx</code> format --inputs, outputs with conditions and blocks</li>
+            <li><code style={{ color: 'var(--amber)' }}>decoderawtransaction</code> output --raw tx with scriptPubKey</li>
           </ul>
         </div>
       </div>
@@ -8020,7 +7929,7 @@ function ConvertPanel() {
 
 /**
  * planFund: Scan rungs + outputs and compute everything needed to fund a RUNG transaction.
- * Returns a pure data plan — caller handles async API calls and state updates.
+ * Returns a pure data plan --caller handles async API calls and state updates.
  *
  * @param {Array} rungs          - current rungs array
  * @param {Array} txOutputs      - current txOutputs array
@@ -8033,7 +7942,7 @@ function planFund(rungs, txOutputs, options) {
 
   // ── 1. Inventory keys and hashes via BlockRegistry.fundNeeds() ──
   const pubkeyFields = [];    // { ri, bi, field, multi }
-  const emptyPubkeySigs = []; // { ri, bi } — SIG-family blocks with empty pubkey
+  const emptyPubkeySigs = []; // { ri, bi } --SIG-family blocks with empty pubkey
   const hashFields = [];      // { ri, bi, hashType, field }
 
   rungs.forEach((rung, ri) => {
@@ -8079,7 +7988,7 @@ function planFund(rungs, txOutputs, options) {
   const allPubkeysNeeded = new Set();
   pubkeyFields.forEach(pf => {
     if (pf._innerPk) {
-      // Inner block pubkey — use directly
+      // Inner block pubkey --use directly
       allPubkeysNeeded.add(pf._innerPk);
     } else {
       const block = rungs[pf.ri].blocks[pf.bi];
@@ -8233,7 +8142,7 @@ function buildFundOutputs(validTxOutputs, selectedTotal, feeSats) {
 
 /**
  * applyFundKeypairs: Return a new rungs array with replaced pubkeys, hashes, and scheme.
- * Pure function — no state mutation.
+ * Pure function --no state mutation.
  *
  * @param {Array} rungs            - current rungs
  * @param {Map}   oldToNew         - old pubkey -> new pubkey
@@ -8296,14 +8205,14 @@ function applyFundKeypairs(rungs, oldToNew, emptyKeyMap, hashReplacements, schem
 
       return { ...block, values: vals, innerBlocks: updatedInner };
     }),
-    // Also set the coil scheme for COMPACT_SIG outputs
+    // Also set the coil scheme for outputs
     output: rung.output.type !== 'relay' ? { ...rung.output, scheme } : rung.output,
   }));
 }
 
 /**
  * buildRungSnapshot: Build a frozen rungSnapshot array for the localStorage fund record.
- * Pure function — applies key/hash replacements and resolves vout indices.
+ * Pure function --applies key/hash replacements and resolves vout indices.
  *
  * @param {Array} rungs            - rungs to snapshot (pre-filtered: no Change, no relay)
  * @param {Array} newOutputs       - final output array (with addresses and amounts)
@@ -8370,7 +8279,7 @@ function buildRungSnapshot(rungs, newOutputs, oldToNew, emptyKeyMap, hashReplace
 }
 
 // ═══════════════════════════════════════════════════════════════
-// planSpend — pure function that computes spend plan from a record
+// planSpend --pure function that computes spend plan from a record
 // ═══════════════════════════════════════════════════════════════
 // Returns: { targetRung, rungIdx, rungBlocks, signerBlocks, timelocks,
 //            outputClassification, validationResults, needsAccumulatorProof,
@@ -8446,7 +8355,7 @@ function planSpend(record, options) {
         needsAccumulatorProof = true;
         accumulatorLeaves = leaves;
       } else {
-        warnings.push('ACCUMULATOR: no merkle_leaves stored — proof cannot be generated');
+        warnings.push('ACCUMULATOR: no merkle_leaves stored --proof cannot be generated');
         signerBlocks.push({ type: b.type });
       }
       continue;
@@ -8542,7 +8451,7 @@ function planSpend(record, options) {
         continue;
       }
 
-      // buildSigner returned null — try fallback key assignment
+      // buildSigner returned null --try fallback key assignment
       // Single-key types
       const singleKeyTypes = ['SIG', 'ADAPTOR_SIG', 'MUSIG_THRESHOLD', 'VAULT_LOCK', 'TIMELOCKED_SIG', 'CLTV_SIG', 'PTLC'];
       if (singleKeyTypes.includes(b.type)) {
@@ -8598,7 +8507,7 @@ function planSpend(record, options) {
       }
     }
 
-    // ── No buildSigner — types that need no witness (CSV, CLTV, covenants, governance, etc.) ──
+    // ── No buildSigner --types that need no witness (CSV, CLTV, covenants, governance, etc.) ──
     signerBlocks.push({ type: b.type });
   }
 
@@ -8633,7 +8542,7 @@ function planSpend(record, options) {
         inputSequence = vaultDelay;
         infos.push('VAULT_LOCK: hot-key path, delay=' + vaultDelay);
       } else {
-        infos.push('VAULT_LOCK: recovery-key path — no CSV delay');
+        infos.push('VAULT_LOCK: recovery-key path --no CSV delay');
       }
       continue;
     }
@@ -8679,7 +8588,7 @@ function planSpend(record, options) {
           ctvBlock = { outputs: rec.ctvOutputsMap[ctvKey].outputs };
           infos.push('CTV: found pre-committed template outputs');
         } else {
-          warnings.push('CTV block present but no stored template outputs — will build outputs from other blocks');
+          warnings.push('CTV block present but no stored template outputs --will build outputs from other blocks');
         }
         break;
       }
@@ -8698,7 +8607,7 @@ function planSpend(record, options) {
       case 'validation':
         validationBlocks.push(b);
         break;
-      // 'none' — no effect on output construction
+      // 'none' --no effect on output construction
     }
   }
 
@@ -8772,7 +8681,7 @@ function SignetPanel() {
   const [funded, setFunded] = useState(false);
   const [signingData, setSigningData] = useState(null); // { keypairs, spentOutputs }
   const [fundScheme, setFundScheme] = useState('SCHNORR'); // scheme for output conditions
-  const [changeMode, setChangeMode] = useState('auto'); // 'auto' | 'compact' | 'none'
+  const [changeMode, setChangeMode] = useState('auto'); // 'auto' | 'none'
   const [copiedKey, setCopiedKey] = useState(null);
 
   // Auto-detect scheme from diagram's SIG-family blocks
@@ -8800,7 +8709,7 @@ function SignetPanel() {
       return await apiCallBase(endpoint, body);
     } catch (e) {
       const msg = e.message === 'Failed to fetch'
-        ? 'Signet proxy unreachable — check that the ladder-script proxy is running on ' + SIGNET_API
+        ? 'Signet proxy unreachable --check that the ladder-script proxy is running on ' + SIGNET_API
         : e.message;
       if (!silent) setError(msg);
       return null;
@@ -8972,7 +8881,7 @@ function SignetPanel() {
   const handleFundFromWallet = async () => {
     setError(null);
     try {
-    // 1. Pure planning — inventory keys, hashes, outputs, fees
+    // 1. Pure planning --inventory keys, hashes, outputs, fees
     const plan = planFund(rungs, txOutputs, { scheme: fundScheme });
     if (plan.errors.length > 0) { setError(plan.errors[0]); return; }
     const { pubkeyFields, emptyPubkeySigs, allPubkeysNeeded, keypairCount, hashFields,
@@ -9032,7 +8941,7 @@ function SignetPanel() {
       rungs[i] = updatedRungs[i];
     }
 
-    // 6-legacy removed — HASH160(pubkey) for P2PKH/P2WPKH now computed by node via PUBKEY→HASH160 auto-conversion.
+    // 6-legacy removed --HASH160(pubkey) for P2PKH/P2WPKH now computed by node via PUBKEY→HASH160 auto-conversion.
 
     // 6-inner. Serialize inner conditions for P2SH/P2WSH/P2TR_SCRIPT legacy blocks
     for (let ri = 0; ri < updatedRungs.length; ri++) {
@@ -9068,7 +8977,7 @@ function SignetPanel() {
         const scriptHex = decoded.vout[0].scriptPubKey.hex;
         const preimageHex = scriptHex.substring(2); // skip prefix byte
 
-        // Store serialized inner conditions as preimage — node computes hash automatically
+        // Store serialized inner conditions as preimage --node computes hash automatically
         updatedRungs[ri].blocks[bi] = {
           ...block,
           innerBlocks: updatedInner,
@@ -9193,7 +9102,7 @@ function SignetPanel() {
       });
     }
 
-    // 11. Change output handling — respects user's changeMode preference.
+    // 11. Change output handling --respects user's changeMode preference.
     const prevChangeRungs = rungs.filter(r => r.label === 'Change');
     const prevChangeOutputIds = new Set(prevChangeRungs.map(r => r.output?.txOutputId).filter(Boolean));
     if (prevChangeRungs.length > 0) {
@@ -9209,12 +9118,10 @@ function SignetPanel() {
         if (changeAddr) {
           const changeOutputId = uid();
           newOutputs.push({ id: changeOutputId, address: changeAddr.address, amount: changeSats });
-          const isCompact = changeMode === 'compact';
           const changeRung = createRung();
           changeRung.label = 'Change';
-          changeRung.compact = isCompact;
           changeRung.blocks = [{ id: uid(), type: 'SIG', values: { pubkey: walletKey.pubkey, scheme: fundScheme } }];
-          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: isCompact ? 'COMPACT_SIG' : 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
+          changeRung.output = { type: 'condition', txOutputId: changeOutputId, wireType: 'UNLOCK', attestation: 'INLINE', scheme: fundScheme };
           setRungs(prev => [...prev.filter(r => r.label !== 'Change'), changeRung]);
         }
       }
@@ -9417,7 +9324,7 @@ function SignetPanel() {
       {/* BUILD & BROADCAST */}
       <div style={sty.divider} />
       <div style={sty.sectionTitle}>BUILD &amp; BROADCAST</div>
-      {/* TX PREVIEW — inputs, outputs, rungs + JSON */}
+      {/* TX PREVIEW --inputs, outputs, rungs + JSON */}
       {(() => {
         const txJson = exportCreateRungtx(rungs, txOutputs, txInputs, locktime);
         const jsonStr = JSON.stringify(txJson, null, 2);
@@ -9431,14 +9338,14 @@ function SignetPanel() {
         {droppedOutputs.length > 0 && (
           <div style={{ marginBottom: 12, padding: '10px 16px', background: 'rgba(255,68,68,0.1)', border: '1px solid var(--red)', fontSize: 11, color: '#ff6666', lineHeight: 1.6 }}>
             <strong>WARNING:</strong> {droppedOutputs.length} output(s) have no conditions assigned and will be excluded from the transaction. In a v4 RUNG_TX, every output must have at least one rung condition. Go to BUILD and assign rungs to all outputs.
-            {droppedOutputs.map((o, i) => <div key={i} style={{ marginTop: 4, fontSize: 10, color: '#ff9999' }}>• {o.address ? o.address.substring(0, 20) + '...' : '(no addr)'} — {(parseInt(o.amount) || 0).toLocaleString()} sats — NO CONDITIONS</div>)}
+            {droppedOutputs.map((o, i) => <div key={i} style={{ marginTop: 4, fontSize: 10, color: '#ff9999' }}>• {o.address ? o.address.substring(0, 20) + '...' : '(no addr)'} --{(parseInt(o.amount) || 0).toLocaleString()} sats --NO CONDITIONS</div>)}
           </div>
         )}
         {/* FUNDED SUCCESS BANNER */}
         {funded && (
           <div style={{ marginBottom: 12, padding: '10px 16px', background: 'var(--green-dim)', border: '1px solid var(--green)', display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeIn 0.3s' }}>
             <span style={{ color: 'var(--green-bright)', fontSize: 18 }}>&#x2713;</span>
-            <span style={{ color: 'var(--green-bright)', fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>Funded — inputs and outputs replaced with real wallet data{signingData?.scheme && signingData.scheme !== 'SCHNORR' ? ` [${signingData.scheme}]` : ''}</span>
+            <span style={{ color: 'var(--green-bright)', fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>Funded --inputs and outputs replaced with real wallet data{signingData?.scheme && signingData.scheme !== 'SCHNORR' ? ` [${signingData.scheme}]` : ''}</span>
           </div>
         )}
         {/* INPUTS / OUTPUTS GRID */}
@@ -9508,15 +9415,15 @@ function SignetPanel() {
           {/* CHANGE OUTPUT CONTROLS */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '6px 10px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 1.2, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Change</span>
-            {['auto', 'compact', 'none'].map(m => (
+            {['auto', 'none'].map(m => (
               <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: changeMode === m ? 'var(--green-bright)' : 'var(--text-dim)', cursor: 'pointer' }}>
                 <input type="radio" name="changeMode" value={m} checked={changeMode === m} onChange={() => setChangeMode(m)}
                   style={{ width: 10, height: 10, accentColor: 'var(--green-bright)' }} />
-                {m === 'auto' ? 'Auto (SIG)' : m === 'compact' ? 'Compact SIG' : 'None'}
+                {m === 'auto' ? 'Auto (SIG)' : 'None'}
               </label>
             ))}
             <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 'auto' }}>
-              {changeMode === 'none' ? 'No change — full UTXO consumed as fee+outputs' : changeMode === 'compact' ? 'Compact wire format (~40% smaller)' : 'Standard SIG condition'}
+              {changeMode === 'none' ? 'No change -- full UTXO consumed as fee+outputs' : 'Standard SIG condition'}
             </span>
           </div>
           <div>
@@ -9524,12 +9431,12 @@ function SignetPanel() {
             {rungs.length > 0 ? (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {rungs.map((r, i) => (
-                  <span key={i} style={{ fontSize: 9, padding: '2px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: r.compact ? 'var(--green-bright)' : 'var(--text-secondary)', letterSpacing: 0.5 }}>
-                    {r.label || `R${i}`}: {r.compact ? 'COMPACT_SIG' : r.blocks.map(b => b.type).join(' + ')}
+                  <span key={i} style={{ fontSize: 9, padding: '2px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', letterSpacing: 0.5 }}>
+                    {r.label || `R${i}`}: {r.blocks.map(b => b.type).join(' + ')}
                   </span>
                 ))}
               </div>
-            ) : <div style={{ fontSize: 10, color: 'var(--text-dim)', padding: '4px 6px' }}>No rungs — design in BUILD tab first</div>}
+            ) : <div style={{ fontSize: 10, color: 'var(--text-dim)', padding: '4px 6px' }}>No rungs --design in BUILD tab first</div>}
           </div>
         </div>
         {/* COLLAPSIBLE JSON */}
@@ -9584,7 +9491,7 @@ function SignetPanel() {
             </button>
           </div>
         </div>
-        {/* Results row — shown below the buttons */}
+        {/* Results row --shown below the buttons */}
         {(txHex || signedHex || txid) && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {txHex && (<div style={{ ...sty.result, margin: 0 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}><span style={{ color: 'var(--green-bright)' }}>TX HEX ({txHex.length / 2} bytes)</span><button style={{ ...sty.btn, ...sty.btnDefault, padding: '2px 8px', fontSize: 9, ...(copiedKey === 'txhex' ? { color: 'var(--green-bright)', borderColor: 'var(--green-bright)' } : {}) }} onClick={() => copyWithFeedback(txHex, 'txhex')}>{copiedKey === 'txhex' ? '✓ COPIED' : 'COPY'}</button></div><span style={{ fontSize: 10, wordBreak: 'break-all' }}>{txHex.substring(0, 100)}...</span></div>)}
@@ -9651,7 +9558,7 @@ function SignetPanel() {
       <div style={sty.grid2}>
         <div style={sty.section}>
           <div style={sty.label}>DECODE RAW HEX</div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>DECODE LADDER parses raw ladder hex (scriptPubKey data or witness stack item). DECODE RAW TX parses a full transaction. Either accepts full tx hex — ladder decode falls back to raw tx automatically.</div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>DECODE LADDER parses raw ladder hex (scriptPubKey data or witness stack item). DECODE RAW TX parses a full transaction. Either accepts full tx hex --ladder decode falls back to raw tx automatically.</div>
           <textarea style={{ ...sty.input, height: 60, resize: 'vertical', fontFamily: 'var(--font-mono)' }} placeholder="Paste raw transaction or ladder witness hex..." value={decodeHex} onChange={e => setDecodeHex(e.target.value)} disabled={!online} />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button style={{ ...sty.btn, ...sty.btnPrimary, opacity: online ? 1 : 0.3 }} onClick={handleDecode} disabled={!online || loading === '/api/ladder/decode'}>{loading === '/api/ladder/decode' ? 'DECODING...' : 'DECODE LADDER'}</button>
@@ -9784,7 +9691,7 @@ function SignetPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SPEND PANEL — spend existing RUNG outputs
+// SPEND PANEL --spend existing RUNG outputs
 // ═══════════════════════════════════════════════════════════════
 
 function SpendPanel() {
@@ -9817,7 +9724,7 @@ function SpendPanel() {
       return await apiCallBase(endpoint, body);
     } catch (e) {
       const msg = e.message === 'Failed to fetch'
-        ? 'Signet proxy unreachable — check that the ladder-script proxy is running on ' + SIGNET_API
+        ? 'Signet proxy unreachable --check that the ladder-script proxy is running on ' + SIGNET_API
         : e.message;
       if (!silent) setError(msg);
       return null;
@@ -9844,11 +9751,11 @@ function SpendPanel() {
     }
   }, []);
 
-  // Note: shadows module-level loadRecords() — adds component state management
+  // Note: shadows module-level loadRecords() --adds component state management
   const loadRecords = () => {
     try {
       const all = loadAllRecords();
-      // Filter stale records (no vout tracking — pre-v2)
+      // Filter stale records (no vout tracking --pre-v2)
       const valid = all.filter(r => r.rungs && r.rungs.length > 0 && r.rungs[0].vout !== undefined);
       setRecords(valid.reverse()); // newest first
     } catch { setRecords([]); }
@@ -9963,12 +9870,12 @@ function SpendPanel() {
       // Validate TX-structure constraints with actual amounts
       for (const v of validationResults) {
         if (v.type === 'AMOUNT_LOCK') {
-          if (sendSats < v.min || sendSats > v.max) addLog('AMOUNT_LOCK: output ' + sendSats + ' sats outside [' + v.min + ', ' + v.max + '] — backend will enforce', 'warn');
+          if (sendSats < v.min || sendSats > v.max) addLog('AMOUNT_LOCK: output ' + sendSats + ' sats outside [' + v.min + ', ' + v.max + '] --backend will enforce', 'warn');
           else addLog('AMOUNT_LOCK: ' + sendSats + ' sats within [' + v.min + ', ' + v.max + ']', 'ok');
         }
         if (v.type === 'RELATIVE_VALUE') {
           const minOutput = Math.ceil(utxoAmountSats * v.numerator / v.denominator);
-          if (sendSats < minOutput) addLog('RELATIVE_VALUE: output ' + sendSats + ' < ' + minOutput + ' required — backend will enforce', 'warn');
+          if (sendSats < minOutput) addLog('RELATIVE_VALUE: output ' + sendSats + ' < ' + minOutput + ' required --backend will enforce', 'warn');
           else addLog('RELATIVE_VALUE: ' + sendSats + ' sats >= ' + minOutput + ' required', 'ok');
         }
       }
@@ -9988,13 +9895,13 @@ function SpendPanel() {
 
       const spendInputs = [{ txid, vout, sequence: inputSequence }];
 
-      // ─── COSIGN: detect and add co-input (async — stays in handleSpend) ───
+      // ─── COSIGN: detect and add co-input (async --stays in handleSpend) ───
       const cosignBlock = rungBlocks.find(b => b.type === 'COSIGN');
       let coInput = null;
       if (cosignBlock) {
         const condHash = cosignBlock.values?.conditions_hash;
         if (!condHash) {
-          addLog('COSIGN block has no conditions_hash — backend will reject', 'warn');
+          addLog('COSIGN block has no conditions_hash --backend will reject', 'warn');
         } else {
           const allRecords = loadAllRecords();
           for (const cr of allRecords) {
@@ -10062,15 +9969,15 @@ function SpendPanel() {
         for (const rb of recurseBlocks) {
           if (rb.type === 'RECURSE_COUNT') {
             const remaining = parseInt(rb.values?.remaining) || 0;
-            if (remaining <= 0) { exhausted = true; addLog('RECURSE_COUNT exhausted — free spend', 'ok'); }
+            if (remaining <= 0) { exhausted = true; addLog('RECURSE_COUNT exhausted --free spend', 'ok'); }
           }
           if (rb.type === 'RECURSE_SPLIT') {
             const maxSplits = parseInt(rb.values?.max_splits) || 0;
-            if (maxSplits <= 0) { exhausted = true; addLog('RECURSE_SPLIT exhausted — free spend', 'ok'); }
+            if (maxSplits <= 0) { exhausted = true; addLog('RECURSE_SPLIT exhausted --free spend', 'ok'); }
           }
           if (rb.type === 'RECURSE_UNTIL') {
             const target = parseInt(rb.values?.target_height) || 0;
-            if (st.blocks >= target) { exhausted = true; addLog('RECURSE_UNTIL: height ' + target + ' reached — free spend', 'ok'); }
+            if (st.blocks >= target) { exhausted = true; addLog('RECURSE_UNTIL: height ' + target + ' reached --free spend', 'ok'); }
           }
         }
 
@@ -10183,7 +10090,7 @@ function SpendPanel() {
 
       // 6. Satisfy relative timelocks before broadcast
       if (csvTimeSeconds > 0) {
-        addLog('CSV_TIME requires ' + csvTimeSeconds + 's to elapse (MTP-based). Mining blocks alone may not satisfy this — you may need to wait.', 'warn');
+        addLog('CSV_TIME requires ' + csvTimeSeconds + 's to elapse (MTP-based). Mining blocks alone may not satisfy this --you may need to wait.', 'warn');
         addLog('Mining 6 blocks to advance MTP slightly...', 'info');
         await apiCall('/api/ladder/mine', { blocks: 6 }, true);
       } else if (csvBlocks > 1) {
@@ -10351,12 +10258,12 @@ function SpendPanel() {
         <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>If the TXID exists in saved records, keys will be auto-loaded. Otherwise you can enter keys manually.</div>
       </div>
 
-      {/* SELECTED OUTPUT — SPEND PANEL */}
+      {/* SELECTED OUTPUT --SPEND PANEL */}
       {selectedRecord && (<>
         <div style={sty.divider} />
         <div style={sty.sectionTitle}>SPEND: {selectedRecord.txid.substring(0, 20)}...</div>
 
-        {/* Output (vout) Selector — show when record has rungs with different vouts */}
+        {/* Output (vout) Selector --show when record has rungs with different vouts */}
         {(() => {
           const allRungs = selectedRecord.rungs || [];
           const uniqueVouts = [...new Set(allRungs.map(r => r.vout).filter(v => v !== null && v !== undefined))].sort((a, b) => a - b);
@@ -10378,7 +10285,7 @@ function SpendPanel() {
                         borderColor: isActive ? 'var(--amber)' : 'var(--border)',
                         marginRight: 0,
                       }}>
-                        vout {v}{labels ? ' — ' + labels : ''} ({vRungs.length} condition{vRungs.length > 1 ? 's' : ''})
+                        vout {v}{labels ? ' --' + labels : ''} ({vRungs.length} condition{vRungs.length > 1 ? 's' : ''})
                       </button>
                     );
                   })}
@@ -10471,7 +10378,7 @@ function SpendPanel() {
             selectedRecord.conditionKeys.map((kp, i) => (
               <div key={i} style={{ padding: '6px 10px', marginBottom: 4, background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>KEY {i + 1} — {kp.scheme || selectedRecord.scheme || 'SCHNORR'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>KEY {i + 1} --{kp.scheme || selectedRecord.scheme || 'SCHNORR'}</div>
                   <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={kp.pubkey}>
                     PUB: {kp.pubkey ? kp.pubkey.substring(0, 24) + '...' : '(none)'}
                   </div>
@@ -10507,7 +10414,7 @@ function SpendPanel() {
             {spending ? 'SPENDING...' : 'SIGN & SPEND'}
           </button>
           {!selectedRecord.conditionKeys?.length && (
-            <div style={{ marginTop: 8, fontSize: 10, color: 'var(--amber)' }}>Cannot spend — no signing keys available for this output.</div>
+            <div style={{ marginTop: 8, fontSize: 10, color: 'var(--amber)' }}>Cannot spend --no signing keys available for this output.</div>
           )}
         </div>
 
@@ -10753,7 +10660,6 @@ function appReducer(state, action) {
       const rung = createRung();
       rung.label = 'CHANGE';
       rung.blocks = [createBlock('SIG')];
-      rung.compact = true;
       rung.output = { ...rung.output, name: 'CHANGE', txOutputId: outputId };
       return {
         ...state,
@@ -11118,7 +11024,7 @@ function App() {
       blocks: rung.blocks.map(block => {
         const testVals = generateTestData(block.type);
         if (!testVals || Object.keys(testVals).length === 0) return block;
-        // Test data fills gaps — existing values take priority
+        // Test data fills gaps --existing values take priority
         return { ...block, values: { ...testVals, ...block.values } };
       }),
     }))});
@@ -11286,7 +11192,7 @@ function App() {
     }});
   }, []);
 
-  // Execute a rung (spend it) — also cascade-block rungs on the SAME output sharing the same TX inputs
+  // Execute a rung (spend it) --also cascade-block rungs on the SAME output sharing the same TX inputs
   // Rungs on different outputs (e.g. spend + change) are independent and should not block each other
   const handleExecuteRung = useCallback((rungId) => {
     dispatch({ type: 'EXECUTE_RUNG', rungId });
@@ -11307,7 +11213,7 @@ function App() {
   // Alias for rung label click
   const startScanFrom = handleStartRungSim;
 
-  // Click a block during step-through — always advances (click = authorize this block)
+  // Click a block during step-through --always advances (click = authorize this block)
   const handleStepBlock = useCallback((blockId) => {
     if (!simActiveRungId) return;
     const rung = rungs.find(r => r.id === simActiveRungId);
@@ -11317,7 +11223,7 @@ function App() {
     const nextStep = simActiveStep + 1;
     dispatch({ type: 'STEP_BLOCK', blockId, result: 'satisfied', nextStep });
     if (nextStep >= rung.blocks.length) {
-      // All blocks passed — fire the coil, mark spent
+      // All blocks passed --fire the coil, mark spent
       setTimeout(() => {
         dispatch({ type: 'EXECUTE_RUNG', rungId: simActiveRungId });
         dispatch({ type: 'SET_SIM_ACTIVE', rungId: null, step: -1, results: {} });
@@ -11347,7 +11253,7 @@ function App() {
       }, 200);
       return () => clearTimeout(timer);
     } else if (forced === 'unsatisfied') {
-      // Forced-off — mark failed, stay here
+      // Forced-off --mark failed, stay here
       dispatch({ type: 'UPDATE_SIM_STEP_RESULTS', fn: prev => ({ ...prev, [block.id]: 'unsatisfied' }) });
     }
   }, [simActiveRungId, simActiveStep, rungs, forcedBlocks]);
@@ -11359,7 +11265,7 @@ function App() {
   }, [rungs, txInputs, txOutputs, locktime]);
 
   // Compute which output names and rung numbers are energized (for OUTPUT_REF cross-referencing)
-  // Use simState + forcedBlocks (can't use fullSimState here — circular dependency)
+  // Use simState + forcedBlocks (can't use fullSimState here --circular dependency)
   const [energizedOutputs, energizedRungNums] = useMemo(() => {
     if (!isSimMode) return [new Set(), new Set()];
     const evalState = { ...simState, forcedBlocks };
@@ -11565,7 +11471,7 @@ function App() {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     w.document.write(`<!DOCTYPE html><html><head>
-<title>Ladder Script — ${timestamp}</title>
+<title>Ladder Script --${timestamp}</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11634,7 +11540,7 @@ ${ladderRows.map(r => `
 </table>
 
 <div class="page-break"></div>
-<h1>APPENDIX A — TRANSACTION</h1>
+<h1>APPENDIX A --TRANSACTION</h1>
 
 <h2>Inputs (${txInputRows.length})</h2>
 <table>
@@ -11655,10 +11561,10 @@ ${ladderRows.map(r => `
 </table>
 
 <div class="page-break"></div>
-<h1>APPENDIX B — JSON</h1>
+<h1>APPENDIX B --JSON</h1>
 <div class="json-block">${jsonOutput.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
 
-<div class="footer">Ladder Script Engine — Bitcoin Ghost</div>
+<div class="footer">Ladder Script Engine --Bitcoin Ghost</div>
 
 </body></html>`);
 
@@ -11726,16 +11632,7 @@ ${ladderRows.map(r => `
               rung.output.attestation = out.coil.attestation || 'INLINE';
               rung.output.scheme = out.coil.scheme || 'SCHNORR';
             }
-            // Handle COMPACT_SIG import
-            if (cond.compact_type === 'COMPACT_SIG') {
-              const block = createBlock('SIG');
-              block.values.pubkey = cond.pubkey || cond.pubkey_commit || '';
-              block.values.scheme = cond.scheme || 'SCHNORR';
-              rung.blocks = [block];
-              rung.compact = true;
-            } else {
-              rung.blocks = importBlocksFromFields(cond.blocks);
-            }
+            rung.blocks = importBlocksFromFields(cond.blocks);
             // Assign all inputs to the rung by default
             rung.txInputIds = newTxInputs.map(i => i.id);
             newRungs.push(rung);
@@ -11764,7 +11661,7 @@ ${ladderRows.map(r => `
     }
   }, [importBlocksFromFields]);
 
-  // VIEW AS LADDER — convert decoded JSON to builder rungs and switch to build mode
+  // VIEW AS LADDER --convert decoded JSON to builder rungs and switch to build mode
   const handleViewAsLadder = useCallback((decodedJson) => {
     try {
       const result = decodedToBuilderRungs(decodedJson);
@@ -11803,8 +11700,8 @@ ${ladderRows.map(r => `
         <span className="header-title">LADDER SCRIPT ENGINE</span>
         <div className="header-divider" />
         <div className="mode-tabs">
-          <button className={`mode-tab ${mode === 'build' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'build' })} title={showTooltips ? 'Construct ladder rungs — drag blocks from palette' : undefined}>BUILD</button>
-          <button className={`mode-tab ${mode === 'simulate' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'simulate' })} title={showTooltips ? 'Test rungs — click rung labels to step through, Alt+click blocks to force' : undefined}>SIMULATE</button>
+          <button className={`mode-tab ${mode === 'build' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'build' })} title={showTooltips ? 'Construct ladder rungs --drag blocks from palette' : undefined}>BUILD</button>
+          <button className={`mode-tab ${mode === 'simulate' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'simulate' })} title={showTooltips ? 'Test rungs --click rung labels to step through, Alt+click blocks to force' : undefined}>SIMULATE</button>
           <button className={`mode-tab ${mode === 'convert' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'convert' })} title={showTooltips ? 'Paste RPC JSON output to convert back to ladder diagram' : undefined}>CONVERT</button>
           <button className={`mode-tab ${mode === 'send' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'send' })} title={showTooltips ? 'Create and fund Ladder Script outputs on signet' : undefined} style={mode === 'send' ? { color: 'var(--green-bright)', borderBottomColor: 'var(--green-bright)' } : {}}>SEND</button>
           <button className={`mode-tab ${mode === 'spend' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_MODE', value: 'spend' })} title={showTooltips ? 'Spend existing RUNG outputs on signet' : undefined} style={mode === 'spend' ? { color: 'var(--cyan)', borderBottomColor: 'var(--cyan)' } : {}}>SPEND</button>
@@ -11857,7 +11754,7 @@ ${ladderRows.map(r => `
           <div className="panel-tab-bar">
             {!isSimMode && <button className={`panel-tab ${rightTab === 'properties' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'properties' })} title={showTooltips ? 'Edit fields for the selected block, input, or coil' : undefined}>PROPERTIES</button>}
             {!isSimMode && <button className={`panel-tab ${rightTab === 'tx' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'tx' })} title={showTooltips ? 'Configure transaction inputs, outputs, and locktime' : undefined}>TX</button>}
-            {isSimMode && <button className={`panel-tab ${rightTab === 'simulate' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'simulate' })} title={showTooltips ? 'Set simulation context — amounts, heights, timestamps' : undefined}>CONTEXT</button>}
+            {isSimMode && <button className={`panel-tab ${rightTab === 'simulate' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'simulate' })} title={showTooltips ? 'Set simulation context --amounts, heights, timestamps' : undefined}>CONTEXT</button>}
             <button className={`panel-tab ${rightTab === 'json' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'json' })} title={showTooltips ? 'View the createrungtx RPC JSON for this transaction' : undefined}>RPC</button>
           </div>
           <div className="panel-content">
@@ -11902,15 +11799,15 @@ ${ladderRows.map(r => `
                     ));
                   };
                   const unassigned = rungs.filter((r, ri) => r.output.type !== 'relay' && (r.output.txOutputId === null || r.output.txOutputId === undefined) && !isRungReferenced(r, ri));
-                  if (unassigned.length > 0) warnings.push(`${unassigned.length} rung(s) not assigned to a TX output — will be excluded from wire JSON`);
+                  if (unassigned.length > 0) warnings.push(`${unassigned.length} rung(s) not assigned to a TX output --will be excluded from wire JSON`);
                   const outRefBlocks = rungs.reduce((c, r) => c + r.blocks.filter(b => b.type === 'OUTPUT_REF').length, 0);
-                  if (outRefBlocks > 0) warnings.push(`${outRefBlocks} OUTPUT_REF block(s) stripped — use input refs on the input contact instead`);
+                  if (outRefBlocks > 0) warnings.push(`${outRefBlocks} OUTPUT_REF block(s) stripped --use input refs on the input contact instead`);
                   const definedOutputs = txOutputs.filter(o => o.address || parseInt(o.amount) > 0);
                   const emptyOutputs = definedOutputs.filter(o => {
                     const assigned = rungs.filter(r => r.output.txOutputId === o.id);
                     return assigned.length === 0;
                   });
-                  if (emptyOutputs.length > 0) warnings.push(`${emptyOutputs.length} TX output(s) have no rungs assigned — will have empty conditions`);
+                  if (emptyOutputs.length > 0) warnings.push(`${emptyOutputs.length} TX output(s) have no rungs assigned --will have empty conditions`);
                   if (warnings.length === 0) return null;
                   return (
                     <div style={{ padding: '4px 8px', background: 'var(--red-dim)', borderBottom: '1px solid var(--red)', fontSize: 9, color: 'var(--red-bright)', lineHeight: 1.6 }}>
@@ -11930,7 +11827,7 @@ ${ladderRows.map(r => `
         </>}
       </div>
 
-      {/* Register Table — hidden in signet modes for more space */}
+      {/* Register Table --hidden in signet modes for more space */}
       {mode !== 'send' && mode !== 'spend' && <RegisterTable fullSimState={fullSimState} />}
 
       {/* Status Bar */}
@@ -11952,7 +11849,7 @@ ${ladderRows.map(r => `
           return (
             <>
               {unassigned > 0 && <div className="status-item" style={{ color: 'var(--red)' }}>{unassigned} RUNG(S) NOT ASSIGNED TO OUTPUT</div>}
-              {outRefBlocks > 0 && <div className="status-item" style={{ color: 'var(--amber)' }}>{outRefBlocks} OUT_REF BLOCK(S) — USE INPUT REFS INSTEAD</div>}
+              {outRefBlocks > 0 && <div className="status-item" style={{ color: 'var(--amber)' }}>{outRefBlocks} OUT_REF BLOCK(S) --USE INPUT REFS INSTEAD</div>}
             </>
           );
         })()}
@@ -12027,8 +11924,8 @@ ${ladderRows.map(r => `
             </div>
             <div className="validation-footer">
               {validationResult.errors.length > 0
-                ? 'Fix all errors before exporting — JSON was not copied'
-                : 'JSON copied to clipboard — review warnings above'}
+                ? 'Fix all errors before exporting --JSON was not copied'
+                : 'JSON copied to clipboard --review warnings above'}
             </div>
           </div>
         </div>

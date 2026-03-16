@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CLTV_TIME — LADDER SCRIPT Block Reference</title>
+<title>CLTV_TIME  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -63,7 +63,7 @@
       <tr><td class="field-name">timestamp</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Unix timestamp (values &ge; 500000000 interpreted as time)</td></tr>
     </tbody>
   </table>
-  <p class="section-text" style="margin-top:12px">No witness fields required — evaluation uses the median-time-past from the evaluation context.</p>
+  <p class="section-text" style="margin-top:12px">No witness fields required  -- evaluation uses the median-time-past from the evaluation context.</p>
 </div>
 
 <!-- Wire Format -->
@@ -95,7 +95,7 @@
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
     <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Read <span class="eval-keyword">timestamp</span> from NUMERIC field. Negative &rarr; <span class="eval-result-err">ERROR</span></span></div>
-    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text"><span class="eval-keyword">CheckLockTime</span>(value) — value interpreted as Unix timestamp. If fails &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text"><span class="eval-keyword">CheckLockTime</span>(value)  -- value interpreted as Unix timestamp. If fails &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">Pass &rarr; <span class="eval-result-sat">SATISFIED</span></span></div>
   </div>
 </div>
@@ -144,7 +144,7 @@
   <div class="section-label">Use Cases</div>
   <div class="use-case">
     <div class="use-case-title">Calendar-Specific Unlocks</div>
-    <div class="use-case-desc">Funds that unlock on a specific calendar date — useful for grant agreements, employment contracts, or any arrangement tied to real-world dates rather than block heights.</div>
+    <div class="use-case-desc">Funds that unlock on a specific calendar date  -- useful for grant agreements, employment contracts, or any arrangement tied to real-world dates rather than block heights.</div>
   </div>
   <div class="use-case">
     <div class="use-case-title">Expiry Dates for Options/Futures</div>

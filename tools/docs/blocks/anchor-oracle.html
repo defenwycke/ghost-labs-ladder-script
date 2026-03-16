@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANCHOR_ORACLE — LADDER SCRIPT Block Reference</title>
+<title>ANCHOR_ORACLE  -- LADDER SCRIPT Block Reference</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -54,7 +54,7 @@
   <table class="field-table">
     <thead><tr><th>Field</th><th>Data Type</th><th>Size</th><th>Side</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td class="field-name">oracle_key</td><td class="field-type">PUBKEY / PUBKEY_COMMIT</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key of the oracle providing attestations</td></tr>
+      <tr><td class="field-name">oracle_key</td><td class="field-type">DATA</td><td class="field-size">33 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Public key of the oracle providing attestations</td></tr>
       <tr><td class="field-name">outcome_count</td><td class="field-type">NUMERIC</td><td class="field-size">1-4 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Number of possible outcomes (must be &gt; 0)</td></tr>
     </tbody>
   </table>
@@ -90,7 +90,7 @@
 <div class="doc-section">
   <div class="section-label">Evaluation Logic</div>
   <div class="eval-box">
-    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Extract <span class="eval-keyword">PUBKEY</span> / <span class="eval-keyword">PUBKEY_COMMIT</span> field for <span class="eval-keyword">oracle_key</span></span></div>
+    <div class="eval-step"><span class="eval-step-num">1.</span><span class="eval-step-text">Extract <span class="eval-keyword">PUBKEY</span> field for <span class="eval-keyword">oracle_key</span></span></div>
     <div class="eval-step"><span class="eval-step-num">2.</span><span class="eval-step-text">If no pubkey field present &rarr; <span class="eval-result-err">ERROR</span></span></div>
     <div class="eval-step"><span class="eval-step-num">3.</span><span class="eval-step-text">Read <span class="eval-keyword">outcome_count</span> from NUMERIC field</span></div>
     <div class="eval-step"><span class="eval-step-num">4.</span><span class="eval-step-text">If outcome_count &le; 0 &rarr; <span class="eval-result-unsat">UNSATISFIED</span></span></div>
