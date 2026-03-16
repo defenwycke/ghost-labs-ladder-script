@@ -26,3 +26,6 @@ docs/BUILD_PROMPT.md
 docs/IMPLEMENTATION_NOTES.md
 tests/test_documentation_accuracy.py
 proxy/
+docs/BLOCK_LIBRARY_IMPL.md
+docs/LADDER_SCRIPT_SCENARIOS.md
+docs/SUMMARY.md
