@@ -59,7 +59,7 @@ Guardian UTXO:
   Rung 0: SIG(guardian) + RECURSE_SAME(depth=100000)
 ```
 
-The child cannot move unless the guardian is spent in the same transaction. The guardian re-encumbers itself perpetually. One guardian protects unlimited children.
+The child cannot move unless the guardian is spent in the same transaction. The guardian re-encumbers itself with each spend (theoretical max depth ~4.3 billion). One guardian protects unlimited children.
 
 This is more powerful than multisig. The guardian is a UTXO, not just a key - it can carry its own conditions (timelocks, rate limits, fee gates). A parent controlling a child's wallet. An institution supervising an operator's hot wallet.
 
@@ -135,7 +135,7 @@ Children (unlimited):
   Rung 0: SIG(SCHNORR) + COSIGN(SHA256(anchor_spk))
 ```
 
-One quantum-resistant anchor protects unlimited classical children. The MLSC output stores only a 32-byte Merkle root regardless of the PQ key size (897 bytes for FALCON-512). Pubkeys are folded into the Merkle leaf (merkle_pub_key) and appear only in the prunable witness at spend time.
+One quantum-resistant anchor protects unlimited classical children (theoretical max depth ~4.3 billion spends). The MLSC output stores only a 32-byte Merkle root regardless of the PQ key size (897 bytes for FALCON-512). Pubkeys are folded into the Merkle leaf (merkle_pub_key) and appear only in the prunable witness at spend time.
 
 A quantum attacker must break FALCON-512 to spend any child. The children use fast, compact Schnorr signatures for daily operations.
 

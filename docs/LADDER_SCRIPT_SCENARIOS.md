@@ -325,9 +325,9 @@ matches Python's `hashlib.sha256(pubkey).hexdigest()`.
 
 ### Scenario 17: COSIGN PQ Anchor Co-Spend
 
-**Purpose:** Prove the PQ anchor pattern — a single perpetual FALCON512 UTXO
+**Purpose:** Prove the PQ anchor pattern -- a single perpetual FALCON512 UTXO
 protects non-PQ children via co-spending, amortizing the PQ signature cost
-across unlimited future transactions.
+across unlimited future transactions (theoretical max depth ~4.3 billion spends).
 
 **How it works:**
 1. Create PQ anchor: `SIG { SCHEME(FALCON512), PUBKEY_COMMIT(hash) }` + `RECURSE_SAME(depth=1000)`
@@ -499,7 +499,8 @@ Even in the worst case where an attacker burns funds:
    and RECURSE_DECAY scripts continue to work unchanged.
 
 7. **COSIGN PQ anchor pattern** enables post-quantum protection for unlimited
-   UTXOs using a single perpetual FALCON512 anchor. The anchor re-encumbers
+   UTXOs using a single perpetual FALCON512 anchor (theoretical max depth
+   ~4.3 billion spends). The anchor re-encumbers
    itself on every spend (RECURSE_SAME), so children created at any future
    time reference the same anchor hash. At 10 children per batch, witness
    data is 5.3x smaller than individual PQ signatures; at 100 children,

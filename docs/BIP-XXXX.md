@@ -1025,7 +1025,7 @@ SPHINCS+ security reduces to SHA-256 collision resistance rather than any lattic
 Anchor UTXO:   SIG(FALCON-512) + RECURSE_SAME(max_depth=1000)
 Child UTXOs:   COSIGN(anchor_hash)
 ```
-A single FALCON-512 anchor UTXO provides quantum protection for unlimited classical child outputs. Each child spends only when the anchor is co-spent (and recreated via RECURSE_SAME). The PQ witness cost is paid once per transaction, not once per output. This is the practical migration path for wallets with many existing classical UTXOs.
+A single FALCON-512 anchor UTXO provides quantum protection for unlimited classical child outputs (theoretical max depth ~4.3 billion spends, limited by the 4-byte NUMERIC field). Each child spends only when the anchor is co-spent (and recreated via RECURSE_SAME). The PQ witness cost is paid once per transaction, not once per output. This is the practical migration path for wallets with many existing classical UTXOs.
 
 ### Condition Opacity
 

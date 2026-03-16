@@ -615,7 +615,7 @@ co-spending with the anchor, ensuring that no child can be spent without the
 anchor's PQ signature in the same transaction.
 
 This pattern amortises the cost of PQ signatures: 1 anchor protects unlimited
-children. At 10 children per batch, witness data is 5.3x smaller than individual
+children (theoretical max depth ~4.3 billion spends). At 10 children per batch, witness data is 5.3x smaller than individual
 PQ signatures on each UTXO.
 
 ### Ladder Diagram
