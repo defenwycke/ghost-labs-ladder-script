@@ -12,6 +12,14 @@ tools/test-results*.json
 # Audit and report files
 BIP-READINESS-AUDIT.md
 
+# Internal planning docs
+docs/RELAY_PLAN.md
+docs/MUSIG_THRESHOLD_PLAN.md
+docs/MERKLE-UTXO-SPEC.md
+docs/DIFF_WITNESS_PLAN.md
+docs/COMPACT_RUNG_PLAN.md
+docs/BUILD_PROMPT.md
+
 # Local dev
 .claude/
 .pytest_cache/
