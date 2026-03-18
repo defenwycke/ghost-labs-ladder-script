@@ -15,24 +15,7 @@ namespace rung {
 // Helper: data type allowed in witness context
 // ============================================================================
 
-/** Consensus: data types that are NOT allowed in witness context for blocks
- *  with no implicit witness layout. These are high-bandwidth conditions-only
- *  types that could carry unvalidated data as ignored witness fields.
- *  NUMERIC (4 bytes max) and SPEND_INDEX (4 bytes) are too small to be
- *  meaningful data channels and are legitimately needed in compound block
- *  witness fields. */
-static bool IsDataEmbeddingType(RungDataType type)
-{
-    switch (type) {
-    case RungDataType::PUBKEY_COMMIT:  // 32 bytes
-    case RungDataType::HASH256:        // 32 bytes
-    case RungDataType::HASH160:        // 20 bytes
-    case RungDataType::DATA:           // up to 80 bytes
-        return true;
-    default:
-        return false;
-    }
-}
+// IsDataEmbeddingType moved to types.h (shared with conditions.cpp)
 
 // ============================================================================
 // Helper: serialize a single field (varint NUMERIC optimization)

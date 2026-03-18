@@ -222,6 +222,24 @@ inline bool IsKnownDataType(uint8_t b)
 // Backward-compatible alias
 inline bool IsKnownFieldType(uint8_t b) { return IsKnownDataType(b); }
 
+/** Consensus: data types that carry high-bandwidth unvalidated data.
+ *  Blocked in blocks without implicit layouts (any context) to prevent
+ *  data embedding via extra unvalidated fields.
+ *  NUMERIC (4 bytes max) and SPEND_INDEX (4 bytes) are too small to be
+ *  meaningful data channels and are legitimately needed. */
+inline bool IsDataEmbeddingType(RungDataType type)
+{
+    switch (type) {
+    case RungDataType::PUBKEY_COMMIT:  // 32 bytes
+    case RungDataType::HASH256:        // 32 bytes
+    case RungDataType::HASH160:        // 20 bytes
+    case RungDataType::DATA:           // up to 32 bytes
+        return true;
+    default:
+        return false;
+    }
+}
+
 /** Minimum allowed size for a given data type. Returns 0 for unknown types. */
 inline size_t FieldMinSize(RungDataType type)
 {
