@@ -484,6 +484,30 @@ enum class RungScheme : uint8_t {
     SPHINCS_SHA = 0x13, //!< SPHINCS+-SHA2-256f post-quantum
 };
 
+/** Returns true if the coil type is a known value. */
+inline bool IsKnownCoilType(uint8_t c)
+{
+    switch (static_cast<RungCoilType>(c)) {
+    case RungCoilType::UNLOCK:
+    case RungCoilType::UNLOCK_TO:
+    case RungCoilType::COVENANT:
+        return true;
+    }
+    return false;
+}
+
+/** Returns true if the attestation mode is a known value. */
+inline bool IsKnownAttestationMode(uint8_t a)
+{
+    switch (static_cast<RungAttestationMode>(a)) {
+    case RungAttestationMode::INLINE:
+    case RungAttestationMode::AGGREGATE:
+    case RungAttestationMode::DEFERRED:
+        return true;
+    }
+    return false;
+}
+
 /** Returns true if the scheme is a known value. */
 inline bool IsKnownScheme(uint8_t s)
 {

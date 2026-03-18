@@ -270,7 +270,9 @@ static bool DeserializeBlock(DataStream& ss, RungBlock& block_out,
 
         // Strict field enforcement (consensus): if this block type has an
         // implicit layout, the explicit field count and types must match exactly.
-        // This prevents extra unvalidated fields from riding through on-chain.
+        // For blocks with NO_IMPLICIT (count=0, not in switch), the check below
+        // is skipped — IsDataEmbeddingType catches high-bandwidth abuse instead.
+        // ADAPTOR_SIG: no condition fields, enforce n_fields == 0 in conditions context.
         const auto& expected = GetImplicitLayout(block_out.type, ctx);
         if (expected.count > 0) {
             if (n_fields != expected.count) {
@@ -279,6 +281,13 @@ static bool DeserializeBlock(DataStream& ss, RungBlock& block_out,
                         ", expected " + std::to_string(expected.count);
                 return false;
             }
+        }
+        // ADAPTOR_SIG has no condition fields — reject any in conditions context
+        if (block_out.type == RungBlockType::ADAPTOR_SIG &&
+            ctx == static_cast<uint8_t>(SerializationContext::CONDITIONS) &&
+            n_fields > 0) {
+            error = "ADAPTOR_SIG has no condition fields: got " + std::to_string(n_fields);
+            return false;
         }
 
         block_out.fields.resize(n_fields);
@@ -411,11 +420,38 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
                 }
             }
 
+            // Count PREIMAGE/SCRIPT_BODY fields in diffs (defense-in-depth)
+            size_t diff_preimage_count = 0;
+            for (const auto& diff : ref.diffs) {
+                if (diff.new_field.type == RungDataType::PREIMAGE ||
+                    diff.new_field.type == RungDataType::SCRIPT_BODY) {
+                    diff_preimage_count++;
+                }
+            }
+            if (diff_preimage_count > MAX_PREIMAGE_FIELDS_PER_WITNESS) {
+                error = "diff witness too many PREIMAGE/SCRIPT_BODY fields: " +
+                        std::to_string(diff_preimage_count) + " > " +
+                        std::to_string(MAX_PREIMAGE_FIELDS_PER_WITNESS);
+                return false;
+            }
+
             ladder_out.witness_ref = std::move(ref);
 
             // Read fresh coil (same code as normal path)
             uint8_t coil_type_byte, attestation_byte, scheme_byte;
             ss >> coil_type_byte >> attestation_byte >> scheme_byte;
+            if (!IsKnownCoilType(coil_type_byte)) {
+                error = "unknown coil type: 0x" + HexStr(std::span<const uint8_t>{&coil_type_byte, 1});
+                return false;
+            }
+            if (!IsKnownAttestationMode(attestation_byte)) {
+                error = "unknown attestation mode: 0x" + HexStr(std::span<const uint8_t>{&attestation_byte, 1});
+                return false;
+            }
+            if (!IsKnownScheme(scheme_byte)) {
+                error = "unknown coil scheme: 0x" + HexStr(std::span<const uint8_t>{&scheme_byte, 1});
+                return false;
+            }
             ladder_out.coil.coil_type = static_cast<RungCoilType>(coil_type_byte);
             ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
             ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
@@ -477,6 +513,18 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
         // Read coil (per-ladder, after all rungs)
         uint8_t coil_type_byte, attestation_byte, scheme_byte;
         ss >> coil_type_byte >> attestation_byte >> scheme_byte;
+        if (!IsKnownCoilType(coil_type_byte)) {
+            error = "unknown coil type: 0x" + HexStr(std::span<const uint8_t>{&coil_type_byte, 1});
+            return false;
+        }
+        if (!IsKnownAttestationMode(attestation_byte)) {
+            error = "unknown attestation mode: 0x" + HexStr(std::span<const uint8_t>{&attestation_byte, 1});
+            return false;
+        }
+        if (!IsKnownScheme(scheme_byte)) {
+            error = "unknown coil scheme: 0x" + HexStr(std::span<const uint8_t>{&scheme_byte, 1});
+            return false;
+        }
         ladder_out.coil.coil_type = static_cast<RungCoilType>(coil_type_byte);
         ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
         ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
