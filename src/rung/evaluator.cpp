@@ -3090,7 +3090,13 @@ bool VerifyRungTx(const CTransaction& tx,
     // when CScriptCheck runs in parallel.
 
     const auto& witness = tx.vin[nIn].scriptWitness;
-    if (witness.stack.empty()) {
+
+    // Exact witness stack size enforcement (prevents data stuffing via extra elements).
+    // MLSC (0xC2): exactly 2 elements (LadderWitness + MLSCProof).
+    // Inline (0xC1): exactly 1 element (LadderWitness).
+    bool expects_mlsc = IsMLSCScript(spent_output.scriptPubKey);
+    size_t expected_stack_size = expects_mlsc ? 2 : 1;
+    if (witness.stack.size() != expected_stack_size) {
         if (serror) *serror = SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY;
         return false;
     }
@@ -3137,13 +3143,9 @@ bool VerifyRungTx(const CTransaction& tx,
             return false;
         }
 
-        // MLSC requires two witness stack elements:
-        //   stack[0] = LadderWitness (witness data — signatures, pubkeys, preimages)
-        //   stack[1] = MLSCProof (revealed conditions + Merkle proof hashes)
-        if (witness.stack.size() < 2) {
-            if (serror) *serror = SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY;
-            return false;
-        }
+        // stack[0] = LadderWitness (already deserialized above)
+        // stack[1] = MLSCProof (revealed conditions + Merkle proof hashes)
+        // (exact stack size already enforced at entry)
 
         // Deserialize MLSC proof from stack[1]
         MLSCProof mlsc_proof;
