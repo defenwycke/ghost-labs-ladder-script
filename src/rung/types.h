@@ -66,7 +66,7 @@ enum class RungBlockType : uint16_t {
     ANCHOR_RESERVE   = 0x0504, //!< Reserve anchor (guardian set)
     ANCHOR_SEAL      = 0x0505, //!< Seal anchor
     ANCHOR_ORACLE    = 0x0506, //!< Oracle anchor
-    DATA_RETURN      = 0x0507, //!< Unspendable data commitment (max 80 bytes, replaces OP_RETURN)
+    DATA_RETURN      = 0x0507, //!< Unspendable data commitment (max 32 bytes, replaces OP_RETURN)
 
     // Compound family (collapsed multi-block patterns)
     TIMELOCKED_SIG   = 0x0701, //!< SIG + CSV combined: pubkey + sig + block-height timelock

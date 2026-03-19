@@ -14,7 +14,7 @@ By restructuring how transactions work at the wire level, Ladder Script opens up
 
 - **59 block types across 10 families.** Signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance constraints, and legacy Bitcoin wrappers. These compose freely. A vault with fee-gated spending and a dead man's switch is three blocks on a rung.
 
-- **MLSC (Merkelized Ladder Script Conditions).** The entire spending policy compresses to a 33-byte output regardless of complexity. Only the exercised path is revealed at spend time. Unused paths stay permanently hidden. This is better for privacy and significantly lighter on-chain.
+- **MLSC (Merkelised Ladder Script Conditions).** The entire spending policy compresses to a 33-byte output regardless of complexity. Only the exercised path is revealed at spend time. Unused paths stay permanently hidden. This is better for privacy and significantly lighter on-chain.
 
 - **Compound blocks.** Common multi-block patterns (HTLC, TIMELOCKED_SIG, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG) collapse into single blocks, eliminating redundant headers and saving wire bytes.
 

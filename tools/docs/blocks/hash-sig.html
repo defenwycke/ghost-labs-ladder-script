@@ -58,7 +58,7 @@
       <tr><td class="field-name">scheme</td><td class="field-type">SCHEME</td><td class="field-size">1 B</td><td class="field-side-c">Conditions</td><td class="field-desc">Signature scheme identifier (0x01 = Schnorr, 0x02 = ECDSA). Routes to post-quantum verifier when PQ scheme set.</td></tr>
       <tr><td class="field-name">pubkey</td><td class="field-type">PUBKEY</td><td class="field-size">32-33 B</td><td class="field-side-w">Witness</td><td class="field-desc">Public key matching the commitment</td></tr>
       <tr><td class="field-name">signature</td><td class="field-type">SIGNATURE</td><td class="field-size">64-65 B</td><td class="field-side-w">Witness</td><td class="field-desc">Schnorr signature over the transaction</td></tr>
-      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">1-32 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field  -- provided by the user. The node derives HASH256 from this data at creation time.</td></tr>
+      <tr><td class="field-name">preimage</td><td class="field-type">PREIMAGE</td><td class="field-size">32 B</td><td class="field-side-w">Witness</td><td class="field-desc">Data whose SHA-256 equals the hash field  -- provided by the user. The node derives HASH256 from this data at creation time.</td></tr>
     </tbody>
   </table>
 </div>

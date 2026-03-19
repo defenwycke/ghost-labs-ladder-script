@@ -76,7 +76,7 @@ Protocol-tagged UTXOs with semantic meaning.
 | 0x0504 | ANCHOR_RESERVE | Reserve proof anchor |
 | 0x0505 | ANCHOR_SEAL | Sealed state commitment (asset ID + state transition) |
 | 0x0506 | ANCHOR_ORACLE | Oracle data attestation anchor |
-| 0x0507 | DATA_RETURN | On-chain data (max 80 bytes) appended to MLSC output, replaces OP_RETURN |
+| 0x0507 | DATA_RETURN | On-chain data (max 32 bytes) appended to MLSC output, replaces OP_RETURN |
 
 ## PLC Family (0x06xx)
 

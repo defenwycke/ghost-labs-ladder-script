@@ -12,7 +12,7 @@ A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`)
 
 1. **Select inputs.** Any UTXOs can be spent by a v4 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v4 rung conditions.
 
-2. **Define output conditions.** Each output's `scriptPubKey` is MLSC (`0xC2 || 32-byte Merkle root`), or inline (`0xC1 || serialized_conditions`) for regtest/signet testing only. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (HASH256, HASH160, NUMERIC, SCHEME, DATA) may appear. PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, SPEND_INDEX, and SCRIPT_BODY are forbidden in conditions. Public keys are folded into the Merkle leaf hash (merkle_pub_key).
+2. **Define output conditions.** Each output's `scriptPubKey` is MLSC (`0xC2 || 32-byte Merkle root`), or inline (`0xC1 || serialised_conditions`) for regtest/signet testing only. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA) may appear. PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, and SCRIPT_BODY are forbidden in conditions. Public keys are folded into the Merkle leaf hash (merkle_pub_key).
 
 3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v4 transaction.
 
@@ -103,12 +103,12 @@ For non-LADDER sig versions, the checker falls through to the wrapped `BaseSigna
 A v4 rung conditions output has the following `scriptPubKey` format:
 
 ```
-[0xC1] [serialized conditions using ladder wire format]
+[0xC1] [serialised conditions using ladder wire format]
 ```
 
 Two output formats are supported:
 
-- **MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 80 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 113 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only accepted format on mainnet.
+- **MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 32 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 65 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only accepted format on mainnet.
 - **Inline (`0xC1`):** `RUNG_CONDITIONS_PREFIX`. Full conditions in the scriptPubKey. Detected by `IsRungConditionsScript()`: `scriptPubKey.size() >= 2 && scriptPubKey[0] == 0xc1`. Rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`); regtest/signet testing only.
 
 The helper `IsRungScript()` returns true for either format.
@@ -126,11 +126,11 @@ The helper `IsRungScript()` returns true for either format.
 
 1. Verify the `0xC1` prefix.
 2. Strip the prefix and deserialize as a `LadderWitness`.
-3. Validate that only condition-allowed data types appear (HASH256, HASH160, NUMERIC, SCHEME, DATA). PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, SPEND_INDEX, and SCRIPT_BODY are rejected.
+3. Validate that only condition-allowed data types appear (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA). PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, and SCRIPT_BODY are rejected.
 
 **MLSC (`0xC2`):**
 
-`CreateMLSCScript()` takes a 32-byte `conditions_root` and returns `0xC2 || root`. An overload accepts an optional DATA_RETURN payload (1-80 bytes) and returns `0xC2 || root || data`. The root is computed locally by the transaction creator using `ComputeConditionsRoot()`. See MERKLE-UTXO-SPEC.md for full details.
+`CreateMLSCScript()` takes a 32-byte `conditions_root` and returns `0xC2 || root`. An overload accepts an optional DATA_RETURN payload (exactly 32 bytes) and returns `0xC2 || root || data`. The root is computed locally by the transaction creator using `ComputeConditionsRoot()`. See MERKLE-UTXO-SPEC.md for full details.
 
 ### 3.3 Output Restrictions
 
@@ -183,7 +183,7 @@ Ladder Script defines its own sighash algorithm, `SignatureHashLadder()`, which 
 
 ### 5.2 Conditions Hash
 
-The sighash always commits to `conditions_hash = SHA256(serialized_conditions)`. This is computed by `HashRungConditions()`:
+The sighash always commits to `conditions_hash = SHA256(serialised_conditions)`. This is computed by `HashRungConditions()`:
 
 1. Copy the conditions rungs into a `LadderWitness`.
 2. Serialize via `SerializeLadderWitness()`.
@@ -237,7 +237,7 @@ Validates rung condition outputs:
 - All fields must pass size validation.
 
 **MLSC (`0xC2`):**
-- Must be 33-113 bytes (`0xC2` + 32-byte root + optional 1-80 byte DATA_RETURN payload).
+- Must be 33-65 bytes (`0xC2` + 32-byte root + optional 1-80 byte DATA_RETURN payload).
 - Always standard. The root is opaque and requires no further validation at the output level.
 
 ### 6.3 Block Type Standardness
@@ -286,7 +286,7 @@ A time-bounded covenant. Before `until_height`, the output must be re-encumbered
 
 The helper `FullConditionsEqual()` performs a deep structural comparison of two `RungConditions` objects. For mutated blocks, `VerifyMutatedConditions()` allows declared parameters to differ by the specified delta while requiring all other fields to match exactly.
 
-Only condition data types are compared (HASH256, HASH160, NUMERIC, SCHEME, DATA). Witness-only types are excluded from comparison since they are never present in conditions.
+Only condition data types are compared (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA). Witness-only types are excluded from comparison since they are never present in conditions.
 
 ---
 

@@ -82,7 +82,7 @@
       <tr>
         <td class="field-name">preimage</td>
         <td class="field-type">PREIMAGE</td>
-        <td class="field-size">1-32 B</td>
+        <td class="field-size">32 B</td>
         <td class="field-side-w">Witness</td>
         <td class="field-desc">Data whose RIPEMD160(SHA256) hash must match the expected value &mdash; provided by the user. The node derives HASH160 from this data at creation time.</td>
       </tr>
@@ -181,7 +181,7 @@
   <span class="json-key">"inverted"</span>: <span class="json-num">false</span>,
   <span class="json-key">"fields"</span>: [
     { <span class="json-key">"type"</span>: <span class="json-str">"HASH160"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"89abcd...20 bytes"</span> },
-    { <span class="json-key">"type"</span>: <span class="json-str">"PREIMAGE"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"deadbeef...1-32 bytes"</span> }
+    { <span class="json-key">"type"</span>: <span class="json-str">"PREIMAGE"</span>, <span class="json-key">"hex"</span>: <span class="json-str">"deadbeef...exactly 32 bytes"</span> }
   ]
 }</pre></div>
 </div>

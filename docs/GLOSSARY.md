@@ -96,7 +96,7 @@ An enum (`RungCoilType`, `uint8_t`) that determines the unlock semantics of a ru
 A spending requirement embedded in a v4 output's scriptPubKey. Conditions are the
 "locking" side of Ladder Script: they specify what must be satisfied to spend the
 UTXO. Conditions contain only condition data types (HASH256, HASH160, NUMERIC, SCHEME,
-DATA) and never contain witness-only types (PUBKEY, SIGNATURE, PREIMAGE). Public keys
+SPEND_INDEX, DATA) and never contain witness-only types (PUBKEY, SIGNATURE, PREIMAGE). Public keys
 are not stored in conditions -- they are folded into the Merkle leaf hash
 (merkle_pub_key). On mainnet, conditions are always Merkelised (`0xC2` MLSC).
 
@@ -289,10 +289,10 @@ codes, 0x81 for extended) followed by the full type code. The lookup table is de
 ### MLSC (Merkelised Ladder Script Conditions)
 
 An output format (`0xC2` prefix) that stores a 32-byte Merkle root (33 bytes standard,
-or 34-113 bytes with a DATA_RETURN payload appended). The complete conditions are
+or 34-65 bytes with a DATA_RETURN payload appended). The complete conditions are
 revealed at spend time in the witness, along with a Merkle proof. Key properties:
 
-- **Compact UTXO size:** 33-113 bytes per scriptPubKey regardless of condition complexity
+- **Compact UTXO size:** 33-65 bytes per scriptPubKey regardless of condition complexity
 - **Data embedding resistance:** Fake conditions produce unspendable outputs; since they
   are never spent, the fake data is never published on-chain
 - **MAST privacy:** Only the exercised spending path (one rung) is revealed; unused paths
@@ -501,12 +501,13 @@ Nine types are defined:
 | 0x01 | PUBKEY | 1-2048 B | Witness | Public key |
 | 0x03 | HASH256 | 32 B | Both | SHA-256 hash |
 | 0x04 | HASH160 | 20 B | Both | HASH160 digest |
-| 0x05 | PREIMAGE | 1-32 B | Witness | Hash preimage |
+| 0x05 | PREIMAGE | 32 B | Witness | Hash preimage |
 | 0x06 | SIGNATURE | 1-50000 B | Witness | Signature |
+| 0x07 | SPEND_INDEX | 4 B | Both | Input reference index |
 | 0x08 | NUMERIC | 1-4 B | Both | Numeric value (little-endian) |
 | 0x09 | SCHEME | 1 B | Both | Signature scheme selector |
 | 0x0A | SCRIPT_BODY | 1-80 B | Witness | Serialised inner conditions |
-| 0x0B | DATA | 1-80 B | Both | Opaque data (DATA_RETURN payloads) |
+| 0x0B | DATA | 32 B | Both | Opaque data (DATA_RETURN payloads) |
 
 Code 0x02 (formerly PUBKEY_COMMIT) is reserved. Public keys are bound to conditions
 via merkle_pub_key (folded into the Merkle leaf hash) rather than stored as condition
@@ -532,7 +533,7 @@ than the script interpreter.
 ### SCRIPT_BODY
 
 A data type (0x0A) for serialised inner Ladder Script conditions carried in the witness.
-Size range: 1-80 bytes. Witness-only -- cannot appear in conditions. Used by the
+Size range: exactly 32 bytes. Witness-only -- cannot appear in conditions. Used by the
 Legacy family blocks P2SH_LEGACY, P2WSH_LEGACY, and P2TR_SCRIPT_LEGACY to carry the
 inner conditions that must deserialise as valid Ladder Script. Rejecting arbitrary bytes
 in this field closes the data-embedding surface that raw P2SH/P2WSH/taproot script-path

@@ -270,7 +270,7 @@ const S = [
 
 {act:0,t:"THE CHALLENGE",s:"How do we commit to this structure without revealing it?",h:`
 <div class="desc">The vault has 2 rungs, 3 blocks, a 33-byte Schnorr pubkey, a 897-byte FALCON512 pubkey, a CSV timelock, and a coil. All of this must be <strong>committed to on-chain</strong> so it can't be changed — but <strong>none of it should be visible</strong> until spent.</div>
-<div class="desc">The answer: <strong>MLSC</strong> (Merkelized Ladder Script Conditions). Every rung becomes a <strong>leaf</strong> in a Merkle tree. The leaves are <strong>SHA-256 digests</strong> of the serialized data + pubkeys. Only the 32-byte <strong>root</strong> goes on-chain.</div>
+<div class="desc">The answer: <strong>MLSC</strong> (Merkelised Ladder Script Conditions). Every rung becomes a <strong>leaf</strong> in a Merkle tree. The leaves are <strong>SHA-256 digests</strong> of the serialised data + pubkeys. Only the 32-byte <strong>root</strong> goes on-chain.</div>
 <div class="desc">Let's trace every byte through this process.</div>
 `},
 
@@ -458,9 +458,9 @@ const S = [
 `},
 
 {act:1,t:"BUILD RUNG 0 LEAF",s:"4 bytes + 33-byte pubkey → SHA-256 → 32 bytes",h:`
-<div class="desc"><code>ComputeRungLeaf(rung_0, rung_pubkeys[0])</code> — the serialized bytes and the raw pubkey are hashed together into a single leaf.</div>
+<div class="desc"><code>ComputeRungLeaf(rung_0, rung_pubkeys[0])</code> — the serialised bytes and the raw pubkey are hashed together into a single leaf.</div>
 <div class="sv">
-<span class="lbl">Hash input: serialized blocks (4) + pubkey (33) = 37 bytes</span>
+<span class="lbl">Hash input: serialised blocks (4) + pubkey (33) = 37 bytes</span>
 <span class="b s">01 00</span> <span class="b v">01</span> <span class="b s">00</span>
 <span style="color:#333;margin:0 .2rem">‖</span>
 <span class="b k">02 a3 f2 c8 ... 8d 01 b7 e5</span><span class="bn">← pubkey appended (merkle_pub_key)</span>
@@ -470,7 +470,7 @@ const S = [
 <div class="ar">&#8595;</div>
 </div>
 <div class="leaf">
-<div class="n">&#127807; rung_leaf_0</div>
+<div class="n">&#1..327; rung_leaf_0</div>
 <div class="h">0x4a8c...b3d7</div>
 <div class="g">The SCHEME byte and the 33-byte pubkey are the preimage. They are gone. Only this 32-byte SHA-256 digest exists. Nobody can extract the pubkey from this hash.</div>
 </div>
@@ -501,7 +501,7 @@ const S = [
 <div class="ar">&#8595;</div>
 </div>
 <div class="leaf">
-<div class="n">&#127807; rung_leaf_1</div>
+<div class="n">&#1..327; rung_leaf_1</div>
 <div class="h">0x91e5...20ac</div>
 <div class="g">905 bytes — the FALCON512 key, the SCHEME, the CSV timelock — all compressed into 32 bytes. An observer cannot tell this was a post-quantum recovery path with a 1-week timelock.</div>
 </div>
@@ -521,7 +521,7 @@ const S = [
 <div class="ar">&#8595;</div>
 </div>
 <div class="leaf">
-<div class="n">&#127807; coil_leaf</div>
+<div class="n">&#1..327; coil_leaf</div>
 <div class="h">0xf7c2...8891</div>
 </div>
 `},
@@ -529,14 +529,14 @@ const S = [
 {act:1,t:"ASSEMBLE LEAVES",s:"3 leaves · ordered: rungs, then coil",h:`
 <div class="desc"><code>ComputeConditionsRoot()</code> collects leaves in fixed order: <strong>rung leaves</strong> (index 0, 1, ...) then <strong>relay leaves</strong> (none here) then <strong>coil leaf</strong> (always last).</div>
 <div style="display:flex;gap:.5rem;margin:.75rem 0;flex-wrap:wrap">
-<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#127807; leaves[0]</div><div class="h" style="font-size:.7rem">0x4a8c...b3d7</div><div class="g">Rung 0 · SIG Schnorr</div></div>
-<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#127807; leaves[1]</div><div class="h" style="font-size:.7rem">0x91e5...20ac</div><div class="g">Rung 1 · FALCON + CSV</div></div>
-<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#127807; leaves[2]</div><div class="h" style="font-size:.7rem">0xf7c2...8891</div><div class="g">Coil · UNLOCK</div></div>
+<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#1..327; leaves[0]</div><div class="h" style="font-size:.7rem">0x4a8c...b3d7</div><div class="g">Rung 0 · SIG Schnorr</div></div>
+<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#1..327; leaves[1]</div><div class="h" style="font-size:.7rem">0x91e5...20ac</div><div class="g">Rung 1 · FALCON + CSV</div></div>
+<div class="leaf" style="flex:1;min-width:150px"><div class="n">&#1..327; leaves[2]</div><div class="h" style="font-size:.7rem">0xf7c2...8891</div><div class="g">Coil · UNLOCK</div></div>
 </div>
 `},
 
 {act:1,t:"PAD TO POWER OF 2",s:"3 leaves → 4 · EMPTY_LEAF padding",h:`
-<div class="desc"><code>BuildMerkleTree()</code> — <code>NextPowerOf2(3) = 4</code>. Pad with <code>MLSC_EMPTY_LEAF = TaggedHash("LadderLeaf", "")</code>. This is a nothing-up-my-sleeve constant — it cannot collide with any valid leaf because valid serialized data has minimum length requirements.</div>
+<div class="desc"><code>BuildMerkleTree()</code> — <code>NextPowerOf2(3) = 4</code>. Pad with <code>MLSC_EMPTY_LEAF = TaggedHash("LadderLeaf", "")</code>. This is a nothing-up-my-sleeve constant — it cannot collide with any valid leaf because valid serialised data has minimum length requirements.</div>
 <div style="display:flex;gap:.5rem;margin:.75rem 0;flex-wrap:wrap">
 <div class="leaf" style="flex:1;min-width:120px"><div class="n" style="font-size:.6rem">leaves[0]</div><div class="h" style="font-size:.62rem">0x4a8c...b3d7</div></div>
 <div class="leaf" style="flex:1;min-width:120px"><div class="n" style="font-size:.6rem">leaves[1]</div><div class="h" style="font-size:.62rem">0x91e5...20ac</div></div>
@@ -578,15 +578,15 @@ const S = [
   <text x="515" y="122" text-anchor="middle" fill="#444" font-size="7">"LadderInternal"</text>
   <text x="515" y="137" text-anchor="middle" fill="#aaa" font-size="8.5">H(sorted(L2, L3))</text>
   <rect x="25" y="188" width="140" height="52" rx="5" fill="#050505" stroke="#00d4ff" stroke-width="1.5"/>
-  <text x="95" y="206" text-anchor="middle" fill="#00d4ff" font-size="7.5">&#127807; rung_leaf_0</text>
+  <text x="95" y="206" text-anchor="middle" fill="#00d4ff" font-size="7.5">&#1..327; rung_leaf_0</text>
   <text x="95" y="220" text-anchor="middle" fill="#b366ff" font-size="7">0x4a8c...b3d7</text>
   <text x="95" y="234" text-anchor="middle" fill="#333" font-size="6">SIG + pubkey_A</text>
   <rect x="205" y="188" width="140" height="52" rx="5" fill="#050505" stroke="#b366ff" stroke-width="1.5"/>
-  <text x="275" y="206" text-anchor="middle" fill="#b366ff" font-size="7.5">&#127807; rung_leaf_1</text>
+  <text x="275" y="206" text-anchor="middle" fill="#b366ff" font-size="7.5">&#1..327; rung_leaf_1</text>
   <text x="275" y="220" text-anchor="middle" fill="#b366ff" font-size="7">0x91e5...20ac</text>
   <text x="275" y="234" text-anchor="middle" fill="#333" font-size="6">FALCON + CSV + pubkey_D</text>
   <rect x="355" y="188" width="140" height="52" rx="5" fill="#050505" stroke="#00ff88" stroke-width="1.5"/>
-  <text x="425" y="206" text-anchor="middle" fill="#00ff88" font-size="7.5">&#127807; coil_leaf</text>
+  <text x="425" y="206" text-anchor="middle" fill="#00ff88" font-size="7.5">&#1..327; coil_leaf</text>
   <text x="425" y="220" text-anchor="middle" fill="#b366ff" font-size="7">0xf7c2...8891</text>
   <text x="425" y="234" text-anchor="middle" fill="#333" font-size="6">UNLOCK INLINE</text>
   <rect x="535" y="188" width="140" height="52" rx="5" fill="#050505" stroke="#1a1a1a" stroke-dasharray="4"/>
@@ -692,7 +692,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(255,136,0,.1);color:var(--norange)">3</div><div class="stg-t">Anti-spam gates</div></div>
 <div class="chk ok"><span class="ic">✓</span> IsDataEmbeddingType — blocks PUBKEY_COMMIT, HASH256, HASH160, DATA in witness for non-implicit blocks</div>
-<div class="chk ok"><span class="ic">✓</span> PREIMAGE/SCRIPT_BODY field count: 0 ≤ MAX_PREIMAGE_FIELDS_PER_WITNESS (2)</div>
+<div class="chk ok"><span class="ic">✓</span> PREIMAGE/SCRIPT_BODY field count: 0 ≤ MAX_PREIMAGE_FIELDS_PER_WITNESS (1)</div>
 <div class="chk ok"><span class="ic">✓</span> Relay chain depth: 0 ≤ MAX_RELAY_DEPTH (4)</div>
 <div class="chk ok"><span class="ic">✓</span> ss.empty() = true — no trailing bytes</div>
 </div>
@@ -701,7 +701,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 {act:2,t:"MLSC DETECTION",s:"0xC2 prefix · extract root",h:`
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(0,255,136,.1);color:var(--ngreen)">4</div><div class="stg-t">IsMLSCScript + GetMLSCRoot</div></div>
-<div class="chk ok"><span class="ic">✓</span> scriptPubKey.size() = 33, within [33, 113]</div>
+<div class="chk ok"><span class="ic">✓</span> scriptPubKey.size() = 33, within [33, 65]</div>
 <div class="chk ok"><span class="ic">✓</span> scriptPubKey[0] = 0xC2 (RUNG_MLSC_PREFIX)</div>
 <div class="chk ok"><span class="ic">✓</span> Extract bytes 1-32 → conditions_root (the expected Merkle root)</div>
 <div class="chk ok"><span class="ic">✓</span> witness.stack.size() ≥ 2 (MLSC requires 2 elements)</div>
@@ -717,7 +717,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 </div>
 `},
 
-{act:2,t:"MLSC PROOF — REVEALED RUNG",s:"Conditions deserialized with consensus validation",h:`
+{act:2,t:"MLSC PROOF — REVEALED RUNG",s:"Conditions deserialised with consensus validation",h:`
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(179,102,255,.1);color:var(--npurple)">6</div><div class="stg-t">Revealed rung — SIG block in CONDITIONS context</div></div>
 <div class="chk ok"><span class="ic">✓</span> n_blocks = 1 (not 0 — compact rungs rejected: "deprecated")</div>

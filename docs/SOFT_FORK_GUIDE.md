@@ -90,7 +90,7 @@ Upgraded nodes enforce the full ladder evaluation rules for v4 transactions. All
 
 ### Non-upgraded nodes
 
-Non-upgraded nodes do not recognize the `0xC2` prefix or the ladder evaluator. Their behaviour depends on the activation state:
+Non-upgraded nodes do not recognise the `0xC2` prefix or the ladder evaluator. Their behaviour depends on the activation state:
 
 **Before activation:** v4 transactions are non-standard. Non-upgraded nodes neither relay nor mine them. No impact.
 
@@ -232,7 +232,7 @@ The MAX_LADDER_WITNESS_SIZE limit of 100,000 bytes applies per input.
 
 **Risk:** Unknown block types are rejected at consensus during deserialization. This fail-closed design prevents an attacker from crafting conditions with fabricated block types.
 
-**Mitigation:** `IsKnownBlockType()` is checked during deserialization in `serialize.cpp`. Transactions with unknown block types cannot enter the mempool or be included in blocks. New block types require a code update to be recognized.
+**Mitigation:** `IsKnownBlockType()` is checked during deserialization in `serialize.cpp`. Transactions with unknown block types cannot enter the mempool or be included in blocks. New block types require a code update to be recognised.
 
 ## 8. Milestones
 

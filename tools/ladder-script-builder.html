@@ -769,7 +769,7 @@ const BLOCK_DEFS = {
   ANCHOR_RESERVE:    { category: 'anchor',   phase: 2, label: 'ANCHOR_RESERVE',    fields: [{name:'threshold_n', type:'NUMERIC', placeholder:'n'}, {name:'threshold_m', type:'NUMERIC', placeholder:'m'}, {name:'guardian_set_hash', type:'HASH256', placeholder:'guardian set hash'}] },
   ANCHOR_SEAL:       { category: 'anchor',   phase: 2, label: 'ANCHOR_SEAL',       fields: [{name:'asset_id', type:'HASH256', placeholder:'asset identifier'}, {name:'state_transition', type:'HASH256', placeholder:'state transition hash'}] },
   ANCHOR_ORACLE:     { category: 'anchor',   phase: 2, label: 'ANCHOR_ORACLE',     fields: [{name:'oracle_key', type:'PUBKEY', placeholder:'02... oracle pubkey'}, {name:'outcome_count', type:'NUMERIC', placeholder:'number of outcomes'}] },
-  DATA_RETURN:       { category: 'anchor',   phase: 2, label: 'DATA_RETURN',       fields: [{name:'data', type:'DATA', placeholder:'hex data (max 80 bytes)'}] },
+  DATA_RETURN:       { category: 'anchor',   phase: 2, label: 'DATA_RETURN',       fields: [{name:'data', type:'DATA', placeholder:'hex data (max 32 bytes)'}] },
 
   // ── RECURSION (0x04xx) — Phase 3 ──
   RECURSE_SAME:      { category: 'recurse',  phase: 3, label: 'RECURSE_SAME',      fields: [{name:'max_depth', type:'NUMERIC', placeholder:'max recursion depth'}] },

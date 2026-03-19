@@ -40,16 +40,16 @@ A Ladder Script transaction is identified by `nVersion = 4` (constant `CTransact
 
 1. **Inline conditions (`0xC1`).** Full conditions embedded in the output:
    ```
-   0xC1 || SerializedRungConditions
+   0xC1 || SerialisedRungConditions
    ```
    Inline conditions are for testing and development purposes only. They are non-standard on mainnet. All mainnet outputs must use MLSC (`0xC2`).
 
-2. **MLSC: Merkelized Ladder Script Conditions (`0xC2`).** A 32-byte Merkle root with an optional DATA_RETURN payload:
+2. **MLSC: Merkelised Ladder Script Conditions (`0xC2`).** A 32-byte Merkle root with an optional DATA_RETURN payload:
    ```
    0xC2 || conditions_root                    (33 bytes, standard)
-   0xC2 || conditions_root || data            (34-113 bytes, DATA_RETURN)
+   0xC2 || conditions_root || data            (34-65 bytes, DATA_RETURN)
    ```
-   This is the required output format for mainnet. If the scriptPubKey is longer than 33 bytes, the bytes after the root are a DATA_RETURN payload (max 80 bytes). Outputs with a DATA_RETURN payload must be zero-value. Max one DATA_RETURN output per transaction. The data is visible on-chain in the scriptPubKey and sits on the conditions side at 4 WU per byte.
+   This is the required output format for mainnet. If the scriptPubKey is longer than 33 bytes, the bytes after the root are a DATA_RETURN payload (max 32 bytes). Outputs with a DATA_RETURN payload must be zero-value. Max one DATA_RETURN output per transaction. The data is visible on-chain in the scriptPubKey and sits on the conditions side at 4 WU per byte.
 
 MLSC outputs store no condition data in the UTXO set. All conditions are revealed at spend time in the witness. This eliminates data embedding via fake conditions (unspendable outputs are never spent), reduces the UTXO footprint to 40 bytes per entry regardless of script complexity, and provides MAST-style privacy where unused spending paths are never revealed.
 
@@ -176,7 +176,7 @@ data_type bytes are omitted (types known from layout)
 | NUMERIC | `CompactSize(value)`. The numeric value itself, not a length prefix. Values 0-252 use 1 byte; 253-65535 use 3 bytes; 65536-2^32-1 use 5 bytes. After deserialization, always stored as 4-byte LE internally. |
 | Fixed-size (HASH256, HASH160, SPEND_INDEX, SCHEME) | Implicit: raw data only (size known from layout). Explicit: `CompactSize(len) + data`. |
 | Variable-size (PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY) | `CompactSize(len) + data` (always length-prefixed). |
-| DATA | `CompactSize(len) + data` (always length-prefixed, max 80 bytes). |
+| DATA | `CompactSize(len) + data` (always length-prefixed, max 32 bytes). |
 
 #### Implicit Field Layouts
 
@@ -297,13 +297,13 @@ Every field in a Ladder Script witness or conditions structure has one of the fo
 | `0x02` | *(reserved)* | | | | Formerly PUBKEY_COMMIT. Removed by merkle_pub_key. Rejected in both conditions and witness. |
 | `0x03` | HASH256 | 32 | 32 | Both | SHA-256 hash digest. |
 | `0x04` | HASH160 | 20 | 20 | Conditions only | RIPEMD160(SHA256()) hash digest. |
-| `0x05` | PREIMAGE | 1 | 32 | Witness only | Hash preimage (forbidden in conditions). |
+| `0x05` | PREIMAGE | 32 | 32 | Witness only | Hash preimage (forbidden in conditions). |
 | `0x06` | SIGNATURE | 1 | 50,000 | Witness only | Signature (Schnorr 64-65B, ECDSA 8-72B, PQ up to ~49,216B for SPHINCS_SHA). |
 | `0x07` | SPEND_INDEX | 4 | 4 | Both | Index reference (uint32 LE) for aggregate attestation. |
 | `0x08` | NUMERIC | 1 | 4 | Both | Unsigned 32-bit integer. Encoded on wire as CompactSize(value); stored internally as 4-byte LE. |
 | `0x09` | SCHEME | 1 | 1 | Both | Signature scheme selector byte. |
-| `0x0A` | SCRIPT_BODY | 1 | 80 | Witness only | Serialized inner conditions (P2SH/P2WSH/P2TR_SCRIPT inner scripts). 80-byte cap limits data embedding (legacy blocks on deprecation path). |
-| `0x0B` | DATA | 1 | 80 | Both | Opaque data payload (DATA_RETURN block only). Maximum 80 bytes. |
+| `0x0A` | SCRIPT_BODY | 1 | 32 | Witness only | Serialised inner conditions (P2SH/P2WSH/P2TR_SCRIPT inner scripts). 80-byte cap limits data embedding (legacy blocks on deprecation path). |
+| `0x0B` | DATA | 1 | 32 | Both | Opaque data payload (DATA_RETURN block only). Maximum 32 bytes. |
 
 The SIGNATURE maximum of 50,000 bytes accommodates all post-quantum signature schemes including SPHINCS_SHA (~7,856 bytes) and Dilithium3 (3,293 bytes) with headroom. The PUBKEY maximum of 2,048 bytes accommodates FALCON-1024 public keys (1,793 bytes). The SCRIPT_BODY type supports inner conditions in legacy wrapping blocks, capped at 80 bytes. Legacy blocks are on the deprecation path.
 
@@ -371,7 +371,7 @@ HASH_PREIMAGE and HASH160_PREIMAGE are deprecated as part of the anti-spam harde
 | `0x0504` | ANCHOR_RESERVE | NUMERIC(threshold_n) + NUMERIC(group_m) + HASH256(group_id) | Reserve anchor with N-of-M guardian set. Requires N <= M and a group identifier hash. |
 | `0x0505` | ANCHOR_SEAL | HASH256(asset_id) + HASH256(state_transition) | Seal anchor. Permanently binds a UTXO to an asset identifier and state transition commitment. |
 | `0x0506` | ANCHOR_ORACLE | PUBKEY(oracle) + NUMERIC(quorum) | Oracle anchor. Requires an oracle public key and a non-zero quorum count. |
-| `0x0507` | DATA_RETURN | DATA(payload) | Unspendable data output (typed OP_RETURN replacement). Max 80 bytes. Output must be zero-value. Max one per transaction. The data payload is appended to the MLSC scriptPubKey after the 32-byte root (`0xC2 || root || data`), making it visible on-chain at 4 WU per byte. |
+| `0x0507` | DATA_RETURN | DATA(payload) | Unspendable data output (typed OP_RETURN replacement). Max 32 bytes. Output must be zero-value. Max one per transaction. The data payload is appended to the MLSC scriptPubKey after the 32-byte root (`0xC2 || root || data`), making it visible on-chain at 4 WU per byte. |
 
 #### PLC Family (0x0600-0x06FF)
 
@@ -519,7 +519,7 @@ The scheme selector determines which signature algorithm is used for verificatio
 | `0x01` | SCHNORR | 32 B | 64-65 B | BIP-340 Schnorr signatures (default). |
 | `0x02` | ECDSA | 33 B | 8-72 B | ECDSA for legacy compatibility. |
 | `0x10` | FALCON512 | 897 B | ~666 B | FALCON-512 post-quantum lattice signatures. |
-| `0x11` | FALCON1024 | 1,793 B | ~1,280 B | FALCON-1024 post-quantum lattice signatures. |
+| `0x11` | FALCON1024 | 1,793 B | ~1..32 B | FALCON-1024 post-quantum lattice signatures. |
 | `0x12` | DILITHIUM3 | 1,952 B | 3,293 B | Dilithium3 (ML-DSA) post-quantum lattice signatures. |
 | `0x13` | SPHINCS_SHA | 32 B | ~7,856 B | SPHINCS+-SHA256 post-quantum hash-based signatures. Stateless. |
 
@@ -574,7 +574,7 @@ Input-specific:
 If SIGHASH_SINGLE:
 output_hash        = SHA256(output at input_index)
 
-conditions_hash    = SHA256(serialized rung conditions from spent output)
+conditions_hash    = SHA256(serialised rung conditions from spent output)
 ```
 
 The `conditions_hash` commitment binds the signature to the specific locking conditions, preventing signature replay across different ladder-locked outputs even if they use the same key.
@@ -591,7 +591,7 @@ The following limits are enforced at the policy (mempool) layer. Consensus enfor
 | MAX_BLOCKS_PER_RUNG | 8 | Maximum blocks per rung. Limits AND-condition depth. |
 | MAX_FIELDS_PER_BLOCK | 16 | Maximum typed fields per block. |
 | MAX_LADDER_WITNESS_SIZE | 100,000 bytes | Maximum total serialised witness size. Accommodates post-quantum signatures with headroom for multi-block rungs. |
-| MAX_PREIMAGE_FIELDS_PER_WITNESS | 2 | Maximum PREIMAGE/SCRIPT_BODY fields per witness. Limits user-chosen data to ~64 bytes (2 x 32 bytes). |
+| MAX_PREIMAGE_FIELDS_PER_WITNESS | 1 | Maximum PREIMAGE/SCRIPT_BODY fields per witness. Limits user-chosen data to ~32 bytes (1 x 32 bytes). |
 | MAX_RELAYS | 8 | Maximum relay definitions per ladder witness. |
 | MAX_REQUIRES | 8 | Maximum relay requirements (co-spend input indices) per rung or relay. |
 | MAX_RELAY_DEPTH | 4 | Maximum transitive relay chain depth. Prevents unbounded recursive relay evaluation. |
@@ -869,7 +869,7 @@ Despite activating 59 block types across 10 families, Ladder Script's consensus 
 
 | Metric | SegWit (BIP 141/143/144) | Taproot (BIP 340/341/342) | Ladder Script |
 |--------|--------------------------|---------------------------|---------------|
-| **Consensus files changed** | 80 | 44 | 19 |
+| **Consensus files changed** | 32 | 44 | 19 |
 | **Lines added** | +5,305 | +2,985 | +9,846 |
 | **Lines removed** | -571 | -121 | 0 |
 | **Files outside new code** | ~60 | ~30 | ~5 |
@@ -932,7 +932,7 @@ The implementation includes comprehensive test coverage across two layers:
 Additional functional tests:
 - `tests/functional/rung_p2p.py`: P2P relay of v4 transactions between nodes.
 - `tests/functional/rung_pq_block.py`: Post-quantum block-level tests.
-- `tests/functional/rung_mlsc.py`: MLSC (Merkelized Ladder Script Conditions) tests.
+- `tests/functional/rung_mlsc.py`: MLSC (Merkelised Ladder Script Conditions) tests.
 - `tests/functional/rung_signet.py`: Signet integration tests.
 - `tests/functional/rung_key_ref_sig.py`: KEY_REF_SIG relay-based signature tests.
 

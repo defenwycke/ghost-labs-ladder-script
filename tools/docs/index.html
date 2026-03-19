@@ -324,7 +324,7 @@
     const links = document.querySelectorAll('.sidebar-link');
     let currentDoc = null;
 
-    // Block reference data — all 61 blocks organized by family
+    // Block reference data — all 59 blocks organized by family
     const BLOCK_FAMILIES = [
       {
         name: 'Signature Family', range: '0x0000', cls: 'signature',
@@ -385,7 +385,7 @@
           { code: '0x0504', name: 'ANCHOR_RESERVE', file: 'anchor-reserve', desc: 'Reserve proof anchor. Commits to a minimum reserve amount.' },
           { code: '0x0505', name: 'ANCHOR_SEAL', file: 'anchor-seal', desc: 'Tamper-evident seal. Single-use commitment for client-side validation.' },
           { code: '0x0506', name: 'ANCHOR_ORACLE', file: 'anchor-oracle', desc: 'Oracle attestation anchor. Requires oracle\'s signed attestation of event outcome.' },
-          { code: '0x0507', name: 'DATA_RETURN', file: 'data-return', desc: 'Unspendable data output (max 80 bytes). Typed replacement for OP_RETURN.' },
+          { code: '0x0507', name: 'DATA_RETURN', file: 'data-return', desc: 'Unspendable data output (max 32 bytes). Typed replacement for OP_RETURN.' },
         ]
       },
       {

@@ -457,9 +457,9 @@
 <span class="jc">// Witness fields (revealed at spend time)</span>
 <span class="jk">PUBKEY</span>       <span class="jc">// 1-2,048 bytes  (bound by Merkle leaf)</span>
 <span class="jk">SIGNATURE</span>    <span class="jc">// 1-50,000 bytes</span>
-<span class="jk">PREIMAGE</span>     <span class="jc">// 1-32 bytes</span>
-<span class="jk">SCRIPT_BODY</span>  <span class="jc">// 1-80 bytes    (inner conditions)</span>
-<span class="jk">DATA</span>         <span class="jc">// 1-80 bytes     (DATA_RETURN block only)</span></pre>
+<span class="jk">PREIMAGE</span>     <span class="jc">// exactly 32 bytes</span>
+<span class="jk">SCRIPT_BODY</span>  <span class="jc">// exactly 32 bytes    (inner conditions)</span>
+<span class="jk">DATA</span>         <span class="jc">// exactly 32 bytes     (DATA_RETURN block only)</span></pre>
             </div>
           </div>
         </div>
@@ -870,7 +870,7 @@
       <div class="explainer">
         <div class="explainer-text">
           <h4>Output Formats &amp; Wire Encoding</h4>
-          <p>Ladder Script supports two output formats. <strong>Inline</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC1</code>) stores full serialized conditions in the output. <strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) stores only a 32-byte Merkle root &mdash; conditions are revealed at spend time in the witness.</p>
+          <p>Ladder Script supports two output formats. <strong>Inline</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC1</code>) stores full serialised conditions in the output. <strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) stores only a 32-byte Merkle root &mdash; conditions are revealed at spend time in the witness.</p>
           <p>Blocks use <strong>micro-headers</strong> &mdash; a 1-byte lookup table (0x00&ndash;0x3C) that encodes the block type, inversion flag, and implicit field layout in a single byte. Known block types with standard field layouts skip the 2-byte type code, field count, and type bytes entirely. Escape codes (0x80/0x81) fall back to the full header for unknown or non-standard blocks. Inversion is only permitted for non-key-consuming block types (timelocks, covenants, PLC, governance, anchors, recursion) &mdash; key-consuming blocks cannot be inverted.</p>
           <p>Sighash uses a tagged hash <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">"LadderSighash"</code> that commits to the conditions hash (or Merkle root for MLSC outputs), binding each signature to the exact conditions it satisfies.</p>
         </div>
@@ -882,7 +882,7 @@
             </div>
             <div class="json-body">
 <pre><span class="jc">// Inline output (0xC1)</span>
-<span class="jn">0xC1</span> <span class="jp">||</span> <span class="js">SerializedRungConditions</span>
+<span class="jn">0xC1</span> <span class="jp">||</span> <span class="js">SerialisedRungConditions</span>
 
 <span class="jc">// MLSC output (0xC2) — 33-byte scriptPubKey</span>
 <span class="jn">0xC2</span> <span class="jp">||</span> <span class="js">conditions_root (32 bytes)</span>
@@ -917,7 +917,7 @@
   <section id="mlsc" style="border-bottom: 1px solid var(--gray-800);">
     <div class="container">
       <div class="section-num">// 07</div>
-      <h2 class="section-title">Merkelized Ladder Script Conditions</h2>
+      <h2 class="section-title">Merkelised Ladder Script Conditions</h2>
       <div class="section-content">
         <p><strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) replaces full inline conditions with a single 32-byte Merkle root. The complete conditions are never stored on-chain at creation &mdash; only the root appears in the output and UTXO set. At spend time, the spender reveals only the exercised rung plus a Merkle proof in the witness. Unused spending paths stay permanently hidden.</p>
       </div>

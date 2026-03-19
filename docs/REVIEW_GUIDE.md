@@ -1,6 +1,6 @@
 # Ladder Script Review Guide
 
-This document is a starting point for reviewers. Ladder Script is 61 block types across 10 families, but each block type is a self-contained unit that can be reviewed independently.
+This document is a starting point for reviewers. Ladder Script is 59 block types (2 deprecated) across 10 families, but each block type is a self-contained unit that can be reviewed independently.
 
 ## Where to Start
 
@@ -48,7 +48,7 @@ Every hash commitment stored in the UTXO set is computed by the node:
 - User provides PREIMAGE/SCRIPT_BODY → node computes HASH256 (SHA-256) or HASH160
 - Raw hash values are rejected for all node-computed block types
 
-No condition field across all 61 block types accepts arbitrary user-chosen bytes.
+No condition field across all 59 block types accepts arbitrary user-chosen bytes.
 
 ## File Map
 

@@ -33,7 +33,7 @@ Three:
   On the witness side, PUBKEY and SIGNATURE are cryptographically constrained,
   PREIMAGE and SCRIPT_BODY are capped (32 and 80 bytes) with a combined limit
   of 2 per witness, and data-embedding types are rejected in witness context for
-  blocks without implicit witness layouts. Maximum embeddable data: ~64 bytes.
+  blocks without implicit witness layouts. Maximum embeddable data: ~32 bytes.
 
 ### 3. What is the PLC analogy?
 
@@ -128,7 +128,7 @@ satisfied, preventing condition substitution attacks.
 Ladder Script defines two output formats:
 
 - **`0xC2` - Merkelised Ladder Script Conditions (MLSC).** A 32-byte
-  Merkle root follows the prefix byte (33 bytes standard, or 34-113 bytes
+  Merkle root follows the prefix byte (33 bytes standard, or 34-65 bytes
   with a DATA_RETURN payload appended). The actual conditions are revealed
   at spend time via a Merkle proof in the witness. This provides MAST-style
   privacy and keeps the UTXO set compact. This is the only format accepted
@@ -157,7 +157,7 @@ witness version, or Taproot annex byte.
 | HASH160 size | Exactly 20 bytes | Field validation |
 | NUMERIC size | 1-4 bytes | Field validation |
 | SCHEME size | Exactly 1 byte | Field validation |
-| DATA size | 1-80 bytes | Field validation |
+| DATA size | exactly 32 bytes | Field validation |
 
 ### 11. How do coil types work?
 
@@ -192,7 +192,7 @@ proofs themselves.
 ### 12a. What is a diff witness and when should I use one?
 
 A diff witness allows one input's witness to inherit its structure from another
-input in the same transaction. Instead of serializing a full witness for every
+input in the same transaction. Instead of serialising a full witness for every
 input, you provide only the fields that differ (typically just signatures,
 since each input has a unique sighash). Use diff witnesses when a transaction
 spends multiple UTXOs with identical or similar conditions -- batch
@@ -452,10 +452,10 @@ layers:
 4. **Selective inversion.** Key-consuming blocks cannot be inverted, preventing
    an attacker from using a garbage pubkey with an inverted SIG to embed data.
 5. **Witness data limits.** PREIMAGE (max 32 bytes) and SCRIPT_BODY (max 80
-   bytes) share a combined limit of 2 fields per witness
+   bytes) share a limit of 1 field per witness
    (`MAX_PREIMAGE_FIELDS_PER_WITNESS`). PUBKEY and SIGNATURE are cryptographically
    constrained -- they must correspond to valid keys and signatures. Maximum
-   embeddable data per witness: ~64 bytes.
+   embeddable data per witness: ~32 bytes.
 6. **Build-time validation.** Public keys are checked for compressed key prefix
    (0x02/0x03 for 33-byte keys), SCHEME values are validated against the enum.
 7. **Economic deterrent.** Even if structurally valid data gets into a UTXO
@@ -498,7 +498,7 @@ Witness-only types are blocked from conditions at both the RPC and consensus
 layers. Key-consuming blocks cannot be inverted (selective inversion), closing
 the garbage-pubkey-with-inverted-SIG vector.
 
-MLSC outputs take this further: the UTXO stores only 33-113 bytes
+MLSC outputs take this further: the UTXO stores only 33-65 bytes
 (`0xC2` + 32-byte Merkle root, optionally with a DATA_RETURN payload). The
 conditions are never in the UTXO set at all. An attacker could create a fake
 `0xC2` output with a garbage root, but it would be unspendable -- no valid
@@ -507,10 +507,10 @@ attacker burns their funds for nothing.
 
 On the witness side, cryptographically constrained fields (PUBKEY, SIGNATURE)
 leave no room for arbitrary data. PREIMAGE is capped at 32 bytes, SCRIPT_BODY
-at 520 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 2
+at 80 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 1
 such fields total. Data-embedding types (HASH256, HASH160, DATA) are rejected
 in witness context for blocks without implicit witness layouts. The maximum
-embeddable data per witness is ~64 bytes -- and only as valid hash preimages
+embeddable data per witness is ~32 bytes -- and only as valid hash preimages
 or serialised Ladder Script conditions.
 
 The Legacy family (0x0900) extends this to traditional transaction types. P2SH,
@@ -581,7 +581,7 @@ directly on the signet.
 
 MLSC is the `0xC2` output format. Instead of storing full conditions inline,
 the scriptPubKey contains `0xC2` + a 32-byte Merkle root (33 bytes standard,
-or 34-113 bytes with a DATA_RETURN payload appended). The root is computed from
+or 34-65 bytes with a DATA_RETURN payload appended). The root is computed from
 the ladder's rungs using BIP-341-style tagged hashing:
 
 - **Leaf:** `TaggedHash("LadderLeaf", SerializeRung(rung[i]) || pk1 || ... || pkN)`
@@ -600,7 +600,7 @@ Three reasons:
 
 1. **Privacy.** Only the executed rung is revealed. Recovery paths, emergency
    keys, and alternative spending conditions stay hidden if never used.
-2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-113
+2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-65
    with DATA_RETURN) regardless of how complex the conditions are. A 16-rung
    ladder with 8 blocks each takes the same UTXO space as a single SIG block.
 3. **Spam resistance.** The UTXO set never contains conditions -- only a Merkle
@@ -615,8 +615,8 @@ ladder complexity, and the signer does not need access to unrevealed rungs.
 
 ### 34. Can data be embedded in MLSC outputs?
 
-The only data surface is DATA_RETURN: up to 80 bytes appended after the Merkle
-root, making the output 34-113 bytes. DATA_RETURN outputs must be zero-value
+The only data surface is DATA_RETURN: up to 32 bytes appended after the Merkle
+root, making the output 34-65 bytes. DATA_RETURN outputs must be zero-value
 (provably unspendable), are limited to 1 per transaction, and cost 4 WU per
 byte -- the same economics as OP_RETURN. This provides a structured, visible,
 prunable channel for protocol metadata (timestamps, commitments, anchors).
@@ -730,7 +730,7 @@ There are 7 anchor types:
 - **ANCHOR_RESERVE** (0x0504): N-of-M guardian reserve set commitment.
 - **ANCHOR_SEAL** (0x0505): Permanent, immutable data seal.
 - **ANCHOR_ORACLE** (0x0506): Oracle attestation key binding.
-- **DATA_RETURN** (0x0507): Prunable data carrier. Up to 80 bytes appended
+- **DATA_RETURN** (0x0507): Prunable data carrier. Up to 32 bytes appended
   after the MLSC Merkle root (`0xC2 || root || data`). Zero-value, max 1 per
   transaction. Replaces OP_RETURN for v4 transactions.
 
