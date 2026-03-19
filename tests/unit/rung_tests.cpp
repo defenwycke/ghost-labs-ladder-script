@@ -49,6 +49,16 @@ static std::vector<uint8_t> MakeHash256()
     return std::vector<uint8_t>(32, 0xCC);
 }
 
+/** Create a preimage and its SHA256 hash as a pair.
+ *  Used for anchor/one-shot blocks that require hash-preimage binding. */
+static std::pair<std::vector<uint8_t>, std::vector<uint8_t>> MakeHashPreimagePair()
+{
+    std::vector<uint8_t> preimage(32, 0xAB); // fixed 32-byte preimage
+    std::vector<uint8_t> hash(32);
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash.data());
+    return {hash, preimage};
+}
+
 static std::vector<uint8_t> MakeHash160()
 {
     return std::vector<uint8_t>(20, 0xDD);
@@ -988,27 +998,41 @@ BOOST_AUTO_TEST_CASE(eval_anchor_types_structural)
     channel.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});
     BOOST_CHECK(EvalBlock(channel, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
 
-    // ANCHOR_POOL: needs hash + count
-    RungBlock pool;
-    pool.type = RungBlockType::ANCHOR_POOL;
-    pool.fields.push_back({RungDataType::HASH256, MakeHash256()});
-    pool.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5)});
-    BOOST_CHECK(EvalBlock(pool, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    // ANCHOR_POOL: needs hash + preimage + count (hash-preimage binding)
+    {
+        auto [h, p] = MakeHashPreimagePair();
+        RungBlock pool;
+        pool.type = RungBlockType::ANCHOR_POOL;
+        pool.fields.push_back({RungDataType::HASH256, h});
+        pool.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5)});
+        pool.fields.push_back({RungDataType::PREIMAGE, p});
+        BOOST_CHECK(EvalBlock(pool, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
 
-    // ANCHOR_RESERVE: needs 2 numerics + hash
-    RungBlock reserve;
-    reserve.type = RungBlockType::ANCHOR_RESERVE;
-    reserve.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});  // n
-    reserve.fields.push_back({RungDataType::NUMERIC, MakeNumeric(3)});  // m
-    reserve.fields.push_back({RungDataType::HASH256, MakeHash256()});
-    BOOST_CHECK(EvalBlock(reserve, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    // ANCHOR_RESERVE: needs 2 numerics + hash + preimage
+    {
+        auto [h, p] = MakeHashPreimagePair();
+        RungBlock reserve;
+        reserve.type = RungBlockType::ANCHOR_RESERVE;
+        reserve.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2)});  // n
+        reserve.fields.push_back({RungDataType::NUMERIC, MakeNumeric(3)});  // m
+        reserve.fields.push_back({RungDataType::HASH256, h});
+        reserve.fields.push_back({RungDataType::PREIMAGE, p});
+        BOOST_CHECK(EvalBlock(reserve, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
 
-    // ANCHOR_SEAL: needs 2 hashes
-    RungBlock seal;
-    seal.type = RungBlockType::ANCHOR_SEAL;
-    seal.fields.push_back({RungDataType::HASH256, MakeHash256()});
-    seal.fields.push_back({RungDataType::HASH256, MakeHash256()});
-    BOOST_CHECK(EvalBlock(seal, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    // ANCHOR_SEAL: needs 2 hashes + 2 preimages
+    {
+        auto [h1, p1] = MakeHashPreimagePair();
+        auto [h2, p2] = MakeHashPreimagePair();
+        RungBlock seal;
+        seal.type = RungBlockType::ANCHOR_SEAL;
+        seal.fields.push_back({RungDataType::HASH256, h1});
+        seal.fields.push_back({RungDataType::HASH256, h2});
+        seal.fields.push_back({RungDataType::PREIMAGE, p1});
+        seal.fields.push_back({RungDataType::PREIMAGE, p2});
+        BOOST_CHECK(EvalBlock(seal, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
 
     // ANCHOR_ORACLE: needs pubkey + count
     RungBlock oracle;
@@ -1530,12 +1554,16 @@ BOOST_AUTO_TEST_CASE(eval_plc_structural_validation)
     counter.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5)});
     BOOST_CHECK(EvalBlock(counter, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
 
-    // ONE_SHOT needs numeric + hash; state=0 → can fire
-    RungBlock oneshot;
-    oneshot.type = RungBlockType::ONE_SHOT;
-    oneshot.fields.push_back({RungDataType::NUMERIC, MakeNumeric(0)});
-    oneshot.fields.push_back({RungDataType::HASH256, MakeHash256()});
-    BOOST_CHECK(EvalBlock(oneshot, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    // ONE_SHOT needs numeric + hash + preimage; state=0 → can fire
+    {
+        auto [h, p] = MakeHashPreimagePair();
+        RungBlock oneshot;
+        oneshot.type = RungBlockType::ONE_SHOT;
+        oneshot.fields.push_back({RungDataType::NUMERIC, MakeNumeric(0)});
+        oneshot.fields.push_back({RungDataType::HASH256, h});
+        oneshot.fields.push_back({RungDataType::PREIMAGE, p});
+        BOOST_CHECK(EvalBlock(oneshot, checker, SigVersion::LADDER, execdata) == EvalResult::SATISFIED);
+    }
 }
 
 // ============================================================================
@@ -5074,14 +5102,16 @@ BOOST_AUTO_TEST_CASE(eval_counter_up_single_numeric_error)
 
 BOOST_AUTO_TEST_CASE(eval_one_shot_state_zero)
 {
-    // ONE_SHOT with state=0 → SATISFIED (can fire)
+    // ONE_SHOT with state=0 → SATISFIED (can fire) — requires hash-preimage binding
     MockSignatureChecker checker;
     ScriptExecutionData execdata;
 
+    auto [h, p] = MakeHashPreimagePair();
     RungBlock block;
     block.type = RungBlockType::ONE_SHOT;
     block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(0)});
-    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::HASH256, h});
+    block.fields.push_back({RungDataType::PREIMAGE, p});
 
     RungEvalContext ctx;
     BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::SATISFIED);
@@ -5089,14 +5119,16 @@ BOOST_AUTO_TEST_CASE(eval_one_shot_state_zero)
 
 BOOST_AUTO_TEST_CASE(eval_one_shot_state_nonzero)
 {
-    // ONE_SHOT with state=1 → UNSATISFIED (already fired)
+    // ONE_SHOT with state=1 → UNSATISFIED (already fired, hash binding checked first)
     MockSignatureChecker checker;
     ScriptExecutionData execdata;
 
+    auto [h, p] = MakeHashPreimagePair();
     RungBlock block;
     block.type = RungBlockType::ONE_SHOT;
     block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1)});
-    block.fields.push_back({RungDataType::HASH256, MakeHash256()});
+    block.fields.push_back({RungDataType::HASH256, h});
+    block.fields.push_back({RungDataType::PREIMAGE, p});
 
     RungEvalContext ctx;
     BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);

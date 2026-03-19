@@ -857,6 +857,29 @@ static bool HasRequiredHashes(const RungBlock& block, size_t count)
     return FindAllFields(block, RungDataType::HASH256).size() >= count;
 }
 
+/** Verify that each HASH256 field in a block has a matching PREIMAGE field
+ *  where SHA256(preimage) == hash. This binds hash content to revealed data,
+ *  preventing arbitrary data embedding via unverified hash fields.
+ *  Hashes and preimages are matched positionally (1st hash ↔ 1st preimage, etc.). */
+static bool VerifyHashPreimageBinding(const RungBlock& block)
+{
+    auto hashes = FindAllFields(block, RungDataType::HASH256);
+    auto preimages = FindAllFields(block, RungDataType::PREIMAGE);
+
+    if (hashes.empty()) return true; // no hashes to verify
+    if (preimages.size() < hashes.size()) return false; // not enough preimages
+
+    for (size_t i = 0; i < hashes.size(); ++i) {
+        if (hashes[i]->data.size() != 32) return false;
+        unsigned char computed[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(preimages[i]->data.data(), preimages[i]->data.size()).Finalize(computed);
+        if (memcmp(computed, hashes[i]->data.data(), 32) != 0) {
+            return false; // preimage doesn't match hash
+        }
+    }
+    return true;
+}
+
 EvalResult EvalAnchorBlock(const RungBlock& block)
 {
     // Generic anchor: validate at least one typed param is present
@@ -882,9 +905,13 @@ EvalResult EvalAnchorChannelBlock(const RungBlock& block)
 
 EvalResult EvalAnchorPoolBlock(const RungBlock& block)
 {
-    // Verify vtxo_tree_root present, participant_count > 0
+    // Verify vtxo_tree_root present and hash-bound to witness preimage
     if (!HasRequiredHashes(block, 1)) {
         return EvalResult::ERROR;
+    }
+    // Hash binding: HASH256 must equal SHA256(witness PREIMAGE)
+    if (!VerifyHashPreimageBinding(block)) {
+        return EvalResult::UNSATISFIED;
     }
     const RungField* count = FindField(block, RungDataType::NUMERIC);
     if (count) {
@@ -896,10 +923,14 @@ EvalResult EvalAnchorPoolBlock(const RungBlock& block)
 
 EvalResult EvalAnchorReserveBlock(const RungBlock& block)
 {
-    // Verify threshold_n <= threshold_m, guardian set hash present
+    // Verify threshold_n <= threshold_m, guardian set hash present and hash-bound
     auto numerics = FindAllFields(block, RungDataType::NUMERIC);
     if (numerics.size() < 2 || !HasRequiredHashes(block, 1)) {
         return EvalResult::ERROR;
+    }
+    // Hash binding: HASH256 must equal SHA256(witness PREIMAGE)
+    if (!VerifyHashPreimageBinding(block)) {
+        return EvalResult::UNSATISFIED;
     }
     int64_t threshold_n = ReadNumeric(*numerics[0]);
     int64_t threshold_m = ReadNumeric(*numerics[1]);
@@ -911,9 +942,13 @@ EvalResult EvalAnchorReserveBlock(const RungBlock& block)
 
 EvalResult EvalAnchorSealBlock(const RungBlock& block)
 {
-    // Verify asset_id and state_transition hashes present
+    // Verify asset_id and state_transition hashes present and hash-bound
     if (!HasRequiredHashes(block, 2)) {
         return EvalResult::ERROR;
+    }
+    // Hash binding: each HASH256 must equal SHA256(witness PREIMAGE)
+    if (!VerifyHashPreimageBinding(block)) {
+        return EvalResult::UNSATISFIED;
     }
     return EvalResult::SATISFIED;
 }
@@ -1467,6 +1502,10 @@ EvalResult EvalOneShotBlock(const RungBlock& block, const RungEvalContext& /*ctx
     const RungField* state_field = FindField(block, RungDataType::NUMERIC);
     if (!state_field) return EvalResult::ERROR;
     if (!HasRequiredHashes(block, 1)) return EvalResult::ERROR;
+    // Hash binding: HASH256 must equal SHA256(witness PREIMAGE)
+    if (!VerifyHashPreimageBinding(block)) {
+        return EvalResult::UNSATISFIED;
+    }
     int64_t state = ReadNumeric(*state_field);
     if (state == 0) return EvalResult::SATISFIED;
     return EvalResult::UNSATISFIED;
