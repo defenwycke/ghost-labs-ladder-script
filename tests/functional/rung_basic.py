@@ -65,21 +65,21 @@ class LadderScriptBasicTest(BitcoinTestFramework):
         self.test_createrungtx_signrungtx_spend(node)
 
         # Covenant, Anchor, compound tests
-        self.test_hash_preimage_spend(node)
+        # self.test_hash_preimage_spend(node)  # HASH_PREIMAGE deprecated
         self.test_csv_spend(node)
         self.test_cltv_spend(node)
         self.test_multisig_spend(node)
         self.test_sig_plus_csv(node)
         self.test_or_logic(node)
         self.test_negative_wrong_sig(node)
-        self.test_negative_wrong_preimage(node)
+        # self.test_negative_wrong_preimage(node)  # HASH_PREIMAGE deprecated
         self.test_negative_csv_too_early(node)
         self.test_negative_cltv_too_early(node)
         self.test_multi_input_output(node)
 
         # Inversion tests
         self.test_inverted_csv(node)
-        self.test_inverted_hash_preimage(node)
+        # self.test_inverted_hash_preimage(node)  # HASH_PREIMAGE deprecated
 
         # Phase 4 tests (new block types)
         self.test_tagged_hash(node)

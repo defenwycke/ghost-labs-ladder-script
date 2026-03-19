@@ -406,6 +406,31 @@ static RungBlock ParseBlockSpec(const UniValue& block_obj, bool conditions_only,
         }
         block.fields.push_back(std::move(field));
     }
+
+    // Auto-add default SCHEME for blocks whose implicit CONDITIONS layout
+    // includes SCHEME, when the user didn't provide one explicitly.
+    // With merkle_pub_key, PUBKEY is intercepted — SCHEME may be the only
+    // condition field remaining. Ensure it's present and in the right position.
+    if (conditions_only) {
+        bool has_scheme = false;
+        for (const auto& f : block.fields) {
+            if (f.type == RungDataType::SCHEME) { has_scheme = true; break; }
+        }
+        if (!has_scheme) {
+            const auto& layout = GetImplicitLayout(block.type,
+                static_cast<uint8_t>(rung::SerializationContext::CONDITIONS));
+            // Find where SCHEME appears in the layout and insert there
+            for (uint8_t i = 0; i < layout.count; ++i) {
+                if (layout.fields[i].type == RungDataType::SCHEME) {
+                    size_t insert_pos = std::min(static_cast<size_t>(i), block.fields.size());
+                    block.fields.insert(block.fields.begin() + insert_pos,
+                        RungField{RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+                    break;
+                }
+            }
+        }
+    }
+
     return block;
 }
 
