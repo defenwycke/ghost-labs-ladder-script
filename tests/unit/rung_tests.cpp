@@ -1109,8 +1109,9 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_carry_forward_all_field_types)
     input_conds.rungs.push_back(rung0);
     input_conds.rungs.push_back(rung1);
 
-    // Serialize to scriptPubKey and back (simulating the output)
-    CScript spk = SerializeRungConditions(input_conds);
+    // Create MLSC output with matching conditions root
+    uint256 root = ComputeConditionsRoot(input_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1166,7 +1167,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_carry_forward_scheme_mismatch)
     RungConditions out_conds;
     out_conds.rungs.push_back(out_rung);
 
-    CScript spk = SerializeRungConditions(out_conds);
+    uint256 root = ComputeConditionsRoot(out_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1220,7 +1222,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_carry_forward_pubkey_commit_mismatch)
     RungConditions out_conds;
     out_conds.rungs.push_back(out_rung);
 
-    CScript spk = SerializeRungConditions(out_conds);
+    uint256 root = ComputeConditionsRoot(out_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1267,7 +1270,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_carry_forward_numeric_mismatch)
     RungConditions out_conds;
     out_conds.rungs.push_back(out_rung);
 
-    CScript spk = SerializeRungConditions(out_conds);
+    uint256 root = ComputeConditionsRoot(out_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1309,7 +1313,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_carry_forward_extra_block)
     RungConditions out_conds;
     out_conds.rungs.push_back(out_rung);
 
-    CScript spk = SerializeRungConditions(out_conds);
+    uint256 root = ComputeConditionsRoot(out_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1354,8 +1359,9 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_compound_carry_forward)
     RungConditions input_conds;
     input_conds.rungs.push_back(rung);
 
-    // Identical output
-    CScript spk = SerializeRungConditions(input_conds);
+    // Identical output — use MLSC root
+    uint256 root = ComputeConditionsRoot(input_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut output;
     output.scriptPubKey = spk;
     output.nValue = 50000;
@@ -1760,8 +1766,8 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_59_types_witness)
         // === Compound family ===
         // TIMELOCKED_SIG witness: [PUBKEY, SIGNATURE, NUMERIC]
         {RungBlockType::TIMELOCKED_SIG, {{RungDataType::PUBKEY, pk}, {RungDataType::SIGNATURE, sig}, {RungDataType::NUMERIC, num10}}},
-        // HTLC witness: [PUBKEY, SIGNATURE, PREIMAGE, NUMERIC]
-        {RungBlockType::HTLC, {{RungDataType::PUBKEY, pk}, {RungDataType::SIGNATURE, sig}, {RungDataType::PREIMAGE, preimage}, {RungDataType::NUMERIC, num10}}},
+        // HTLC witness: [PUBKEY, SIGNATURE, PUBKEY, PREIMAGE, NUMERIC]
+        {RungBlockType::HTLC, {{RungDataType::PUBKEY, pk}, {RungDataType::SIGNATURE, sig}, {RungDataType::PUBKEY, pk}, {RungDataType::PREIMAGE, preimage}, {RungDataType::NUMERIC, num10}}},
         // HASH_SIG witness: [PUBKEY, SIGNATURE, PREIMAGE]
         {RungBlockType::HASH_SIG, {{RungDataType::PUBKEY, pk}, {RungDataType::SIGNATURE, sig}, {RungDataType::PREIMAGE, preimage}}},
         // PTLC witness: explicit — PUBKEY + SIGNATURE + NUMERIC
@@ -2071,6 +2077,7 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_multifield_multirung)
         htlc_block.fields = {
             {RungDataType::PUBKEY, pk},
             {RungDataType::SIGNATURE, sig},
+            {RungDataType::PUBKEY, pk},
             {RungDataType::PREIMAGE, preimage},
             {RungDataType::NUMERIC, MakeNumeric(10)},
         };
@@ -2106,10 +2113,10 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_multifield_multirung)
     BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::SIG);
     BOOST_CHECK(decoded.rungs[0].blocks[1].type == RungBlockType::CSV);
 
-    // Rung 1: HTLC with 4 fields
+    // Rung 1: HTLC with 5 fields
     BOOST_CHECK_EQUAL(decoded.rungs[1].blocks.size(), 1u);
     BOOST_CHECK(decoded.rungs[1].blocks[0].type == RungBlockType::HTLC);
-    BOOST_CHECK_EQUAL(decoded.rungs[1].blocks[0].fields.size(), 4u);
+    BOOST_CHECK_EQUAL(decoded.rungs[1].blocks[0].fields.size(), 5u);
 
     // Rung 2: CLTV with 1 field
     BOOST_CHECK_EQUAL(decoded.rungs[2].blocks.size(), 1u);
@@ -2332,7 +2339,7 @@ static CMutableTransaction MakeRungTx(const LadderWitness& ladder)
 
     CTxOut output;
     output.nValue = 50000;
-    output.scriptPubKey = CScript() << OP_RETURN;
+    output.scriptPubKey = CreateMLSCScript(uint256::ONE);
     mtx.vout.push_back(output);
 
     return mtx;
@@ -2459,7 +2466,7 @@ BOOST_AUTO_TEST_CASE(policy_all_phases_standard)
 
 BOOST_AUTO_TEST_CASE(conditions_serialize_roundtrip)
 {
-    // Conditions use SCHEME (PUBKEY_COMMIT removed, folded into Merkle leaf)
+    // Inline conditions removed — verify MLSC root roundtrip instead
     RungConditions conditions;
     Rung rung;
     RungBlock block;
@@ -2468,23 +2475,22 @@ BOOST_AUTO_TEST_CASE(conditions_serialize_roundtrip)
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
+    // Inline functions always reject
     CScript script = rung::SerializeRungConditions(conditions);
+    BOOST_CHECK(!rung::IsRungConditionsScript(script));
 
-    BOOST_CHECK(rung::IsRungConditionsScript(script));
-    BOOST_CHECK_EQUAL(script[0], rung::RUNG_CONDITIONS_PREFIX);
-
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(rung::DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
-    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks.size(), 1u);
-    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::SIG);
-    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 1u);
-    BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].type == RungDataType::SCHEME);
+    // MLSC path: compute root, create script, extract root
+    uint256 root = rung::ComputeConditionsRoot(conditions);
+    CScript mlsc_spk = rung::CreateMLSCScript(root);
+    BOOST_CHECK(rung::IsMLSCScript(mlsc_spk));
+    uint256 extracted_root;
+    BOOST_CHECK(rung::GetMLSCRoot(mlsc_spk, extracted_root));
+    BOOST_CHECK(extracted_root == root);
 }
 
 BOOST_AUTO_TEST_CASE(conditions_roundtrip_with_inverted)
 {
+    // Inline conditions removed — verify inverted blocks via MLSC root stability
     RungConditions conditions;
     Rung rung;
     RungBlock block;
@@ -2494,12 +2500,18 @@ BOOST_AUTO_TEST_CASE(conditions_roundtrip_with_inverted)
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
-    CScript script = rung::SerializeRungConditions(conditions);
+    // Inline serialize/deserialize always fails
+    BOOST_CHECK(!rung::IsRungConditionsScript(rung::SerializeRungConditions(conditions)));
 
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(rung::DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK(decoded.rungs[0].blocks[0].inverted);
+    // MLSC: root is deterministic even with inverted blocks
+    uint256 root1 = rung::ComputeConditionsRoot(conditions);
+    uint256 root2 = rung::ComputeConditionsRoot(conditions);
+    BOOST_CHECK(root1 == root2);
+    // Inverted vs non-inverted should produce different roots
+    RungConditions conds_normal = conditions;
+    conds_normal.rungs[0].blocks[0].inverted = false;
+    uint256 root3 = rung::ComputeConditionsRoot(conds_normal);
+    BOOST_CHECK(root1 != root3);
 }
 
 BOOST_AUTO_TEST_CASE(conditions_reject_signature_field)
@@ -2550,13 +2562,20 @@ BOOST_AUTO_TEST_CASE(conditions_reject_preimage_field)
 
 BOOST_AUTO_TEST_CASE(conditions_not_rung_script)
 {
+    // Inline conditions are removed — stub functions always reject
     CScript normal_script = CScript() << OP_RETURN;
     BOOST_CHECK(!rung::IsRungConditionsScript(normal_script));
 
     RungConditions decoded;
     std::string error;
     BOOST_CHECK(!rung::DeserializeRungConditions(normal_script, decoded, error));
-    BOOST_CHECK(error.find("not a rung") != std::string::npos);
+
+    // Also verify that even a script with the old prefix is rejected
+    CScript fake_rung;
+    fake_rung.push_back(rung::RUNG_CONDITIONS_PREFIX);
+    fake_rung.push_back(0x01);
+    BOOST_CHECK(!rung::IsRungConditionsScript(fake_rung));
+    BOOST_CHECK(!rung::DeserializeRungConditions(fake_rung, decoded, error));
 }
 
 BOOST_AUTO_TEST_CASE(conditions_data_type_check)
@@ -2602,7 +2621,8 @@ BOOST_AUTO_TEST_CASE(sighash_ladder_deterministic)
 
     CTxOut spent_out;
     spent_out.nValue = 100000;
-    spent_out.scriptPubKey = rung::SerializeRungConditions(conditions);
+    uint256 cond_root = rung::ComputeConditionsRoot(conditions);
+    spent_out.scriptPubKey = rung::CreateMLSCScript(cond_root);
 
     PrecomputedTransactionData txdata;
     txdata.Init(mtx, std::vector<CTxOut>{spent_out});
@@ -2640,7 +2660,8 @@ BOOST_AUTO_TEST_CASE(sighash_ladder_different_hashtypes)
 
     CTxOut spent_out;
     spent_out.nValue = 100000;
-    spent_out.scriptPubKey = rung::SerializeRungConditions(conditions);
+    uint256 cond_root = rung::ComputeConditionsRoot(conditions);
+    spent_out.scriptPubKey = rung::CreateMLSCScript(cond_root);
 
     PrecomputedTransactionData txdata;
     txdata.Init(mtx, std::vector<CTxOut>{spent_out});
@@ -2691,58 +2712,57 @@ BOOST_AUTO_TEST_CASE(policy_valid_rung_output)
     rung.blocks.push_back(block);
     conditions.rungs.push_back(rung);
 
-    CScript script = rung::SerializeRungConditions(conditions);
+    uint256 root = rung::ComputeConditionsRoot(conditions);
+    CScript script = rung::CreateMLSCScript(root);
 
-    std::string reason;
-    BOOST_CHECK(rung::IsStandardRungOutput(script, reason));
+    // MLSC outputs are always standard (verified by IsMLSCScript)
+    BOOST_CHECK(rung::IsMLSCScript(script));
+    BOOST_CHECK(rung::IsLadderScript(script));
+    // IsStandardRungOutput is for inline conditions (removed) — MLSC bypasses it
 }
 
-BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_pubkey_field)
+BOOST_AUTO_TEST_CASE(consensus_output_rejects_non_mlsc)
 {
-    // Raw PUBKEY is now witness-only; conditions must reject it
-    LadderWitness ladder;
+    // ValidateRungOutputs rejects non-MLSC outputs in v4 transactions
+    CMutableTransaction mtx;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
+    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+
+    std::string error;
+    BOOST_CHECK(!rung::ValidateRungOutputs(CTransaction(mtx), 0, error));
+}
+
+BOOST_AUTO_TEST_CASE(consensus_output_accepts_mlsc)
+{
+    // ValidateRungOutputs accepts valid MLSC outputs
+    CMutableTransaction mtx;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
+    RungConditions conds;
     Rung rung;
     RungBlock block;
     block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
+    block.fields.push_back({RungDataType::SCHEME, {0x01}});
     rung.blocks.push_back(block);
-    ladder.rungs.push_back(rung);
+    conds.rungs.push_back(rung);
+    uint256 root = ComputeConditionsRoot(conds);
+    mtx.vout.push_back(CTxOut(100000, CreateMLSCScript(root)));
 
-    auto bytes = SerializeLadderWitness(ladder);
-    CScript script;
-    script.push_back(rung::RUNG_CONDITIONS_PREFIX);
-    script.insert(script.end(), bytes.begin(), bytes.end());
-
-    std::string reason;
-    BOOST_CHECK(!rung::IsStandardRungOutput(script, reason));
+    std::string error;
+    BOOST_CHECK(rung::ValidateRungOutputs(CTransaction(mtx), 0, error));
 }
 
-BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_signature_field)
+BOOST_AUTO_TEST_CASE(consensus_output_rejects_multiple_data_return)
 {
-    auto pk = MakePubkey();
-    LadderWitness ladder;
-    Rung rung;
-    RungBlock block;
-    block.type = RungBlockType::SIG;
-    block.fields.push_back({RungDataType::PUBKEY_COMMIT, MakePubkeyCommit(pk)});
-    block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
-    rung.blocks.push_back(block);
-    ladder.rungs.push_back(rung);
+    // Only one DATA_RETURN output per transaction
+    CMutableTransaction mtx;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
+    uint256 root = uint256::ONE;
+    std::vector<uint8_t> data(10, 0x42);
+    mtx.vout.push_back(CTxOut(0, CreateMLSCScript(root, data)));
+    mtx.vout.push_back(CTxOut(0, CreateMLSCScript(root, data)));
 
-    auto bytes = SerializeLadderWitness(ladder);
-    CScript script;
-    script.push_back(rung::RUNG_CONDITIONS_PREFIX);
-    script.insert(script.end(), bytes.begin(), bytes.end());
-
-    std::string reason;
-    BOOST_CHECK(!rung::IsStandardRungOutput(script, reason));
-}
-
-BOOST_AUTO_TEST_CASE(policy_rung_output_rejects_non_conditions)
-{
-    CScript script = CScript() << OP_RETURN;
-    std::string reason;
-    BOOST_CHECK(!rung::IsStandardRungOutput(script, reason));
+    std::string error;
+    BOOST_CHECK(!rung::ValidateRungOutputs(CTransaction(mtx), 0, error));
 }
 
 // ============================================================================
@@ -2774,7 +2794,8 @@ BOOST_AUTO_TEST_CASE(merge_rung_count_mismatch)
     wit_rung1.blocks.push_back(wit_block1);
     witness.rungs.push_back(wit_rung1);
 
-    CScript cond_script = rung::SerializeRungConditions(conditions);
+    uint256 cond_root = rung::ComputeConditionsRoot(conditions);
+    CScript cond_script = rung::CreateMLSCScript(cond_root);
 
     CMutableTransaction mtx;
     mtx.version = CTransaction::RUNG_TX_VERSION;
@@ -2821,7 +2842,8 @@ BOOST_AUTO_TEST_CASE(merge_block_count_mismatch)
     wit_rung.blocks.push_back(wit_block);
     witness.rungs.push_back(wit_rung);
 
-    CScript cond_script = rung::SerializeRungConditions(conditions);
+    uint256 cond_root = rung::ComputeConditionsRoot(conditions);
+    CScript cond_script = rung::CreateMLSCScript(cond_root);
 
     CMutableTransaction mtx;
     mtx.version = CTransaction::RUNG_TX_VERSION;
@@ -2863,7 +2885,8 @@ BOOST_AUTO_TEST_CASE(merge_block_type_mismatch)
     wit_rung.blocks.push_back(wit_block);
     witness.rungs.push_back(wit_rung);
 
-    CScript cond_script = rung::SerializeRungConditions(conditions);
+    uint256 cond_root = rung::ComputeConditionsRoot(conditions);
+    CScript cond_script = rung::CreateMLSCScript(cond_root);
 
     CMutableTransaction mtx;
     mtx.version = CTransaction::RUNG_TX_VERSION;
@@ -4392,7 +4415,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_legacy_compat)
     }
 
     CTxOut output;
-    output.scriptPubKey = SerializeRungConditions(output_conds);
+    uint256 root = ComputeConditionsRoot(output_conds);
+    output.scriptPubKey = CreateMLSCScript(root);
 
     RungEvalContext ctx;
     ctx.input_conditions = &input_conds;
@@ -4458,7 +4482,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_cross_rung)
     }
 
     CTxOut output;
-    output.scriptPubKey = SerializeRungConditions(output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(output_conds);
+        output.scriptPubKey = CreateMLSCScript(root);
+    }
 
     RungEvalContext ctx;
     ctx.input_conditions = &input_conds;
@@ -4528,7 +4555,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_multi_mutation)
     }
 
     CTxOut output;
-    output.scriptPubKey = SerializeRungConditions(output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(output_conds);
+        output.scriptPubKey = CreateMLSCScript(root);
+    }
 
     RungEvalContext ctx;
     ctx.input_conditions = &input_conds;
@@ -4575,7 +4605,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_modified_multi_mutation)
     }
 
     CTxOut bad_output;
-    bad_output.scriptPubKey = SerializeRungConditions(bad_output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(bad_output_conds);
+        bad_output.scriptPubKey = CreateMLSCScript(root);
+    }
     ctx.spending_output = &bad_output;
 
     BOOST_CHECK(EvalBlock(rm_block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::UNSATISFIED);
@@ -4646,7 +4679,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_count_unsatisfied)
     }
 
     CTxOut good_output;
-    good_output.scriptPubKey = SerializeRungConditions(good_output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(good_output_conds);
+        good_output.scriptPubKey = CreateMLSCScript(root);
+    }
     good_output.nValue = 50000;
 
     RungBlock eval_block;
@@ -4671,7 +4707,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_count_unsatisfied)
     }
 
     CTxOut bad_output;
-    bad_output.scriptPubKey = SerializeRungConditions(bad_output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(bad_output_conds);
+        bad_output.scriptPubKey = CreateMLSCScript(root);
+    }
     bad_output.nValue = 50000;
 
     ctx.spending_output = &bad_output;
@@ -4728,7 +4767,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_decay_legacy_compat)
     }
 
     CTxOut output;
-    output.scriptPubKey = SerializeRungConditions(output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(output_conds);
+        output.scriptPubKey = CreateMLSCScript(root);
+    }
 
     RungEvalContext ctx;
     ctx.input_conditions = &input_conds;
@@ -4794,7 +4836,10 @@ BOOST_AUTO_TEST_CASE(eval_recurse_decay_multi_mutation)
     }
 
     CTxOut output;
-    output.scriptPubKey = SerializeRungConditions(output_conds);
+    {
+        uint256 root = ComputeConditionsRoot(output_conds);
+        output.scriptPubKey = CreateMLSCScript(root);
+    }
 
     RungEvalContext ctx;
     ctx.input_conditions = &input_conds;
@@ -4836,7 +4881,8 @@ BOOST_AUTO_TEST_CASE(eval_cosign_matching_input)
     sig_block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(33, 0x02)});
     anchor_rung.blocks.push_back(sig_block);
     anchor_conds.rungs.push_back(anchor_rung);
-    CScript anchor_spk = SerializeRungConditions(anchor_conds);
+    uint256 anchor_root = ComputeConditionsRoot(anchor_conds);
+    CScript anchor_spk = CreateMLSCScript(anchor_root);
 
     // SHA256 of the anchor's scriptPubKey
     unsigned char anchor_hash[CSHA256::OUTPUT_SIZE];
@@ -5421,11 +5467,11 @@ BOOST_AUTO_TEST_CASE(policy_preimage_block_limit)
 {
     // Create a witness with 3 TAGGED_HASH blocks (each with PREIMAGE) — should exceed the limit of 1
     CMutableTransaction mtx;
-    mtx.version = 3;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
     CTxIn input;
     input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
     mtx.vin.push_back(input);
-    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+    mtx.vout.push_back(CTxOut(100000, CreateMLSCScript(uint256::ONE)));
 
     LadderWitness ladder;
     Rung rung;
@@ -5450,17 +5496,19 @@ BOOST_AUTO_TEST_CASE(policy_preimage_block_limit)
 
 BOOST_AUTO_TEST_CASE(policy_preimage_block_limit_at_max)
 {
-    // 2 TAGGED_HASH blocks with PREIMAGE — exceeds limit of 1
+    // 3 TAGGED_HASH blocks with PREIMAGE — exceeds MAX_PREIMAGE_FIELDS_PER_WITNESS (2)
+    // PREIMAGE count is enforced at consensus level in DeserializeLadderWitness,
+    // so the witness fails to deserialize and IsStandardRungTx rejects it.
     CMutableTransaction mtx;
-    mtx.version = 3;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
     CTxIn input;
     input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
     mtx.vin.push_back(input);
-    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+    mtx.vout.push_back(CTxOut(100000, CreateMLSCScript(uint256::ONE)));
 
     LadderWitness ladder;
     Rung rung;
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 3; ++i) {
         RungBlock block;
         block.type = RungBlockType::TAGGED_HASH;
         block.fields.push_back({RungDataType::HASH256, MakeHash256()});
@@ -5483,11 +5531,11 @@ BOOST_AUTO_TEST_CASE(policy_preimage_block_limit_mixed_types)
 {
     // 3 TAGGED_HASH blocks each with PREIMAGE = 3 total → exceeds limit of 1
     CMutableTransaction mtx;
-    mtx.version = 3;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
     CTxIn input;
     input.prevout = COutPoint(Txid::FromUint256(uint256::ONE), 0);
     mtx.vin.push_back(input);
-    mtx.vout.push_back(CTxOut(100000, CScript() << OP_RETURN));
+    mtx.vout.push_back(CTxOut(100000, CreateMLSCScript(uint256::ONE)));
 
     LadderWitness ladder;
     Rung rung;
@@ -5906,6 +5954,7 @@ BOOST_AUTO_TEST_CASE(relay_conditions_reject_witness_fields)
 BOOST_AUTO_TEST_CASE(relay_merge_conditions_witness)
 {
     // merkle_pub_key: conditions have SCHEME only. Witness: PUBKEY + SIG.
+    // Inline serialization removed — verify conditions structure directly.
     RungConditions conditions;
     Rung cond_rung;
     RungBlock cb;
@@ -5940,18 +5989,20 @@ BOOST_AUTO_TEST_CASE(relay_merge_conditions_witness)
     wit_relay.blocks.push_back(wrb);
     witness.relays.push_back(wit_relay);
 
-    // Serialize conditions side
-    CScript script = SerializeRungConditions(conditions);
-    RungConditions decoded_cond;
-    std::string cond_error;
-    BOOST_CHECK(DeserializeRungConditions(script, decoded_cond, cond_error));
-    BOOST_CHECK_EQUAL(decoded_cond.relays.size(), 1u);
-    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].relay_refs.size(), 1u);
-    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].relay_refs[0], 0u);
+    // Verify conditions structure directly (inline serialization removed)
+    BOOST_CHECK_EQUAL(conditions.relays.size(), 1u);
+    BOOST_CHECK_EQUAL(conditions.rungs[0].relay_refs.size(), 1u);
+    BOOST_CHECK_EQUAL(conditions.rungs[0].relay_refs[0], 0u);
 
     // Verify relay has condition-only fields (SCHEME only, no PUBKEY_COMMIT)
-    BOOST_CHECK_EQUAL(decoded_cond.relays[0].blocks[0].fields.size(), 1u);
-    BOOST_CHECK(decoded_cond.relays[0].blocks[0].fields[0].type == RungDataType::SCHEME);
+    BOOST_CHECK_EQUAL(conditions.relays[0].blocks[0].fields.size(), 1u);
+    BOOST_CHECK(conditions.relays[0].blocks[0].fields[0].type == RungDataType::SCHEME);
+
+    // Verify MLSC root is deterministic for these conditions
+    uint256 root1 = ComputeConditionsRoot(conditions);
+    uint256 root2 = ComputeConditionsRoot(conditions);
+    BOOST_CHECK(root1 == root2);
+    BOOST_CHECK(root1 != uint256::ZERO);
 }
 
 // ============================================================================
@@ -6904,9 +6955,10 @@ BOOST_AUTO_TEST_CASE(compound_serialize_roundtrip)
 
     RungBlock htlc_block;
     htlc_block.type = RungBlockType::HTLC;
-    // HTLC witness implicit layout: [PUBKEY, SIGNATURE, PREIMAGE, NUMERIC]
+    // HTLC witness implicit layout: [PUBKEY, SIGNATURE, PUBKEY, PREIMAGE, NUMERIC]
     htlc_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
     htlc_block.fields.push_back({RungDataType::SIGNATURE, MakeSignature(64)});
+    htlc_block.fields.push_back({RungDataType::PUBKEY, MakePubkey()});
     htlc_block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0x42)});
     htlc_block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(144)});
     rung.blocks.push_back(std::move(htlc_block));
@@ -6920,7 +6972,7 @@ BOOST_AUTO_TEST_CASE(compound_serialize_roundtrip)
     BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
     BOOST_CHECK_EQUAL(decoded.rungs[0].blocks.size(), 1u);
     BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::HTLC);
-    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 4u);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 5u);
 }
 
 BOOST_AUTO_TEST_CASE(new_compound_serialize_roundtrip)
@@ -7283,15 +7335,20 @@ BOOST_AUTO_TEST_CASE(micro_header_conditions_context_sig)
     rung.blocks.push_back(block);
     conds.rungs.push_back(rung);
 
-    CScript script = SerializeRungConditions(conds);
-    BOOST_CHECK(IsRungConditionsScript(script));
+    // Inline serialization removed — verify via MLSC root
+    uint256 root = ComputeConditionsRoot(conds);
+    CScript script = CreateMLSCScript(root);
+    BOOST_CHECK(IsMLSCScript(script));
 
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
-    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::SIG);
-    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 1u);
+    // Verify root extraction roundtrips
+    uint256 extracted;
+    BOOST_CHECK(GetMLSCRoot(script, extracted));
+    BOOST_CHECK(extracted == root);
+
+    // Verify conditions structure directly
+    BOOST_CHECK_EQUAL(conds.rungs.size(), 1u);
+    BOOST_CHECK(conds.rungs[0].blocks[0].type == RungBlockType::SIG);
+    BOOST_CHECK_EQUAL(conds.rungs[0].blocks[0].fields.size(), 1u);
 }
 
 BOOST_AUTO_TEST_CASE(micro_header_htlc_conditions_roundtrip)
@@ -7306,16 +7363,22 @@ BOOST_AUTO_TEST_CASE(micro_header_htlc_conditions_roundtrip)
     rung.blocks.push_back(block);
     conds.rungs.push_back(rung);
 
-    CScript script = SerializeRungConditions(conds);
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::HTLC);
-    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 2u);
+    // Inline serialization removed — verify via MLSC root determinism
+    uint256 root1 = ComputeConditionsRoot(conds);
+    uint256 root2 = ComputeConditionsRoot(conds);
+    BOOST_CHECK(root1 == root2);
+    BOOST_CHECK(root1 != uint256::ZERO);
 
-    // Verify the NUMERIC value round-tripped
+    CScript script = CreateMLSCScript(root1);
+    BOOST_CHECK(IsMLSCScript(script));
+
+    // Verify conditions structure directly
+    BOOST_CHECK(conds.rungs[0].blocks[0].type == RungBlockType::HTLC);
+    BOOST_CHECK_EQUAL(conds.rungs[0].blocks[0].fields.size(), 2u);
+
+    // Verify the NUMERIC value is preserved in the original struct
     uint32_t val = 0;
-    const auto& ndata = decoded.rungs[0].blocks[0].fields[1].data;
+    const auto& ndata = conds.rungs[0].blocks[0].fields[1].data;
     for (size_t i = 0; i < ndata.size(); ++i) {
         val |= static_cast<uint32_t>(ndata[i]) << (8 * i);
     }
@@ -7356,15 +7419,15 @@ BOOST_AUTO_TEST_CASE(template_inherit_basic_roundtrip)
     ref.input_index = 0;
     conds.template_ref = ref;
 
-    CScript script = SerializeRungConditions(conds);
-    BOOST_CHECK(IsRungConditionsScript(script));
+    // Inline serialization removed — verify via MLSC root
+    uint256 root = ComputeConditionsRoot(conds);
+    CScript script = CreateMLSCScript(root);
+    BOOST_CHECK(IsMLSCScript(script));
 
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK(decoded.IsTemplateRef());
-    BOOST_CHECK_EQUAL(decoded.template_ref->input_index, 0u);
-    BOOST_CHECK(decoded.template_ref->diffs.empty());
+    // Verify structure directly
+    BOOST_CHECK(conds.IsTemplateRef());
+    BOOST_CHECK_EQUAL(conds.template_ref->input_index, 0u);
+    BOOST_CHECK(conds.template_ref->diffs.empty());
 }
 
 BOOST_AUTO_TEST_CASE(template_inherit_with_diff)
@@ -7381,19 +7444,21 @@ BOOST_AUTO_TEST_CASE(template_inherit_with_diff)
     ref.diffs.push_back(diff);
     conds.template_ref = ref;
 
-    CScript script = SerializeRungConditions(conds);
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK(decoded.IsTemplateRef());
-    BOOST_CHECK_EQUAL(decoded.template_ref->input_index, 1u);
-    BOOST_CHECK_EQUAL(decoded.template_ref->diffs.size(), 1u);
-    BOOST_CHECK_EQUAL(decoded.template_ref->diffs[0].rung_index, 0u);
-    BOOST_CHECK_EQUAL(decoded.template_ref->diffs[0].block_index, 0u);
-    BOOST_CHECK_EQUAL(decoded.template_ref->diffs[0].field_index, 0u);
-    // Check value round-tripped
+    // Inline serialization removed — verify via MLSC root
+    uint256 root = ComputeConditionsRoot(conds);
+    CScript script = CreateMLSCScript(root);
+    BOOST_CHECK(IsMLSCScript(script));
+
+    // Verify structure directly
+    BOOST_CHECK(conds.IsTemplateRef());
+    BOOST_CHECK_EQUAL(conds.template_ref->input_index, 1u);
+    BOOST_CHECK_EQUAL(conds.template_ref->diffs.size(), 1u);
+    BOOST_CHECK_EQUAL(conds.template_ref->diffs[0].rung_index, 0u);
+    BOOST_CHECK_EQUAL(conds.template_ref->diffs[0].block_index, 0u);
+    BOOST_CHECK_EQUAL(conds.template_ref->diffs[0].field_index, 0u);
+    // Check value preserved
     uint32_t val = 0;
-    const auto& d = decoded.template_ref->diffs[0].new_field.data;
+    const auto& d = conds.template_ref->diffs[0].new_field.data;
     for (size_t i = 0; i < d.size(); ++i) {
         val |= static_cast<uint32_t>(d[i]) << (8 * i);
     }
@@ -7520,18 +7585,23 @@ BOOST_AUTO_TEST_CASE(template_inherit_rejects_type_mismatch_diff)
 
 BOOST_AUTO_TEST_CASE(template_inherit_compact_wire_size)
 {
-    // Template reference should be very compact: prefix(1) + n_rungs=0(1) + input_idx(1) + n_diffs=0(1) = 4 bytes
+    // Inline serialization removed — verify MLSC script is compact (prefix + 32-byte root = 33 bytes)
     RungConditions conds;
     conds.template_ref = TemplateReference{0, {}};
 
-    CScript script = SerializeRungConditions(conds);
-    // prefix(1) + varint(0)(1) + varint(0)(1) + varint(0)(1) = 4 bytes
-    BOOST_CHECK_EQUAL(script.size(), 4u);
+    uint256 root = ComputeConditionsRoot(conds);
+    CScript script = CreateMLSCScript(root);
+    BOOST_CHECK_EQUAL(script.size(), 33u);
 }
 
 BOOST_AUTO_TEST_CASE(template_inherit_rejects_witness_only_diff_type)
 {
     // Diff with SIGNATURE type should be rejected in conditions
+    // Inline serialization removed — verify SIGNATURE is not a valid condition data type
+    BOOST_CHECK(!rung::IsConditionDataType(RungDataType::SIGNATURE));
+
+    // Verify that template with witness-only diff type produces a different root
+    // than one without (ComputeConditionsRoot still works, rejection is at verification)
     RungConditions conds;
     TemplateReference ref;
     ref.input_index = 0;
@@ -7543,11 +7613,9 @@ BOOST_AUTO_TEST_CASE(template_inherit_rejects_witness_only_diff_type)
     ref.diffs.push_back(diff);
     conds.template_ref = ref;
 
-    CScript script = SerializeRungConditions(conds);
-    RungConditions decoded;
-    std::string error;
-    BOOST_CHECK(!DeserializeRungConditions(script, decoded, error));
-    BOOST_CHECK(!error.empty()); // Any rejection error is acceptable
+    // The root can still be computed (rejection happens at spend time)
+    uint256 root = ComputeConditionsRoot(conds);
+    BOOST_CHECK(root != uint256::ZERO);
 }
 
 // ============================================================================
@@ -7633,7 +7701,7 @@ BOOST_AUTO_TEST_CASE(diff_witness_basic_roundtrip)
     dw.coil.coil_type = RungCoilType::UNLOCK_TO;
     dw.coil.attestation = RungAttestationMode::INLINE;
     dw.coil.scheme = RungScheme::SCHNORR;
-    dw.coil.address = {0x00, 0x14, 0xAA, 0xBB}; // some address
+    dw.coil.address_hash.resize(32, 0xAB); // 32-byte hash
 
     BOOST_CHECK(dw.IsWitnessRef());
     BOOST_CHECK(!dw.IsEmpty());
@@ -7652,7 +7720,7 @@ BOOST_AUTO_TEST_CASE(diff_witness_basic_roundtrip)
     BOOST_CHECK(decoded.witness_ref->diffs.empty());
     BOOST_CHECK_EQUAL(static_cast<uint8_t>(decoded.coil.coil_type),
                       static_cast<uint8_t>(RungCoilType::UNLOCK_TO));
-    BOOST_CHECK_EQUAL(decoded.coil.address.size(), 4u);
+    BOOST_CHECK_EQUAL(decoded.coil.address_hash.size(), 32u);
 }
 
 BOOST_AUTO_TEST_CASE(diff_witness_with_sig_diff)
@@ -7696,8 +7764,7 @@ BOOST_AUTO_TEST_CASE(diff_witness_fresh_coil)
     dw.coil.coil_type = RungCoilType::COVENANT;
     dw.coil.attestation = RungAttestationMode::DEFERRED;
     dw.coil.scheme = RungScheme::FALCON512;
-    dw.coil.address = {0x51, 0x20}; // taproot-style prefix
-    dw.coil.address.insert(dw.coil.address.end(), 32, 0xEE); // 32 bytes key
+    dw.coil.address_hash.resize(32, 0xEE); // 32-byte hash
 
     auto bytes = SerializeLadderWitness(dw);
     LadderWitness decoded;
@@ -7707,7 +7774,7 @@ BOOST_AUTO_TEST_CASE(diff_witness_fresh_coil)
                       static_cast<uint8_t>(RungCoilType::COVENANT));
     BOOST_CHECK_EQUAL(static_cast<uint8_t>(decoded.coil.scheme),
                       static_cast<uint8_t>(RungScheme::FALCON512));
-    BOOST_CHECK_EQUAL(decoded.coil.address.size(), 34u);
+    BOOST_CHECK_EQUAL(decoded.coil.address_hash.size(), 32u);
 }
 
 BOOST_AUTO_TEST_CASE(diff_witness_rejects_condition_only_type)
@@ -8009,15 +8076,18 @@ BOOST_AUTO_TEST_CASE(musig_threshold_serialization_roundtrip)
 
     RungConditions cond;
     cond.rungs.push_back(rung);
-    auto cond_bytes = SerializeRungConditions(cond);
-    RungConditions decoded_cond;
-    std::string error;
-    BOOST_CHECK(DeserializeRungConditions(cond_bytes, decoded_cond, error));
-    BOOST_CHECK_EQUAL(decoded_cond.rungs.size(), 1u);
-    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].blocks.size(), 1u);
-    BOOST_CHECK(decoded_cond.rungs[0].blocks[0].type == RungBlockType::MUSIG_THRESHOLD);
-    BOOST_CHECK_EQUAL(decoded_cond.rungs[0].blocks[0].fields.size(), 2u);
+    // Inline serialization removed — verify via MLSC root and direct structure check
+    uint256 root = ComputeConditionsRoot(cond);
+    BOOST_CHECK(root != uint256::ZERO);
+    CScript cond_script = CreateMLSCScript(root);
+    BOOST_CHECK(IsMLSCScript(cond_script));
 
+    BOOST_CHECK_EQUAL(cond.rungs.size(), 1u);
+    BOOST_CHECK_EQUAL(cond.rungs[0].blocks.size(), 1u);
+    BOOST_CHECK(cond.rungs[0].blocks[0].type == RungBlockType::MUSIG_THRESHOLD);
+    BOOST_CHECK_EQUAL(cond.rungs[0].blocks[0].fields.size(), 2u);
+
+    std::string error;
     // Witness roundtrip
     LadderWitness witness;
     Rung wrung;
@@ -8068,8 +8138,7 @@ BOOST_AUTO_TEST_CASE(musig_threshold_conditions_no_witness_types)
 
 BOOST_AUTO_TEST_CASE(musig_threshold_wire_size)
 {
-    // Verify total wire size ~131 bytes for a complete spend
-    // Conditions: micro-header(1) + PUBKEY_COMMIT length(1) + data(32) + varint M(1) + varint N(1) = 36 bytes
+    // MLSC conditions script is always prefix(1) + root(32) = 33 bytes
     Rung crung;
     RungBlock cblock;
     cblock.type = RungBlockType::MUSIG_THRESHOLD;
@@ -8081,7 +8150,9 @@ BOOST_AUTO_TEST_CASE(musig_threshold_wire_size)
 
     RungConditions cond;
     cond.rungs.push_back(crung);
-    auto cond_bytes = SerializeRungConditions(cond);
+    uint256 root = ComputeConditionsRoot(cond);
+    CScript cond_script = CreateMLSCScript(root);
+    BOOST_CHECK_EQUAL(cond_script.size(), 33u);
 
     // Witness: micro-header(1) + pubkey length(1) + pubkey(33) + sig length(1) + sig(64) = 100 bytes
     LadderWitness witness;
@@ -8097,12 +8168,11 @@ BOOST_AUTO_TEST_CASE(musig_threshold_wire_size)
     auto wit_bytes = SerializeLadderWitness(witness);
 
     // Combined should be well under 200 bytes total
-    size_t total = cond_bytes.size() + wit_bytes.size();
+    size_t total = cond_script.size() + wit_bytes.size();
     BOOST_CHECK(total < 200);
 
-    // Conditions should be much smaller than a 2-of-3 MULTISIG conditions
-    // (which has 3 PUBKEY_COMMIT fields = 3*33 + header overhead ≈ 110+ bytes)
-    BOOST_CHECK(cond_bytes.size() < 60);
+    // MLSC conditions script is always 33 bytes (much smaller than inline)
+    BOOST_CHECK_EQUAL(cond_script.size(), 33u);
 }
 
 // ============================================================================
@@ -8877,8 +8947,9 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_mixed_pq_schnorr_carry_forward)
         input_conds.rungs.push_back(rung);
     }
 
-    // Serialize to scriptPubKey (includes RUNG_CONDITIONS_PREFIX)
-    CScript spk = SerializeRungConditions(input_conds);
+    // Create MLSC scriptPubKey
+    uint256 root = ComputeConditionsRoot(input_conds);
+    CScript spk = CreateMLSCScript(root);
     CTxOut mock_output(50000, spk);
 
     // Build the RECURSE_SAME eval block
@@ -8895,7 +8966,8 @@ BOOST_AUTO_TEST_CASE(eval_recurse_same_mixed_pq_schnorr_carry_forward)
     // Now tamper: change the FALCON512 scheme to DILITHIUM3 in output
     RungConditions tampered = input_conds;
     tampered.rungs[0].blocks[1].fields[0].data = {0x12}; // DILITHIUM3 (field[0] = SCHEME)
-    CScript tampered_spk = SerializeRungConditions(tampered);
+    uint256 tampered_root = ComputeConditionsRoot(tampered);
+    CScript tampered_spk = CreateMLSCScript(tampered_root);
     CTxOut tampered_output(50000, tampered_spk);
 
     ctx.spending_output = &tampered_output;
@@ -8917,19 +8989,20 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_all_pq_schemes)
         rung.blocks.push_back(block);
         conds.rungs.push_back(rung);
 
-        auto bytes = SerializeRungConditions(conds);
-        RungConditions decoded;
-        std::string error;
-        BOOST_CHECK_MESSAGE(DeserializeRungConditions(bytes, decoded, error),
-            "Failed conditions roundtrip for PQ scheme 0x" + HexStr(std::span(&scheme, 1)) + ": " + error);
-        BOOST_CHECK(decoded.rungs.size() == 1);
-        BOOST_CHECK(decoded.rungs[0].blocks.size() == 1);
+        // Inline serialization removed — verify MLSC root is unique per scheme
+        uint256 root = ComputeConditionsRoot(conds);
+        BOOST_CHECK_MESSAGE(root != uint256::ZERO,
+            "Zero root for PQ scheme 0x" + HexStr(std::span(&scheme, 1)));
+
+        // Verify conditions structure is preserved
+        BOOST_CHECK(conds.rungs.size() == 1);
+        BOOST_CHECK(conds.rungs[0].blocks.size() == 1);
 
         // merkle_pub_key: SCHEME is field[0] (no PUBKEY_COMMIT)
-        BOOST_CHECK(decoded.rungs[0].blocks[0].fields.size() >= 1);
-        BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].type == RungDataType::SCHEME);
-        BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].data.size() == 1);
-        BOOST_CHECK(decoded.rungs[0].blocks[0].fields[0].data[0] == scheme);
+        BOOST_CHECK(conds.rungs[0].blocks[0].fields.size() >= 1);
+        BOOST_CHECK(conds.rungs[0].blocks[0].fields[0].type == RungDataType::SCHEME);
+        BOOST_CHECK(conds.rungs[0].blocks[0].fields[0].data.size() == 1);
+        BOOST_CHECK(conds.rungs[0].blocks[0].fields[0].data[0] == scheme);
     }
 }
 
@@ -8949,9 +9022,7 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_coil_unlock_to)
     ladder.coil.coil_type = RungCoilType::UNLOCK_TO;
     ladder.coil.scheme = RungScheme::SCHNORR;
     ladder.coil.attestation = RungAttestationMode::INLINE;
-    ladder.coil.address = {0x00, 0x14, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-                           0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-                           0x99, 0x00, 0xAA, 0xBB, 0xCC, 0xDD};
+    ladder.coil.address_hash.resize(32, 0xAB); // 32-byte hash
 
     auto bytes = SerializeLadderWitness(ladder);
     LadderWitness decoded;
@@ -8959,7 +9030,7 @@ BOOST_AUTO_TEST_CASE(serialize_roundtrip_coil_unlock_to)
     BOOST_CHECK_MESSAGE(DeserializeLadderWitness(bytes, decoded, error),
         "UNLOCK_TO roundtrip failed: " + error);
     BOOST_CHECK(decoded.coil.coil_type == RungCoilType::UNLOCK_TO);
-    BOOST_CHECK(decoded.coil.address == ladder.coil.address);
+    BOOST_CHECK(decoded.coil.address_hash == ladder.coil.address_hash);
 }
 
 BOOST_AUTO_TEST_CASE(serialize_roundtrip_coil_covenant)

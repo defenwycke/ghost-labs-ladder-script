@@ -123,71 +123,6 @@ static std::vector<const RungField*> ResolvePubkeyCommitments(const RungBlock& b
     return FindAllFields(block, RungDataType::PUBKEY);
 }
 
-/** Helper: compare two RungBlocks for structural equality (same type, same condition fields).
- *  Only compares condition data types (HASH256, HASH160, NUMERIC, SCHEME),
- *  skips witness types (PUBKEY, SIGNATURE, PREIMAGE). */
-static bool BlockConditionsEqual(const RungBlock& a, const RungBlock& b)
-{
-    if (a.type != b.type) return false;
-    if (a.inverted != b.inverted) return false;
-
-    // Collect condition-only fields from each
-    std::vector<const RungField*> a_conds, b_conds;
-    for (const auto& f : a.fields) {
-        if (IsConditionDataType(f.type)) a_conds.push_back(&f);
-    }
-    for (const auto& f : b.fields) {
-        if (IsConditionDataType(f.type)) b_conds.push_back(&f);
-    }
-    if (a_conds.size() != b_conds.size()) return false;
-    for (size_t i = 0; i < a_conds.size(); ++i) {
-        if (a_conds[i]->type != b_conds[i]->type) return false;
-        if (a_conds[i]->data != b_conds[i]->data) return false;
-    }
-    return true;
-}
-
-/** Helper: compare two Rungs for condition equality (all blocks must match). */
-static bool RungConditionsEqual(const Rung& a, const Rung& b)
-{
-    if (a.blocks.size() != b.blocks.size()) return false;
-    for (size_t i = 0; i < a.blocks.size(); ++i) {
-        if (!BlockConditionsEqual(a.blocks[i], b.blocks[i])) return false;
-    }
-    return true;
-}
-
-/** Helper: compare full conditions structures (all rungs). */
-static bool FullConditionsEqual(const RungConditions& a, const RungConditions& b)
-{
-    if (a.rungs.size() != b.rungs.size()) return false;
-    for (size_t i = 0; i < a.rungs.size(); ++i) {
-        if (!RungConditionsEqual(a.rungs[i], b.rungs[i])) return false;
-    }
-    return true;
-}
-
-/** Helper: check if an output's MLSC root matches given conditions.
- *  With MLSC-only, we can't deserialise output conditions — the output
- *  only contains the Merkle root. Compare roots instead. */
-static bool OutputRootMatchesConditions(const CTxOut& output, const RungConditions& conditions)
-{
-    uint256 output_root;
-    if (!GetMLSCRoot(output.scriptPubKey, output_root)) {
-        return false; // not an MLSC output
-    }
-    uint256 expected_root = ComputeConditionsRoot(conditions);
-    return output_root == expected_root;
-}
-
-/** Legacy helper: try to deserialise output conditions from inline scriptPubKey.
- *  Returns false always — inline removed. Use OutputRootMatchesConditions instead. */
-static bool TryDeserializeOutputConditions(const CTxOut& output, RungConditions& out)
-{
-    // Inline conditions removed. Cannot deserialise MLSC outputs (root only).
-    return false;
-}
-
 EvalResult ApplyInversion(EvalResult raw, bool inverted)
 {
     if (!inverted) return raw;
@@ -981,6 +916,176 @@ EvalResult EvalAnchorOracleBlock(const RungBlock& block)
 }
 
 // ============================================================================
+// Leaf-centric covenant helpers
+// ============================================================================
+
+/** Check if an output's MLSC root matches the verified input root (identity check).
+ *  Used by RECURSE_SAME and RECURSE_UNTIL (before deadline). */
+static bool OutputRootMatchesInput(const CTxOut& output, const MLSCVerifiedLeaves& verified_leaves)
+{
+    uint256 output_root;
+    if (!GetMLSCRoot(output.scriptPubKey, output_root)) {
+        return false;
+    }
+    return output_root == verified_leaves.root;
+}
+
+/** Compute expected MLSC root after replacing one leaf in the verified array.
+ *  Used by RECURSE_COUNT/SPLIT/MODIFIED/DECAY for same-rung mutations. */
+static uint256 ComputeExpectedRoot(const MLSCVerifiedLeaves& verified_leaves,
+                                    size_t leaf_index, const uint256& new_leaf)
+{
+    std::vector<uint256> leaves_copy = verified_leaves.leaves;
+    if (leaf_index >= leaves_copy.size()) return uint256{}; // should not happen
+    leaves_copy[leaf_index] = new_leaf;
+    return BuildMerkleTree(std::move(leaves_copy));
+}
+
+/** Helper: a single mutation target (rung, block, param, delta). */
+struct MutationSpec {
+    int64_t rung_idx;
+    int64_t block_idx;
+    int64_t param_idx;
+    int64_t delta;
+};
+
+/** Helper: write a little-endian int64 into a 4-byte NUMERIC field. */
+static void WriteNumericField(RungField& f, int64_t val)
+{
+    f.data.clear();
+    for (int i = 0; i < 4; ++i) {
+        f.data.push_back(static_cast<uint8_t>((val >> (8 * i)) & 0xFF));
+    }
+}
+
+/** Leaf-centric mutation verification: apply mutations to a copy of the revealed rung,
+ *  recompute the rung leaf, rebuild the tree, and compare against the output root.
+ *  Cross-rung mutations use revealed_mutation_targets from the MLSC proof. */
+static EvalResult VerifyMutatedLeaves(const RungEvalContext& ctx,
+                                       const std::vector<MutationSpec>& mutations)
+{
+    if (!ctx.input_conditions || !ctx.spending_output) {
+        return EvalResult::ERROR;
+    }
+
+    // Fallback path: when verified_leaves is not available (unit tests),
+    // apply mutations to a full copy of conditions and compare roots.
+    if (!ctx.verified_leaves) {
+        RungConditions expected = *ctx.input_conditions;
+        std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+        if (ctx.rung_pubkeys) pubkeys = *ctx.rung_pubkeys;
+
+        for (const auto& m : mutations) {
+            if (m.rung_idx < 0 || static_cast<size_t>(m.rung_idx) >= expected.rungs.size()) {
+                return EvalResult::UNSATISFIED;
+            }
+            auto& rung = expected.rungs[m.rung_idx];
+            if (m.block_idx < 0 || static_cast<size_t>(m.block_idx) >= rung.blocks.size()) {
+                return EvalResult::UNSATISFIED;
+            }
+            auto& blk = rung.blocks[m.block_idx];
+            size_t cond_idx = 0;
+            bool applied = false;
+            for (auto& f : blk.fields) {
+                if (!IsConditionDataType(f.type)) continue;
+                if (static_cast<int64_t>(cond_idx) == m.param_idx) {
+                    if (f.type != RungDataType::NUMERIC) return EvalResult::UNSATISFIED;
+                    WriteNumericField(f, ReadNumeric(f) + m.delta);
+                    applied = true;
+                    break;
+                }
+                ++cond_idx;
+            }
+            if (!applied) return EvalResult::UNSATISFIED;
+        }
+        uint256 output_root;
+        if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+            return EvalResult::UNSATISFIED;
+        }
+        if (output_root != ComputeConditionsRoot(expected, pubkeys)) {
+            return EvalResult::UNSATISFIED;
+        }
+        return EvalResult::SATISFIED;
+    }
+
+    const auto& vl = *ctx.verified_leaves;
+    std::vector<uint256> leaves_copy = vl.leaves;
+
+    // Group mutations by target rung
+    for (const auto& m : mutations) {
+        if (m.rung_idx < 0 || static_cast<size_t>(m.rung_idx) >= vl.total_rungs) {
+            return EvalResult::UNSATISFIED;
+        }
+
+        // Determine which rung to mutate
+        Rung mutated_rung;
+        std::vector<std::vector<uint8_t>> rung_pks;
+
+        if (static_cast<uint16_t>(m.rung_idx) == vl.rung_index) {
+            // Same-rung mutation: use the revealed rung from input conditions
+            // (input_conditions has exactly 1 rung for MLSC — the revealed one)
+            if (ctx.input_conditions->rungs.empty()) return EvalResult::UNSATISFIED;
+            mutated_rung = ctx.input_conditions->rungs[0];
+            // Pubkeys for the revealed rung
+            if (ctx.rung_pubkeys && !ctx.rung_pubkeys->empty()) {
+                rung_pks = (*ctx.rung_pubkeys)[0];
+            }
+        } else {
+            // Cross-rung mutation: find in revealed_mutation_targets
+            if (!ctx.mlsc_proof) return EvalResult::UNSATISFIED;
+            bool found = false;
+            for (const auto& [mt_idx, mt_rung] : ctx.mlsc_proof->revealed_mutation_targets) {
+                if (mt_idx == static_cast<uint16_t>(m.rung_idx)) {
+                    mutated_rung = mt_rung;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return EvalResult::UNSATISFIED;
+            // Cross-rung mutation targets don't carry witness pubkeys
+        }
+
+        // Apply the mutation
+        if (m.block_idx < 0 || static_cast<size_t>(m.block_idx) >= mutated_rung.blocks.size()) {
+            return EvalResult::UNSATISFIED;
+        }
+        auto& blk = mutated_rung.blocks[m.block_idx];
+
+        // Find the param_idx-th condition field (NUMERIC)
+        size_t cond_idx = 0;
+        bool applied = false;
+        for (auto& f : blk.fields) {
+            if (!IsConditionDataType(f.type)) continue;
+            if (static_cast<int64_t>(cond_idx) == m.param_idx) {
+                if (f.type != RungDataType::NUMERIC) {
+                    return EvalResult::UNSATISFIED;
+                }
+                int64_t val = ReadNumeric(f);
+                WriteNumericField(f, val + m.delta);
+                applied = true;
+                break;
+            }
+            ++cond_idx;
+        }
+        if (!applied) return EvalResult::UNSATISFIED;
+
+        // Recompute the leaf for this rung
+        leaves_copy[m.rung_idx] = ComputeRungLeaf(mutated_rung, rung_pks);
+    }
+
+    // Build tree from mutated leaves and compare with output root
+    uint256 expected_root = BuildMerkleTree(std::move(leaves_copy));
+    uint256 output_root;
+    if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+        return EvalResult::UNSATISFIED;
+    }
+    if (output_root != expected_root) {
+        return EvalResult::UNSATISFIED;
+    }
+    return EvalResult::SATISFIED;
+}
+
+// ============================================================================
 // Recursion evaluators
 // ============================================================================
 
@@ -996,23 +1101,25 @@ EvalResult EvalRecurseSameBlock(const RungBlock& block, const RungEvalContext& c
         return EvalResult::UNSATISFIED;
     }
 
-    // If we have both input conditions and a spending output, verify the covenant
-    if (ctx.input_conditions && ctx.spending_output) {
-        // MLSC: compare roots (output conditions not deserializable — root only)
-        if (!OutputRootMatchesConditions(*ctx.spending_output, *ctx.input_conditions)) {
+    // Leaf-centric: output root must equal input root (identity)
+    if (ctx.verified_leaves && ctx.spending_output) {
+        if (!OutputRootMatchesInput(*ctx.spending_output, *ctx.verified_leaves)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else if (ctx.input_conditions && ctx.spending_output) {
+        // Fallback: compare MLSC roots directly
+        uint256 output_root;
+        if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+            return EvalResult::UNSATISFIED;
+        }
+        std::vector<std::vector<std::vector<uint8_t>>> pks;
+        if (ctx.rung_pubkeys) pks = *ctx.rung_pubkeys;
+        if (output_root != ComputeConditionsRoot(*ctx.input_conditions, pks)) {
             return EvalResult::UNSATISFIED;
         }
     }
     return EvalResult::SATISFIED;
 }
-
-/** Helper: a single mutation target (rung, block, param, delta). */
-struct MutationSpec {
-    int64_t rung_idx;
-    int64_t block_idx;
-    int64_t param_idx;
-    int64_t delta;
-};
 
 /** Parse mutation specs from NUMERIC fields. Returns max_depth via out-param.
  *  Supports legacy (4 NUMERICs: rung 0, single mutation) and new format (6+ NUMERICs). */
@@ -1047,87 +1154,6 @@ static bool ParseMutationSpecs(const std::vector<const RungField*>& numerics,
     return true;
 }
 
-/** Verify output conditions match input except for specified mutations (additive delta).
- *  Used by both RECURSE_MODIFIED and RECURSE_DECAY. For DECAY, caller negates the delta. */
-static EvalResult VerifyMutatedConditions(const RungEvalContext& ctx,
-                                           const std::vector<MutationSpec>& mutations)
-{
-    if (!ctx.input_conditions || !ctx.spending_output) {
-        return EvalResult::ERROR; // no conditions to check
-    }
-
-    RungConditions output_conds;
-    if (!TryDeserializeOutputConditions(*ctx.spending_output, output_conds)) {
-        return EvalResult::UNSATISFIED;
-    }
-    if (output_conds.rungs.size() != ctx.input_conditions->rungs.size()) {
-        return EvalResult::UNSATISFIED;
-    }
-
-    // Build a map: (rung_idx, block_idx) → list of (param_idx, delta)
-    std::map<std::pair<int64_t, int64_t>, std::vector<std::pair<int64_t, int64_t>>> mut_map;
-    for (const auto& m : mutations) {
-        mut_map[{m.rung_idx, m.block_idx}].push_back({m.param_idx, m.delta});
-    }
-
-    for (size_t ri = 0; ri < output_conds.rungs.size(); ++ri) {
-        const auto& in_rung = ctx.input_conditions->rungs[ri];
-        const auto& out_rung = output_conds.rungs[ri];
-        if (in_rung.blocks.size() != out_rung.blocks.size()) {
-            return EvalResult::UNSATISFIED;
-        }
-        for (size_t bi = 0; bi < in_rung.blocks.size(); ++bi) {
-            auto it = mut_map.find({static_cast<int64_t>(ri), static_cast<int64_t>(bi)});
-            if (it != mut_map.end()) {
-                // This block has mutation targets
-                const auto& in_blk = in_rung.blocks[bi];
-                const auto& out_blk = out_rung.blocks[bi];
-                if (in_blk.type != out_blk.type) return EvalResult::UNSATISFIED;
-
-                std::vector<const RungField*> in_conds, out_conds;
-                for (const auto& f : in_blk.fields) {
-                    if (IsConditionDataType(f.type)) in_conds.push_back(&f);
-                }
-                for (const auto& f : out_blk.fields) {
-                    if (IsConditionDataType(f.type)) out_conds.push_back(&f);
-                }
-                if (in_conds.size() != out_conds.size()) return EvalResult::UNSATISFIED;
-
-                // Build param_idx → delta map for this block
-                std::map<int64_t, int64_t> param_deltas;
-                for (const auto& [pidx, delta] : it->second) {
-                    param_deltas[pidx] = delta;
-                }
-
-                for (size_t pi = 0; pi < in_conds.size(); ++pi) {
-                    auto pd_it = param_deltas.find(static_cast<int64_t>(pi));
-                    if (pd_it != param_deltas.end()) {
-                        if (in_conds[pi]->type != RungDataType::NUMERIC ||
-                            out_conds[pi]->type != RungDataType::NUMERIC) {
-                            return EvalResult::UNSATISFIED;
-                        }
-                        int64_t in_val = ReadNumeric(*in_conds[pi]);
-                        int64_t out_val = ReadNumeric(*out_conds[pi]);
-                        if (out_val != in_val + pd_it->second) {
-                            return EvalResult::UNSATISFIED;
-                        }
-                    } else {
-                        if (in_conds[pi]->type != out_conds[pi]->type ||
-                            in_conds[pi]->data != out_conds[pi]->data) {
-                            return EvalResult::UNSATISFIED;
-                        }
-                    }
-                }
-            } else {
-                if (!BlockConditionsEqual(in_rung.blocks[bi], out_rung.blocks[bi])) {
-                    return EvalResult::UNSATISFIED;
-                }
-            }
-        }
-    }
-    return EvalResult::SATISFIED;
-}
-
 EvalResult EvalRecurseModifiedBlock(const RungBlock& block, const RungEvalContext& ctx)
 {
     auto numerics = FindAllFields(block, RungDataType::NUMERIC);
@@ -1139,7 +1165,7 @@ EvalResult EvalRecurseModifiedBlock(const RungBlock& block, const RungEvalContex
     if (max_depth <= 0) {
         return EvalResult::UNSATISFIED;
     }
-    return VerifyMutatedConditions(ctx, mutations);
+    return VerifyMutatedLeaves(ctx, mutations);
 }
 
 EvalResult EvalRecurseUntilBlock(const RungBlock& block, const RungEvalContext& ctx)
@@ -1162,9 +1188,20 @@ EvalResult EvalRecurseUntilBlock(const RungBlock& block, const RungEvalContext& 
         return EvalResult::SATISFIED;
     }
     // Before until_height: must re-encumber output with same conditions
-    if (ctx.input_conditions && ctx.spending_output) {
-        // MLSC: compare roots
-        if (!OutputRootMatchesConditions(*ctx.spending_output, *ctx.input_conditions)) {
+    // Leaf-centric: output root must equal input root (identity)
+    if (ctx.verified_leaves && ctx.spending_output) {
+        if (!OutputRootMatchesInput(*ctx.spending_output, *ctx.verified_leaves)) {
+            return EvalResult::UNSATISFIED;
+        }
+    } else if (ctx.input_conditions && ctx.spending_output) {
+        // Fallback: compare MLSC roots directly
+        uint256 output_root;
+        if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+            return EvalResult::UNSATISFIED;
+        }
+        std::vector<std::vector<std::vector<uint8_t>>> pks;
+        if (ctx.rung_pubkeys) pks = *ctx.rung_pubkeys;
+        if (output_root != ComputeConditionsRoot(*ctx.input_conditions, pks)) {
             return EvalResult::UNSATISFIED;
         }
     }
@@ -1184,34 +1221,57 @@ EvalResult EvalRecurseCountBlock(const RungBlock& block, const RungEvalContext& 
     if (count == 0) {
         return EvalResult::SATISFIED; // countdown reached zero — covenant terminates
     }
-    // Count > 0: output must re-encumber with count-1
-    // Uses RECURSE_MODIFIED semantics on the count field (first NUMERIC in the block)
+    // Count > 0: output must re-encumber with count-1.
     if (ctx.input_conditions && ctx.spending_output) {
-        RungConditions output_conds;
-        if (!TryDeserializeOutputConditions(*ctx.spending_output, output_conds)) {
-            return EvalResult::UNSATISFIED;
-        }
-        // Find the RECURSE_COUNT block in output conditions and verify count decremented
-        bool found_valid = false;
-        for (const auto& rung : output_conds.rungs) {
-            for (const auto& blk : rung.blocks) {
-                if (blk.type == RungBlockType::RECURSE_COUNT) {
-                    const RungField* out_count_field = nullptr;
-                    for (const auto& f : blk.fields) {
-                        if (f.type == RungDataType::NUMERIC) { out_count_field = &f; break; }
-                    }
-                    if (out_count_field) {
-                        int64_t out_count = ReadNumeric(*out_count_field);
-                        if (out_count == count - 1) {
-                            found_valid = true;
-                            break;
-                        }
+        if (ctx.input_conditions->rungs.empty()) return EvalResult::UNSATISFIED;
+
+        // Build the decremented rung
+        Rung mutated = ctx.input_conditions->rungs[0];
+        bool found = false;
+        for (auto& blk : mutated.blocks) {
+            if (blk.type == RungBlockType::RECURSE_COUNT) {
+                for (auto& f : blk.fields) {
+                    if (f.type == RungDataType::NUMERIC) {
+                        WriteNumericField(f, ReadNumeric(f) - 1);
+                        found = true;
+                        break;
                     }
                 }
+                if (found) break;
             }
-            if (found_valid) break;
         }
-        if (!found_valid) return EvalResult::UNSATISFIED;
+        if (!found) return EvalResult::UNSATISFIED;
+
+        if (ctx.verified_leaves) {
+            // Leaf-centric: recompute only the mutated leaf, rebuild tree
+            std::vector<std::vector<uint8_t>> rung_pks;
+            if (ctx.rung_pubkeys && !ctx.rung_pubkeys->empty()) {
+                rung_pks = (*ctx.rung_pubkeys)[0];
+            }
+            uint256 new_leaf = ComputeRungLeaf(mutated, rung_pks);
+            uint256 expected_root = ComputeExpectedRoot(*ctx.verified_leaves,
+                                                         ctx.verified_leaves->rung_index, new_leaf);
+            uint256 output_root;
+            if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+                return EvalResult::UNSATISFIED;
+            }
+            if (output_root != expected_root) {
+                return EvalResult::UNSATISFIED;
+            }
+        } else {
+            // Fallback: build full conditions with decremented rung, compare root
+            RungConditions expected = *ctx.input_conditions;
+            expected.rungs[0] = mutated;
+            std::vector<std::vector<std::vector<uint8_t>>> pks;
+            if (ctx.rung_pubkeys) pks = *ctx.rung_pubkeys;
+            uint256 output_root;
+            if (!GetMLSCRoot(ctx.spending_output->scriptPubKey, output_root)) {
+                return EvalResult::UNSATISFIED;
+            }
+            if (output_root != ComputeConditionsRoot(expected, pks)) {
+                return EvalResult::UNSATISFIED;
+            }
+        }
     }
     return EvalResult::SATISFIED;
 }
@@ -1228,30 +1288,54 @@ EvalResult EvalRecurseSplitBlock(const RungBlock& block, const RungEvalContext& 
         return EvalResult::UNSATISFIED;
     }
 
-    // Verify all outputs: each must be >= min_split_sats and re-encumber with max_splits-1
+    // Decrement max_splits, recompute root, compare outputs.
     if (ctx.tx && ctx.input_conditions) {
+        if (ctx.input_conditions->rungs.empty()) return EvalResult::UNSATISFIED;
+
+        // Build the decremented rung
+        Rung mutated = ctx.input_conditions->rungs[0];
+        for (auto& blk : mutated.blocks) {
+            if (blk.type == RungBlockType::RECURSE_SPLIT) {
+                for (auto& f : blk.fields) {
+                    if (f.type == RungDataType::NUMERIC) {
+                        WriteNumericField(f, ReadNumeric(f) - 1);
+                        break; // first NUMERIC is max_splits
+                    }
+                }
+            }
+        }
+
+        // Compute expected root via leaf-centric or fallback path
+        uint256 expected_root;
+        if (ctx.verified_leaves) {
+            // Leaf-centric: replace only the revealed rung's leaf, rebuild tree
+            std::vector<std::vector<uint8_t>> rung_pks;
+            if (ctx.rung_pubkeys && !ctx.rung_pubkeys->empty()) {
+                rung_pks = (*ctx.rung_pubkeys)[0];
+            }
+            uint256 new_leaf = ComputeRungLeaf(mutated, rung_pks);
+            expected_root = ComputeExpectedRoot(*ctx.verified_leaves,
+                                                ctx.verified_leaves->rung_index, new_leaf);
+        } else {
+            // Fallback: build full conditions with decremented rung
+            RungConditions expected = *ctx.input_conditions;
+            expected.rungs[0] = mutated;
+            std::vector<std::vector<std::vector<uint8_t>>> pks;
+            if (ctx.rung_pubkeys) pks = *ctx.rung_pubkeys;
+            expected_root = ComputeConditionsRoot(expected, pks);
+        }
+
         CAmount total_output = 0;
         for (const auto& vout : ctx.tx->vout) {
             if (vout.nValue < min_split_sats) {
                 return EvalResult::UNSATISFIED;
             }
             total_output += vout.nValue;
-            // Each output must carry valid rung conditions with decremented max_splits
-            RungConditions out_conds;
-            if (TryDeserializeOutputConditions(vout, out_conds)) {
-                // Check that RECURSE_SPLIT block exists with max_splits-1
-                for (const auto& rung : out_conds.rungs) {
-                    for (const auto& blk : rung.blocks) {
-                        if (blk.type == RungBlockType::RECURSE_SPLIT) {
-                            auto out_nums = FindAllFields(blk, RungDataType::NUMERIC);
-                            if (out_nums.size() >= 1) {
-                                int64_t out_splits = ReadNumeric(*out_nums[0]);
-                                if (out_splits != max_splits - 1) {
-                                    return EvalResult::UNSATISFIED;
-                                }
-                            }
-                        }
-                    }
+            // Each output must have the expected MLSC root
+            uint256 out_root;
+            if (GetMLSCRoot(vout.scriptPubKey, out_root)) {
+                if (out_root != expected_root) {
+                    return EvalResult::UNSATISFIED;
                 }
             }
         }
@@ -1280,7 +1364,7 @@ EvalResult EvalRecurseDecayBlock(const RungBlock& block, const RungEvalContext& 
     for (auto& m : mutations) {
         m.delta = -m.delta;
     }
-    return VerifyMutatedConditions(ctx, mutations);
+    return VerifyMutatedLeaves(ctx, mutations);
 }
 
 // ============================================================================
@@ -2109,6 +2193,7 @@ EvalResult EvalAccumulatorBlock(const RungBlock& block)
     // Proof verification: hash leaf with siblings bottom-up, compare to root.
     auto hashes = FindAllFields(block, RungDataType::HASH256);
     if (hashes.size() < 3) return EvalResult::ERROR; // root + at least 1 proof node + leaf
+    if (hashes.size() > 10) return EvalResult::ERROR; // root + max 8 proof nodes + leaf
 
     const RungField* root_field = hashes[0];
     const RungField* leaf_field = hashes[hashes.size() - 1];
@@ -3120,9 +3205,15 @@ bool VerifyRungTx(const CTransaction& tx,
         return false;
     }
 
-    // Note: output validation (ValidateRungOutputs) is called once per transaction
-    // in CheckInputScripts, not here, to avoid redundant/out-of-order execution
-    // when CScriptCheck runs in parallel.
+    // Consensus: validate all outputs are valid Ladder Script format.
+    // Runs per-input but is a cheap prefix check (O(n_outputs)).
+    {
+        std::string output_error;
+        if (!ValidateRungOutputs(tx, flags, output_error)) {
+            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
+            return false;
+        }
+    }
 
     const auto& witness = tx.vin[nIn].scriptWitness;
 
@@ -3160,6 +3251,9 @@ bool VerifyRungTx(const CTransaction& tx,
 
     RungConditions conditions;
     bool has_conditions = false;
+    std::vector<std::vector<std::vector<uint8_t>>> eval_rung_pubkeys;
+    MLSCVerifiedLeaves verified_leaves_data;
+    MLSCProof mlsc_proof;
 
     {
         // ================================================================
@@ -3176,7 +3270,6 @@ bool VerifyRungTx(const CTransaction& tx,
         // (exact stack size already enforced at entry)
 
         // Deserialize MLSC proof from stack[1]
-        MLSCProof mlsc_proof;
         std::string proof_error;
         if (!DeserializeMLSCProof(witness.stack[1], mlsc_proof, proof_error)) {
             if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
@@ -3204,9 +3297,17 @@ bool VerifyRungTx(const CTransaction& tx,
             }
         }
 
+        // Extract pubkeys for mutation targets (cross-rung mutations)
+        std::vector<std::vector<std::vector<uint8_t>>> mutation_target_pks;
+        for (size_t i = 0; i < mlsc_proof.revealed_mutation_targets.size(); ++i) {
+            // Mutation target pubkeys come from the witness — find matching relay/rung
+            // For now, mutation targets don't carry witness pubkeys (conditions-only blocks)
+            mutation_target_pks.push_back({});
+        }
+
         // Verify Merkle proof using revealed conditions + coil + pubkeys from witness
         std::string verify_error;
-        if (!VerifyMLSCProof(mlsc_proof, witness_ladder.coil, conditions_root, rung_pks, relay_pks, verify_error)) {
+        if (!VerifyMLSCProof(mlsc_proof, witness_ladder.coil, conditions_root, rung_pks, relay_pks, verify_error, &verified_leaves_data, mutation_target_pks)) {
             if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
             return false;
         }
@@ -3226,6 +3327,9 @@ bool VerifyRungTx(const CTransaction& tx,
 
         has_conditions = true;
 
+        // Save per-rung pubkeys for covenant root comparison
+        eval_rung_pubkeys.push_back(rung_pks);
+
     } // end MLSC block
 
     // Build evaluation context for covenant, anchor, recursion, and PLC blocks
@@ -3240,6 +3344,13 @@ bool VerifyRungTx(const CTransaction& tx,
     }
     if (has_conditions) {
         eval_ctx.input_conditions = &conditions;
+    }
+    if (!eval_rung_pubkeys.empty()) {
+        eval_ctx.rung_pubkeys = &eval_rung_pubkeys;
+    }
+    if (has_conditions) {
+        eval_ctx.verified_leaves = &verified_leaves_data;
+        eval_ctx.mlsc_proof = &mlsc_proof;
     }
     if (txdata.m_spent_outputs_ready) {
         eval_ctx.spent_outputs = &txdata.m_spent_outputs;

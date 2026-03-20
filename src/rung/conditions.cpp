@@ -56,194 +56,6 @@ CScript SerializeRungConditions(const RungConditions&)
     return CScript();
 }
 
-// Dead code removed — was DeserializeRungConditions and SerializeRungConditions body.
-// IsRungConditionsScript returns false, so no inline path is ever taken.
-
-#if 0
-    // Strip the prefix byte
-    std::vector<uint8_t> data(scriptPubKey.begin() + 1, scriptPubKey.end());
-
-    if (data.empty()) {
-        error = "empty conditions data";
-        return false;
-    }
-
-    DataStream ss{data};
-
-    try {
-        uint64_t n_rungs = ReadCompactSize(ss);
-
-        if (n_rungs == 0) {
-            // Template mode: n_rungs==0 signals template inheritance
-            uint64_t input_index = ReadCompactSize(ss);
-            uint64_t n_diffs = ReadCompactSize(ss);
-
-            if (n_diffs > MAX_FIELDS_PER_BLOCK * MAX_BLOCKS_PER_RUNG * MAX_RUNGS) {
-                error = "too many template diffs: " + std::to_string(n_diffs);
-                return false;
-            }
-
-            TemplateReference ref;
-            ref.input_index = static_cast<uint32_t>(input_index);
-            ref.diffs.resize(n_diffs);
-
-            for (uint64_t d = 0; d < n_diffs; ++d) {
-                ref.diffs[d].rung_index = static_cast<uint16_t>(ReadCompactSize(ss));
-                ref.diffs[d].block_index = static_cast<uint16_t>(ReadCompactSize(ss));
-                ref.diffs[d].field_index = static_cast<uint16_t>(ReadCompactSize(ss));
-
-                // Read the replacement field: type + data
-                uint8_t dtype_byte;
-                ss >> dtype_byte;
-                if (!IsKnownDataType(dtype_byte)) {
-                    error = "unknown data type in template diff: 0x" +
-                            HexStr(std::span<const uint8_t>{&dtype_byte, 1});
-                    return false;
-                }
-                RungDataType dtype = static_cast<RungDataType>(dtype_byte);
-
-                // Validate condition data type
-                if (!IsConditionDataType(dtype)) {
-                    error = "template diff contains witness-only data type: " + DataTypeName(dtype);
-                    return false;
-                }
-
-                ref.diffs[d].new_field.type = dtype;
-                if (dtype == RungDataType::NUMERIC) {
-                    // Varint NUMERIC: values not sizes, skip range check
-                    uint64_t val = ReadCompactSize(ss, false);
-                    if (val > 0xFFFFFFFF) {
-                        error = "NUMERIC value exceeds uint32 max in template diff";
-                        return false;
-                    }
-                    // Always store as 4-byte LE for evaluator compatibility
-                    ref.diffs[d].new_field.data.resize(4);
-                    ref.diffs[d].new_field.data[0] = static_cast<uint8_t>(val & 0xFF);
-                    ref.diffs[d].new_field.data[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
-                    ref.diffs[d].new_field.data[2] = static_cast<uint8_t>((val >> 16) & 0xFF);
-                    ref.diffs[d].new_field.data[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
-                } else {
-                    uint64_t dlen = ReadCompactSize(ss);
-                    size_t min_sz = FieldMinSize(dtype);
-                    size_t max_sz = FieldMaxSize(dtype);
-                    if (dlen < min_sz || dlen > max_sz) {
-                        error = DataTypeName(dtype) + " size out of range in template diff";
-                        return false;
-                    }
-                    ref.diffs[d].new_field.data.resize(dlen);
-                    if (dlen > 0) {
-                        ss.read(MakeWritableByteSpan(ref.diffs[d].new_field.data));
-                    }
-                }
-
-                std::string field_reason;
-                if (!ref.diffs[d].new_field.IsValid(field_reason)) {
-                    error = "template diff field invalid: " + field_reason;
-                    return false;
-                }
-            }
-
-            // Reject trailing bytes
-            if (!ss.empty()) {
-                error = "trailing bytes in template reference";
-                return false;
-            }
-
-            out.template_ref = std::move(ref);
-            return true;
-        }
-
-        // Normal mode: deserialize via LadderWitness
-        // Put n_rungs back by re-creating the data stream with the full data
-        // (we already consumed n_rungs from ss, so just proceed with ss)
-    } catch (const std::ios_base::failure& e) {
-        error = std::string("template deserialization failure: ") + e.what();
-        return false;
-    }
-
-    // Normal (non-template) path: use full LadderWitness deserialization
-    LadderWitness ladder;
-    if (!DeserializeLadderWitness(data, ladder, error, SerializationContext::CONDITIONS)) {
-        return false;
-    }
-
-    // Validate: no witness-only fields (SIGNATURE, PREIMAGE) in conditions
-    for (const auto& rung : ladder.rungs) {
-        for (const auto& block : rung.blocks) {
-            for (const auto& field : block.fields) {
-                if (!IsConditionDataType(field.type)) {
-                    error = "conditions contain witness-only data type: " + DataTypeName(field.type);
-                    return false;
-                }
-            }
-        }
-    }
-
-    // Validate relay blocks: no witness-only fields in conditions
-    for (size_t i = 0; i < ladder.relays.size(); ++i) {
-        for (const auto& block : ladder.relays[i].blocks) {
-            for (const auto& field : block.fields) {
-                if (!IsConditionDataType(field.type)) {
-                    error = "relay " + std::to_string(i) + " contains witness-only data type: " + DataTypeName(field.type);
-                    return false;
-                }
-            }
-        }
-    }
-
-    out.rungs = std::move(ladder.rungs);
-    out.coil = std::move(ladder.coil);
-    out.relays = std::move(ladder.relays);
-    return true;
-}
-
-CScript SerializeRungConditions(const RungConditions& conditions)
-{
-    CScript result;
-    result.push_back(RUNG_CONDITIONS_PREFIX);
-
-    if (conditions.IsTemplateRef()) {
-        // Template mode: n_rungs=0 + input_index + diffs
-        DataStream ss{};
-        WriteCompactSize(ss, 0); // n_rungs = 0 signals template mode
-        WriteCompactSize(ss, conditions.template_ref->input_index);
-        WriteCompactSize(ss, conditions.template_ref->diffs.size());
-        for (const auto& diff : conditions.template_ref->diffs) {
-            WriteCompactSize(ss, diff.rung_index);
-            WriteCompactSize(ss, diff.block_index);
-            WriteCompactSize(ss, diff.field_index);
-            // Write replacement field: type + data
-            ss << static_cast<uint8_t>(diff.new_field.type);
-            if (diff.new_field.type == RungDataType::NUMERIC) {
-                uint32_t val = 0;
-                for (size_t i = 0; i < diff.new_field.data.size(); ++i) {
-                    val |= static_cast<uint32_t>(diff.new_field.data[i]) << (8 * i);
-                }
-                WriteCompactSize(ss, val);
-            } else {
-                WriteCompactSize(ss, diff.new_field.data.size());
-                if (!diff.new_field.data.empty()) {
-                    ss.write(MakeByteSpan(diff.new_field.data));
-                }
-            }
-        }
-        std::vector<uint8_t> bytes(ss.size());
-        ss.read(MakeWritableByteSpan(bytes));
-        result.insert(result.end(), bytes.begin(), bytes.end());
-    } else {
-        // Normal mode: serialize as ladder witness (CONDITIONS context)
-        LadderWitness ladder;
-        ladder.rungs = conditions.rungs;
-        ladder.coil = conditions.coil;
-        ladder.relays = conditions.relays;
-        auto bytes = SerializeLadderWitness(ladder, SerializationContext::CONDITIONS);
-        result.insert(result.end(), bytes.begin(), bytes.end());
-    }
-
-    return result;
-}
-#endif
-
 bool ResolveTemplateReference(RungConditions& conditions,
                               const std::vector<RungConditions>& all_conditions,
                               std::string& error)
@@ -646,6 +458,51 @@ bool DeserializeMLSCProof(const std::vector<uint8_t>& data, MLSCProof& proof, st
             ss.read(MakeWritableByteSpan(proof.proof_hashes[ph]));
         }
 
+        // Optional: read revealed mutation targets (trailing field, backward-compatible)
+        if (!ss.empty()) {
+            uint64_t n_targets = ReadCompactSize(ss);
+            if (n_targets > total_rungs) {
+                error = "MLSC proof too many mutation targets: " + std::to_string(n_targets);
+                return false;
+            }
+            proof.revealed_mutation_targets.resize(n_targets);
+            for (uint64_t mt = 0; mt < n_targets; ++mt) {
+                uint64_t mt_idx = ReadCompactSize(ss);
+                if (mt_idx >= total_rungs) {
+                    error = "MLSC proof mutation target index out of range";
+                    return false;
+                }
+                proof.revealed_mutation_targets[mt].first = static_cast<uint16_t>(mt_idx);
+
+                // Deserialize mutation target rung blocks
+                uint64_t mt_blocks = ReadCompactSize(ss);
+                if (mt_blocks == 0 || mt_blocks > MAX_BLOCKS_PER_RUNG) {
+                    error = "MLSC proof mutation target block count invalid";
+                    return false;
+                }
+                Rung& mt_rung = proof.revealed_mutation_targets[mt].second;
+                mt_rung.blocks.resize(mt_blocks);
+                for (uint64_t mb = 0; mb < mt_blocks; ++mb) {
+                    std::string block_error;
+                    if (!DeserializeBlock(ss, mt_rung.blocks[mb], cond_ctx, block_error)) {
+                        error = "MLSC proof mutation target: " + block_error;
+                        return false;
+                    }
+                }
+
+                // Read mutation target relay_refs
+                uint64_t mt_refs = ReadCompactSize(ss);
+                if (mt_refs > MAX_REQUIRES) {
+                    error = "MLSC proof mutation target too many relay_refs";
+                    return false;
+                }
+                mt_rung.relay_refs.resize(mt_refs);
+                for (uint64_t mr = 0; mr < mt_refs; ++mr) {
+                    mt_rung.relay_refs[mr] = static_cast<uint16_t>(ReadCompactSize(ss));
+                }
+            }
+        }
+
         if (!ss.empty()) {
             error = "trailing bytes in MLSC proof";
             return false;
@@ -685,6 +542,16 @@ std::vector<uint8_t> SerializeMLSCProof(const MLSCProof& proof)
         ss.write(MakeByteSpan(hash));
     }
 
+    // Serialize revealed mutation targets (optional trailing field)
+    if (!proof.revealed_mutation_targets.empty()) {
+        WriteCompactSize(ss, proof.revealed_mutation_targets.size());
+        for (const auto& [mt_idx, mt_rung] : proof.revealed_mutation_targets) {
+            WriteCompactSize(ss, mt_idx);
+            auto mt_bytes = SerializeRungBlocks(mt_rung, SerializationContext::CONDITIONS);
+            ss.write(MakeByteSpan(mt_bytes));
+        }
+    }
+
     std::vector<uint8_t> result(ss.size());
     ss.read(MakeWritableByteSpan(result));
     return result;
@@ -695,7 +562,9 @@ bool VerifyMLSCProof(const MLSCProof& proof,
                      const uint256& expected_root,
                      const std::vector<std::vector<uint8_t>>& rung_pubkeys,
                      const std::vector<std::vector<std::vector<uint8_t>>>& relay_pubkeys,
-                     std::string& error)
+                     std::string& error,
+                     MLSCVerifiedLeaves* verified_out,
+                     const std::vector<std::vector<std::vector<uint8_t>>>& mutation_target_pubkeys)
 {
     // Total leaves: total_rungs + total_relays + 1 (coil)
     size_t total_leaves = proof.total_rungs + proof.total_relays + 1;
@@ -743,6 +612,36 @@ bool VerifyMLSCProof(const MLSCProof& proof,
         error = "excess proof hashes: used " + std::to_string(proof_idx) +
                 " of " + std::to_string(proof.proof_hashes.size());
         return false;
+    }
+
+    // Verify mutation target leaves: for each revealed mutation target,
+    // compute its leaf and check it matches the leaf at that rung index.
+    for (size_t mt = 0; mt < proof.revealed_mutation_targets.size(); ++mt) {
+        const auto& [target_idx, target_rung] = proof.revealed_mutation_targets[mt];
+        if (target_idx >= proof.total_rungs) {
+            error = "mutation target rung_index out of range: " + std::to_string(target_idx);
+            return false;
+        }
+        if (target_idx == proof.rung_index) {
+            error = "mutation target same as revealed rung: " + std::to_string(target_idx);
+            return false;
+        }
+        const auto& mt_pks = (mt < mutation_target_pubkeys.size()) ?
+            mutation_target_pubkeys[mt] : std::vector<std::vector<uint8_t>>{};
+        uint256 target_leaf = ComputeRungLeaf(target_rung, mt_pks);
+        if (target_leaf != leaves[target_idx]) {
+            error = "mutation target leaf mismatch at rung " + std::to_string(target_idx);
+            return false;
+        }
+    }
+
+    // Populate verified_out before moving leaves
+    if (verified_out) {
+        verified_out->leaves = leaves; // copy before move
+        verified_out->root = expected_root;
+        verified_out->rung_index = proof.rung_index;
+        verified_out->total_rungs = proof.total_rungs;
+        verified_out->total_relays = proof.total_relays;
     }
 
     // Build Merkle tree and compare

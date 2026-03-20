@@ -30,10 +30,9 @@ static constexpr size_t MAX_LADDER_WITNESS_SIZE = 100000;
  *  and hash-preimage binding for anchor/one-shot blocks.
  *  Limits user-chosen data to 64 bytes (2 * 32 bytes PREIMAGE). */
 static constexpr size_t MAX_PREIMAGE_FIELDS_PER_WITNESS = 2;
-/** Maximum coil address (raw scriptPubKey) size in bytes.
- *  Covers all standard formats: MLSC (33), P2TR (34), P2WSH (34),
- *  P2WPKH (22), P2SH (23), P2PKH (25). */
-static constexpr size_t MAX_COIL_ADDRESS_SIZE = 42;
+/** Coil address is carried as SHA256(raw_address) — 32 bytes, fixed.
+ *  Raw address never goes on-chain. Wire format: 0 (no address) or 32 (hash). */
+static constexpr size_t COIL_ADDRESS_HASH_SIZE = 32;
 /** Maximum coil condition rungs. Set to 0: coil conditions are reserved
  *  (never evaluated). Covenant/recursion semantics are handled by rung-level
  *  block types (CTV, RECURSE_*, VAULT_LOCK, AMOUNT_LOCK). */

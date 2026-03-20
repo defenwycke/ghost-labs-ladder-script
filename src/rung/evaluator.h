@@ -70,6 +70,9 @@ struct RungEvalContext {
     const std::vector<CTxOut>* spent_outputs{nullptr}; //!< All spent outputs in the tx (for COSIGN cross-input checks)
     const std::vector<Relay>* relays{nullptr};         //!< Relay definitions (for KEY_REF_SIG resolution)
     const std::vector<uint16_t>* rung_relay_refs{nullptr}; //!< Current rung's relay_refs (KEY_REF_SIG validation)
+    const std::vector<std::vector<std::vector<uint8_t>>>* rung_pubkeys{nullptr}; //!< Per-rung pubkey lists for Merkle leaf (merkle_pub_key)
+    const MLSCVerifiedLeaves* verified_leaves{nullptr}; //!< Verified leaf array from VerifyMLSCProof (leaf-centric covenant checks)
+    const MLSCProof* mlsc_proof{nullptr}; //!< MLSC proof (for cross-rung mutation target access)
 };
 
 /** Result of evaluating a single block or rung. */

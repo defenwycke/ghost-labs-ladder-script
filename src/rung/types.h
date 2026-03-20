@@ -393,6 +393,13 @@ inline bool IsKeyConsumingBlockType(RungBlockType type)
     case RungBlockType::P2WPKH_LEGACY:
     case RungBlockType::P2TR_LEGACY:
     case RungBlockType::P2TR_SCRIPT_LEGACY:
+    case RungBlockType::ANCHOR_CHANNEL:
+    case RungBlockType::ANCHOR_ORACLE:
+    case RungBlockType::VAULT_LOCK:
+    case RungBlockType::LATCH_SET:
+    case RungBlockType::LATCH_RESET:
+    case RungBlockType::COUNTER_DOWN:
+    case RungBlockType::COUNTER_UP:
         return true;
     default:
         return false;
@@ -537,7 +544,7 @@ struct RungCoil {
     RungCoilType coil_type{RungCoilType::UNLOCK};
     RungAttestationMode attestation{RungAttestationMode::INLINE};
     RungScheme scheme{RungScheme::SCHNORR};
-    std::vector<uint8_t> address;              //!< Destination address (raw scriptPubKey bytes), empty if none
+    std::vector<uint8_t> address_hash;         //!< SHA256(destination address) — raw address never on-chain. Empty if none.
     std::vector<struct Rung> conditions;        //!< Reserved — must be empty (MAX_COIL_CONDITION_RUNGS = 0)
 };
 
@@ -587,38 +594,39 @@ inline size_t PubkeyCountForBlock(RungBlockType type, const RungBlock& block)
     case RungBlockType::TIMELOCKED_SIG:
     case RungBlockType::HASH_SIG:
     case RungBlockType::CLTV_SIG:
-    case RungBlockType::PTLC:
-    case RungBlockType::ADAPTOR_SIG:
-    case RungBlockType::KEY_REF_SIG:
-    case RungBlockType::COSIGN:
     case RungBlockType::MUSIG_THRESHOLD:
     case RungBlockType::P2PK_LEGACY:
-    case RungBlockType::P2PKH_LEGACY:
-    case RungBlockType::P2WPKH_LEGACY:
     case RungBlockType::P2TR_LEGACY:
     case RungBlockType::P2TR_SCRIPT_LEGACY:
         return 1;
+    // P2PKH/P2WPKH: PUBKEY→HASH160 in conditions (not intercepted to Merkle leaf)
+    // Pubkeys are in the witness but NOT in the Merkle leaf — return 0
+    case RungBlockType::P2PKH_LEGACY:
+    case RungBlockType::P2WPKH_LEGACY:
+        return 0;
     // Two pubkey blocks
     case RungBlockType::HTLC:
+    case RungBlockType::ANCHOR_CHANNEL:
+    case RungBlockType::VAULT_LOCK:
+    case RungBlockType::ADAPTOR_SIG:
+    case RungBlockType::PTLC:
         return 2;
-    // N pubkey blocks: read from NUMERIC field
+    // Single pubkey blocks (PLC/anchor family)
+    case RungBlockType::ANCHOR_ORACLE:
+    case RungBlockType::LATCH_SET:
+    case RungBlockType::LATCH_RESET:
+    case RungBlockType::COUNTER_DOWN:
+    case RungBlockType::COUNTER_UP:
+        return 1;
+    // N pubkey blocks: count PUBKEY fields directly (merkle_pub_key).
+    // The witness carries all N pubkeys; they are bound to the Merkle leaf.
     case RungBlockType::MULTISIG:
     case RungBlockType::TIMELOCKED_MULTISIG: {
-        // Second NUMERIC field is N (total signers)
-        size_t numeric_count = 0;
+        size_t pk_count = 0;
         for (const auto& field : block.fields) {
-            if (field.type == RungDataType::NUMERIC) {
-                ++numeric_count;
-                if (numeric_count == 2 && field.data.size() >= 1) {
-                    uint32_t val = 0;
-                    for (size_t i = 0; i < field.data.size(); ++i) {
-                        val |= static_cast<uint32_t>(field.data[i]) << (8 * i);
-                    }
-                    return val;
-                }
-            }
+            if (field.type == RungDataType::PUBKEY) ++pk_count;
         }
-        return 0;
+        return pk_count;
     }
     default:
         return 0;
@@ -1081,10 +1089,11 @@ inline constexpr ImplicitFieldLayout TIMELOCKED_SIG_WITNESS = {3, {
     {RungDataType::NUMERIC, 0},
 }};
 
-/** HTLC witness: [PUBKEY(var), SIGNATURE(var), PREIMAGE(var), NUMERIC(varint)] */
-inline constexpr ImplicitFieldLayout HTLC_WITNESS = {4, {
+/** HTLC witness: [PUBKEY(var), SIGNATURE(var), PUBKEY(var), PREIMAGE(var), NUMERIC(varint)] */
+inline constexpr ImplicitFieldLayout HTLC_WITNESS = {5, {
     {RungDataType::PUBKEY, 0},
     {RungDataType::SIGNATURE, 0},
+    {RungDataType::PUBKEY, 0},
     {RungDataType::PREIMAGE, 0},
     {RungDataType::NUMERIC, 0},
 }};

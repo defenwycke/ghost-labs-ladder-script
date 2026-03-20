@@ -96,8 +96,8 @@ static UniValue CoilToJSON(const RungCoil& coil)
     case RungScheme::SPHINCS_SHA: obj.pushKV("scheme", "SPHINCS_SHA"); break;
     default: obj.pushKV("scheme", "UNKNOWN"); break;
     }
-    if (!coil.address.empty()) {
-        obj.pushKV("address", HexStr(coil.address));
+    if (!coil.address_hash.empty()) {
+        obj.pushKV("address_hash", HexStr(coil.address_hash));
     }
     if (!coil.conditions.empty()) {
         UniValue cond_arr(UniValue::VARR);
@@ -343,7 +343,8 @@ static RungBlock ParseBlockSpec(const UniValue& block_obj, bool conditions_only,
             if (field.type == RungDataType::HASH256) {
                 if (block.type != RungBlockType::CTV &&
                     block.type != RungBlockType::TAGGED_HASH &&
-                    block.type != RungBlockType::ACCUMULATOR) {
+                    block.type != RungBlockType::ACCUMULATOR &&
+                    block.type != RungBlockType::COSIGN) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER,
                         "Use PREIMAGE instead of HASH256 for " + type_str +
                         "; the node computes the hash commitment automatically");
@@ -462,7 +463,13 @@ static RungCoil ParseCoil(const UniValue& obj)
         else if (s == "SPHINCS_SHA") coil.scheme = RungScheme::SPHINCS_SHA;
     }
     if (obj.exists("address")) {
-        coil.address = ParseHex(obj["address"].get_str());
+        // Hash the raw address — only the hash goes on-chain (anti-spam)
+        auto raw_address = ParseHex(obj["address"].get_str());
+        if (!raw_address.empty()) {
+            coil.address_hash.resize(CSHA256::OUTPUT_SIZE);
+            CSHA256().Write(raw_address.data(), raw_address.size())
+                     .Finalize(coil.address_hash.data());
+        }
     }
     if (obj.exists("conditions") && !obj["conditions"].get_array().empty()) {
         throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -1192,21 +1199,46 @@ static void SignMultiKey(const UniValue& block_spec,
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("%s: Failed to compute sighash", block_name));
     }
 
-    for (size_t s = 0; s < privkeys_arr.size(); ++s) {
-        CKey privkey = DecodeSecret(privkeys_arr[s].get_str());
-        if (!privkey.IsValid()) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("%s: Invalid private key at index %d", block_name, s));
+    // merkle_pub_key: all N pubkeys must be in the witness for Merkle leaf
+    // verification, not just the M signing keys. If "pubkeys" array is
+    // provided, add ALL pubkeys first, then only signing signatures.
+    if (block_spec.exists("pubkeys")) {
+        const UniValue& all_pubkeys = block_spec["pubkeys"].get_array();
+        for (size_t p = 0; p < all_pubkeys.size(); ++p) {
+            auto pk_bytes = ParseHex(all_pubkeys[p].get_str());
+            block.fields.push_back({RungDataType::PUBKEY, std::move(pk_bytes)});
         }
-
-        CPubKey pubkey = privkey.GetPubKey();
-        block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
-
-        unsigned char sig_buf[64];
-        uint256 aux_rand = GetRandHash();
-        if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
-            throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("%s: Schnorr signing failed for key %d", block_name, s));
+        // Sign with each privkey (M of N)
+        for (size_t s = 0; s < privkeys_arr.size(); ++s) {
+            CKey privkey = DecodeSecret(privkeys_arr[s].get_str());
+            if (!privkey.IsValid()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("%s: Invalid private key at index %d", block_name, s));
+            }
+            unsigned char sig_buf[64];
+            uint256 aux_rand = GetRandHash();
+            if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("%s: Schnorr signing failed for key %d", block_name, s));
+            }
+            block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
         }
-        block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+    } else {
+        // Legacy path: derive pubkeys from privkeys (only signing keys present)
+        for (size_t s = 0; s < privkeys_arr.size(); ++s) {
+            CKey privkey = DecodeSecret(privkeys_arr[s].get_str());
+            if (!privkey.IsValid()) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("%s: Invalid private key at index %d", block_name, s));
+            }
+
+            CPubKey pubkey = privkey.GetPubKey();
+            block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
+
+            unsigned char sig_buf[64];
+            uint256 aux_rand = GetRandHash();
+            if (!privkey.SignSchnorr(sighash, sig_buf, nullptr, aux_rand)) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("%s: Schnorr signing failed for key %d", block_name, s));
+            }
+            block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+        }
     }
 }
 
@@ -1254,7 +1286,7 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
             if (!rung::SignatureHashLadder(txdata, mtx, input_idx, SIGHASH_DEFAULT, conditions, sighash)) {
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to compute sighash");
             }
-            // Include PUBKEY for Merkle-bound key verification
+            // Include signing PUBKEY for Merkle-bound key verification
             CPubKey pubkey = privkey.GetPubKey();
             block.fields.push_back({RungDataType::PUBKEY, std::vector<uint8_t>(pubkey.begin(), pubkey.end())});
             if (block_spec.exists("adaptor_secret")) {
@@ -1276,6 +1308,14 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
                     throw JSONRPCError(RPC_INTERNAL_ERROR, "Schnorr signing failed");
                 }
                 block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
+            }
+        }
+        // merkle_pub_key: add remaining pubkeys (e.g., adaptor_point) after signing key
+        if (block_spec.exists("pubkeys")) {
+            const UniValue& pk_arr = block_spec["pubkeys"].get_array();
+            for (size_t i = 0; i < pk_arr.size(); ++i) {
+                auto pk = ParseHex(pk_arr[i].get_str());
+                block.fields.push_back({RungDataType::PUBKEY, std::move(pk)});
             }
         }
         break;
@@ -1424,30 +1464,67 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         break;
     }
     case RungBlockType::TIMELOCKED_SIG: {
-        // Compound SIG + CSV: PQ or Schnorr sign, CSV timelock comes from conditions
+        // Compound SIG + CSV: PQ or Schnorr sign, CSV timelock from conditions
         SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "TIMELOCKED_SIG");
+        // Add CSV NUMERIC from conditions (witness layout: PUBKEY, SIGNATURE, NUMERIC)
+        for (const auto& rung : conditions.rungs) {
+            for (const auto& cblk : rung.blocks) {
+                if (cblk.type == RungBlockType::TIMELOCKED_SIG) {
+                    for (const auto& f : cblk.fields) {
+                        if (f.type == RungDataType::NUMERIC) {
+                            block.fields.push_back(f);
+                            goto timelocked_sig_done;
+                        }
+                    }
+                }
+            }
+        }
+        timelocked_sig_done:
         break;
     }
     case RungBlockType::HASH_SIG: {
-        // Compound HASH_PREIMAGE + SIG: preimage + PQ/Schnorr sign
+        // Witness layout: [PUBKEY, SIGNATURE, PREIMAGE]
+        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "HASH_SIG");
         std::string preimage_hex = block_spec["preimage"].get_str();
         auto preimage_data = ParseHex(preimage_hex);
         if (preimage_data.empty()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "HASH_SIG requires non-empty preimage hex");
         }
         block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
-        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "HASH_SIG");
         break;
     }
     case RungBlockType::HTLC: {
-        // Compound HASH_PREIMAGE + CSV + SIG: preimage + PQ/Schnorr sign, CSV from conditions
+        // Witness layout: [PUBKEY, SIGNATURE, PREIMAGE, NUMERIC]
+        // SignSingleKey adds signing PUBKEY + SIGNATURE
+        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "HTLC");
+        // Add additional pubkeys (receiver key) for merkle_pub_key
+        if (block_spec.exists("pubkeys")) {
+            const UniValue& pk_arr = block_spec["pubkeys"].get_array();
+            for (size_t i = 0; i < pk_arr.size(); ++i) {
+                auto pk = ParseHex(pk_arr[i].get_str());
+                block.fields.push_back({RungDataType::PUBKEY, std::move(pk)});
+            }
+        }
         std::string preimage_hex = block_spec["preimage"].get_str();
         auto preimage_data = ParseHex(preimage_hex);
         if (preimage_data.empty()) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "HTLC requires non-empty preimage hex");
         }
         block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
-        SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "HTLC");
+        // Add CSV NUMERIC from conditions
+        for (const auto& rung : conditions.rungs) {
+            for (const auto& cblk : rung.blocks) {
+                if (cblk.type == RungBlockType::HTLC) {
+                    for (const auto& f : cblk.fields) {
+                        if (f.type == RungDataType::NUMERIC) {
+                            block.fields.push_back(f);
+                            goto htlc_done;
+                        }
+                    }
+                }
+            }
+        }
+        htlc_done:
         break;
     }
     case RungBlockType::PTLC: {
@@ -1491,15 +1568,37 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
                 block.fields.push_back({RungDataType::SIGNATURE, std::vector<uint8_t>(sig_buf, sig_buf + 64)});
             }
         }
+        // merkle_pub_key: add additional pubkeys (e.g., adaptor_point) after signing key
+        if (block_spec.exists("pubkeys")) {
+            const UniValue& pk_arr = block_spec["pubkeys"].get_array();
+            for (size_t i = 0; i < pk_arr.size(); ++i) {
+                auto pk = ParseHex(pk_arr[i].get_str());
+                block.fields.push_back({RungDataType::PUBKEY, std::move(pk)});
+            }
+        }
         break;
     }
     case RungBlockType::CLTV_SIG: {
-        // Compound SIG + CLTV: PQ or Schnorr sign, CLTV from conditions
+        // Witness layout: [PUBKEY, SIGNATURE, NUMERIC]
         SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "CLTV_SIG");
+        // Add CLTV NUMERIC from conditions
+        for (const auto& rung : conditions.rungs) {
+            for (const auto& cblk : rung.blocks) {
+                if (cblk.type == RungBlockType::CLTV_SIG) {
+                    for (const auto& f : cblk.fields) {
+                        if (f.type == RungDataType::NUMERIC) {
+                            block.fields.push_back(f);
+                            goto cltv_sig_done;
+                        }
+                    }
+                }
+            }
+        }
+        cltv_sig_done:
         break;
     }
     case RungBlockType::TIMELOCKED_MULTISIG: {
-        // Compound MULTISIG + CSV: PQ or Schnorr multi-sign, CSV from conditions
+        // Compound MULTISIG + CSV: PQ or Schnorr multi-sign, CSV from conditions (NO_IMPLICIT witness)
         SignMultiKey(block_spec, block, mtx, input_idx, txdata, conditions, "TIMELOCKED_MULTISIG");
         break;
     }
@@ -1806,6 +1905,7 @@ static RPCHelpMan signrungtx()
         std::string cond_error;
         bool is_mlsc = rung::IsMLSCScript(spent_outputs[input_idx].scriptPubKey);
         bool has_conditions = false;
+        std::vector<std::vector<std::vector<uint8_t>>> rung_pubkeys2, relay_pubkeys2;
 
         if (is_mlsc) {
             // MLSC: conditions must be provided by the signer (not on-chain)
@@ -1816,7 +1916,6 @@ static RPCHelpMan signrungtx()
             }
             UniValue coil_val = signer_obj.exists("coil") ? signer_obj["coil"] : UniValue();
             UniValue relays_val2 = signer_obj.exists("relays") ? signer_obj["relays"] : UniValue();
-            std::vector<std::vector<std::vector<uint8_t>>> rung_pubkeys2, relay_pubkeys2;
             conditions = ParseConditionsSpec(signer_obj["conditions"].get_array(), coil_val, relays_val2, rung_pubkeys2, relay_pubkeys2);
 
             // Set the conditions_root from the spent output
@@ -2082,6 +2181,46 @@ static RPCHelpMan signrungtx()
                 }
             }
 
+            // Detect cross-rung mutation targets (RECURSE_MODIFIED/DECAY with rung_idx != target_rung)
+            auto read_numeric = [](const RungField& f) -> uint32_t {
+                uint32_t val = 0;
+                for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                    val |= static_cast<uint32_t>(f.data[i]) << (8 * i);
+                return val;
+            };
+            for (const auto& blk : conditions.rungs[target_rung].blocks) {
+                if (blk.type != rung::RungBlockType::RECURSE_MODIFIED &&
+                    blk.type != rung::RungBlockType::RECURSE_DECAY) continue;
+                // Collect NUMERIC fields
+                std::vector<const RungField*> numerics;
+                for (const auto& f : blk.fields) {
+                    if (f.type == rung::RungDataType::NUMERIC) numerics.push_back(&f);
+                }
+                if (numerics.size() < 4) continue;
+                // Legacy format (4-5 numerics): single mutation at rung 0
+                // New format (6+ numerics): numerics[1]=num_mutations, 4 per mutation
+                size_t start = 1, count = 1;
+                if (numerics.size() >= 6) {
+                    count = read_numeric(*numerics[1]);
+                    start = 2;
+                }
+                for (size_t m = 0; m < count; ++m) {
+                    size_t base = (numerics.size() >= 6) ? (start + 4 * m) : 1;
+                    if (base >= numerics.size()) break;
+                    uint32_t rung_idx_val = read_numeric(*numerics[base]);
+                    if (rung_idx_val != target_rung && rung_idx_val < conditions.rungs.size()) {
+                        bool already_added = false;
+                        for (const auto& [mt_idx, _] : mlsc_proof.revealed_mutation_targets) {
+                            if (mt_idx == rung_idx_val) { already_added = true; break; }
+                        }
+                        if (!already_added) {
+                            mlsc_proof.revealed_mutation_targets.push_back(
+                                {static_cast<uint16_t>(rung_idx_val), conditions.rungs[rung_idx_val]});
+                        }
+                    }
+                }
+            }
+
             // Compute proof hashes for unrevealed leaves
             // Leaf order: [rung_leaf[0..N-1], relay_leaf[0..M-1], coil_leaf]
             std::set<uint16_t> revealed_relay_indices;
@@ -2091,12 +2230,16 @@ static RPCHelpMan signrungtx()
 
             for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
                 if (r != target_rung) {
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRungLeaf(conditions.rungs[r]));
+                    std::vector<std::vector<uint8_t>> rpks;
+                    if (r < rung_pubkeys2.size()) rpks = rung_pubkeys2[r];
+                    mlsc_proof.proof_hashes.push_back(rung::ComputeRungLeaf(conditions.rungs[r], rpks));
                 }
             }
             for (uint16_t rl = 0; rl < conditions.relays.size(); ++rl) {
                 if (revealed_relay_indices.find(rl) == revealed_relay_indices.end()) {
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRelayLeaf(conditions.relays[rl]));
+                    std::vector<std::vector<uint8_t>> rlpks;
+                    if (rl < relay_pubkeys2.size()) rlpks = relay_pubkeys2[rl];
+                    mlsc_proof.proof_hashes.push_back(rung::ComputeRelayLeaf(conditions.relays[rl], rlpks));
                 }
             }
             // Coil leaf is NOT a proof hash — it's computed from the witness coil

@@ -290,6 +290,11 @@ bool DeserializeBlock(DataStream& ss, RungBlock& block_out,
             error = "ADAPTOR_SIG has no condition fields: got " + std::to_string(n_fields);
             return false;
         }
+        // ACCUMULATOR: cap at 10 HASH256 fields (root + 8 proof nodes + leaf)
+        if (block_out.type == RungBlockType::ACCUMULATOR && n_fields > 10) {
+            error = "ACCUMULATOR too many fields: " + std::to_string(n_fields) + " > 10";
+            return false;
+        }
 
         block_out.fields.resize(n_fields);
         for (uint64_t f = 0; f < n_fields; ++f) {
@@ -312,7 +317,10 @@ bool DeserializeBlock(DataStream& ss, RungBlock& block_out,
             // high-bandwidth data types that could carry unvalidated payload.
             // This closes the ANCHOR/RECURSE_MODIFIED/RECURSE_DECAY/COMPARE gap
             // where layout-less blocks could carry 16 x DATA(80) = 1280 bytes.
-            if (expected.count == 0 && IsDataEmbeddingType(dtype)) {
+            // ACCUMULATOR: HASH256 fields carry Merkle proof (variable count).
+            // Whitelisted from the data-embedding check.
+            if (expected.count == 0 && IsDataEmbeddingType(dtype) &&
+                block_out.type != RungBlockType::ACCUMULATOR) {
                 error = "data-embedding type " + DataTypeName(dtype) +
                         " not allowed in block without implicit layout: " +
                         BlockTypeName(block_out.type);
@@ -464,15 +472,15 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
             ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
             ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
 
-            // Read coil address
+            // Read coil address hash (0 = no address, 32 = SHA256 of raw address)
             uint64_t addr_len = ReadCompactSize(ss);
-            if (addr_len > MAX_COIL_ADDRESS_SIZE) {
-                error = "coil address too large: " + std::to_string(addr_len);
+            if (addr_len != 0 && addr_len != 32) {
+                error = "coil address_hash must be 0 or 32 bytes, got " + std::to_string(addr_len);
                 return false;
             }
             if (addr_len > 0) {
-                ladder_out.coil.address.resize(addr_len);
-                ss.read(MakeWritableByteSpan(ladder_out.coil.address));
+                ladder_out.coil.address_hash.resize(addr_len);
+                ss.read(MakeWritableByteSpan(ladder_out.coil.address_hash));
             }
 
             // Read coil condition rungs — must be 0 (coil conditions reserved, never evaluated)
@@ -537,15 +545,15 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
         ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
         ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
 
-        // Read coil address (variable-length scriptPubKey)
+        // Read coil address hash (0 = no address, 32 = SHA256 of raw address)
         uint64_t addr_len = ReadCompactSize(ss);
-        if (addr_len > MAX_COIL_ADDRESS_SIZE) {
-            error = "coil address too large: " + std::to_string(addr_len);
+        if (addr_len != 0 && addr_len != 32) {
+            error = "coil address_hash must be 0 or 32 bytes, got " + std::to_string(addr_len);
             return false;
         }
         if (addr_len > 0) {
-            ladder_out.coil.address.resize(addr_len);
-            ss.read(MakeWritableByteSpan(ladder_out.coil.address));
+            ladder_out.coil.address_hash.resize(addr_len);
+            ss.read(MakeWritableByteSpan(ladder_out.coil.address_hash));
         }
 
         // Read coil condition rungs — must be 0 (coil conditions reserved, never evaluated)
@@ -707,9 +715,9 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
         ss << static_cast<uint8_t>(ladder.coil.coil_type);
         ss << static_cast<uint8_t>(ladder.coil.attestation);
         ss << static_cast<uint8_t>(ladder.coil.scheme);
-        WriteCompactSize(ss, ladder.coil.address.size());
-        if (!ladder.coil.address.empty()) {
-            ss.write(MakeByteSpan(ladder.coil.address));
+        WriteCompactSize(ss, ladder.coil.address_hash.size());
+        if (!ladder.coil.address_hash.empty()) {
+            ss.write(MakeByteSpan(ladder.coil.address_hash));
         }
         WriteCompactSize(ss, ladder.coil.conditions.size());
         for (const auto& crung : ladder.coil.conditions) {
@@ -739,9 +747,9 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
     ss << static_cast<uint8_t>(ladder.coil.scheme);
 
     // Write coil address
-    WriteCompactSize(ss, ladder.coil.address.size());
-    if (!ladder.coil.address.empty()) {
-        ss.write(MakeByteSpan(ladder.coil.address));
+    WriteCompactSize(ss, ladder.coil.address_hash.size());
+    if (!ladder.coil.address_hash.empty()) {
+        ss.write(MakeByteSpan(ladder.coil.address_hash));
     }
 
     // Write coil condition rungs (always use CONDITIONS context)
@@ -821,9 +829,9 @@ std::vector<uint8_t> SerializeCoilData(const RungCoil& coil)
     ss << static_cast<uint8_t>(coil.attestation);
     ss << static_cast<uint8_t>(coil.scheme);
 
-    WriteCompactSize(ss, coil.address.size());
-    if (!coil.address.empty()) {
-        ss.write(MakeByteSpan(coil.address));
+    WriteCompactSize(ss, coil.address_hash.size());
+    if (!coil.address_hash.empty()) {
+        ss.write(MakeByteSpan(coil.address_hash));
     }
 
     WriteCompactSize(ss, coil.conditions.size());

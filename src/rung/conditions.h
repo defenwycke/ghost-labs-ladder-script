@@ -16,6 +16,10 @@
 
 namespace rung {
 
+/** Legacy prefix byte for inline conditions (removed — always rejected).
+ *  Retained as a constant for test code that verifies rejection. */
+static constexpr uint8_t RUNG_CONDITIONS_PREFIX = 0xc1;
+
 /** Magic prefix byte identifying a scriptPubKey as MLSC (Merkelised Ladder Script Conditions).
  *  Output format: 0xC2 + conditions_root(32 bytes) = 33-byte scriptPubKey.
  *  Full conditions are revealed only at spend time in the witness.
@@ -142,6 +146,18 @@ uint256 ComputeConditionsRoot(const RungConditions& conditions,
                                const std::vector<std::vector<std::vector<uint8_t>>>& rung_pubkeys = {},
                                const std::vector<std::vector<std::vector<uint8_t>>>& relay_pubkeys = {});
 
+/** Verified leaf array from VerifyMLSCProof — enables leaf-centric covenant checks.
+ *  Instead of recomputing the Merkle root from conditions (which requires all rungs'
+ *  pubkeys including unrevealed ones), covenant evaluators copy this array, mutate
+ *  the relevant leaf, rebuild the tree, and compare against the output root. */
+struct MLSCVerifiedLeaves {
+    std::vector<uint256> leaves;  //!< Full leaf array (rungs + relays + coil)
+    uint256 root;                 //!< Verified conditions root
+    uint16_t rung_index;          //!< Which leaf is the revealed rung
+    uint16_t total_rungs;         //!< Number of rung leaves
+    uint16_t total_relays;        //!< Number of relay leaves
+};
+
 /** MLSC spending proof — revealed conditions + Merkle proof hashes.
  *  Carried in witness stack[1] when spending an MLSC (0xC2) output. */
 struct MLSCProof {
@@ -151,6 +167,7 @@ struct MLSCProof {
     Rung revealed_rung;        //!< Condition blocks for the revealed rung
     std::vector<std::pair<uint16_t, Relay>> revealed_relays; //!< (relay_index, condition blocks) for each revealed relay
     std::vector<uint256> proof_hashes; //!< Leaf hashes for unrevealed leaves, in leaf-order
+    std::vector<std::pair<uint16_t, Rung>> revealed_mutation_targets; //!< (rung_index, condition blocks) for cross-rung mutation targets (optional, backward-compatible)
 };
 
 /** Deserialize an MLSC proof from witness stack element bytes. */
@@ -168,13 +185,17 @@ std::vector<uint8_t> SerializeMLSCProof(const MLSCProof& proof);
  *  @param[in]  rung_pubkeys    Pubkeys for the revealed rung (from witness, bound by Merkle proof)
  *  @param[in]  relay_pubkeys   Per-relay pubkey lists for revealed relays
  *  @param[out] error           Error message on failure
+ *  @param[out] verified_out    If non-null, receives the verified leaf array for covenant checks
+ *  @param[in]  mutation_target_pubkeys  Per-mutation-target pubkey lists (for cross-rung leaf computation)
  *  @return true if the Merkle proof verifies correctly. */
 bool VerifyMLSCProof(const MLSCProof& proof,
                      const RungCoil& coil,
                      const uint256& expected_root,
                      const std::vector<std::vector<uint8_t>>& rung_pubkeys,
                      const std::vector<std::vector<std::vector<uint8_t>>>& relay_pubkeys,
-                     std::string& error);
+                     std::string& error,
+                     MLSCVerifiedLeaves* verified_out = nullptr,
+                     const std::vector<std::vector<std::vector<uint8_t>>>& mutation_target_pubkeys = {});
 
 } // namespace rung
 

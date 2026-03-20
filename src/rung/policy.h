@@ -30,8 +30,7 @@ bool IsStatefulBlockType(uint16_t block_type);
  *  Returns false with reason populated on policy violation. */
 bool IsStandardRungTx(const CTransaction& tx, std::string& reason);
 
-/** Check whether a v4 output scriptPubKey is a valid rung conditions script. */
-bool IsStandardRungOutput(const CScript& scriptPubKey, std::string& reason);
+// IsStandardRungOutput removed — output validation is consensus (ValidateRungOutputs).
 
 } // namespace rung
 
