@@ -1,231 +1,140 @@
-# Building with Ladder Script: Patterns and Possibilities
+# Ladder Script Possibilities
 
-What can you build when every spending condition is a typed block and any combination is valid?
+What Ladder Script enables that Bitcoin Script cannot. Each example uses actual block types
+from the 59 active types. All patterns compose freely within the AND/OR rung/ladder model.
 
----
+## Vaults with Clawback
 
-## 1. Self-Custody
+A vault that allows hot-key spending after a delay, with cold-key clawback at any time.
 
-### 1.1 Dead Man's Switch
+**Block types:** VAULT_LOCK (0x0302), SIG (0x0001)
 
-```
-Rung 0: SIG(owner) + CSV(144)
-Rung 1: SIG(heir) + CLTV(current_height + 52560)
-```
+Rung 0: `VAULT_LOCK` with hot-key and cold-key pubkeys, plus a delay parameter. The hot
+key can spend after the delay; the cold key can claw back immediately.
 
-The owner spends freely with a 1-day safety delay. If the owner stops transacting for a year, the heir gains access. Each time the owner spends, they re-create the UTXO with a fresh CLTV height, pushing the heir's window forward.
+Rung 1: `SIG` with the cold key for emergency recovery.
 
-CSV on Rung 0 prevents instant drain if the key is compromised. CLTV on Rung 1 is absolute - the heir's deadline is fixed at creation and only moves when the owner explicitly refreshes it.
+In Bitcoin Script, vaults require pre-signed transactions or CTV. Ladder Script makes vaults
+a single native block type with built-in clawback.
 
-### 1.2 Spending Velocity Limit
+## Rate-Limited Wallets
 
-```
-Rung 0: RATE_LIMIT(max=100000, refill=6) + SIG(owner) + RECURSE_SAME(depth=1000)
-Rung 1: MULTISIG(2-of-2, [owner, backup]) + CSV(144)
-```
+A wallet that limits spending to N satoshis per block period, with a refill mechanism.
 
-Every spend is capped at 100,000 sats. The UTXO re-encumbers itself with identical conditions. Even with a compromised key, the attacker extracts 100k per transaction with a 6-block cooldown. The owner detects the breach and sweeps via Rung 1.
+**Block types:** RATE_LIMIT (0x0671), SIG (0x0001), RECURSE_SAME (0x0401)
 
-### 1.3 Fee-Gated Wallet
+A rung combines `SIG` (authorization), `RATE_LIMIT` (spending cap), and `RECURSE_SAME`
+(re-encumber the change output with the same conditions). The RATE_LIMIT block tracks
+accumulated spending and enforces the cap. RECURSE_SAME ensures the rate limit persists
+across transactions.
 
-```
-Rung 0: HYSTERESIS_FEE(high=20, low=1) + SIG(owner)
-```
+## Covenant Chains
 
-The UTXO is consensus-locked during fee spikes. Not policy - consensus. Miners cannot include the transaction if the fee rate exceeds 20 sat/vB. Prevents accidental high-fee spends and protects automated systems.
+Outputs that constrain the spending transaction to create specific successor outputs.
 
----
+**Block types:** CTV (0x0301), RECURSE_MODIFIED (0x0402), RECURSE_COUNT (0x0404)
 
-## 2. Multi-Party
+CTV commits to a template hash (BIP-119) that fixes the spending transaction's outputs.
+RECURSE_MODIFIED allows a single mutation per hop (e.g., decrementing a counter).
+RECURSE_COUNT creates a countdown that terminates after N hops. These compose into chains
+of constrained transactions with deterministic state progression.
 
-### 2.1 Corporate Treasury
+## ANYPREVOUT Channels (LN-Symmetry / Eltoo)
 
-```
-Rung 0: MULTISIG(2-of-3, [CFO, CEO, Board]) + EPOCH_GATE(2016, 144) + WEIGHT_LIMIT(100000) + OUTPUT_COUNT(1, 3)
-Rung 1: SIG(recovery) + CSV(1008)
-```
+Payment channels where either party can close with the latest state, without penalty
+transactions.
 
-Four constraints stack on the normal spending path: 2-of-3 quorum, spending window (first day of each difficulty epoch), transaction weight cap, and output fan limit. Even a compromised quorum can only operate during the window, in small simple transactions.
+**Block types:** SIG (0x0001) with ANYPREVOUT sighash (0x40)
 
-Rung 1 is the emergency override - a single recovery key with a 1-week delay.
+ANYPREVOUT allows signatures to rebind to any prevout with matching amounts and conditions.
+This enables the LN-Symmetry (eltoo) protocol: each new state is signed with ANYPREVOUT,
+and the latest state can always replace an older one without needing a justice transaction.
 
-### 2.2 Co-Spend Guardian
+## OUTPUT_CHECK Governance
 
-```
-Child UTXO:
-  Rung 0: SIG(spender) + COSIGN(SHA256(guardian_spk))
+DAO-style spending rules where outputs must meet specific value and script constraints.
 
-Guardian UTXO:
-  Rung 0: SIG(guardian) + RECURSE_SAME(depth=100000)
-```
+**Block types:** OUTPUT_CHECK (0x0807), MULTISIG (0x0002), EPOCH_GATE (0x0801)
 
-The child cannot move unless the guardian is spent in the same transaction. The guardian re-encumbers itself with each spend (theoretical max depth ~4.3 billion). One guardian protects unlimited children.
+OUTPUT_CHECK enforces that a specific output index has a value within bounds and a script
+matching a committed hash. Combined with MULTISIG for authorization and EPOCH_GATE for
+periodic voting windows, this creates on-chain governance where funds can only move to
+approved destinations in approved amounts during approved periods.
 
-This is more powerful than multisig. The guardian is a UTXO, not just a key - it can carry its own conditions (timelocks, rate limits, fee gates). A parent controlling a child's wallet. An institution supervising an operator's hot wallet.
+## Post-Quantum Safe Migration
 
-### 2.3 On-Chain Vote
+Migrate existing funds to PQ-safe spending conditions before quantum computers break
+elliptic curve cryptography.
 
-```
-Rung 0: COUNTER_PRESET(current=0, preset=3) + SIG(board_member) + RECURSE_MODIFIED(target=current, delta=+1)
-Rung 1: SIG(treasurer) + COMPARE(GTE, 300000)
-```
+**Block types:** SIG (0x0001) with SPHINCS_SHA scheme (0x13), TIMELOCKED_SIG (0x0701)
 
-Each board member spends the UTXO to cast a vote, incrementing the counter by exactly 1. After 3 votes, the counter threshold is met, Rung 0 locks out, and the treasurer can release funds via Rung 1. Every vote is a transaction - permanent audit trail.
+Rung 0: `SIG` with a SPHINCS+ key (49KB signatures, but quantum-safe). Immediate spending.
 
-### 2.4 Escrow with Arbitration
+Rung 1: `TIMELOCKED_SIG` with a Schnorr key and a CSV delay. Fallback if PQ key is lost.
 
-```
-Rung 0: MULTISIG(2-of-2, [buyer, seller])
-Rung 1: SIG(buyer) + CSV(144)
-Rung 2: SIG(arbiter) + CLTV(deadline)
-```
+The SCHEME field allows Schnorr and PQ signatures to coexist in the same ladder. Wallets
+can migrate incrementally by creating new outputs with PQ-safe rungs while keeping a
+Schnorr fallback.
 
-Three non-overlapping paths. Happy path: both agree, instant settlement. Buyer refund: 1-day delay. Arbitration: only after the deadline. Each party has exactly the power they need.
+## Recursive Covenants
 
----
+Outputs that re-encumber themselves with modified conditions, creating state machines.
 
-## 3. Covenants
+**Block types:** RECURSE_SAME (0x0401), RECURSE_MODIFIED (0x0402), RECURSE_UNTIL (0x0403),
+RECURSE_SPLIT (0x0405), RECURSE_DECAY (0x0406)
 
-### 3.1 Perpetual Treasury
+RECURSE_SAME creates outputs with identical conditions. RECURSE_MODIFIED allows one
+parameter to change per hop. RECURSE_UNTIL terminates at a block height. RECURSE_SPLIT
+divides value across multiple outputs. RECURSE_DECAY reduces a parameter over time.
 
-```
-Rung 0: RECURSE_SAME(depth=100000) + MULTISIG(3-of-5, [keys]) + RELATIVE_VALUE(99, 100)
-```
+These enable congestion control trees (RECURSE_SPLIT), time-bounded subscriptions
+(RECURSE_UNTIL), and decaying multisig thresholds (RECURSE_DECAY + RECURSE_MODIFIED).
 
-The governance structure survives across spends. The 3-of-5 quorum can withdraw value, but the output must preserve 99% and carry identical conditions. Maximum extraction: 1% per spend. The rules of the treasury are immutable.
+## Cross-Input Dependencies (COSIGN)
 
-### 3.2 State Machine
+Require multiple inputs in the same transaction to be spent together.
 
-```
-Rung 0: SEQUENCER(step=0, total=4) + LATCH_SET(state=0) + RECURSE_MODIFIED(mutations=[
-    (sequencer.step, delta=+1),
-    (latch.state, delta=+1)
-])
-```
+**Block types:** COSIGN (0x0681), SIG (0x0001)
 
-Each spend advances the sequencer by exactly 1. The latch gates transitions. Steps cannot be skipped, reversed, or forked. Each UTXO spend is one scan cycle of a PLC program - deterministic, verifiable state transitions stored on-chain.
+COSIGN requires another input with matching conditions (identified by HASH256). This
+enables atomic multi-UTXO operations: both inputs must be spent in the same transaction
+or neither can be spent. Unlike Bitcoin Script's SIGHASH_ALL (which only commits to
+outputs), COSIGN creates an explicit cross-input dependency at the conditions level.
 
-### 3.3 UTXO Tree Distribution
+## Stateful PLC Logic
 
-```
-Rung 0: RECURSE_SPLIT(max_splits=3, min_sats=10000) + SIG(distributor)
-```
+Industrial control patterns for Bitcoin: timers, counters, latches, and sequencers.
 
-One UTXO splits into children, each carrying the same conditions with `max_splits` decremented. Three levels of binary splits: 1 → 2 → 4 → 8. At depth 0, children are freely spendable. Airdrops, batch payroll, parallel processing - all from a single funded output.
+**Block types:** COUNTER_UP (0x0633), LATCH_SET (0x0621), SEQUENCER (0x0651),
+TIMER_CONTINUOUS (0x0611), COMPARE (0x0641), RECURSE_SAME (0x0401)
 
-### 3.4 Decaying Timelock
+A COUNTER_UP block incremented by a designated key, combined with RECURSE_SAME to persist
+state. When the counter reaches the target, COMPARE enables the next step. LATCH_SET
+provides irreversible state activation. SEQUENCER enforces ordered multi-step workflows.
+TIMER_CONTINUOUS requires a minimum number of consecutive blocks between steps.
 
-```
-Rung 0: RECURSE_DECAY(depth=7, target=CSV, delta=144) + CSV(1008) + SIG(owner)
-```
+These patterns enable escrow release after N approvals, multi-phase contract execution,
+and time-delayed state transitions, all as native block types rather than simulated through
+Script opcodes.
 
-Initial delay: 1008 blocks (~1 week). Each spend subtracts 144: 1008 → 864 → 720 → ... → 0. After 7 spends, the delay is zero. Trust-building in new relationships: start constrained, relax as reliability is proven.
+## Atomic Swaps and HTLCs
 
----
+Hash-locked payments for cross-chain atomic swaps and Lightning Network.
 
-## 4. Post-Quantum
+**Block types:** HTLC (0x0702), PTLC (0x0704), HASH_SIG (0x0703)
 
-### 4.1 PQ Guardian Network
+HTLC combines hash verification, timelock, and signature in a single block. PTLC uses
+adaptor signatures instead of hash preimages (point-locked contracts). HASH_SIG provides
+hash-locked signatures without a timelock. In Bitcoin Script, each of these requires
+multi-opcode templates. In Ladder Script, they are single blocks with typed fields.
 
-```
-PQ Anchor:
-  Rung 0: SIG(FALCON512) + RECURSE_SAME(depth=100000)
+## Accumulator-Based Access Control
 
-Children (unlimited):
-  Rung 0: SIG(SCHNORR) + COSIGN(SHA256(anchor_spk))
-```
+Dynamically managed allowlists and blocklists using Merkle accumulators.
 
-One quantum-resistant anchor protects unlimited classical children (theoretical max depth ~4.3 billion spends). The MLSC output stores only a 32-byte Merkle root regardless of the PQ key size (897 bytes for FALCON-512). Pubkeys are folded into the Merkle leaf (merkle_pub_key) and appear only in the prunable witness at spend time.
+**Block types:** ACCUMULATOR (0x0806), SIG (0x0001)
 
-A quantum attacker must break FALCON-512 to spend any child. The children use fast, compact Schnorr signatures for daily operations.
-
-### 4.2 Hybrid Signing
-
-```
-Rung 0: SIG(SCHNORR)
-Rung 1: SIG(FALCON512)
-```
-
-Normal operation: Rung 0, fast Schnorr. Quantum emergency: switch to Rung 1. The migration path is pre-committed at UTXO creation. No fund movement required under time pressure. The PQ witness is large (~1,600 bytes) but never incurred unless needed.
-
----
-
-## 5. Financial Instruments
-
-### 5.1 Self-Enforcing DCA
-
-```
-Rung 0: RECURSE_COUNT(26) + AMOUNT_LOCK(50000, 100000) + SIG(owner) + CSV(4032)
-```
-
-Every ~2 weeks, withdraw 50k-100k sats. 26 withdrawals over a year. The blockchain enforces the schedule - no exchange, no API, no third party. When the counter hits 0, remaining funds are free.
-
-### 5.2 Streaming Payments
-
-```
-Rung 0: AMOUNT_LOCK(1000, 1000) + SIG(recipient) + CSV(6) + RECURSE_MODIFIED(target=balance, delta=-1000)
-Rung 1: SIG(sender)
-```
-
-The recipient claims exactly 1,000 sats per hour (6 blocks). The balance decrements with each claim. The sender can cancel anytime via Rung 1. On-chain streaming for rent, subscriptions, royalties.
-
-### 5.3 Escrow with Milestones
-
-```
-Rung 0: RECURSE_COUNT(4) + SIG(arbiter) + AMOUNT_LOCK(25000, 25000)
-Rung 1: SIG(contractor) + CLTV(deadline)
-```
-
-Four milestone releases of exactly 25,000 sats each. The arbiter cannot release more or fewer. After the deadline, the contractor claims the remainder unilaterally.
-
----
-
-## 6. Protocol Infrastructure
-
-### 6.1 Virtual UTXO Pools
-
-```
-Rung 0: ANCHOR_POOL(vtxo_root, participants=256) + CTV(exit_template) + MULTISIG(2-of-3, operators)
-Rung 1: CTV(unilateral_exit)
-```
-
-256 participants share one on-chain UTXO. Cooperative operations via Rung 0. Unilateral exit always available via Rung 1 - the CTV template guarantees each participant can extract their branch without cooperation.
-
-### 6.2 Oracle Contracts
-
-```
-Rung 0: TAGGED_HASH(tag="outcome/win", expected=H) + SIG(winner)
-Rung 1: TAGGED_HASH(tag="outcome/lose", expected=H') + SIG(loser)
-```
-
-The oracle publishes one attestation. Only the matching rung can be satisfied. Domain-separated tags prevent cross-outcome preimage reuse. Foundation for DLCs and prediction markets.
-
-### 6.3 Accumulator Allowlists
-
-```
-Rung 0: ACCUMULATOR(merkle_root) + SIG(owner)
-```
-
-The destination must be in a pre-committed Merkle tree of allowed addresses. A tree of depth 20 supports ~1 million addresses with only a 32-byte root in the UTXO. Each spend proves membership with ~640 bytes of Merkle proof.
-
----
-
-## 7. Combining Everything
-
-The real power is composition. Each pattern above is a building block. A single UTXO can combine primitives from every family:
-
-- **Identity** (who can spend): `SIG`, `MULTISIG`, `MUSIG_THRESHOLD`, `ADAPTOR_SIG`, `KEY_REF_SIG`
-- **Time** (when they can spend): `CSV`, `CLTV`, `CSV_TIME`, `CLTV_TIME`, `EPOCH_GATE`
-- **Knowledge** (what they must prove): `TAGGED_HASH`, `HTLC`, `HASH_SIG`
-- **Value** (how much can move): `AMOUNT_LOCK`, `RELATIVE_VALUE`, `HYSTERESIS_VALUE`, `HYSTERESIS_FEE`, `RATE_LIMIT`, `COMPARE`
-- **Structure** (what the transaction looks like): `INPUT_COUNT`, `OUTPUT_COUNT`, `WEIGHT_LIMIT`, `CTV`
-- **State** (what has happened before): `LATCH_SET`, `LATCH_RESET`, `COUNTER_DOWN`, `COUNTER_UP`, `COUNTER_PRESET`, `SEQUENCER`, `TIMER_CONTINUOUS`, `TIMER_OFF_DELAY`, `ONE_SHOT`
-- **Recursion** (what comes next): `RECURSE_SAME`, `RECURSE_MODIFIED`, `RECURSE_UNTIL`, `RECURSE_COUNT`, `RECURSE_SPLIT`, `RECURSE_DECAY`
-- **Coordination** (what else must be true): `COSIGN`, `ACCUMULATOR`, `VAULT_LOCK`
-- **Metadata** (what protocols can parse): `ANCHOR`, `ANCHOR_CHANNEL`, `ANCHOR_POOL`, `ANCHOR_RESERVE`, `ANCHOR_SEAL`, `ANCHOR_ORACLE`
-- **Legacy** (bridging existing formats): `P2PK_LEGACY`, `P2PKH_LEGACY`, `P2SH_LEGACY`, `P2WPKH_LEGACY`, `P2WSH_LEGACY`, `P2TR_LEGACY`, `P2TR_SCRIPT_LEGACY`
-- **Privacy** (what remains hidden): MLSC (`0xC2`), compound blocks, diff witnesses
-
-With AND within rungs and OR across rungs, any boolean combination of these primitives is expressible. Multiple rungs create fallback paths. Selective block inversion (non-key blocks only) creates ceiling guards. Recursion creates persistent state machines. Compound blocks and diff witnesses keep it efficient. MLSC keeps it private.
-
-The result is a composable, typed, deterministic contract system that covers everything from simple wallets to complex multi-party protocols. No virtual machine. No arbitrary computation. No opcode proliferation. Just 61 typed blocks (59 active + 2 deprecated), AND/OR logic, and the expressiveness that emerges from their combination.
+ACCUMULATOR verifies set membership via a Merkle proof against a committed root. Combined
+with inversion (`!ACCUMULATOR`), it becomes a blocklist. The Merkle root can be updated
+via RECURSE_MODIFIED, enabling dynamic addition and removal of authorized parties without
+recreating the output. Capped at 10 HASH256 fields (root + 8 proof nodes + leaf).

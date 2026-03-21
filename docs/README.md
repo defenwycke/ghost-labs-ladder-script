@@ -1,85 +1,54 @@
-# Ladder Script
+# Ladder Script Documentation
 
-A typed transaction format for Bitcoin, derived from industrial PLC ladder logic.
+Ladder Script is a typed, structured transaction scripting system for Bitcoin Ghost.
+It replaces Bitcoin Script's stack machine with declarative function blocks, typed fields,
+and Merkelized conditions (MLSC). Transactions use version 4 (`RUNG_TX_VERSION = 4`).
 
-```
-  RUNG 0: ──[ SIG: Alice ]──[ CSV: 144 ]──────────────( UNLOCK )──
-  RUNG 1: ──[ MULTISIG: 2-of-3 ]──────────────────────( UNLOCK )──
-  RUNG 2: ──[ /CSV: 144 ]──[ SIG: Bob ]───────────────( UNLOCK )──   ← breach remedy
-```
+## Documentation Index
 
-Bitcoin Script is a stack machine where every element is an opaque byte array. A public key, a hash, a timelock, and a JPEG are indistinguishable at the protocol level. Each new capability requires a new opcode, a soft fork, and years of coordination.
+| Document | Description |
+|----------|-------------|
+| [INTRODUCTION.md](INTRODUCTION.md) | What Ladder Script is, key properties, and design rationale |
+| [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) | Complete table of all 61 block types (59 active, 2 deprecated) |
+| [GLOSSARY.md](GLOSSARY.md) | Alphabetical glossary of every term and block type |
+| [INTEGRATION.md](INTEGRATION.md) | How to integrate Ladder Script into wallets and applications |
+| [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) | Activation mechanics, validation changes, and deployment |
+| [POSSIBILITIES.md](POSSIBILITIES.md) | Capabilities that Ladder Script enables beyond Bitcoin Script |
+| [REVIEW_GUIDE.md](REVIEW_GUIDE.md) | Guide for code reviewers with file-by-file walkthrough |
+| [SUMMARY.md](SUMMARY.md) | One-paragraph summary with key stats |
 
-Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error —not policy, not non-standard, a *parse error*.
+## Source Files
 
-The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and every pending covenant proposal as individual block types within a unified system.
+| File | Purpose |
+|------|---------|
+| `src/rung/types.h` | All 61 block types, 11 data types, RungCoil, implicit layouts, micro-header table, BlockDescriptor table |
+| `src/rung/types.cpp` | RungField::IsValid implementation |
+| `src/rung/evaluator.h` | EvalResult, RungEvalContext, BatchVerifier, LadderSignatureChecker |
+| `src/rung/evaluator.cpp` | All 61 block evaluators, EvalBlock dispatch, EvalRung (AND), EvalLadder (OR), VerifyRungTx |
+| `src/rung/sighash.h` | ANYPREVOUT flags, SignatureHashLadder declaration |
+| `src/rung/sighash.cpp` | LadderSighash computation with ANYPREVOUT/ANYPREVOUTANYSCRIPT |
+| `src/rung/serialize.h` | Wire format constants (MAX_RUNGS=16, MAX_BLOCKS_PER_RUNG=8, etc.), SerializationContext |
+| `src/rung/serialize.cpp` | Wire format serialization/deserialization, micro-headers, implicit fields |
+| `src/rung/conditions.h` | RungConditions, MLSC proof structures, Merkle tree functions |
+| `src/rung/conditions.cpp` | MLSC proof verification, Merkle tree construction, template reference resolution |
+| `src/rung/descriptor.h` | ParseDescriptor, FormatDescriptor |
+| `src/rung/descriptor.cpp` | Descriptor language parser and formatter |
+| `src/rung/aggregate.h` | TxAggregateContext, AggregateProof |
+| `src/rung/aggregate.cpp` | Aggregate and deferred attestation verification |
+| `src/rung/policy.h` | IsBaseBlockType, IsCovenantBlockType, IsStatefulBlockType, IsStandardRungTx |
+| `src/rung/policy.cpp` | Mempool policy checks |
+| `src/rung/adaptor.h/cpp` | Adaptor signature utilities |
+| `src/rung/pq_verify.h/cpp` | Post-quantum signature verification |
+| `src/rung/rpc.cpp` | 12 RPC commands (decoderung, createrung, validateladder, createrungtx, signrungtx, computectvhash, generatepqkeypair, pqpubkeycommit, extractadaptorsecret, verifyadaptorpresig, parseladder, formatladder) |
 
-## What makes it different
+## Test Coverage
 
-**Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" —a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
-
-**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. Conditions contain zero user-chosen bytes —every field is a hash digest or bounded numeric. Public keys are folded into the Merkle leaf hash (merkle_pub_key), not stored in conditions. Preimage fields are limited to 1 per witness. There is no push-data opcode. If it doesn't parse as a typed field, it doesn't enter the mempool.
-
-**Post-quantum ready.** FALCON-512 signatures work today. All keys are folded into the Merkle leaf (merkle_pub_key) —zero key bytes in the UTXO set regardless of key size. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs (theoretical max depth ~4.3 billion spends).
-
-**Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
-
-## 61 Block Types
-
-| Category | Blocks |
-|----------|--------|
-| Signature | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG |
-| Timelock | CSV, CSV_TIME, CLTV, CLTV_TIME |
-| Hash | TAGGED_HASH |
-| Covenant | CTV, VAULT_LOCK, AMOUNT_LOCK |
-| Recursion | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY |
-| Anchor | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN |
-| PLC | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN |
-| Compound | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG |
-| Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK |
-| Legacy | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY |
-
-## Try it
-
-Open `tools/ladder-engine/index.html` in a browser. Load an example, switch to SIMULATE, step through evaluation. The RPC tab shows the wire-format JSON.
-
-Or use the hosted version at [bitcoinghost.org/labs/ladder-engine.html](https://bitcoinghost.org/labs/ladder-engine.html).
+| Suite | Count |
+|-------|-------|
+| Unit tests (`rung_tests.cpp`) | 480 |
+| Functional tests (`test_rung_regtest.py`) | 60 |
+| TLA+ formal specs (`spec/`) | 10 specs, 80+ properties |
 
 ## Repository
 
-```
-src/rung/          C++ reference implementation (20 files)
-tests/             Unit tests, fuzz target, 4 functional test suites
-patches/           Diff for applying to Bitcoin Core v30
-docs/              BIP draft, block library, examples, FAQ, glossary
-tools/             Visual builder and simulator
-proxy/             FastAPI signet proxy for live testing
-```
-
-## Documentation
-
-- [Block Library](docs/BLOCK_LIBRARY.md) —all 61 blocks with fields and semantics
-- [BIP Draft](docs/BIP-XXXX.md) —formal Bitcoin Improvement Proposal
-- [Examples](docs/EXAMPLES.md) —8 worked scenarios with JSON
-- [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) —spec deviations and why
-
-## Links
-
-| Resource | Path |
-|----------|------|
-| Ladder Engine (visual tool) | `tools/ladder-engine/index.html` |
-| Block Reference (visual docs) | `tools/block-docs/index.html` |
-| Rung evaluator (C++) | `src/rung/evaluator.cpp` |
-| Rung types and enums | `src/rung/types.h` |
-| Conditions (de)serialization | `src/rung/conditions.cpp` |
-| Wire format serialization | `src/rung/serialize.cpp` |
-| Sighash computation | `src/rung/sighash.cpp` |
-| RPC interface | `src/rung/rpc.cpp` |
-| PQ signature verification | `src/rung/pq_verify.cpp` |
-| Adaptor signature support | `src/rung/adaptor.cpp` |
-| Policy validation | `src/rung/policy.cpp` |
-| Unit tests | `src/test/rung_tests.cpp` |
-
-## License
-
-MIT
+Source: [github.com/bitcoin-ghost/ghost](https://github.com/bitcoin-ghost/ghost)

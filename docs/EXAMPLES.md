@@ -1,988 +1,806 @@
 # Ladder Script: Worked Examples
 
-This document presents detailed, end-to-end examples of Ladder Script transactions.
-Each example includes the scenario rationale, an ASCII ladder diagram showing the
-rung layout, the `createrungtx` JSON wire representation, and a step-by-step
-walkthrough of how the evaluator processes the transaction.
+This document presents detailed, end-to-end examples of Ladder Script
+configurations. Each example shows the use case, descriptor notation (when
+applicable), block structure, evaluation logic, and approximate wire format size.
 
-All examples use transaction version 4 (v4 RUNG_TX). Public keys, hashes, and
-transaction IDs shown here are illustrative placeholders.
-
----
-
-## Conventions
-
-- **Rung numbering** follows the PLC convention: R000, R001, R002, etc.
-- **AND logic** applies within a rung: every block in the rung must evaluate to
-  SATISFIED for the rung to pass.
-- **OR logic** applies across rungs: the first satisfied rung wins; remaining
-  rungs are not evaluated.
-- **Power rails** in the ASCII diagrams represent the left (L+) and right (L-)
-  rails of a PLC ladder. Power flows left to right through contacts (blocks)
-  to reach the coil (output action).
-- **Coil notation**: `( )` = standard unlock, `(R)` = recursive re-encumbrance,
-  `(C)` = covenant constraint.
+All examples use `RUNG_TX_VERSION = 4` and MLSC (`0xC2`) outputs. Inline
+conditions (`0xC1`) are removed.
 
 ---
 
-## 1. Simple P2PKH (Single Signature)
+## Example 1: Simple Schnorr Spend (SIG)
 
-### Scenario
+**Use case**: The simplest Ladder Script transaction. A single owner controls a
+UTXO with one Schnorr signature.
 
-The simplest possible Ladder Script transaction: a single output encumbered by
-a single signature verification block. Functionally equivalent to Pay-to-Public-Key-Hash,
-but expressed as a typed, structured condition rather than a Bitcoin Script opcode sequence.
-
-### Ladder Diagram
+### Descriptor
 
 ```
-     L+                                              L-
-     |                                                |
-R000 +--[ SIG: 02a1b2...f0a1 ]----------------------( )--+
-     |                                                |
-     +------------------------------------------------+
+ladder(sig(@alice))
 ```
 
-One rung, one block, one coil. The RPC accepts a PUBKEY field and folds it into the
-Merkle leaf hash (merkle_pub_key). The public key never appears in the on-chain conditions.
-At spend time, the witness provides the full public key alongside a valid Schnorr signature.
-The Merkle proof binds the key to the committed root.
+### Conditions structure
 
-### Wire Representation (createrungtx JSON)
-
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 0 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.001,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```
+Ladder:
+  Rung 0:
+    Block 0: SIG
+      Conditions fields: [SCHEME(0x01)]      -- Schnorr
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Evaluation Walkthrough
+### Evaluation
 
-1. The node receives a spending transaction referencing this UTXO.
-2. The scriptPubKey begins with `0xC2` (MLSC prefix), so the node verifies
-   the Merkle proof against the committed root.
-3. The evaluator calls `EvalLadder`, which iterates over rungs in order.
-4. **Rung 0**: Contains one block of type `SIG` (0x0001).
-   - The witness provides a PUBKEY and a SIGNATURE field.
-   - The Merkle proof verification has already confirmed this pubkey matches
-     the one folded into the leaf hash at fund time (merkle_pub_key).
-   - The evaluator computes `SignatureHashLadder` (tagged hash: `"LadderSighash"`),
-     which commits to the transaction version, locktime, prevouts, amounts,
-     sequences, outputs, input index, and the serialised conditions hash.
-   - Schnorr signature verification is performed against the pubkey.
-   - Result: **SATISFIED**.
-5. All blocks in rung 0 are SATISFIED, so the rung passes.
-6. The coil type is UNLOCK (standard spend). No further constraints.
-7. Transaction is valid.
+1. `EvalSigBlock` is called.
+2. Finds PUBKEY field (32-byte x-only pubkey from witness).
+3. Finds SIGNATURE field (64-byte Schnorr sig from witness).
+4. Finds SCHEME field (0x01 = SCHNORR).
+5. Calls `checker.CheckSchnorrSignature(sig, pubkey, SigVersion::LADDER, ...)`.
+6. Internally, `LadderSignatureChecker` computes `SignatureHashLadder` with
+   `TaggedHash("LadderSighash")`, committing to epoch, hash_type, tx version,
+   locktime, prevouts, amounts, sequences, outputs, spend_type, input index,
+   and conditions hash.
+7. Verifies the 64-byte Schnorr signature against the x-only pubkey and sighash.
+8. Returns SATISFIED on valid signature.
+
+### Wire format size
+
+**Conditions (MLSC output)**: 33 bytes (`0xC2` + 32-byte Merkle root)
+
+**MLSC proof** (witness stack[1]):
+- total_rungs(1) + total_relays(1) + rung_index(1) = 3 bytes
+- Rung blocks: n_blocks(1) + SIG micro-header(1) + SCHEME(1) = 3 bytes
+- Rung relay_refs: 0(1) = 1 byte
+- Revealed relays: 0(1) = 1 byte
+- Proof hashes: 0(1) = 1 byte (single rung, no unrevealed leaves except coil
+  leaf hash = 32 bytes + count)
+- Total proof: ~42 bytes
+
+**Witness** (stack[0]):
+- n_rungs(1) + n_blocks(1) + SIG micro-header(1) + SCHEME(1) + PUBKEY(1+32) +
+  SIGNATURE(1+64) = ~102 bytes
+- Coil: 3 + addr_len(1) + n_conditions(1) + rung_dests(1) = 6 bytes
+- Total witness: ~108 bytes
+
+**Total per-input overhead**: ~150 bytes (conditions + proof + witness)
 
 ---
 
-## 2. 2-of-3 Multisig Vault with Recovery
+## Example 2: 2-of-3 Multisig Vault with CSV Recovery
 
-### Scenario
+**Use case**: A corporate treasury vault requiring 2-of-3 director signatures
+for normal spending, with a single recovery key that activates after 26,280
+blocks (~6 months).
 
-A corporate treasury UTXO with two spending paths on the same output:
-
-- **Rung 0 (SPEND)**: Requires 2-of-3 multisig signatures from the board of
-  directors. This is the normal spending path.
-- **Rung 1 (RECOVER)**: After approximately one year (52,560 blocks), a single
-  backup key can recover the funds. This is the emergency path for lost keys.
-
-Both rungs are assigned to the same transaction input.
-
-### Ladder Diagram
+### Descriptor
 
 ```
-     L+                                                          L-
-     |                                                            |
-R000 +--[ MULTISIG: 2-of-3 {pk1, pk2, pk3} ]-------------------( )--+
-     |                                                            |
-R001 +--[ CSV: 52560 blocks ]---[ SIG: 03c6d7...b600 ]----------( )--+
-     |                                                            |
-     +------------------------------------------------------------+
+ladder(or(
+  multisig(2, @alice, @bob, @carol),
+  timelocked_sig(@recovery, 26280)
+))
 ```
 
-Rung 0 provides immediate spending with quorum approval. Rung 1 provides
-time-delayed recovery. The evaluator tries rung 0 first; if it fails (fewer
-than 2 valid signatures), it falls through to rung 1, which additionally
-requires the CSV relative timelock to have matured.
+### Conditions structure
 
-### Wire Representation
-
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 0 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.05,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "MULTISIG",
-              "fields": [
-                { "type": "NUMERIC", "hex": "02000000" },
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" },
-                { "type": "PUBKEY", "hex": "03f9e8d7c6b5a4938271605f4e3d2c1b0a9f8e7d6c5b4a3928170605f4e3d2c1b0" },
-                { "type": "PUBKEY", "hex": "02b4c5d6e7f8091a2b3c4d5e6f70819a2b3c4d5e6f70819a2b3c4d5e6f7081920a" }
-              ]
-            }
-          ]
-        },
-        {
-          "blocks": [
-            {
-              "type": "CSV",
-              "fields": [
-                { "type": "NUMERIC", "hex": "50cd0000" }
-              ]
-            },
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "03c6d7e8f90a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b600" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```
+Ladder:
+  Rung 0: (hot path: 2-of-3 multisig)
+    Block 0: MULTISIG
+      Conditions fields: [NUMERIC(2)]         -- threshold M=2
+      Witness fields:    [PUBKEY(32), PUBKEY(32), PUBKEY(32),
+                          SIGNATURE(64), SIGNATURE(64)]
+  Rung 1: (recovery path: timelocked single sig)
+    Block 0: TIMELOCKED_SIG
+      Conditions fields: [SCHEME(0x01), NUMERIC(26280)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-Note: The NUMERIC field `50cd0000` is 52560 encoded as a 4-byte little-endian integer.
+### Evaluation (Rung 0 path)
 
-### Evaluation Walkthrough
+1. `EvalMultisigBlock` is called.
+2. Reads NUMERIC threshold field: M=2.
+3. Finds 3 PUBKEY fields and 2 SIGNATURE fields in the merged block.
+4. For each signature, iterates over unused pubkeys.
+5. Schnorr verification: 64-byte sig against 32-byte x-only pubkey.
+6. Tracks `pubkey_used` bitmask to ensure each pubkey is used at most once.
+7. If `valid_count >= 2`, returns SATISFIED.
 
-**Path A (normal spend, rung 0):**
+### Evaluation (Rung 1 path)
 
-1. The witness contains 2 signatures and identifies rung 0.
-2. `EvalMultisigBlock` reads the threshold (NUMERIC field: 2) and the 3 PUBKEY fields.
-3. It iterates the witness signatures, matching each against the pubkey set.
-4. If 2 or more signatures verify, result: **SATISFIED**.
-5. Rung 0 passes. Transaction is valid.
+1. `EvalTimelockedSigBlock` is called.
+2. Verifies Schnorr signature against the recovery pubkey.
+3. Reads NUMERIC(26280) and checks `checker.CheckSequence(26280)`.
+4. Both must pass for SATISFIED.
 
-**Path B (recovery spend, rung 1):**
+### Wire format size (spending via Rung 0)
 
-1. The witness contains 1 signature and identifies rung 1.
-2. `EvalCSVBlock` reads the NUMERIC field (52,560 blocks) and checks the input's
-   nSequence against BIP 68 relative timelock rules.
-   - If the UTXO has not matured for 52,560 blocks: **UNSATISFIED**. Rung 1 fails.
-   - If matured: **SATISFIED**.
-3. `EvalSigBlock` verifies the backup key's signature.
-   - If valid: **SATISFIED**.
-4. Both blocks in rung 1 are SATISFIED (AND logic). Rung 1 passes.
-5. Transaction is valid.
+**MLSC proof**: ~42 bytes (reveal rung 0, provide rung 1 leaf hash)
+
+**Witness**: n_rungs(1) + n_blocks(1) + MULTISIG micro-header(1) + NUMERIC(1+1)
++ 3xPUBKEY(3x33) + 2xSIGNATURE(2x65) + coil(6) = ~240 bytes
 
 ---
 
-## 3. Atomic Swap (HASH_SIG)
+## Example 3: HTLC Atomic Swap
 
-### Scenario
+**Use case**: Cross-chain atomic swap. Alice pays Bob 1 BTC on Ghost Chain,
+locked by a hash. Bob reveals the preimage to claim, or Alice reclaims after a
+timeout. This uses the compound HTLC block, which combines hash check + CSV +
+SIG into one block per rung.
 
-A cross-chain atomic swap between Alice and Bob. The UTXO has two spending paths:
-
-- **Rung 0 (CLAIM)**: Alice reveals a hash preimage and provides her signature
-  using a single HASH_SIG compound block. This is the happy path for completing the swap.
-- **Rung 1 (REFUND)**: After 144 blocks (~1 day), Bob can reclaim the funds
-  with his signature alone. This is the safety net if Alice never claims.
-
-### Ladder Diagram
+### Descriptor (manual, HTLC not in descriptor parser)
 
 ```
-     L+                                                              L-
-     |                                                                |
-R000 +--[ HASH_SIG: hash=a1b2...b2, pk=02a1b2...f0a1 ]-------------( )--+
-     |         (ALICE CLAIM)                                          |
-R001 +--[ CSV: 144 blocks ]---[ SIG: 03f9e8...c1b0 ]---------------( )--+
-     |         (BOB REFUND)                                           |
-     +----------------------------------------------------------------+
+Rung 0: HTLC block (Bob claims with preimage + sig)
+Rung 1: TIMELOCKED_SIG block (Alice reclaims after timeout)
 ```
 
-### Wire Representation
+### Conditions structure
 
-```json
-{
-  "inputs": [
-    { "txid": "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2", "vout": 1 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.01,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "HASH_SIG",
-              "fields": [
-                { "type": "PREIMAGE", "hex": "48656c6c6f204c616464657221" },
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            }
-          ]
-        },
-        {
-          "blocks": [
-            {
-              "type": "CSV",
-              "fields": [
-                { "type": "NUMERIC", "hex": "90000000" }
-              ]
-            },
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "03f9e8d7c6b5a4938271605f4e3d2c1b0a9f8e7d6c5b4a3928170605f4e3d2c1b0" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```
+Ladder:
+  Rung 0: (claim path)
+    Block 0: HTLC (0x0702)
+      Conditions fields: [HASH256(payment_hash), NUMERIC(0)]  -- 0 = no CSV for claim
+      Witness fields:    [PREIMAGE(32), PUBKEY(32), SIGNATURE(64)]
+  Rung 1: (refund path)
+    Block 0: TIMELOCKED_SIG (0x0701)
+      Conditions fields: [SCHEME(0x01), NUMERIC(144)]          -- 144 blocks (~24h)
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Evaluation Walkthrough
+### Evaluation (Rung 0: Bob claims)
 
-**Path A (Alice claims, rung 0):**
+1. `EvalHTLCBlock` is called.
+2. Step 1: Hash preimage check.
+   - Finds HASH256 field (payment_hash, 32 bytes from conditions).
+   - Finds PREIMAGE field (32 bytes from witness).
+   - Computes `SHA256(preimage)` and compares to payment_hash.
+   - Must match to proceed.
+3. Step 2: CSV check.
+   - Reads NUMERIC(0). With the locktime disable flag not set and value 0, the
+     sequence check passes immediately.
+4. Step 3: Signature check.
+   - Finds PUBKEY (Bob's key, bound by Merkle proof).
+   - Finds SIGNATURE (Bob's Schnorr sig).
+   - Verifies signature via `CheckSchnorrSignature`.
+5. All three sub-checks pass: returns SATISFIED.
 
-1. Alice's witness provides a PREIMAGE field and a SIGNATURE field.
-2. `EvalHashSigBlock`: computes `SHA256(preimage)` and compares it to the
-   committed hash. Then verifies Alice's Schnorr signature against her pubkey.
-   - Hash match + valid signature: **SATISFIED**.
-3. Single block passes. Rung 0 wins. Alice receives the funds.
+### Evaluation (Rung 1: Alice refunds)
 
-**Path B (Bob refunds, rung 1):**
+1. `EvalTimelockedSigBlock` is called.
+2. Verifies Alice's Schnorr signature.
+3. Checks `CheckSequence(144)`: the UTXO must be at least 144 blocks old.
+4. Both pass: returns SATISFIED.
 
-1. Bob's witness provides a SIGNATURE field and identifies rung 1.
-2. `EvalCSVBlock`: checks nSequence >= 144 blocks relative to the UTXO's
-   confirmation height.
-   - If matured: **SATISFIED**.
-3. `EvalSigBlock`: verifies Bob's signature.
-   - Valid: **SATISFIED**.
-4. Both blocks pass (AND). Rung 1 wins. Bob recovers the funds.
+### Wire format size (claim path via Rung 0)
 
-**Atomicity**: When Alice claims on this chain by revealing the preimage, the
-preimage becomes public on-chain. Bob (or anyone) can extract it from the
-witness data and use it to claim the corresponding HTLC on the other chain.
+**MLSC proof**: ~75 bytes (rung 0 blocks + rung 1 leaf hash + coil leaf hash)
+
+**Witness**: HTLC micro-header(1) + HASH256(32) + PREIMAGE(1+32) + NUMERIC(1+1)
++ PUBKEY(1+32) + SIGNATURE(1+64) + coil(6) = ~172 bytes
 
 ---
 
-## 4. Countdown Vault (3-Step Deliberation)
+## Example 4: CTV Covenant Chain
 
-### Scenario
+**Use case**: A covenant that constrains the spending transaction to a
+predetermined template. This can be used to create pre-signed transaction trees,
+payment pools, or congestion control batches.
 
-A corporate treasury vault that requires 3 separate signed transactions,
-each confirmed in a separate block, before funds can be freely spent. This
-prevents impulsive or coerced single-transaction withdrawals.
-
-The UTXO contains: `SIG(vault_key)` + `RECURSE_COUNT(3)`.
-
-### Ladder Diagram
+### Conditions structure
 
 ```
-     L+                                                          L-
-     |                                                            |
-R000 +--[ SIG: 02a1b2...f0a1 ]---[ RECURSE_COUNT: 3 ]---------( R )--+
-     |                                                            |
-     +------------------------------------------------------------+
-
-     (R) = Recursive coil: output must re-encumber with identical conditions,
-           except RECURSE_COUNT is decremented by 1.
+Ladder:
+  Rung 0:
+    Block 0: CTV (0x0301)
+      Conditions fields: [HASH256(template_hash)]
+      Witness fields:    (none -- CTV is witness-free)
+  Coil: COVENANT(0x03), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Wire Representation (Initial UTXO)
+### Evaluation
 
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 0 }
-  ],
-  "outputs": [
-    {
-      "amount": 1.0,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            },
-            {
-              "type": "RECURSE_COUNT",
-              "fields": [
-                { "type": "NUMERIC", "hex": "03000000" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+1. `EvalCTVBlock` is called with the `RungEvalContext`.
+2. Extracts the 32-byte HASH256 (template_hash) from conditions.
+3. Calls `ComputeCTVHash(tx, input_index)` which computes:
+   ```
+   SHA256(version || locktime || scriptsigs_hash || num_inputs ||
+          sequences_hash || num_outputs || outputs_hash || input_index)
+   ```
+4. Compares computed hash to committed template_hash byte-for-byte.
+5. Returns SATISFIED on exact match.
 
-### The 4-Step Spend Chain
+### CTV template hash details
 
-**Spend 1 (count 3 -> 2):**
+The template hash commits to every structural aspect of the spending
+transaction except the input prevouts (allowing the same template to be used
+regardless of which UTXO funds it). The `outputs_hash` includes each output's
+amount (8 bytes LE), scriptPubKey length (8 bytes LE), and scriptPubKey bytes.
 
-1. The vault key signs the spending transaction.
-2. `EvalRecurseCountBlock` reads the count value (3). Since count > 0, the
-   block enforces that the spending transaction's output contains identical
-   conditions with count decremented to 2.
-3. The evaluator compares the output's serialised conditions against the input's
-   conditions, verifying that only the RECURSE_COUNT NUMERIC field changed and
-   that the new value is exactly `input_count - 1`.
-4. Result: **SATISFIED**. The output is now encumbered with count=2.
+### Wire format size
 
-**Spend 2 (count 2 -> 1):**
+**Conditions (implicit layout)**: CTV micro-header(1) + HASH256(32) = 33 bytes
+in conditions.
 
-Same process. The output is re-encumbered with count=1.
+**MLSC output**: 33 bytes.
 
-**Spend 3 (count 1 -> 0):**
-
-Same process. The output is re-encumbered with count=0.
-
-**Spend 4 (count 0, covenant terminates):**
-
-1. The vault key signs the spending transaction.
-2. `EvalRecurseCountBlock` reads the count value (0). Since count == 0, the
-   covenant constraint terminates. The block returns **SATISFIED** without
-   enforcing any output structure.
-3. The funds can now be sent to any destination freely.
-
-### State Progression
-
-```
-UTXO_0: SIG + RECURSE_COUNT(3)   --sign-->  UTXO_1: SIG + RECURSE_COUNT(2)
-UTXO_1: SIG + RECURSE_COUNT(2)   --sign-->  UTXO_2: SIG + RECURSE_COUNT(1)
-UTXO_2: SIG + RECURSE_COUNT(1)   --sign-->  UTXO_3: SIG + RECURSE_COUNT(0)
-UTXO_3: SIG + RECURSE_COUNT(0)   --sign-->  Any destination (covenant expired)
-```
+**Witness**: n_rungs(1) + n_blocks(1) + CTV micro-header(1) + coil(6) = 9 bytes.
+CTV requires no witness data fields. This makes it one of the most compact
+block types.
 
 ---
 
-## 5. DCA (Dollar-Cost Averaging) Covenant
+## Example 5: Rate-Limited Cold Storage (SIG + RATE_LIMIT)
 
-### Scenario
+**Use case**: A cold storage wallet that can spend at most 100,000 satoshis per
+transaction. This prevents a compromised key from draining the entire wallet
+in a single transaction.
 
-A self-enforcing dollar-cost averaging contract. A user locks 1,000,000 sats
-into a covenant that allows exactly 12 purchases of 50,000-100,000 sats each.
-On each spend:
-
-1. The COUNTER_DOWN block decrements from 12 toward 0.
-2. The AMOUNT_LOCK block constrains the buy output to 50,000-100,000 sats.
-3. The RECURSE_MODIFIED block re-encumbers the remainder with the updated counter.
-
-When the counter reaches 0, a second rung (SWEEP) allows the owner to collect
-any remaining dust.
-
-### Ladder Diagram
+### Conditions structure
 
 ```
-     L+                                                                              L-
-     |                                                                                |
-R000 +--[ COUNTER_DOWN: 12 ]--[ AMOUNT_LOCK: 50k-100k ]--[ RECURSE_MODIFIED ]------( R )--+
-     |         (BUY)                                                                  |
-R001 +--[ COUNTER_DOWN: 0 ]--[ SIG: 02a1b2...f0a1 ]--------------------------------( )--+
-     |         (SWEEP)                                                                |
-     +--------------------------------------------------------------------------------+
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: RATE_LIMIT (0x0671)
+      Conditions fields: [NUMERIC(100000), NUMERIC(1000000), NUMERIC(144)]
+                          -- max_per_block=100000, accumulation_cap=1000000,
+                          -- refill_blocks=144
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Wire Representation
+### Evaluation
 
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 2 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.00083333,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "COUNTER_DOWN",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" },
-                { "type": "NUMERIC", "hex": "0c000000" }
-              ]
-            },
-            {
-              "type": "AMOUNT_LOCK",
-              "fields": [
-                { "type": "NUMERIC", "hex": "50c30000" },
-                { "type": "NUMERIC", "hex": "a0860100" }
-              ]
-            },
-            {
-              "type": "RECURSE_MODIFIED",
-              "fields": [
-                { "type": "NUMERIC", "hex": "00000000" },
-                { "type": "NUMERIC", "hex": "00000000" },
-                { "type": "NUMERIC", "hex": "01000000" },
-                { "type": "NUMERIC", "hex": "ffffffff" }
-              ]
-            }
-          ]
-        },
-        {
-          "blocks": [
-            {
-              "type": "COUNTER_DOWN",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" },
-                { "type": "NUMERIC", "hex": "00000000" }
-              ]
-            },
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+1. **Block 0 (SIG)**: `EvalSigBlock` verifies the Schnorr signature against the
+   pubkey. Returns SATISFIED on valid sig.
 
-### Evaluation Walkthrough (Buy Spend)
+2. **Block 1 (RATE_LIMIT)**: `EvalRateLimitBlock` is called.
+   - Reads 3 NUMERIC fields: max_per_block(100000), accumulation_cap(1000000),
+     refill_blocks(144).
+   - Checks `output_amount <= max_per_block`. If the output exceeds 100,000
+     sats, returns UNSATISFIED.
+   - Accumulation tracking (across UTXO chain) uses covenant state.
+   - Returns SATISFIED if the single-tx limit is met.
 
-The RECURSE_MODIFIED fields encode: target rung 0, target block 0 (COUNTER_DOWN),
-target parameter 1 (the count NUMERIC), delta -1.
+3. Both blocks must be SATISFIED (AND logic within rung).
 
-1. `EvalCounterDownBlock`: reads the count field (12). Since count > 0, the
-   block is **SATISFIED** (the counter can still fire).
-2. `EvalAmountLockBlock`: checks that the output amount falls within the
-   [50,000, 100,000] satoshi range. If the buy output is 83,333 sats:
-   **SATISFIED**.
-3. `EvalRecurseModifiedBlock`: verifies that the spending transaction's output
-   contains conditions identical to the input, except that rung 0, block 0,
-   field 1 (the COUNTER_DOWN count) has been decremented by exactly 1
-   (from 12 to 11).
-   **SATISFIED**.
-4. All three blocks pass (AND). The transaction must produce:
-   - One output to the buy address (50,000-100,000 sats)
-   - One output re-encumbered with the same conditions but counter=11
+### Wire format size
 
-### Spend Sequence
+**Conditions**: SIG block(1+1) + RATE_LIMIT micro-header(1) + 3xNUMERIC(~9)
+= ~12 bytes in conditions.
 
-```
-Spend  1: counter 12 -> 11, buy 83,333 sats, remainder re-encumbered
-Spend  2: counter 11 -> 10, buy 83,333 sats, remainder re-encumbered
-  ...
-Spend 12: counter  1 ->  0, buy 83,333 sats, remainder re-encumbered
-Spend 13: counter  0, rung 0 UNSATISFIED (COUNTER_DOWN at 0),
-          falls through to rung 1 (SWEEP), owner signs to collect remainder
-```
+**Witness**: SIG fields(1+32+1+64) + RATE_LIMIT fields(0) + coil(6) = ~105 bytes
 
 ---
 
-## 6. Fee-Gated Treasury
+## Example 6: Dead Man's Switch
 
-### Scenario
+**Use case**: Funds go to the heir if the owner does not spend for 52,560
+blocks (~1 year). Normal spending requires only the owner's signature. After
+the timeout, the heir's signature suffices.
 
-A treasury covenant that only permits spending when the network fee rate is
-between 5 and 50 sat/vB. This prevents panic-spending during fee spikes and
-disincentivises unnecessarily cheap transactions that might be vulnerable to
-replacement attacks.
-
-The UTXO contains: `SIG` + `HYSTERESIS_FEE(5, 50)` + `RECURSE_SAME`.
-
-### Ladder Diagram
+### Descriptor
 
 ```
-     L+                                                                          L-
-     |                                                                            |
-R000 +--[ SIG: 02a1b2...f0a1 ]--[ HYST_FEE: 5-50 ]--[ AMOUNT_LOCK: 10k-500k ]--( )--+
-     |         (FEE-GATED SEND)                                                   |
-R001 +--[ SIG: 02a1b2...f0a1 ]--[ SIG: 02b4c5...920a ]-------------------------( )--+
-     |         (EMERGENCY 2-of-2)                                                 |
-     +----------------------------------------------------------------------------+
+ladder(or(
+  sig(@owner),
+  and(csv(52560), sig(@heir))
+))
 ```
 
-### Wire Representation
+### Conditions structure
 
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 1 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.0325,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            },
-            {
-              "type": "HYSTERESIS_FEE",
-              "fields": [
-                { "type": "NUMERIC", "hex": "32000000" },
-                { "type": "NUMERIC", "hex": "05000000" }
-              ]
-            },
-            {
-              "type": "AMOUNT_LOCK",
-              "fields": [
-                { "type": "NUMERIC", "hex": "10270000" },
-                { "type": "NUMERIC", "hex": "20a10700" }
-              ]
-            }
-          ]
-        },
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            },
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02b4c5d6e7f8091a2b3c4d5e6f70819a2b3c4d5e6f70819a2b3c4d5e6f7081920a" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```
+Ladder:
+  Rung 0: (owner spends normally)
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Rung 1: (heir claims after timeout)
+    Block 0: CSV (0x0101)
+      Conditions fields: [NUMERIC(52560)]
+    Block 1: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Evaluation Walkthrough
+### Evaluation (Rung 0: owner path)
 
-1. `EvalSigBlock`: verifies the key holder's signature. **SATISFIED**.
-2. `EvalHysteresisFeeBlock`: computes the spending transaction's fee rate:
-   `fee = sum(input_values) - sum(output_values)`, then `fee_rate = fee / vsize`.
-   - If fee_rate < 5 sat/vB: **UNSATISFIED** (too cheap).
-   - If fee_rate > 50 sat/vB: **UNSATISFIED** (too expensive).
-   - If 5 <= fee_rate <= 50: **SATISFIED**.
-3. `EvalAmountLockBlock`: verifies the output amount is within [10,000, 500,000]
-   sats. **SATISFIED** if within range.
-4. All three blocks pass. Transaction is valid.
+1. `EvalSigBlock`: verifies owner's Schnorr signature.
+2. One block, one check. SATISFIED.
 
-If fee conditions are unfavorable, the emergency rung (rung 1) allows a 2-of-2
-multisig override that bypasses the fee gate entirely.
+### Evaluation (Rung 1: heir path)
+
+1. `EvalCSVBlock`: reads NUMERIC(52560), calls `checker.CheckSequence(52560)`.
+   The input's nSequence must encode at least 52,560 blocks since the UTXO
+   was confirmed. SATISFIED if the timelock has elapsed.
+2. `EvalSigBlock`: verifies heir's Schnorr signature. SATISFIED on valid sig.
+3. Both blocks SATISFIED (AND logic): rung 1 passes.
+
+### Privacy note
+
+When the owner spends via Rung 0, the MLSC proof reveals only Rung 0's
+conditions. The heir's recovery path (Rung 1) remains hidden behind its Merkle
+leaf hash. An observer cannot determine that a dead man's switch exists.
+
+### Wire format size (owner path)
+
+**MLSC proof**: ~42 bytes (rung 0 revealed, rung 1 leaf hash, coil leaf hash)
+
+**Witness**: SIG(1+1+1+32+1+64) + coil(6) = ~106 bytes
 
 ---
 
-## 7. PQ Anchor + COSIGN Children
+## Example 7: OUTPUT_CHECK Governance (SIG + OUTPUT_CHECK)
 
-### Scenario
+**Use case**: A DAO treasury that requires a director's signature and
+constrains the spending transaction to send at least 500,000 sats to the DAO's
+operating address (output index 0) and at least 100,000 sats to a fee reserve
+address (output index 1).
 
-Post-quantum protection for multiple UTXOs using a single, perpetual FALCON-512
-anchor. The anchor UTXO carries the expensive PQ key commitment and re-encumbers
-itself on every spend. Child UTXOs use lightweight Schnorr signatures but require
-co-spending with the anchor, ensuring that no child can be spent without the
-anchor's PQ signature in the same transaction.
-
-This pattern amortises the cost of PQ signatures: 1 anchor protects unlimited
-children (theoretical max depth ~4.3 billion spends). At 10 children per batch, witness data is 5.3x smaller than individual
-PQ signatures on each UTXO.
-
-### Ladder Diagram
-
-**Anchor UTXO:**
+### Conditions structure
 
 ```
-     L+                                                                                  L-
-     |                                                                                    |
-R000 +--[ SIG: FALCON512, pk=7f3a...9e ]--[ RECURSE_SAME: depth=1000 ]--( R )--+
-     |                                                                                    |
-     +------------------------------------------------------------------------------------+
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: OUTPUT_CHECK (0x0807)
+      Conditions fields: [NUMERIC(0), NUMERIC(500000), NUMERIC(4294967295),
+                          HASH256(sha256_of_dao_scriptPubKey)]
+    Block 2: OUTPUT_CHECK (0x0807)
+      Conditions fields: [NUMERIC(1), NUMERIC(100000), NUMERIC(4294967295),
+                          HASH256(sha256_of_reserve_scriptPubKey)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-**Child UTXO:**
+### Evaluation
+
+1. **Block 0 (SIG)**: Verifies director's signature. SATISFIED.
+
+2. **Block 1 (OUTPUT_CHECK index 0)**:
+   - Reads output_index=0, min_sats=500000, max_sats=4294967295.
+   - Checks `tx.vout[0].nValue >= 500000`.
+   - Computes `SHA256(tx.vout[0].scriptPubKey)` and compares to committed hash.
+   - SATISFIED if both value and script match.
+
+3. **Block 2 (OUTPUT_CHECK index 1)**:
+   - Same logic for output index 1 with min_sats=100000.
+   - SATISFIED if the reserve address receives at least 100,000 sats.
+
+4. All 3 blocks SATISFIED: rung passes.
+
+### Descriptor notation
 
 ```
-     L+                                                                  L-
-     |                                                                    |
-R000 +--[ SIG: 02a1b2...f0a1 ]--[ COSIGN: hash=b4c5...0f ]------------( )--+
-     |                                                                    |
-     +--------------------------------------------------------------------+
+ladder(and(
+  sig(@director),
+  output_check(0, 500000, 4294967295, <dao_script_hash>),
+  output_check(1, 100000, 4294967295, <reserve_script_hash>)
+))
 ```
 
-The COSIGN block's HASH256 field contains `SHA256(anchor_scriptPubKey)`. At spend
-time, the evaluator scans all other inputs in the transaction looking for one whose
-spent scriptPubKey hashes to this value.
+### Wire format size
 
-### Wire Representation
-
-**Anchor output conditions:**
-
-```json
-{
-  "inputs": [
-    { "txid": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b", "vout": 0 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.0001,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "SCHEME", "hex": "10" },
-                { "type": "PUBKEY", "hex": "7f3a8b2c...897-byte FALCON-512 public key hex..." }
-              ]
-            },
-            {
-              "type": "RECURSE_SAME",
-              "fields": [
-                { "type": "NUMERIC", "hex": "e8030000" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Child output conditions:**
-
-```json
-{
-  "inputs": [
-    { "txid": "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2", "vout": 0 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.005,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "SIG",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" }
-              ]
-            },
-            {
-              "type": "COSIGN",
-              "fields": [
-                { "type": "HASH256", "hex": "b4c5d6e7f8091a2b3c4d5e6f70819a2b3c4d5e6f70819a2b3c4d5e6f70819a0f" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-### Co-Spend Transaction
-
-The spending transaction includes both inputs:
-- Input 0: the anchor UTXO (provides FALCON-512 signature + full PQ pubkey in witness)
-- Input 1: the child UTXO (provides Schnorr signature)
-
-### Evaluation Walkthrough
-
-**Anchor input (input 0):**
-
-1. `EvalSigBlock`: the SCHEME field (0x10 = FALCON512) selects PQ verification.
-   The witness provides the full 897-byte FALCON-512 public key. The Merkle
-   proof has already confirmed this key matches the one folded into the leaf
-   hash at fund time (merkle_pub_key).
-   - The evaluator computes `SignatureHashLadder` and verifies the FALCON-512
-     signature against the full public key.
-   - **SATISFIED**.
-2. `EvalRecurseSameBlock`: verifies that one of the spending transaction's outputs
-   contains a scriptPubKey byte-identical to the input's scriptPubKey.
-   The depth counter (1000) is decremented; at depth 0 the covenant would expire.
-   - **SATISFIED** (output re-encumbers with identical conditions).
-
-**Child input (input 1):**
-
-1. `EvalSigBlock`: standard Schnorr verification. **SATISFIED**.
-2. `EvalCosignBlock`: computes `SHA256(spent_scriptPubKey)` for every other input
-   in the transaction (skipping self at index 1). For input 0 (the anchor),
-   `SHA256(anchor_scriptPubKey)` matches the HASH256 field.
-   - **SATISFIED**.
-
-Both inputs valid. The anchor re-encumbers itself. The child's value is freed.
+**Conditions**: SIG(1+1) + OUTPUT_CHECK(1+3x~3+32) + OUTPUT_CHECK(1+3x~3+32)
+= ~82 bytes in conditions per rung.
 
 ---
 
-## 8. State Machine (Latch + Sequencer)
+## Example 8: COSIGN Paired UTXOs
 
-### Scenario
+**Use case**: Two UTXOs that can only be spent together in the same transaction.
+UTXO_A requires UTXO_B to be present, and vice versa. This is useful for
+atomic multi-party settlements or linked state channels.
 
-A state machine where a control rung (rung 0) gates transitions on a separate
-state rung (rung 1). This pattern cleanly separates the authorisation logic
-(who can trigger transitions) from the state storage (what step the machine is on).
+### Conditions structure
 
-- **Rung 0**: `LATCH_SET(state=0)` + `RECURSE_MODIFIED(target=rung1, block0, param0, delta=+1)`
-- **Rung 1**: `SEQUENCER(step=0, total=5)`
-
-The latch on rung 0 acts as a gate: it only allows the transition when its
-state is 0 (unlatched). The RECURSE_MODIFIED block on rung 0 targets rung 1's
-SEQUENCER, incrementing the step counter.
-
-### Ladder Diagram
-
+**UTXO_A**:
 ```
-     L+                                                                              L-
-     |                                                                                |
-R000 +--[ LATCH_SET: state=0 ]--[ RECURSE_MODIFIED: target=R001.B0.P0, delta=+1 ]--( R )--+
-     |         (CONTROL)                                                              |
-R001 +--[ SEQUENCER: step=0, total=5 ]----------------------------------------------( )--+
-     |         (STATE)                                                                |
-     +--------------------------------------------------------------------------------+
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: COSIGN (0x0681)
+      Conditions fields: [HASH256(SHA256(scriptPubKey_B))]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Wire Representation
-
-```json
-{
-  "inputs": [
-    { "txid": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b", "vout": 1 }
-  ],
-  "outputs": [
-    {
-      "amount": 0.01,
-      "conditions": [
-        {
-          "blocks": [
-            {
-              "type": "LATCH_SET",
-              "fields": [
-                { "type": "PUBKEY", "hex": "02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1" },
-                { "type": "NUMERIC", "hex": "00000000" }
-              ]
-            },
-            {
-              "type": "RECURSE_MODIFIED",
-              "fields": [
-                { "type": "NUMERIC", "hex": "01000000" },
-                { "type": "NUMERIC", "hex": "00000000" },
-                { "type": "NUMERIC", "hex": "00000000" },
-                { "type": "NUMERIC", "hex": "01000000" }
-              ]
-            }
-          ]
-        },
-        {
-          "blocks": [
-            {
-              "type": "SEQUENCER",
-              "fields": [
-                { "type": "NUMERIC", "hex": "00000000" },
-                { "type": "NUMERIC", "hex": "05000000" }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+**UTXO_B**:
+```
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: COSIGN (0x0681)
+      Conditions fields: [HASH256(SHA256(scriptPubKey_A))]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
 ```
 
-The RECURSE_MODIFIED fields encode: target rung index 1, target block index 0,
-target parameter index 0 (the SEQUENCER's current_step field), delta +1.
+### Evaluation (UTXO_A, input 0)
 
-### Evaluation Walkthrough
+1. **Block 0 (SIG)**: Verifies Alice's signature. SATISFIED.
 
-**Spend 1 (step 0 -> 1):**
+2. **Block 1 (COSIGN)**: `EvalCosignBlock` is called.
+   - Extracts the 32-byte HASH256 = `SHA256(scriptPubKey_B)`.
+   - Iterates over other inputs in the transaction.
+   - For input 1 (UTXO_B), computes `SHA256(spent_outputs[1].scriptPubKey)`.
+   - Compares to the committed hash.
+   - Match found: returns SATISFIED.
 
-1. The spender satisfies rung 0 (provides appropriate witness data).
-2. `EvalLatchSetBlock`: reads the state field (0). Since state == 0, the latch
-   is unset and can fire. **SATISFIED**.
-3. `EvalRecurseModifiedBlock`: verifies that the spending transaction's output
-   conditions are identical to the input, except that rung 1, block 0, parameter 0
-   (the SEQUENCER's current_step) has increased by exactly +1.
-   - Input: `SEQUENCER(step=0, total=5)` in rung 1
-   - Required output: `SEQUENCER(step=1, total=5)` in rung 1
-   - All other conditions (rung 0's LATCH_SET and RECURSE_MODIFIED) unchanged.
-   - **SATISFIED**.
-4. The output is re-encumbered with step=1.
+3. Both blocks SATISFIED: rung passes.
 
-**Subsequent spends** increment through steps 1, 2, 3, 4. When step reaches 5
-(equal to total), the SEQUENCER on rung 1 transitions to its terminal state.
+The same evaluation happens symmetrically for UTXO_B (input 1), checking that
+UTXO_A (input 0) is present.
 
-### State Progression
+### Wire format size
 
-```
-UTXO_0: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(0/5)]   -->  step 0 -> 1
-UTXO_1: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(1/5)]   -->  step 1 -> 2
-UTXO_2: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(2/5)]   -->  step 2 -> 3
-UTXO_3: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(3/5)]   -->  step 3 -> 4
-UTXO_4: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(4/5)]   -->  step 4 -> 5
-UTXO_5: R0=[LATCH(0), RECURSE_MOD] | R1=[SEQ(5/5)]   -->  sequencer complete
-```
-
-This pattern is the Ladder Script equivalent of a programmable logic controller's
-scan cycle: the control rung evaluates conditions and triggers state transitions
-on a separate state rung, with each UTXO spend representing one scan cycle.
+**Conditions per UTXO**: SIG(1+1) + COSIGN(1+32) = 35 bytes per rung.
 
 ---
 
-## 9. Diff Witness (Two-Input SIG Batch)
+## Example 9: Recursive Countdown (RECURSE_COUNT)
 
-### Scenario
+**Use case**: A vesting schedule that releases funds after 12 monthly intervals.
+Each spend decrements the counter and re-encumbers the output with the new
+count. When the counter reaches 0, the covenant terminates and the funds are
+freely spendable.
 
-A user controls two UTXOs locked by the same SIG conditions (same public key). They want to consolidate both into a single output. Rather than providing a full witness for each input, the second input inherits the first input's witness structure and only provides a fresh signature (which differs because the sighash includes the input index).
-
-### Ladder Diagram
+### Conditions structure
 
 ```
-INPUT 0 (full witness):
-     L+                                              L-
-     |                                                |
-R000 |--[ SIG: pk=02ab..., sig=3045... ]---(  )-------|
-     |                                                |
-     +------------------------------------------------+
-
-INPUT 1 (diff witness → inherits from input 0):
-     L+                                              L-
-     |                                                |
-     |   DIFF_WITNESS: source=input_0                 |
-     |   diff[0]: rung=0, block=0, field=1 → sig=3046|
-     |---(  )------------------------------------------
-     |                                                |
-     +------------------------------------------------+
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: RECURSE_COUNT (0x0404)
+      Conditions fields: [NUMERIC(12)]   -- 12 remaining steps
+    Block 2: CSV (0x0101)
+      Conditions fields: [NUMERIC(4380)] -- ~1 month between steps
+  Coil: COVENANT(0x03), INLINE(0x01), SCHNORR(0x01)
 ```
 
-### Wire Comparison
+### Evaluation (count > 0)
 
-| Input | Encoding | Size |
-|-------|----------|------|
-| Input 0 | Full witness (SIG block + PUBKEY + SIGNATURE + coil) | 107 bytes |
-| Input 1 | Diff witness (sentinel + source_idx + 1 diff + coil) | 77 bytes |
-| **Savings** | | **28%** |
+1. **Block 0 (SIG)**: Verifies the owner's signature. SATISFIED.
 
-### createrungtx JSON
+2. **Block 1 (RECURSE_COUNT)**: `EvalRecurseCountBlock` is called.
+   - Reads NUMERIC field: count = 12.
+   - count > 0, so the output must re-encumber with count-1.
+   - Builds a copy of the revealed rung with RECURSE_COUNT NUMERIC decremented
+     to 11.
+   - Computes the new rung leaf hash: `ComputeRungLeaf(mutated_rung, pubkeys)`.
+   - Replaces the revealed rung's leaf in the verified leaf array.
+   - Rebuilds the Merkle tree: `BuildMerkleTree(mutated_leaves)`.
+   - Checks that the output's MLSC root matches the expected root.
+   - SATISFIED if roots match.
 
-```json
-{
-  "inputs": [
-    {"txid": "aabb...", "vout": 0},
-    {"txid": "ccdd...", "vout": 0}
-  ],
-  "outputs": [
-    {
-      "amount": 0.099,
-      "conditions": [{"blocks": [{"type": "SIG", "fields": [
-        {"type": "PUBKEY", "hex": "02abcdef..."}
-      ]}]}]
-    }
-  ]
-}
-```
+3. **Block 2 (CSV)**: Checks that at least 4,380 blocks have elapsed since the
+   UTXO was confirmed. SATISFIED if timelock met.
 
-### signrungtx JSON
+4. All blocks SATISFIED: rung passes. The output carries MLSC root with count=11.
 
-```json
-{
-  "signers": [
-    {"input": 0, "blocks": [{"type": "SIG", "privkey": "cVt..."}]},
-    {"input": 1, "diff_witness": {
-      "source_input": 0,
-      "diffs": [
-        {"rung_index": 0, "block_index": 0, "field_index": 1,
-         "field": {"type": "SIGNATURE", "privkey": "cVt..."}}
-      ]
-    }}
-  ]
-}
-```
+### Evaluation (count == 0: final spend)
 
-### Evaluation Walkthrough
+1. **Block 0 (SIG)**: Verifies signature. SATISFIED.
+2. **Block 1 (RECURSE_COUNT)**: count = 0. The covenant terminates. Returns
+   SATISFIED without checking the output. The funds can go anywhere.
+3. **Block 2 (CSV)**: Checks timelock. SATISFIED.
 
-1. **Input 0** is deserialised as a normal ladder witness. The SIG block contains PUBKEY and SIGNATURE fields. `EvalBlock(SIG)` verifies the Schnorr signature against `LadderSighash(input_index=0)`. The rung is SATISFIED.
+### Wire format size
 
-2. **Input 1** is deserialised. `n_rungs = 0` triggers diff witness mode:
-   - `input_index = 0` → copy rungs and relays from input 0's witness.
-   - One diff: replace `rungs[0].blocks[0].fields[1]` (SIGNATURE) with a fresh signature.
-   - The coil is read fresh from the diff witness bytes.
-   - `witness_ref` is cleared; the witness is now fully resolved.
-
-3. The resolved witness for input 1 has the same structure as input 0 but with a different signature. `EvalBlock(SIG)` verifies the signature against `LadderSighash(input_index=1)` — a different sighash because the input index differs. The rung is SATISFIED.
-
-4. Both inputs pass evaluation. The transaction is valid.
-
-### When to Use Diff Witness
-
-Diff witness is most valuable when:
-- **Batch consolidation**: Many UTXOs with identical conditions spend in one transaction.
-- **Covenant chains**: Sequential spends where witness structure is repetitive.
-- **MULTISIG batches**: Inherit the full key set and threshold structure, diff only the signatures.
-
-Savings scale with witness complexity: a MULTISIG(3-of-5) witness saves ~60% per additional input via diff witness, since only the 3 signatures need diffs while 5 pubkeys are inherited.
+**Conditions**: SIG(1+1) + RECURSE_COUNT(1+1) + CSV(1+2) = 7 bytes in
+conditions. Plus coil overhead.
 
 ---
 
-## Summary of Evaluation Rules
+## Example 10: ANYPREVOUT Eltoo Channel (SIG with APO Sighash)
 
-| Rule | Scope | Behaviour |
-|------|-------|----------|
-| AND | Within a rung | All blocks must be SATISFIED |
-| OR | Across rungs | First satisfied rung wins |
-| Inversion | Per block | `inverted=true` flips SATISFIED to UNSATISFIED. Only non-key-consuming blocks can be inverted (selective inversion). |
-| Fail-closed | Unknown blocks | Unknown block types are rejected at consensus (deserialization). |
-| Covenants | Per output | Recursion blocks constrain the spending transaction's outputs |
-| State | Per UTXO | PLC blocks carry state in their NUMERIC fields across covenant spends |
+**Use case**: An eltoo/LN-Symmetry payment channel using ANYPREVOUT signatures.
+Each channel state update creates a new transaction that can spend any previous
+state, enabling a clean replace-by-state mechanism without penalty transactions.
+
+### Conditions structure
+
+```
+Ladder:
+  Rung 0: (update path: either party can publish latest state)
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(65)]  -- 65 bytes: 64 + sighash type
+  Rung 1: (settlement path: after CSV delay)
+    Block 0: TIMELOCKED_SIG (0x0701)
+      Conditions fields: [SCHEME(0x01), NUMERIC(144)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
+```
+
+### Evaluation (update path)
+
+1. `EvalSigBlock` is called.
+2. SIGNATURE field is 65 bytes: 64-byte sig + 1-byte sighash type.
+3. `LadderSignatureChecker::CheckSchnorrSignature` extracts hashtype = `0x41`
+   (ANYPREVOUT | ALL).
+4. `SignatureHashLadder` is called with `hash_type = 0x41`:
+   - `anyprevout = true` (bit 0x40 set).
+   - Skips `m_prevouts_single_hash` in the sighash computation.
+   - Still commits to amounts, sequences, outputs, and conditions.
+5. The signature is verified against the pubkey using the APO sighash.
+6. Returns SATISFIED.
+
+### Why ANYPREVOUT matters
+
+Because the signature does not commit to the specific prevout, the same
+signed update transaction can spend any previous channel state output.
+This eliminates the need for revocation mechanisms: the latest state
+simply replaces any older state.
+
+The conditions hash is still committed (unless ANYPREVOUTANYSCRIPT is used),
+so the signature is bound to this specific channel's conditions.
+
+### Wire format size
+
+Same as Example 1 except SIGNATURE is 65 bytes instead of 64 (extra sighash
+type byte). Total witness: ~109 bytes.
 
 ---
 
-## Appendix: NUMERIC Field Encoding
+## Example 11: Post-Quantum Vault (SIG with FALCON-512)
 
-NUMERIC values are encoded on the wire as `CompactSize(value)` (varint). After deserialization, they are stored in memory as 4-byte little-endian unsigned integers for evaluator compatibility.
+**Use case**: A quantum-resistant vault using FALCON-512 signatures. Protects
+funds against future quantum computers that could break elliptic curve
+cryptography.
 
-| Decimal | Wire (varint) | Memory (4B LE) | Field |
-|---------|--------------|----------------|-------|
-| 2 | `02` | `02000000` | MULTISIG threshold |
-| 3 | `03` | `03000000` | RECURSE_COUNT remaining |
-| 5 | `05` | `05000000` | HYSTERESIS_FEE low bound |
-| 50 | `32` | `32000000` | HYSTERESIS_FEE high bound |
-| 144 | `90` (single byte; 144 < 253) | `90000000` | CSV 144 blocks |
-| 1000 | `fde803` | `e8030000` | RECURSE_SAME depth |
-| 10,000 | `fd1027` | `10270000` | AMOUNT_LOCK min |
-| 50,000 | `fd50c3` | `50c30000` | AMOUNT_LOCK min (DCA) |
-| 52,560 | `fd50cd` | `50cd0000` | CSV ~1 year in blocks |
-| 100,000 | `fea0860100` | `a0860100` | AMOUNT_LOCK max (DCA) |
-| 500,000 | `fe20a10700` | `20a10700` | AMOUNT_LOCK max |
+### Conditions structure
+
+```
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x10)]         -- FALCON512
+      Witness fields:    [PUBKEY(897), SIGNATURE(~690)]
+  Coil: UNLOCK(0x01), INLINE(0x01), FALCON512(0x10)
+```
+
+### Evaluation
+
+1. `EvalSigBlock` is called.
+2. Finds SCHEME field: `0x10` = FALCON512.
+3. `IsPQScheme(FALCON512)` returns true.
+4. Routes to `EvalPQSig`:
+   a. Casts checker to `LadderSignatureChecker`.
+   b. Calls `ComputeSighash(SIGHASH_DEFAULT, sighash)` to get the 32-byte
+      ladder sighash.
+   c. Calls `VerifyPQSignature(FALCON512, sig, sighash, pubkey)`.
+   d. liboqs FALCON-512 verifier checks the signature.
+5. Returns SATISFIED on valid PQ signature.
+
+### Field sizes
+
+- PUBKEY: 897 bytes (FALCON-512 public key)
+- SIGNATURE: ~690 bytes (FALCON-512 signature, variable)
+- SCHEME: 1 byte (0x10)
+
+The `FieldMaxSize(PUBKEY) = 2048` and `FieldMaxSize(SIGNATURE) = 50000`
+accommodate all supported PQ schemes. `MAX_LADDER_WITNESS_SIZE = 100000`
+provides headroom for SPHINCS+ signatures (49,216 bytes).
+
+### Wire format size
+
+**Witness**: SIG micro-header(1) + SCHEME(1) + PUBKEY(2+897) + SIGNATURE(2+690)
++ coil(6) = ~1599 bytes.
+
+This is significantly larger than a Schnorr spend (~108 bytes) but provides
+quantum resistance. A hybrid approach could use two rungs: Rung 0 with Schnorr
+(compact, pre-quantum), Rung 1 with FALCON-512 (quantum-safe fallback).
+
+---
+
+## Example 12: Accumulator-Based Access Control
+
+**Use case**: A membership system where spending is allowed only for parties
+whose identity hash is in a Merkle accumulator. The accumulator root can be
+updated through RECURSE_MODIFIED to add or remove members without changing
+the UTXO structure.
+
+### Conditions structure
+
+```
+Ladder:
+  Rung 0:
+    Block 0: SIG (0x0001)
+      Conditions fields: [SCHEME(0x01)]
+      Witness fields:    [PUBKEY(32), SIGNATURE(64)]
+    Block 1: ACCUMULATOR (0x0806)
+      Conditions fields: [HASH256(merkle_root)]
+      Witness fields:    [HASH256(proof_node_1), ..., HASH256(proof_node_N),
+                          HASH256(leaf_hash)]
+  Coil: UNLOCK(0x01), INLINE(0x01), SCHNORR(0x01)
+```
+
+### Evaluation
+
+1. **Block 0 (SIG)**: Verifies signer's Schnorr signature. SATISFIED.
+
+2. **Block 1 (ACCUMULATOR)**: `EvalAccumulatorBlock` is called.
+   - Collects all HASH256 fields. Minimum 3 required (root + 1 proof node + leaf).
+     Maximum 10 allowed (root + 8 proof nodes + leaf, supporting trees up to
+     256 leaves).
+   - `hashes[0]` = merkle_root (from conditions).
+   - `hashes[N]` = leaf_hash (the member's identity being proven).
+   - `hashes[1..N-1]` = sibling proof nodes.
+   - Computes the Merkle path bottom-up:
+     ```
+     current = leaf_hash
+     for each sibling:
+       if current < sibling:
+         current = SHA256(current || sibling)
+       else:
+         current = SHA256(sibling || current)
+     ```
+   - Compares final `current` to `merkle_root`.
+   - SATISFIED if the Merkle proof verifies (member is in the accumulator).
+
+### Inverted accumulator (blocklist)
+
+ACCUMULATOR is invertible. An inverted ACCUMULATOR acts as a **blocklist**:
+SATISFIED when the leaf is NOT in the Merkle tree. This could be used to ban
+specific identities from spending.
+
+```
+Block: !ACCUMULATOR (inverted)
+  -- SATISFIED when Merkle proof fails (identity not in set)
+  -- UNSATISFIED when proof succeeds (identity is blocked)
+```
+
+### Wire format size
+
+**Conditions**: ACCUMULATOR uses explicit encoding (no implicit layout;
+whitelisted from data-embedding rejection). Root hash: escape(3) + n_fields(1) +
+type(1) + HASH256(1+32) = 38 bytes.
+
+**Witness**: Additional HASH256 fields for proof (each: type(1) + hash(1+32)).
+For an 8-level tree: 8 siblings + 1 leaf = 9 x 34 = 306 bytes. Plus SIG
+witness = ~406 bytes total.
+
+---
+
+## Additional Notes
+
+### Compound block advantages
+
+Compound blocks (TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG,
+TIMELOCKED_MULTISIG) save wire format overhead by combining multiple condition
+checks into a single block. Instead of:
+
+```
+Rung:
+  Block 0: SIG   (1 byte micro-header + fields)
+  Block 1: CSV   (1 byte micro-header + fields)
+```
+
+A TIMELOCKED_SIG block encodes both in one:
+
+```
+Rung:
+  Block 0: TIMELOCKED_SIG  (1 byte micro-header + SCHEME + NUMERIC)
+```
+
+This saves 1 byte per additional block eliminated (the micro-header overhead)
+and enables tighter implicit field layouts.
+
+### Relay usage patterns
+
+**Key sharing**: Multiple rungs reference the same signing key via a relay.
+The relay contains a SIG block; rungs declare a relay_ref. The key is committed
+once in the Merkle tree (via relay leaf), reducing conditions size.
+
+**Tiered authorization**: Relay 0 requires an admin signature. Relay 1 requires
+Relay 0 + a department signature. Rungs reference Relay 1 for department-level
+actions. Maximum chain depth is 4.
+
+**KEY_REF_SIG**: A rung can use `KEY_REF_SIG(relay_index, block_index)` to
+verify a signature against a pubkey stored in a relay block. The relay must
+be in the rung's relay_refs. This separates key storage (relay) from key
+usage (rung).
+
+### MLSC privacy characteristics
+
+When spending via rung N of a K-rung ladder:
+- Only rung N's conditions are revealed
+- Rungs 0..N-1 and N+1..K-1 are represented by opaque leaf hashes
+- Referenced relays are revealed; unreferenced relays are opaque
+- The coil is always revealed
+- An observer learns K (total rungs) and N (which rung was used), but not the
+  conditions of unrevealed rungs
+
+For a 2-rung ladder (e.g., normal + recovery), the MLSC proof includes:
+- 1 revealed rung leaf (with blocks + pubkeys)
+- 1 proof hash (the other rung's leaf)
+- 1 coil leaf (always computed)
+- Padded to 4 leaves with MLSC_EMPTY_LEAF
+
+### Diff witness savings
+
+For transactions with multiple inputs spending identical conditions (e.g.,
+consolidating UTXOs from the same address), diff witnesses provide significant
+savings. Input 0 carries the full witness; inputs 1..N carry only:
+
+```
+0 (sentinel) + input_index(1) + n_diffs(1) + per-diff overhead
+```
+
+Each diff specifies (rung_index, block_index, field_index) + the replacement
+field. For a simple SIG spend where only the SIGNATURE differs, each diff
+witness is approximately:
+
+```
+sentinel(1) + input_index(1) + n_diffs(1) + rung_idx(1) + block_idx(1) +
+field_idx(1) + type(1) + sig_len(1) + signature(64) + coil(6) = 78 bytes
+```
+
+Compared to a full witness (~108 bytes), this saves ~30 bytes per additional
+input. For 10 consolidation inputs, the saving is approximately 270 bytes.
+
+### Signature scheme routing
+
+The SCHEME field controls signature verification routing:
+
+| Scheme value | Routing |
+|-------------|---------|
+| `0x01` (SCHNORR) | `CheckSchnorrSignature` with x-only pubkey |
+| `0x02` (ECDSA) | `CheckECDSASignature` with compressed pubkey |
+| `0x10` (FALCON512) | `VerifyPQSignature(FALCON512, ...)` via liboqs |
+| `0x11` (FALCON1024) | `VerifyPQSignature(FALCON1024, ...)` via liboqs |
+| `0x12` (DILITHIUM3) | `VerifyPQSignature(DILITHIUM3, ...)` via liboqs |
+| `0x13` (SPHINCS_SHA) | `VerifyPQSignature(SPHINCS_SHA, ...)` via liboqs |
+| No SCHEME field | Size-based routing: 64-65 bytes = Schnorr, 8-72 bytes = ECDSA |
+
+PQ schemes require `HasPQSupport()` to return true (liboqs compiled in).
+Without PQ support, PQ signature verification returns ERROR.
+
+### Template reference (conditions inheritance)
+
+When conditions use a template reference (`n_rungs == 0` in conditions), the
+conditions are inherited from another input with optional field-level diffs.
+`ResolveTemplateReference` copies the source input's rungs, coil, and relays,
+then applies diffs (which must match field types). Template references cannot
+chain (source must not itself be a template reference).
+
+### Coil type semantics
+
+- **UNLOCK**: Standard spend. The output value goes to the address in the
+  spending transaction.
+- **UNLOCK_TO**: Directed spend. The output value goes to the address specified
+  in the coil's `address_hash` field. Per-rung destinations
+  (`rung_destinations`) can override this per rung.
+- **COVENANT**: The spending transaction is constrained by covenant/recursion
+  blocks in the rung. The output must carry specific MLSC conditions.
+
+### Evaluation result semantics
+
+| Result | Meaning | Inversion |
+|--------|---------|-----------|
+| SATISFIED | Condition met | Flips to UNSATISFIED |
+| UNSATISFIED | Condition not met (valid witness, just fails) | Flips to SATISFIED |
+| ERROR | Malformed block (consensus failure) | Stays ERROR |
+| UNKNOWN_BLOCK_TYPE | Forward compatibility | Inverted: becomes ERROR |
+
+UNKNOWN_BLOCK_TYPE allows future soft forks to add new block types. Existing
+nodes treat unknown types as UNSATISFIED, so ladders with unknown blocks in
+non-taken rungs remain valid. However, inverting an unknown type produces ERROR
+to prevent attackers from creating "always-satisfied" conditions with invented
+block types.

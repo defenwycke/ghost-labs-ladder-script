@@ -1,100 +1,130 @@
 # Ladder Script Review Guide
 
-This document is a starting point for reviewers. Ladder Script is 61 block types (59 active + 2 deprecated) across 10 families, but each block type is a self-contained unit that can be reviewed independently.
+This guide walks code reviewers through the Ladder Script implementation. The system
+comprises 61 block types (59 active, 2 deprecated) across 10 families, implemented in
+22 source files under `src/rung/`.
 
-## Where to Start
+## File-by-File Walkthrough
 
-### 1. Read the Type System (15 minutes)
+### types.h (single source of truth)
+The largest header. Defines all block types (`RungBlockType` enum), all data types
+(`RungDataType` enum), structural types (`RungCoil`, `RungField`, `RungBlock`, `Rung`,
+`Relay`, `LadderWitness`, `WitnessReference`), and metadata functions:
+- `IsKnownBlockType()` — allowlist of 59 active types; HASH_PREIMAGE and HASH160_PREIMAGE explicitly return false
+- `IsInvertibleBlockType()` — explicit allowlist; key-consuming blocks excluded
+- `IsKeyConsumingBlockType()` — blocks whose pubkeys fold into Merkle leaves
+- `PubkeyCountForBlock()` — fixed or variable pubkey count per block type
+- `IsDataEmbeddingType()` — high-bandwidth types blocked in layout-less blocks
+- Micro-header table (128 slots, 63 active, 2 deprecated as 0xFFFF)
+- Implicit field layouts (per block type, per context)
+- `BlockDescriptor` table and `LookupBlockDescriptor()`
+- `VerifyImplicitLayoutPairing()` — runtime init check for layout consistency
 
-**File:** `src/rung/types.h`
+**What to look for:** Ensure every new block type is added to `IsKnownBlockType`, the
+micro-header table, the implicit layout switch, the `BlockDescriptor` table, and
+`VerifyImplicitLayoutPairing`'s whitelist if conditions-only.
 
-This single header defines everything: the `RungBlockType` enum (61 entries), the `RungDataType` enum (11 entries), field size bounds (`FieldMinSize`, `FieldMaxSize`), block type names, micro-header slots, and implicit field layouts.
+### evaluator.h / evaluator.cpp
+Core evaluation engine. Key review points:
+- `EvalBlock()` dispatch: every block type must have a case; unknown types return `UNKNOWN_BLOCK_TYPE`
+- `EvalRung()`: AND logic; all blocks must be SATISFIED; checks relay_refs against cached relay results
+- `EvalLadder()`: OR logic; evaluates relays first via `EvalRelays()`, then tries rungs; `satisfied_rung_out` reports which rung passed
+- `VerifyRungTx()`: top-level entry point; deserializes witness, verifies MLSC proof, evaluates ladder, runs batch verification, validates all outputs via `ValidateRungOutputs()`
+- `ValidateRungOutputs()`: consensus rule that every output must be MLSC (0xC2); rejects raw OP_RETURN and legacy scriptPubKey types
+- `BatchVerifier`: collects Schnorr entries during evaluation; `Verify()` batch-checks all at once
+- `LadderSignatureChecker`: wraps `BaseSignatureChecker`; dispatches to `SignatureHashLadder` for `SigVersion::LADDER`
+- `ApplyInversion()`: ERROR unchanged; UNKNOWN inverted becomes SATISFIED
 
-After reading this file, you know every block type that exists and what data types they use.
+**What to look for:** Fail-closed behavior for unknown types. Correct relay evaluation
+order (index 0 first, forward-only). Batch verifier fallback on failure.
 
-### 2. Pick One Block Type (10 minutes)
+### sighash.h / sighash.cpp
+Sighash computation. Tagged hash `"LadderSighash"`. Commits to epoch, hash_type, tx data,
+conditions hash (unless ANYPREVOUTANYSCRIPT).
+- Valid hash types: `{0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}`
+- ANYPREVOUT (0x40): skips prevout hash, keeps amounts/sequences/conditions
+- ANYPREVOUTANYSCRIPT (0xC0): skips prevout and conditions
 
-**File:** `src/rung/evaluator.cpp`
+**What to look for:** MLSC outputs use `conditions_root` directly as the conditions hash
+(no re-serialization). Legacy 0xC1 falls back to SHA256 of serialized conditions.
 
-Each block type has a single evaluator function (~20-80 lines). Start with `EvalSigBlock` — it's the simplest and most familiar (public key + signature verification). Then read `EvalCSVBlock` (relative timelock) or `EvalHashPreimageBlock` (hash preimage reveal).
+### serialize.h / serialize.cpp
+Wire format. Key constants: MAX_RUNGS=16, MAX_BLOCKS_PER_RUNG=8, MAX_FIELDS_PER_BLOCK=16,
+MAX_LADDER_WITNESS_SIZE=100000, MAX_PREIMAGE_FIELDS_PER_WITNESS=2, MAX_RELAYS=8,
+MAX_RELAY_DEPTH=4.
+- `DeserializeLadderWitness()`: fail-closed; rejects unknown types, deprecated blocks, non-invertible inversion, data-embedding types in layout-less blocks, trailing bytes
+- Diff witness mode: `n_rungs == 0` signals witness reference; diffs restricted to PUBKEY/SIGNATURE/PREIMAGE/SCRIPT_BODY/SCHEME
+- `DeserializeBlock()`: shared by witness and MLSC proof deserialization
+- Implicit field encoding: micro-header + layout match = omit field count/types
 
-Each evaluator follows the same pattern:
-1. Find required fields by type
-2. Validate field sizes
-3. Check the condition (hash match, signature verify, timelock check)
-4. Return SATISFIED, UNSATISFIED, or ERROR
+**What to look for:** Strict field enforcement in explicit mode (count and types must match
+layout when layout exists). DATA type restricted to DATA_RETURN. ACCUMULATOR whitelisted
+from IsDataEmbeddingType check.
 
-### 3. Understand Ladder Logic (5 minutes)
+### conditions.h / conditions.cpp
+MLSC system. MLSC prefix 0xC2. Inline conditions 0xC1 removed (stubs return false).
+- `IsConditionDataType()`: HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA allowed; PUBKEY_COMMIT removed
+- Merkle tree: sorted interior hashing, `MLSC_EMPTY_LEAF` padding
+- Leaf order: rungs, then relays, then coil
+- `VerifyMLSCProof()`: reconstructs leaf array, builds tree, compares root
+- `MLSCVerifiedLeaves`: cached for covenant evaluators (avoids recomputing from all pubkeys)
+- `ResolveTemplateReference()`: copies conditions from referenced input, applies diffs, no chaining
 
-**File:** `src/rung/evaluator.cpp` — search for `VerifyRungTx`
+**What to look for:** Proof verification must reject mismatched total_rungs/total_relays.
+Template references cannot chain (source must not be a template ref).
 
-The top-level entry point evaluates a ladder witness:
-- **AND within rungs:** All blocks in a rung must be SATISFIED
-- **OR across rungs:** First satisfied rung wins
-- **Inversion:** A block marked `inverted` flips SATISFIED↔UNSATISFIED (ERROR stays ERROR)
+### descriptor.h / descriptor.cpp
+Human-readable descriptor language. Grammar: `ladder(or(...))` with blocks as lowercase
+functions. Supports `!block` for inversion. Scheme names: schnorr, ecdsa, falcon512,
+falcon1024, dilithium3, sphincs_sha.
 
-### 4. Understand Serialization (15 minutes)
+### aggregate.h / aggregate.cpp
+AGGREGATE attestation: block-level aggregate proof. DEFERRED attestation: fail-closed
+(always returns false).
 
-**File:** `src/rung/serialize.cpp`
+### policy.h / policy.cpp
+Mempool policy. `IsStandardRungTx()` delegates to the consensus deserializer for structural
+validation, then checks all outputs are MLSC. Classification functions: `IsBaseBlockType()`,
+`IsCovenantBlockType()`, `IsStatefulBlockType()`.
 
-The wire format uses micro-headers (single-byte encoding for common block types), implicit fields (block types with known layouts omit type bytes), and varint NUMERIC encoding. The key insight: deserialization validates every byte against the type system. Unknown types, oversized fields, and malformed data are all rejected.
+### pq_verify.h / pq_verify.cpp
+Post-quantum signature verification for FALCON-512, FALCON-1024, Dilithium3, SPHINCS+.
 
-### 5. Understand the Anti-Spam Property (5 minutes)
+### rpc.cpp
+12 RPC commands: decoderung, createrung, validateladder, createrungtx, signrungtx,
+computectvhash, generatepqkeypair, pqpubkeycommit, extractadaptorsecret,
+verifyadaptorpresig, parseladder, formatladder.
 
-**File:** `src/rung/rpc.cpp` — search for "Auto-convert PUBKEY" and "Auto-convert SCRIPT_BODY"
+**What to look for:** Auto-conversion in `createrung`: PUBKEY in conditions becomes Merkle
+leaf entry; PREIMAGE/SCRIPT_BODY becomes HASH256/HASH160; blanket HASH256 rejection with
+whitelist (CTV, TAGGED_HASH, ACCUMULATOR, COSIGN, OUTPUT_CHECK).
 
-Every hash commitment stored in the UTXO set is computed by the node:
-- User provides PUBKEY → node computes PUBKEY_COMMIT (SHA-256) or HASH160 (RIPEMD160(SHA-256))
-- User provides PREIMAGE/SCRIPT_BODY → node computes HASH256 (SHA-256) or HASH160
-- Raw hash values are rejected for all node-computed block types
+## Anti-Spam Properties
 
-No condition field across all 61 block types accepts arbitrary user-chosen bytes.
+1. **Fail-closed deserialization.** Unknown block types, unknown data types, and deprecated
+   blocks are rejected. Trailing bytes cause failure.
+2. **Selective inversion.** Explicit allowlist. Key-consuming blocks never invertible.
+3. **IsDataEmbeddingType.** PUBKEY_COMMIT, HASH256, HASH160, and DATA blocked in blocks
+   without implicit layouts.
+4. **PREIMAGE/SCRIPT_BODY cap.** Maximum 2 per witness (combined), bounding user-chosen
+   data to 64 bytes.
+5. **DATA type restriction.** Only allowed in DATA_RETURN blocks.
+6. **merkle_pub_key.** Pubkeys in Merkle leaves, not condition fields.
+7. **Blanket HASH256 rejection in RPC.** Whitelisted block types only.
 
-## File Map
+## TLA+ Formal Specifications
 
-| File | Lines | What It Does |
-|------|-------|-------------|
-| `types.h` | ~910 | All type definitions, enums, size bounds, micro-header table |
-| `evaluator.cpp` | ~3400 | 61 block evaluators + ladder logic + signature verification |
-| `serialize.cpp` | ~785 | Wire format serialization/deserialization |
-| `conditions.cpp` | ~920 | Conditions (locking side) parsing and validation |
-| `rpc.cpp` | ~2200 | RPC interface + node-computed hash enforcement |
-| `policy.cpp` | ~435 | Mempool policy (standard/non-standard) |
-| `sighash.cpp` | ~130 | Tagged sighash computation |
-| `pq_verify.cpp` | ~145 | Post-quantum signature verification (FALCON, Dilithium) |
-| `adaptor.cpp` | ~190 | Adaptor signatures for atomic swaps |
-| `aggregate.cpp` | ~40 | Block-level signature aggregation |
+10 specs in `spec/` with 80+ checked properties:
 
-## Block Families at a Glance
-
-| Family | Blocks | Range | Purpose |
-|--------|--------|-------|---------|
-| Signature | 5 | 0x0001-0x00FF | Key-based authorization |
-| Timelock | 4 | 0x0100-0x01FF | Time and height constraints |
-| Hash | 4 | 0x0200-0x02FF | Tagged hashes, hash-guarded preimage (2 deprecated: HASH_PREIMAGE, HASH160_PREIMAGE) |
-| Covenant | 3 | 0x0300-0x03FF | CTV templates, vaults, amount locks |
-| Recursion | 6 | 0x0400-0x04FF | Self-referencing outputs (perpetual, decay, split) |
-| Anchor | 7 | 0x0500-0x05FF | L2 anchors (channels, pools, oracles), DATA_RETURN |
-| PLC | 14 | 0x0600-0x06FF | Industrial logic (timers, counters, latches, rate limits) |
-| Compound | 6 | 0x0700-0x07FF | Collapsed multi-block patterns (HTLC, PTLC) |
-| Governance | 7 | 0x0800-0x08FF | Transaction-level constraints (weight, I/O counts, output checks) |
-| Legacy | 7 | 0x0900-0x09FF | Wrapped Bitcoin tx types (P2PK through P2TR) |
-
-## Running Tests
-
-```bash
-# Unit tests (480 test cases)
-make -j2 && src/test/test_bitcoin --run_test=rung_tests
-
-# Functional tests (on signet)
-test/functional/rung_basic.py
-test/functional/rung_signet.py
-```
-
-## What to Look For
-
-- **Correctness:** Does each evaluator implement its stated semantics?
-- **Completeness:** Are all field types validated before use?
-- **Determinism:** Can evaluation produce different results on different nodes?
-- **DoS resistance:** Are all loops bounded? Are recursion depths limited?
-- **Anti-spam:** Can any code path store user-chosen bytes in the UTXO set?
+| Spec | Focus |
+|------|-------|
+| LadderEval.tla | Rung/ladder evaluation, inversion, recursion termination |
+| LadderEvalCheck.tla | Type invariants and safety for evaluation |
+| LadderBlockEval.tla | Individual block evaluation |
+| LadderComposition.tla | AND/OR composition with relays |
+| LadderAntiSpam.tla | Anti-spam field limits |
+| LadderWireFormat.tla | Wire format serialization invariants |
+| LadderMerkle.tla | Merkle tree construction and verification |
+| LadderSighash.tla | Sighash computation properties |
+| LadderCovenant.tla | Covenant/recursion termination and safety |
+| LadderCrossInput.tla | Cross-input (COSIGN) dependencies |

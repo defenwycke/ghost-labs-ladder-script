@@ -1,142 +1,142 @@
-# Ladder Script Block Library
+# Block Library
 
-61 block types (59 active + 2 deprecated) across 10 families. Each block evaluates a single spending condition within a rung. Blocks are combined with AND logic within a rung and OR logic across rungs (first satisfied rung wins).
+Ladder Script defines 61 block types across 10 families. 59 are active; 2 are deprecated
+(HASH_PREIMAGE 0x0201, HASH160_PREIMAGE 0x0202). Deprecated blocks are rejected at
+deserialization. Each block type has a uint16_t type code encoded little-endian on the wire.
 
-Full reference with field tables, evaluation logic, and ladder diagrams: [Block Reference](/labs/block-docs/)
+## Legend
 
-**Source of truth:** `src/rung/types.h` (type definitions), `src/rung/evaluator.cpp` (evaluation logic).
+| Column | Meaning |
+|--------|---------|
+| Code | uint16_t type code (hex) |
+| Inv | Invertible (result can be flipped SATISFIED/UNSATISFIED) |
+| Key | Key-consuming (pubkeys folded into Merkle leaf; never invertible) |
+| PK# | Pubkey count (0 = none, N = fixed, var = count from fields) |
+| Conditions | Implicit layout fields on the locking (conditions) side |
 
----
+## Signature Family (0x0001 - 0x00FF)
 
-## Signature Family (0x00xx)
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0001 | SIG | no | yes | 1 | SCHEME(1) | Single Schnorr/ECDSA/PQ signature |
+| 0x0002 | MULTISIG | no | yes | var | NUMERIC(M) | M-of-N threshold signature |
+| 0x0003 | ADAPTOR_SIG | no | yes | 2 | (none) | Adaptor signature verification |
+| 0x0004 | MUSIG_THRESHOLD | no | yes | 1 | NUMERIC(M), NUMERIC(N) | MuSig2/FROST aggregate threshold |
+| 0x0005 | KEY_REF_SIG | no | yes | 0 | NUMERIC(relay_idx), NUMERIC(block_idx) | Signature using key from a relay block |
 
-Single and multi-party signature verification. Supports Schnorr (BIP-340), ECDSA, and post-quantum schemes (FALCON-512, FALCON-1024, Dilithium3, SPHINCS-SHA) via the SCHEME field.
+## Timelock Family (0x0100 - 0x01FF)
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0001 | SIG | Single signature verification |
-| 0x0002 | MULTISIG | M-of-N threshold signature verification |
-| 0x0003 | ADAPTOR_SIG | Adaptor signature with secret extraction |
-| 0x0004 | MUSIG_THRESHOLD | MuSig2-compatible threshold signature |
-| 0x0005 | KEY_REF_SIG | Signature verification using a key referenced by index |
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0101 | CSV | yes | no | 0 | NUMERIC(blocks) | Relative timelock, block-height (BIP 68) |
+| 0x0102 | CSV_TIME | yes | no | 0 | NUMERIC(seconds) | Relative timelock, median-time-past |
+| 0x0103 | CLTV | yes | no | 0 | NUMERIC(height) | Absolute timelock, block-height |
+| 0x0104 | CLTV_TIME | yes | no | 0 | NUMERIC(time) | Absolute timelock, median-time-past |
 
-## Timelock Family (0x01xx)
+## Hash Family (0x0200 - 0x02FF)
 
-Block-height and time-based spending constraints.
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0201 | HASH_PREIMAGE | --- | --- | --- | --- | **Deprecated.** Use HTLC or HASH_SIG. |
+| 0x0202 | HASH160_PREIMAGE | --- | --- | --- | --- | **Deprecated.** Use HTLC or HASH_SIG. |
+| 0x0203 | TAGGED_HASH | yes | no | 0 | HASH256(32), HASH256(32) | BIP-340 tagged hash verification |
+| 0x0204 | HASH_GUARDED | no | no | 0 | HASH256(32) | Raw SHA256 preimage verification |
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0101 | CSV | Relative timelock by block count (BIP-68/112) |
-| 0x0102 | CSV_TIME | Relative timelock by elapsed seconds |
-| 0x0103 | CLTV | Absolute timelock by block height (BIP-65) |
-| 0x0104 | CLTV_TIME | Absolute timelock by Unix timestamp |
+## Covenant Family (0x0300 - 0x03FF)
 
-## Hash Family (0x02xx)
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0301 | CTV | yes | no | 0 | HASH256(32) | OP_CHECKTEMPLATEVERIFY covenant |
+| 0x0302 | VAULT_LOCK | yes | yes | 2 | NUMERIC(hot_delay) | Vault timelock with hot/cold keys |
+| 0x0303 | AMOUNT_LOCK | yes | no | 0 | NUMERIC(min), NUMERIC(max) | Output amount range constraint |
 
-Hash verification for tagged commitments and guarded preimage checks. Pure hash locks (HASH_PREIMAGE, HASH160_PREIMAGE) are deprecated. Use HTLC, HASH_SIG, or HASH_GUARDED instead.
+## Recursion Family (0x0400 - 0x04FF)
 
-| Code | Block | Description |
-|------|-------|-------------|
-| ~~0x0201~~ | ~~HASH_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC, HASH_SIG, or HASH_GUARDED. |
-| ~~0x0202~~ | ~~HASH160_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC, HASH_SIG, or HASH_GUARDED. |
-| 0x0203 | TAGGED_HASH | Tagged hash preimage (BIP-340 style) |
-| 0x0204 | HASH_GUARDED | Raw SHA-256 preimage verification (non-invertible) |
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0401 | RECURSE_SAME | yes | no | 0 | NUMERIC(max_depth) | Re-encumber with identical conditions |
+| 0x0402 | RECURSE_MODIFIED | yes | no | 0 | (none, variable) | Re-encumber with single mutation |
+| 0x0403 | RECURSE_UNTIL | yes | no | 0 | NUMERIC(until_height) | Recurse until block height |
+| 0x0404 | RECURSE_COUNT | yes | no | 0 | NUMERIC(max_count) | Recursive countdown |
+| 0x0405 | RECURSE_SPLIT | yes | no | 0 | NUMERIC(max_splits), NUMERIC(min_sats) | Recursive output splitting |
+| 0x0406 | RECURSE_DECAY | yes | no | 0 | (none, variable) | Recursive parameter decay |
 
-## Covenant Family (0x03xx)
+## Anchor Family (0x0500 - 0x05FF)
 
-Transaction introspection and output restriction.
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0501 | ANCHOR | yes | no | 0 | NUMERIC(anchor_id) | Generic anchor marker |
+| 0x0502 | ANCHOR_CHANNEL | yes | yes | 2 | NUMERIC(commitment_number) | Lightning channel anchor |
+| 0x0503 | ANCHOR_POOL | yes | no | 0 | HASH256(vtxo_root), NUMERIC(count) | Pool anchor |
+| 0x0504 | ANCHOR_RESERVE | yes | no | 0 | NUMERIC(n), NUMERIC(m), HASH256(guardian) | Reserve anchor (guardian set) |
+| 0x0505 | ANCHOR_SEAL | yes | no | 0 | HASH256(32), HASH256(32) | Seal anchor |
+| 0x0506 | ANCHOR_ORACLE | yes | yes | 1 | NUMERIC(outcome_count) | Oracle anchor |
+| 0x0507 | DATA_RETURN | yes | no | 0 | DATA(var, max 40) | Unspendable data commitment (replaces OP_RETURN) |
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0301 | CTV | CheckTemplateVerify — commit to transaction template |
-| 0x0302 | VAULT_LOCK | Time-delayed vault with cooling period |
-| 0x0303 | AMOUNT_LOCK | Output amount bounds enforcement |
+## PLC Family (0x0600 - 0x06FF)
 
-## Recursion Family (0x04xx)
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0601 | HYSTERESIS_FEE | yes | no | 0 | NUMERIC(high), NUMERIC(low) | Fee hysteresis band |
+| 0x0602 | HYSTERESIS_VALUE | yes | no | 0 | NUMERIC(high), NUMERIC(low) | Value hysteresis band |
+| 0x0611 | TIMER_CONTINUOUS | yes | no | 0 | NUMERIC(accumulated), NUMERIC(target) | Continuous timer (consecutive blocks) |
+| 0x0612 | TIMER_OFF_DELAY | yes | no | 0 | NUMERIC(remaining) | Off-delay timer (hold after trigger) |
+| 0x0621 | LATCH_SET | yes | yes | 1 | NUMERIC(state) | Latch set (state activation) |
+| 0x0622 | LATCH_RESET | yes | yes | 1 | NUMERIC(state), NUMERIC(delay) | Latch reset (state deactivation) |
+| 0x0631 | COUNTER_DOWN | yes | yes | 1 | NUMERIC(count) | Down counter (decrement on event) |
+| 0x0632 | COUNTER_PRESET | yes | no | 0 | NUMERIC(current), NUMERIC(preset) | Preset counter (approval accumulator) |
+| 0x0633 | COUNTER_UP | yes | yes | 1 | NUMERIC(current), NUMERIC(target) | Up counter (increment on event) |
+| 0x0641 | COMPARE | yes | no | 0 | NUMERIC(op), NUMERIC(b), NUMERIC(c) | Comparator (amount vs thresholds) |
+| 0x0651 | SEQUENCER | yes | no | 0 | NUMERIC(current_step), NUMERIC(total) | Step sequencer |
+| 0x0661 | ONE_SHOT | yes | no | 0 | NUMERIC(state), HASH256(commitment) | One-shot activation window |
+| 0x0671 | RATE_LIMIT | yes | no | 0 | NUMERIC(max), NUMERIC(cap), NUMERIC(refill) | Rate limiter |
+| 0x0681 | COSIGN | no | yes | 0 | HASH256(32) | Cross-input co-spend constraint |
 
-Self-perpetuating conditions that carry forward across transaction chains.
+## Compound Family (0x0700 - 0x07FF)
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0401 | RECURSE_SAME | Re-encumber output with identical conditions |
-| 0x0402 | RECURSE_MODIFIED | Re-encumber with mutated field values |
-| 0x0403 | RECURSE_UNTIL | Recurse until a block height is reached |
-| 0x0404 | RECURSE_COUNT | Countdown recursion (N spends remaining) |
-| 0x0405 | RECURSE_SPLIT | Binary split into multiple outputs |
-| 0x0406 | RECURSE_DECAY | Progressive parameter relaxation |
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0701 | TIMELOCKED_SIG | no | yes | 1 | SCHEME(1), NUMERIC(csv) | SIG + CSV in one block |
+| 0x0702 | HTLC | no | yes | 2 | HASH256(32), NUMERIC(csv) | Hash + timelock + sig (Lightning HTLC) |
+| 0x0703 | HASH_SIG | no | yes | 1 | HASH256(32), SCHEME(1) | Hash preimage + signature |
+| 0x0704 | PTLC | no | yes | 2 | NUMERIC(csv) | Adaptor sig + CSV (point-locked channel) |
+| 0x0705 | CLTV_SIG | no | yes | 1 | SCHEME(1), NUMERIC(cltv) | SIG + CLTV in one block |
+| 0x0706 | TIMELOCKED_MULTISIG | no | yes | var | NUMERIC(M), NUMERIC(csv) | MULTISIG + CSV in one block |
 
-## Anchor Family (0x05xx)
+## Governance Family (0x0800 - 0x08FF)
 
-Protocol-tagged UTXOs with semantic meaning.
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0801 | EPOCH_GATE | no | no | 0 | NUMERIC(period), NUMERIC(offset) | Periodic spending window |
+| 0x0802 | WEIGHT_LIMIT | yes | no | 0 | NUMERIC(max_weight) | Maximum transaction weight |
+| 0x0803 | INPUT_COUNT | yes | no | 0 | NUMERIC(min), NUMERIC(max) | Input count bounds |
+| 0x0804 | OUTPUT_COUNT | yes | no | 0 | NUMERIC(min), NUMERIC(max) | Output count bounds |
+| 0x0805 | RELATIVE_VALUE | no | no | 0 | NUMERIC(num), NUMERIC(denom) | Output value as ratio of input |
+| 0x0806 | ACCUMULATOR | yes | no | 0 | HASH256(root) | Merkle accumulator set membership |
+| 0x0807 | OUTPUT_CHECK | no | no | 0 | NUMERIC(idx), NUMERIC(min), NUMERIC(max), HASH256(script) | Per-output value and script constraint |
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0501 | ANCHOR | Basic protocol anchor |
-| 0x0502 | ANCHOR_CHANNEL | Lightning channel anchor |
-| 0x0503 | ANCHOR_POOL | Mining pool anchor |
-| 0x0504 | ANCHOR_RESERVE | Reserve proof anchor |
-| 0x0505 | ANCHOR_SEAL | Sealed state commitment (asset ID + state transition) |
-| 0x0506 | ANCHOR_ORACLE | Oracle data attestation anchor |
-| 0x0507 | DATA_RETURN | On-chain data (max 40 bytes) appended to MLSC output, replaces OP_RETURN |
+## Legacy Family (0x0900 - 0x09FF)
 
-## PLC Family (0x06xx)
+| Code | Name | Inv | Key | PK# | Conditions | Description |
+|--------|------|-----|-----|-----|------------|-------------|
+| 0x0901 | P2PK_LEGACY | no | yes | 1 | SCHEME(1) | Wrapped P2PK |
+| 0x0902 | P2PKH_LEGACY | no | yes | 0 | HASH160(20) | Wrapped P2PKH |
+| 0x0903 | P2SH_LEGACY | yes | no | 0 | HASH160(20) | Wrapped P2SH (inner conditions + witness) |
+| 0x0904 | P2WPKH_LEGACY | no | yes | 0 | HASH160(20) | Wrapped P2WPKH |
+| 0x0905 | P2WSH_LEGACY | yes | no | 0 | HASH256(32) | Wrapped P2WSH (inner conditions + witness) |
+| 0x0906 | P2TR_LEGACY | no | yes | 1 | SCHEME(1) | Wrapped P2TR key-path |
+| 0x0907 | P2TR_SCRIPT_LEGACY | no | yes | 1 | HASH256(32) | Wrapped P2TR script-path |
 
-Programmable Logic Controller blocks. State machines, counters, timers, and comparators for multi-step spending logic.
+## Notes
 
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0601 | HYSTERESIS_FEE | Fee-rate hysteresis band (high/low thresholds) |
-| 0x0602 | HYSTERESIS_VALUE | Output value hysteresis band |
-| 0x0611 | TIMER_CONTINUOUS | Continuous elapsed-time gate |
-| 0x0612 | TIMER_OFF_DELAY | Off-delay timer |
-| 0x0621 | LATCH_SET | Set-dominant latch |
-| 0x0622 | LATCH_RESET | Reset-dominant latch |
-| 0x0631 | COUNTER_DOWN | Decrementing counter |
-| 0x0632 | COUNTER_PRESET | Counter with preset reload |
-| 0x0633 | COUNTER_UP | Incrementing counter |
-| 0x0641 | COMPARE | Numeric comparison (equal, greater, less, range) |
-| 0x0651 | SEQUENCER | Multi-step sequence enforcer |
-| 0x0661 | ONE_SHOT | Single-use trigger |
-| 0x0671 | RATE_LIMIT | Spending rate limiter |
-| 0x0681 | COSIGN | Co-signature requirement with timeout fallback |
-
-## Compound Family (0x07xx)
-
-Composite blocks that combine multiple primitives into a single evaluation. Syntactic sugar — each delegates to the same verification routines as the corresponding separate blocks.
-
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0701 | TIMELOCKED_SIG | Signature + relative timelock |
-| 0x0702 | HTLC | Hash Time-Locked Contract (signature + hash + timelock) |
-| 0x0703 | HASH_SIG | Signature + hash preimage |
-| 0x0704 | PTLC | Point Time-Locked Contract (adaptor signature + timelock) |
-| 0x0705 | CLTV_SIG | Signature + absolute timelock |
-| 0x0706 | TIMELOCKED_MULTISIG | M-of-N multisig + relative timelock |
-
-## Governance Family (0x08xx)
-
-Transaction structure introspection and spending policy enforcement.
-
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0801 | EPOCH_GATE | Block height window gate (start/end range) |
-| 0x0802 | WEIGHT_LIMIT | Transaction weight ceiling |
-| 0x0803 | INPUT_COUNT | Input count constraint |
-| 0x0804 | OUTPUT_COUNT | Output count constraint |
-| 0x0805 | RELATIVE_VALUE | Output-to-input value ratio enforcement |
-| 0x0806 | ACCUMULATOR | Merkle proof membership verification |
-| 0x0807 | OUTPUT_CHECK | Per-output value and script constraint |
-
-## Legacy Family (0x09xx)
-
-Wrapped Bitcoin transaction types as typed blocks. Same spending semantics as the originals, but all fields are typed — closing arbitrary data surfaces. Inner conditions in P2SH, P2WSH, and P2TR script-path must be valid Ladder Script.
-
-| Code | Block | Description |
-|------|-------|-------------|
-| 0x0901 | P2PK_LEGACY | Pay-to-Public-Key |
-| 0x0902 | P2PKH_LEGACY | Pay-to-Public-Key-Hash |
-| 0x0903 | P2SH_LEGACY | Pay-to-Script-Hash (inner conditions = Ladder Script) |
-| 0x0904 | P2WPKH_LEGACY | Pay-to-Witness-Public-Key-Hash |
-| 0x0905 | P2WSH_LEGACY | Pay-to-Witness-Script-Hash (inner conditions = Ladder Script) |
-| 0x0906 | P2TR_LEGACY | Pay-to-Taproot key-path |
-| 0x0907 | P2TR_SCRIPT_LEGACY | Pay-to-Taproot script-path (revealed leaf = Ladder Script) |
+- **Invertible** blocks may have their evaluation result flipped using the `inverted` flag
+  (0x81 escape header). Key-consuming blocks are never invertible to prevent garbage-pubkey
+  data embedding. The invertible set is an explicit allowlist; new block types default to
+  non-invertible (fail-closed).
+- **Key-consuming** blocks have their pubkeys folded into the MLSC Merkle leaf via
+  `merkle_pub_key`. Pubkeys appear in the witness but not in the conditions fields.
+- **PK#** = `var` means the pubkey count is determined at runtime by counting PUBKEY fields
+  (MULTISIG, TIMELOCKED_MULTISIG). `0` for key-consuming blocks like P2PKH_LEGACY means the
+  pubkey is in the witness but hashed to HASH160 in conditions (not intercepted to Merkle leaf).
+- RECURSE_MODIFIED and RECURSE_DECAY have variable-length fields (no implicit layout).
+  Anti-spam protection uses `IsDataEmbeddingType` rejection for layout-less blocks.

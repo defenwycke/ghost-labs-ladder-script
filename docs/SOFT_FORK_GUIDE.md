@@ -1,275 +1,153 @@
-# Ladder Script Soft Fork Activation Guide
+# Ladder Script Soft Fork Guide
 
-## 1. Overview
+How Ladder Script activates as a soft fork. All 61 block types (59 active, 2 deprecated)
+activate together in a single deployment. Transactions use `RUNG_TX_VERSION = 4`.
 
-Ladder Script introduces transaction version 4 (`RUNG_TX`) to Bitcoin, replacing opcode-based Script with typed, structured spending conditions for participating outputs. The soft fork changes the following:
+## Activation Summary
 
-**What changes:**
-- Transaction version 4 gains consensus meaning (currently non-standard, treated as anyone-can-spend).
-- Outputs with scriptPubKey prefix `0xC2` (MLSC Merkle root) are recognised as ladder conditions and evaluated by the ladder evaluator. MLSC is the only output format.
-- Witness validation for v4 inputs uses the ladder sighash (`TaggedHash("LadderSighash")`) instead of the Script interpreter.
-- Post-quantum signature schemes (FALCON-512/1024, Dilithium3, SPHINCS_SHA) become available through the SCHEME field.
-- All block types are standard.
+Ladder Script introduces transaction version 4 (`RUNG_TX`). Pre-activation nodes treat v4
+transactions as anyone-can-spend (standard soft fork semantics). Post-activation nodes
+enforce the full Ladder Script validation rules. There is no phased rollout of individual
+block types.
 
-**What does not change:**
-- Transaction versions 1 and 2 are validated identically to current rules.
-- All existing UTXOs, scripts, addresses, and spending paths remain valid.
-- The UTXO set structure, block format, and P2P protocol are unchanged.
-- Segregated witness (BIP-141), Taproot (BIP-341), and all other existing soft fork rules remain in effect.
+## Output Format
 
-## 2. Activation Strategy
-
-Ladder Script uses BIP-9 versionbits deployment with a single activation. All block types activate simultaneously.
-
-### BIP-9 Mechanics
-
-BIP-9 defines a state machine for each deployment:
+All v4 transaction outputs must use MLSC (Merkelized Ladder Script Conditions):
 
 ```
-DEFINED  -->  STARTED  -->  LOCKED_IN  -->  ACTIVE
-                  |
-                  +--->  FAILED
+0xC2 + conditions_root (32 bytes) = 33-byte scriptPubKey
 ```
 
-- **DEFINED:** The deployment exists in code but signalling has not started.
-- **STARTED:** The `start_time` has passed. Miners can signal readiness by setting the assigned version bit.
-- **LOCKED_IN:** The signalling threshold was met in a retarget period (2,016 blocks). Activation is guaranteed at the next retarget.
-- **ACTIVE:** The new consensus rules are enforced.
-- **FAILED:** The `timeout` has passed without reaching the threshold.
+Inline conditions (0xC1) have been removed. `ValidateRungOutputs()` in `evaluator.cpp`
+enforces this as a consensus rule: every output of a v4 transaction must be a valid MLSC
+output or a DATA_RETURN block (exactly one per transaction, max 40 bytes). Raw OP_RETURN
+and legacy scriptPubKey types are rejected.
 
-All 61 block types (59 active + 2 deprecated) across 10 families activate as a single deployment. Partial activation of individual block types is not supported - the evaluation engine, wire format, and sighash computation form an interdependent whole.
+## Consensus Validation Changes
 
-## 3. Risk by Family
+### Transaction-Level
 
-All 61 block types (59 active + 2 deprecated) are documented in the BIP and Block Library. This section summarises the risk profile and new capabilities introduced by each family, relevant to activation review.
+`VerifyRungTx()` in `evaluator.cpp` is the top-level entry point. For each input of a v4
+transaction:
 
-### Signature, Timelock, and Hash (0x0001-0x02FF) - 11 block types
+1. Witness `stack[0]` is deserialized via `DeserializeLadderWitness()`. The deserializer
+   enforces all structural limits at consensus:
+   - `MAX_RUNGS = 16`
+   - `MAX_BLOCKS_PER_RUNG = 8`
+   - `MAX_FIELDS_PER_BLOCK = 16`
+   - `MAX_LADDER_WITNESS_SIZE = 100000`
+   - `MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`
+   - `MAX_RELAYS = 8`, `MAX_RELAY_DEPTH = 4`
+   - Known block types only (`IsKnownBlockType` returns true)
+   - Deprecated blocks (HASH_PREIMAGE, HASH160_PREIMAGE) rejected
+   - Non-invertible block types cannot have `inverted = true`
+   - Implicit layout enforcement (field count and types must match)
+   - `IsDataEmbeddingType` rejection for layout-less blocks
+   - DATA type restricted to DATA_RETURN blocks
+   - No trailing bytes
 
-**Risk:** Low. These map directly to well-understood Script operations running on mainnet for years. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (rejected at consensus); use HTLC, HASH_SIG, or HASH_GUARDED instead. The new risk surface is the wire format deserialisation and ladder sighash, covered by 480 unit tests and 60 regtest functional tests.
+2. Witness `stack[1]` is deserialized as an MLSC proof via `DeserializeMLSCProof()`.
 
-**Enables:** Standard wallets, Lightning HTLCs, timelocked vaults, atomic swaps, post-quantum signatures via the SCHEME field.
+3. `VerifyMLSCProof()` reconstructs the Merkle tree from revealed and proof data, verifies
+   the computed root matches the UTXO's conditions root.
 
-### Covenant and Anchor (0x0300-0x05FF) - 9 block types
+4. `EvalLadder()` evaluates relays (if any), then evaluates the revealed rung. All blocks
+   in the rung must return `SATISFIED` (AND logic).
 
-**Risk:** Moderate. CTV introduces transaction introspection. AMOUNT_LOCK introduces output amount inspection. Vaults introduce time-delay covenant patterns. Anchors introduce protocol-specific semantics.
+5. `BatchVerifier::Verify()` batch-verifies all collected Schnorr signatures.
 
-**Enables:** Non-interactive payment channels, vault custody with cooling periods, protocol-tagged UTXOs, amount-bounded outputs.
+6. `ValidateRungOutputs()` checks every output.
 
-### Recursion and PLC (0x0400-0x06FF) - 20 block types
+### Script Flags
 
-**Risk:** High. Recursive conditions can create permanently unspendable outputs if termination is never met. PLC state machines introduce implicit state across transaction chains. Every RECURSE_* block has a provably reachable terminal state (see BIP Security Considerations).
+`RUNG_VERIFY_MLSC_ONLY` (bit 28) is set for mainnet. When active, inline conditions (0xC1)
+are always rejected. This flag is checked in `ValidateRungOutputs()`.
 
-**Enables:** Self-perpetuating vaults, countdown vaults, rate-limited wallets, multi-step approvals, state machines, fee-governed outputs, time-decaying parameters.
+### Integration Points
 
-### Compound (0x0700-0x07FF) - 6 block types
+The soft fork modifies the following existing Bitcoin Core functions:
 
-**Risk:** Low. Syntactic sugar over primitive block combinations. Each compound evaluator delegates to the same verification routines as the corresponding separate blocks. HTLC and HASH_SIG are the recommended replacements for deprecated pure hash locks.
+- **`CheckInputScripts()`** — detects v4 transactions and routes to `VerifyRungTx()`.
+- **`CScriptCheck`** — extended to handle `SigVersion::LADDER`.
+- **`GetBlockScriptFlags()`** — returns `RUNG_VERIFY_MLSC_ONLY` after activation height.
 
-**Enables:** Compact atomic swaps, payment channel constructions, time-delayed multisig, all with fewer wire bytes.
+Pre-activation nodes see v4 transactions as valid (anyone-can-spend semantics). Post-activation
+nodes enforce the full Ladder Script rules.
 
-### Governance (0x0800-0x08FF) - 7 block types
+## Policy Changes
 
-**Risk:** Moderate. Transaction structure introspection (weight, I/O counts, value ratios). ACCUMULATOR introduces Merkle proof verification. OUTPUT_CHECK introduces per-output value and script constraints.
+`IsStandardRungTx()` in `policy.cpp` provides mempool-level filtering:
 
-**Enables:** Treasury spending windows, transaction structure enforcement, allowlist-based spending, anti-siphon protection, per-output value/script enforcement.
+1. Every input must have a non-empty witness that deserializes successfully via the consensus
+   deserializer (`DeserializeLadderWitness`).
+2. Every output must be MLSC (`IsMLSCScript()`).
 
-### Legacy (0x0900-0x09FF) - 7 block types
+Policy delegates all structural validation to the consensus deserializer. There is no
+separate policy-only check for block types, field sizes, or layouts.
 
-**Risk:** Low. These wrap existing Bitcoin transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR key-path, P2TR script-path) as typed blocks. Spending semantics are identical to the originals. P2SH/P2WSH/P2TR_SCRIPT inner conditions must be valid Ladder Script - recursion depth limited to 2.
+## Sighash
 
-**Enables:** Migration path from legacy transaction types to typed fields. Closes the taproot script-path inscription vector. Legacy users gain access to full Ladder Script composability (timelocks, covenants, PQ schemes) alongside their wrapped legacy spending path.
+Ladder Script uses its own sighash algorithm: `SignatureHashLadder()` in `sighash.cpp`.
+It is similar to BIP-341 but without annex, tapscript, or codeseparator extensions.
+Uses tagged hash `TaggedHash("LadderSighash")`.
 
-## 4. Node Upgrade Path
+New sighash flags (BIP-118 analogues):
+- `LADDER_SIGHASH_ANYPREVOUT = 0x40` — skip prevout commitment
+- `LADDER_SIGHASH_ANYPREVOUTANYSCRIPT = 0xC0` — skip prevout + conditions commitment
 
-### Upgraded nodes
+Valid hash types: `{0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}`.
 
-Upgraded nodes enforce the full ladder evaluation rules for v4 transactions. All block types are standard upon activation.
+## Block Types
 
-- Before activation: v4 transactions are non-standard (not relayed, not mined by default). If included in a block by a miner, they are valid (anyone-can-spend semantics).
-- After activation: v4 transactions with all block types are standard and relayed.
+All 61 block types activate simultaneously:
 
-### Non-upgraded nodes
+| Family | Types | Count |
+|--------|-------|-------|
+| Signature | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG | 5 |
+| Timelock | CSV, CSV_TIME, CLTV, CLTV_TIME | 4 |
+| Hash | HASH_PREIMAGE (deprecated), HASH160_PREIMAGE (deprecated), TAGGED_HASH, HASH_GUARDED | 4 |
+| Covenant | CTV, VAULT_LOCK, AMOUNT_LOCK | 3 |
+| Recursion | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | 6 |
+| Anchor | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN | 7 |
+| PLC | HYSTERESIS_FEE/VALUE, TIMER_CONTINUOUS/OFF_DELAY, LATCH_SET/RESET, COUNTER_DOWN/PRESET/UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN | 14 |
+| Compound | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG | 6 |
+| Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK | 7 |
+| Legacy | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT | 7 |
 
-Non-upgraded nodes do not recognise the `0xC2` prefix or the ladder evaluator. Their behaviour depends on the activation state:
+Total: 61 (59 active + 2 deprecated)
 
-**Before activation:** v4 transactions are non-standard. Non-upgraded nodes neither relay nor mine them. No impact.
+## Anti-Spam Hardening
 
-**After activation:** Non-upgraded nodes accept blocks containing v4 transactions because:
-
-1. The transaction version 4 is not invalid under existing consensus rules (versions are a 32-bit signed integer; only negative versions are invalid).
-2. The `0xC2` scriptPubKey prefix does not match any existing standard output type, so the output is treated as anyone-can-spend.
-3. The soft fork security model ensures that non-upgraded nodes accept all blocks that upgraded nodes accept, because the new rules are strictly more restrictive (upgraded nodes reject transactions that non-upgraded nodes would accept, never the reverse).
-
-**Risk to non-upgraded nodes:** Non-upgraded nodes may accept an invalid v4 transaction (one that violates ladder rules) if it appears in a block. However, this can only happen if a majority of mining hashrate colludes to include an invalid transaction, which breaks the security assumption for any soft fork.
-
-**Recommendation:** Node operators should upgrade before activation to enforce the full rule set.
-
-### SPV clients
-
-SPV clients verify block headers and Merkle proofs but do not validate transactions. They are unaffected by the soft fork and continue to function identically. SPV clients that wish to validate ladder conditions must implement the ladder evaluator.
-
-## 5. Miner Signalling
-
-### BIP-9 Bit Assignment
-
-| Deployment | Version Bit | Start Time | Timeout | Threshold |
-|------------|-------------|------------|---------|-----------|
-| Ladder Script | Bit 5 | Epoch TBD | Start + 1 year | 90% (1,815 of 2,016 blocks) |
-
-**Threshold rationale:** The 90% threshold (rather than 95%) balances activation speed against consensus safety. Ladder Script introduces new transaction semantics but does not modify existing validation rules, limiting the blast radius of a split.
-
-**Signalling mechanism:** Miners signal readiness by setting the assigned bit in the block header's `nVersion` field during the STARTED period. The bit is checked during each retarget period (2,016 blocks, approximately 2 weeks). If the threshold is met in any retarget period, the deployment enters LOCKED_IN and activates at the next retarget boundary.
-
-**Timeout rationale:** A 1-year timeout provides adequate time for miner coordination while ensuring that a stalled deployment does not permanently consume a version bit.
-
-### Miner Considerations
-
-Miners who signal for Ladder Script should ensure:
-
-1. Their node software includes the ladder evaluator and enforces ladder consensus rules.
-2. Their block template construction correctly handles v4 transactions in the mempool.
-3. Their fee estimation accounts for the different witness size characteristics of ladder transactions (PQ signatures can be significantly larger than Schnorr).
-
-Miners who have not upgraded should not signal, as signalling implies enforcement of the new rules.
-
-## 6. Wallet Integration
-
-### Detecting Ladder Support
-
-Wallets can determine the activation state by querying the node's `getblockchaininfo` RPC, which includes the BIP-9 deployment status for each soft fork.
-
-```json
-{
-  "softforks": {
-    "ladder": {
-      "type": "bip9",
-      "bip9": {
-        "status": "active",
-        "start_time": ...,
-        "timeout": ...,
-        "since": 850000
-      }
-    }
-  }
-}
-```
-
-### Creating Ladder Outputs
-
-Wallets create ladder-locked outputs using the `createrung` and `createrungtx` RPCs:
-
-1. Define the spending conditions as a JSON structure of rungs, blocks, and typed fields.
-2. Call `createrung` to serialise the conditions to hex.
-3. Call `createrungtx` with the serialised conditions and desired output amounts to construct an unsigned v4 transaction.
-
-The resulting transaction has `nVersion = 4` and outputs with `scriptPubKey = 0xC2 || conditions_root` (MLSC format). The RPC computes the Merkle root from the conditions and pubkeys (merkle_pub_key).
-
-### Spending Ladder Outputs
-
-Wallets spend ladder-locked outputs using the `signrungtx` RPC:
-
-1. Construct a v4 transaction that spends the ladder-locked UTXO.
-2. Call `signrungtx` with the unsigned transaction, the private key(s), and the spent output information (amount, scriptPubKey).
-3. The RPC computes the ladder sighash, signs with the appropriate scheme, and assembles the witness.
-
-### Address Format
-
-Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encoding (BIP-350). The address encodes the raw conditions bytes with a 500-character limit to accommodate variable-length conditions. Wallets encode via `bech32::Encode(bech32::Encoding::BECH32M, "rung", data)` and decode by detecting the `rung1` prefix.
-
-### Fee Estimation
-
-Ladder witnesses can be significantly larger than equivalent Script witnesses, particularly when post-quantum signatures are used. Wallets should account for the following witness sizes when estimating fees:
-
-| Scheme | Typical Witness Overhead |
-|--------|------------------------|
-| Schnorr SIG | ~100 bytes (comparable to P2TR key-path) |
-| ECDSA SIG | ~110 bytes (comparable to P2WPKH) |
-| FALCON-512 SIG | ~1,600 bytes |
-| FALCON-1024 SIG | ~3,100 bytes |
-| DILITHIUM3 SIG | ~5,300 bytes |
-
-The MAX_LADDER_WITNESS_SIZE limit of 100,000 bytes applies per input.
-
-## 7. Risk Analysis
-
-### Consensus Split
-
-**Risk:** If the activation threshold is met but a significant minority of hashrate has not upgraded, the network could experience a temporary chain split where non-upgraded miners build on blocks that upgraded miners reject.
-
-**Mitigation:** The 90% threshold ensures overwhelming hashrate agreement before activation. The LOCKED_IN grace period (one retarget period, approximately 2 weeks) provides additional time for stragglers to upgrade.
-
-### Deserialisation Vulnerabilities
-
-**Risk:** The wire format deserialiser is a new attack surface. Malformed ladder witnesses could trigger crashes, memory corruption, or consensus divergence between implementations.
-
-**Mitigation:** The deserialiser performs exhaustive validation: type checks, size bounds, trailing byte rejection, and total size limits. It is covered by 185 unit tests, fuzz testing (`rung_deserialize.cpp`), and functional tests that explicitly test malformed inputs. The MAX_LADDER_WITNESS_SIZE limit prevents memory exhaustion.
-
-### Witness Bloat
-
-**Risk:** Post-quantum signatures are significantly larger than Schnorr signatures. A transaction with a Dilithium3 signature consumes approximately 5.3 KB of witness space per input, compared to 64 bytes for Schnorr.
-
-**Mitigation:** The MAX_LADDER_WITNESS_SIZE limit of 100,000 bytes per input prevents unbounded growth. Mempool policy can further restrict witness sizes. The fee market naturally discourages witness bloat (larger witnesses cost more in fees). Post-quantum schemes are expected to be used sparingly during a transition period.
-
-### Recursive Output Locking
-
-**Risk:** Recursion block types can create UTXOs that re-encumber indefinitely if the termination condition is never met. Users could accidentally lock funds permanently.
-
-**Mitigation:** RECURSE_UNTIL has an explicit block height termination. RECURSE_COUNT has a countdown to zero. RECURSE_DECAY reduces parameters toward termination. Wallet software should warn users when creating recursive conditions and simulate the termination path.
-
-### PLC State Machine Complexity
-
-**Risk:** The interaction between PLC block types (latches, counters, sequencers) creates implicit state that exists across transaction chains. Bugs in state tracking could lead to funds being locked or unlocked unexpectedly.
-
-**Mitigation:** Each PLC block type evaluates independently based on its field values. There is no shared mutable state between blocks; state is encoded explicitly in the conditions and must be explicitly mutated via RECURSE_MODIFIED. The evaluator is stateless per invocation, reducing the surface for state-related bugs.
-
-### Sighash Divergence
-
-**Risk:** The ladder sighash (`TaggedHash("LadderSighash")`) is a new hash algorithm. Implementation differences between signing and verification code could cause valid signatures to be rejected.
-
-**Mitigation:** The sighash algorithm is derived from BIP-341 with minimal modifications (removal of annex/tapscript extensions, addition of conditions_hash). Unit tests verify determinism, hash type variants, and round-trip sign/verify cycles. The tagged hash prefix ensures domain separation from BIP-341 sighashes.
-
-### Unknown Block Type Semantics
-
-**Risk:** Unknown block types are rejected at consensus during deserialization. This fail-closed design prevents an attacker from crafting conditions with fabricated block types.
-
-**Mitigation:** `IsKnownBlockType()` is checked during deserialization in `serialize.cpp`. Transactions with unknown block types cannot enter the mempool or be included in blocks. New block types require a code update to be recognised.
-
-## 8. Milestones
-
-| Milestone | Description |
-|-----------|-------------|
-| BIP publication | Formal specification published for community review. |
-| Reference implementation review | Code review of `src/rung/` by independent reviewers. Fuzz testing campaigns. |
-| Testnet deployment | Ladder Script activated on signet/testnet. Wallet developers begin integration testing. |
-| Signalling start | BIP-9 signalling begins on mainnet. |
-| Activation | All 59 active block types become consensus-enforced and policy-standard. |
-
-**Failure criteria:** If the deployment fails to reach the 90% threshold within its 1-year timeout, it enters FAILED state. A new BIP-9 deployment with a fresh version bit and updated parameters would be required to retry.
-
-### Post-Activation Monitoring
-
-After activation, the following should be monitored:
-
-- **Block validation time:** Ladder evaluation adds computation per v4 input. Monitor for block validation latency increases.
-- **Mempool behaviour:** Ensure v4 transactions are correctly relayed and that policy enforcement matches expectations.
-- **UTXO set growth:** MLSC outputs are fixed at 40 bytes per entry regardless of script complexity. Monitor overall UTXO count growth from ladder adoption.
-- **Reorg behaviour:** Verify that v4 transactions are correctly handled during chain reorganizations.
-- **Wallet adoption:** Track the percentage of outputs using ladder conditions.
-
-## 9. Legacy Migration Path
-
-Ladder Script's Legacy family (0x0900-0x09FF) wraps traditional Bitcoin transaction types as typed blocks, preserving their spending semantics while closing arbitrary data surfaces. This enables a phased migration from legacy formats to fully typed conditions.
-
-### Phase 1: Coexistence
-
-Both legacy Bitcoin transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR) and Ladder Script v4 transactions are valid on-chain. No existing transaction type is deprecated. Wallets choose which format to use. This is the state at activation.
-
-### Phase 2: Legacy-in-Blocks
-
-After sufficient adoption and stability, a follow-up soft fork restricts new output creation to Ladder Script v4 transactions only. Legacy spending semantics remain available through the Legacy block family - a P2PKH_LEGACY block evaluates identically to a P2PKH script, but all fields are typed and validated. No arbitrary data surfaces exist in the wrapped form. Existing legacy UTXOs remain spendable under their original rules indefinitely.
-
-### Phase 3: Sunset
-
-After the Legacy block family has proven stable and the ecosystem has fully migrated, the Legacy blocks themselves can be deprecated in a further soft fork. At this point all transaction conditions use native Ladder Script block types. The wrapped legacy semantics are no longer needed because the native equivalents (SIG, MULTISIG, HTLC, HASH_SIG, timelocks) cover every spending pattern the legacy types expressed.
-
-Each phase requires its own community review, signalling period, and activation. No phase is contingent on a timeline - each proceeds when the prior phase has demonstrated stability.
+The soft fork includes comprehensive anti-spam measures enforced at consensus:
+
+1. **Fail-closed deserialization.** Unknown block types, unknown data types, and deprecated
+   blocks are rejected at the wire format level.
+2. **Selective inversion.** Explicit allowlist. Key-consuming blocks are never invertible.
+3. **IsDataEmbeddingType.** PUBKEY_COMMIT, HASH256, HASH160, and DATA are blocked in blocks
+   without implicit layouts.
+4. **PREIMAGE/SCRIPT_BODY cap.** Maximum 2 per witness (combined), bounding user-chosen
+   data to 64 bytes.
+5. **DATA type restriction.** Only allowed in DATA_RETURN blocks.
+6. **merkle_pub_key.** Pubkeys folded into Merkle leaves, not stored as condition fields.
+7. **Relay chain depth cap.** Maximum 4 levels of relay chaining.
+
+## Test Coverage
+
+| Suite | Count | Purpose |
+|-------|-------|---------|
+| Unit tests | 480 | All block evaluators, serialization, Merkle tree, sighash, anti-spam |
+| Functional tests | 60 | End-to-end regtest: create, sign, broadcast, verify v4 transactions |
+| TLA+ formal specs | 10 specs, 80+ properties | Evaluation semantics, composition, anti-spam, wire format, Merkle, sighash, covenants, cross-input |
+
+The 10 TLA+ specifications are:
+
+1. **LadderEval** — rung/ladder evaluation with inversion and recursion termination
+2. **LadderEvalCheck** — type invariants and safety properties
+3. **LadderBlockEval** — individual block evaluation
+4. **LadderComposition** — AND/OR composition with relays
+5. **LadderAntiSpam** — anti-spam field limits
+6. **LadderWireFormat** — serialization invariants
+7. **LadderMerkle** — Merkle tree construction and verification
+8. **LadderSighash** — sighash computation properties
+9. **LadderCovenant** — covenant/recursion safety and termination
+10. **LadderCrossInput** — cross-input (COSIGN) dependency safety

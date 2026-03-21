@@ -2,920 +2,820 @@
 
 ---
 
-## General
+## Q1: What is Ladder Script?
 
-### 1. What is Ladder Script?
+Ladder Script is the spending-condition language for Bitcoin Ghost v4 (`RUNG_TX`)
+transactions. It replaces Bitcoin Script with a structured, typed system of
+**function blocks** organized into **rungs**. Each block evaluates exactly one
+spending condition (signature check, timelock, hash preimage, covenant, etc.),
+and each rung is a conjunction (AND) of blocks. The complete ladder is a
+disjunction (OR) across rungs: the first rung in which every block returns
+SATISFIED wins.
 
-Ladder Script is a typed, structured transaction condition system for Bitcoin.
-Spending conditions are expressed as typed blocks organised into rungs, borrowing
-the visual and logical structure of Programmable Logic Controller (PLC) ladder
-diagrams used in industrial automation.
+Ladder Script is carried in two places:
 
-Each output's scriptPubKey contains serialised *conditions* (the locking side),
-and each input's witness contains serialised *attestations* (the unlocking side).
-Both use the same wire format: rungs containing blocks containing typed fields.
+1. **Conditions** (locking side): stored on-chain as an MLSC output
+   (`0xC2 + 32-byte Merkle root`). The full conditions are never on-chain;
+   only the root hash is published. Inline conditions (`0xC1`) are removed.
+2. **Witness** (spending side): carried in the transaction witness. Contains
+   signatures, preimages, and other secrets required to satisfy the conditions.
 
-### 2. What problems does Ladder Script solve?
-
-Three:
-
-- **Programmability.** 61 block types (59 active, 2 deprecated) across 10 families —signatures, timelocks,
-  hash locks, covenants, recursion, PLC state machines, governance constraints,
-  and more —that compose freely within rungs and ladders. Any combination of
-  AND/OR spending logic, built declaratively.
-- **Quantum hardening.** Four post-quantum signature schemes (FALCON-512,
-  FALCON-1024, Dilithium3, SPHINCS+) are implemented, tested, and running on a
-  live signet. Any block that takes a signature —SIG, MULTISIG, HTLC, vaults,
-  covenants —can use PQ keys with zero structural changes.
-- **Data abuse resistance.** Every byte in a transaction belongs to a declared
-  data type with enforced size constraints. On the conditions side, the node
-  computes all key and hash commitments —no arbitrary data enters the UTXO set.
-  On the witness side, PUBKEY and SIGNATURE are cryptographically constrained,
-  PREIMAGE and SCRIPT_BODY are capped (32 and 80 bytes) with a combined limit
-  of 2 per witness, and data-embedding types are rejected in witness context for
-  blocks without implicit witness layouts. Maximum embeddable data: ~40 bytes.
-
-### 3. What is the PLC analogy?
-
-In industrial automation, a Programmable Logic Controller (PLC) runs a
-continuous scan cycle over a *ladder diagram*: a set of horizontal rungs
-connecting a left power rail to a right power rail. Each rung contains
-*contacts* (input conditions) in series, and terminates at a *coil* (output
-action). Power flows left to right: if all contacts in a rung are closed,
-the coil energises.
-
-Ladder Script maps this directly:
-
-| PLC Concept | Ladder Script Equivalent |
-|-------------|--------------------------|
-| Rung | Rung (vector of blocks) |
-| Contact | Block (SIG, CSV, TAGGED_HASH, etc.) |
-| Coil | Coil (UNLOCK, UNLOCK_TO, COVENANT) |
-| Power rail | Evaluation engine |
-| Scan cycle | Transaction validation |
-| AND logic | All blocks in a rung must be SATISFIED |
-| OR logic | First satisfied rung wins |
-
-### 4. Is this a hard fork or soft fork?
-
-Soft fork. Ladder Script uses transaction version 4 (v4) and the `0xC2`
-scriptPubKey prefix byte for Merkelised conditions (MLSC). MLSC is the only
-output format. Non-upgraded nodes treat v4 transactions as anyone-can-spend
-under the standard soft fork activation rules. Upgraded nodes enforce the full
-condition evaluation.
-
-### 5. What transaction version does Ladder Script use?
-
-Transaction version 4 (nVersion = 4). This version is currently unused in
-Bitcoin consensus and is designated for RUNG_TX transactions. The version
-number signals to upgraded nodes that the transaction should be validated
-using the Ladder Script evaluator rather than the script interpreter.
+The transaction version for Ladder Script transactions is **4** (`RUNG_TX_VERSION = 4`).
 
 ---
 
-## Technical
+## Q2: How does Ladder Script differ from Bitcoin Script?
 
-### 6. How are conditions evaluated?
+| Property | Bitcoin Script | Ladder Script |
+|---|---|---|
+| Encoding | Stack-based opcodes | Typed function blocks with fixed field layouts |
+| Evaluation | Sequential opcode execution | Block dispatch: AND within rung, OR across rungs |
+| Data model | Untyped stack items | 11 typed data types (PUBKEY, HASH256, NUMERIC, etc.) |
+| Locking script | On-chain (scriptPubKey) | Off-chain Merkle root only (MLSC, 33 bytes) |
+| Extensibility | Soft-fork new opcodes | New block types added to micro-header table |
+| Post-quantum | Not supported | FALCON-512, FALCON-1024, Dilithium3, SPHINCS+ |
+| Wire efficiency | Variable opcode sizes | Micro-headers (1 byte) + implicit field layouts |
+| Covenants | Limited (OP_CTV proposal) | Native CTV, recursion, VAULT_LOCK, AMOUNT_LOCK, OUTPUT_CHECK |
+| Batch verification | Not supported | BatchVerifier collects Schnorr sigs for batch verify |
+| Anti-spam | Script size limits only | Typed fields, max sizes, PREIMAGE cap, data-embedding rejection |
+| Inversion | No equivalent | Selective inversion (per-block negation, restricted to safe types) |
+| State machines | Not possible | PLC family: latches, counters, timers, sequencers, rate limiters |
 
-Evaluation follows two rules:
+---
 
-- **AND within a rung.** Every block in a rung must return SATISFIED for the
-  rung to pass. If any block returns UNSATISFIED or ERROR, the entire rung fails.
-  The evaluator short-circuits on the first non-SATISFIED result.
-- **OR across rungs.** Rungs are evaluated in order. The first rung that passes
-  wins, and the remaining rungs are not evaluated.
+## Q3: What are the block type families?
 
-This two-level logic is equivalent to a disjunctive normal form (DNF):
-`(A1 AND A2 AND A3) OR (B1 AND B2) OR (C1)`.
+There are **10 families** containing **61 block types** (59 active + 2 deprecated).
 
-### 7. What is the inversion flag?
+| # | Family | Range | Block types | Count |
+|---|--------|-------|-------------|-------|
+| 1 | **Signature** | `0x0001`-`0x00FF` | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG | 5 |
+| 2 | **Timelock** | `0x0100`-`0x01FF` | CSV, CSV_TIME, CLTV, CLTV_TIME | 4 |
+| 3 | **Hash** | `0x0200`-`0x02FF` | TAGGED_HASH, HASH_GUARDED, ~~HASH_PREIMAGE~~, ~~HASH160_PREIMAGE~~ | 4 (2 active, 2 deprecated) |
+| 4 | **Covenant** | `0x0300`-`0x03FF` | CTV, VAULT_LOCK, AMOUNT_LOCK | 3 |
+| 5 | **Recursion** | `0x0400`-`0x04FF` | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | 6 |
+| 6 | **Anchor/L2** | `0x0500`-`0x05FF` | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN | 7 |
+| 7 | **PLC** | `0x0600`-`0x06FF` | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN | 14 |
+| 8 | **Compound** | `0x0700`-`0x07FF` | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG | 6 |
+| 9 | **Governance** | `0x0800`-`0x08FF` | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK | 7 |
+| 10 | **Legacy** | `0x0900`-`0x09FF` | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY | 7 |
 
-Non-key-consuming blocks have a boolean `inverted` field. When set to `true`,
-the evaluation result is flipped: SATISFIED becomes UNSATISFIED, and UNSATISFIED
-becomes SATISFIED. ERROR is never inverted (it always propagates as a consensus
-failure).
+**Deprecated block types** (rejected at deserialization):
+- `HASH_PREIMAGE` (0x0201): replaced by HTLC, HASH_SIG, or HASH_GUARDED
+- `HASH160_PREIMAGE` (0x0202): replaced by HTLC, HASH_SIG, or HASH_GUARDED
 
-**Selective inversion:** Key-consuming blocks (SIG, MULTISIG, ADAPTOR_SIG,
-MUSIG_THRESHOLD, KEY_REF_SIG, COSIGN, and all compound/legacy SIG types)
-cannot be inverted. This is enforced at deserialization via
-`IsInvertibleBlockType()`, a fail-closed allowlist. This prevents an attacker
-from using a garbage pubkey with an inverted SIG block to embed arbitrary data.
+---
 
-This allows constructing ceiling guards without dedicated block types. For
-example, `COMPARE(GT, 1000000, inverted=true)` means "NOT (amount > 1,000,000)"
-which is equivalent to "amount <= 1,000,000".
+## Q4: How does evaluation work?
 
-### 8. How does the sighash work?
+Evaluation follows a strict two-level boolean structure:
 
-Ladder Script uses a tagged hash: `TaggedHash("LadderSighash")`. The sighash
-commits to:
+1. **Within a rung**: AND logic. Every block must return `SATISFIED`. If any
+   block returns `UNSATISFIED` or `ERROR`, the rung fails.
+2. **Across rungs**: OR logic. The evaluator tries rungs in order (index 0, 1,
+   2, ...). The first rung where all blocks are SATISFIED wins.
+3. **Relays**: Evaluated before rungs. Each relay is a set of blocks with AND
+   logic. Rungs and relays can declare `relay_refs`; all referenced relays must
+   be SATISFIED before the rung/relay is evaluated.
 
-- Epoch (currently 0)
-- Hash type (SIGHASH_DEFAULT, ALL, NONE, SINGLE, ANYONECANPAY, ANYPREVOUT, ANYPREVOUTANYSCRIPT)
+```
+EvalLadder:
+  1. EvalRelays (index 0 first, caching results)
+  2. For each rung r in order:
+     a. Check relay_refs (all must be SATISFIED)
+     b. For each block in rung r:
+        - result = EvalBlock(block)
+        - result = ApplyInversion(result, block.inverted)
+        - If result != SATISFIED, skip to next rung
+     c. If all blocks SATISFIED, return true (rung r wins)
+  3. No rung satisfied: return false
+```
+
+**EvalResult values**:
+- `SATISFIED`: condition met
+- `UNSATISFIED`: condition not met (valid but fails)
+- `ERROR`: malformed block (consensus failure)
+- `UNKNOWN_BLOCK_TYPE`: forward compatibility (treated as UNSATISFIED)
+
+---
+
+## Q5: What is selective inversion?
+
+Any block can be marked as **inverted** (`block.inverted = true`). When inverted,
+the `ApplyInversion` function flips the evaluation result:
+
+- `SATISFIED` becomes `UNSATISFIED`
+- `UNSATISFIED` becomes `SATISFIED`
+- `ERROR` remains `ERROR` (errors never flip)
+- `UNKNOWN_BLOCK_TYPE` when inverted becomes `ERROR` (unknown types must not satisfy)
+
+**Not all block types can be inverted.** The `IsInvertibleBlockType()` function
+defines a fail-closed allowlist. Key-consuming blocks (SIG, MULTISIG, all
+compound blocks with signatures, COSIGN, etc.) are **never invertible** because
+inverting them would allow garbage pubkey data embedding: provide an invalid
+pubkey (arbitrary data), signature check fails, inversion flips to SATISFIED.
+
+Invertible families include: timelocks, hashes (TAGGED_HASH), covenants,
+recursion, PLC, anchors, governance (WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT,
+ACCUMULATOR), and hash-locked legacy (P2SH_LEGACY, P2WSH_LEGACY).
+
+In the wire format, inverted blocks use escape byte `0x81` (vs `0x80` for
+non-inverted escapes). Micro-header encoding (`0x00`-`0x7F`) is always
+non-inverted.
+
+In descriptor notation, inversion is written with `!` prefix: `!csv(144)`.
+
+---
+
+## Q6: What is merkle_pub_key?
+
+`merkle_pub_key` is the design pattern where public keys are **not stored in the
+conditions** (locking side). Instead, pubkeys are carried in the witness and
+bound to the MLSC Merkle leaf at fund time.
+
+When computing a rung's Merkle leaf hash (`ComputeRungLeaf`), the function:
+
+1. Serializes the rung's blocks in CONDITIONS context (no pubkeys, no signatures)
+2. Appends each pubkey in positional order (walked left-to-right across
+   key-consuming blocks using `PubkeyCountForBlock()`)
+3. Hashes the result with the `LadderLeaf` tagged hasher
+
+This means:
+- **Conditions on-chain** contain only `SCHEME`, `HASH256`, `HASH160`, `NUMERIC`,
+  `SPEND_INDEX`, and `DATA` fields. No `PUBKEY` or `PUBKEY_COMMIT`.
+- **Pubkeys appear only in the witness**, where they are verified against the
+  Merkle proof binding them to the commitment root.
+- The writable surface for arbitrary data in conditions is eliminated because
+  `PUBKEY_COMMIT` (32 bytes of attacker-chosen data) no longer exists there.
+
+Key-consuming block types (those returning `true` from `IsKeyConsumingBlockType()`)
+include: SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG, COSIGN,
+TIMELOCKED_SIG, HTLC, HASH_SIG, CLTV_SIG, PTLC, TIMELOCKED_MULTISIG,
+P2PK_LEGACY, P2PKH_LEGACY, P2WPKH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY,
+ANCHOR_CHANNEL, ANCHOR_ORACLE, VAULT_LOCK, LATCH_SET, LATCH_RESET,
+COUNTER_DOWN, COUNTER_UP.
+
+---
+
+## Q7: What is MLSC?
+
+**MLSC** (Merkelized Ladder Script Conditions) is the output format for Ladder
+Script. Every v4 output is a 33-byte scriptPubKey:
+
+```
+0xC2 || conditions_root (32 bytes)
+```
+
+Optionally, up to 40 bytes of DATA_RETURN payload can be appended (total
+scriptPubKey size: 34 to 73 bytes).
+
+The `conditions_root` is a Merkle tree root computed from leaves:
+
+```
+Leaf order: [rung_leaf[0], ..., rung_leaf[N-1], relay_leaf[0], ..., relay_leaf[M-1], coil_leaf]
+```
+
+Leaf hashing uses `TaggedHash("LadderLeaf", serialized_data || pubkeys)`.
+Interior nodes use `TaggedHash("LadderInternal", min(a,b) || max(a,b))` with
+sorted children (lexicographic order). The tree is padded to the next power of 2
+with `MLSC_EMPTY_LEAF = TaggedHash("LadderLeaf", "")`.
+
+At spend time, the witness carries an `MLSCProof` containing:
+- `total_rungs`, `total_relays`, `rung_index`
+- The revealed rung's condition blocks
+- Revealed relay conditions (for relays referenced by the rung)
+- Proof hashes for unrevealed leaves
+- Optional: revealed mutation targets (for cross-rung recursion)
+
+The verifier (`VerifyMLSCProof`) reconstructs the full leaf array from revealed
+data plus proof hashes, builds the Merkle tree, and checks the computed root
+against the UTXO's `conditions_root`.
+
+**Privacy benefit**: only the spending rung is revealed. All other rungs remain
+hidden behind their leaf hashes.
+
+---
+
+## Q8: What sighash types are supported?
+
+Ladder Script sighash computation uses `TaggedHash("LadderSighash")` and
+supports these hash types:
+
+| Hash type | Value | Behavior |
+|-----------|-------|----------|
+| `SIGHASH_DEFAULT` | `0x00` | Commits to all inputs and outputs (same as ALL) |
+| `SIGHASH_ALL` | `0x01` | Commits to all inputs and outputs |
+| `SIGHASH_NONE` | `0x02` | Commits to all inputs, no outputs |
+| `SIGHASH_SINGLE` | `0x03` | Commits to all inputs, only the matching output |
+| `SIGHASH_ANYONECANPAY` | `0x81`-`0x83` | Commits to only the signing input |
+| `SIGHASH_ANYPREVOUT` | `0x40`-`0x43` | Skips prevout commitment (BIP-118 analogue) |
+| `SIGHASH_ANYPREVOUTANYSCRIPT` | `0xC0`-`0xC3` | Skips prevout + conditions commitment |
+
+The valid hash type ranges are: `{0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}`.
+
+The sighash commits to:
+- Epoch (always 0)
+- Hash type byte
 - Transaction version and locktime
-- Prevouts hash, amounts hash, sequences hash (unless ANYONECANPAY; prevouts skipped if ANYPREVOUT)
-- Outputs hash (unless SIGHASH_NONE)
-- Spend type (always 0; no annex or extensions)
+- Prevouts hash, amounts hash, sequences hash (unless ANYONECANPAY; prevouts
+  skipped for ANYPREVOUT)
+- Outputs hash (unless NONE)
+- Spend type (always 0 for ladder; no annex or extensions)
 - Input-specific data (prevout or index)
-- **Conditions hash**: the conditions root directly from the `0xC2` MLSC output.
-  Skipped if ANYPREVOUTANYSCRIPT.
+- Conditions hash: SHA256 of serialized conditions, or the MLSC `conditions_root`
+  directly (skipped for ANYPREVOUTANYSCRIPT)
+- Output hash for SIGHASH_SINGLE
 
-The conditions hash binds the signature to the exact set of conditions being
-satisfied, preventing condition substitution attacks. ANYPREVOUT (0x40) skips
-prevouts commitment, enabling LN-Symmetry/eltoo. ANYPREVOUTANYSCRIPT (0xC0)
-skips both prevouts and conditions commitments for fully rebindable signatures.
+**ANYPREVOUT** enables LN-Symmetry/eltoo: the signature still commits to amounts,
+sequences, and conditions, but not to the specific prevout being spent.
 
-### 9. What is the output format?
-
-Ladder Script uses a single output format:
-
-- **`0xC2` (MLSC: Merkelised Ladder Script Conditions).** A 32-byte
-  Merkle root follows the prefix byte (33 bytes standard, or 34-73 bytes
-  with a DATA_RETURN payload appended). The actual conditions are revealed
-  at spend time via a Merkle proof in the witness. This provides MAST-style
-  privacy and keeps the UTXO set compact.
-
-The `0xC2` prefix byte was chosen to avoid collision with any existing OP_
-opcode, witness version, or Taproot annex byte. Inline conditions (`0xC1`)
-have been removed; MLSC is the only output format.
-
-### 10. What are the size limits?
-
-| Limit | Value | Enforcement |
-|-------|-------|-------------|
-| Max rungs per ladder | 16 | Consensus |
-| Max blocks per rung | 8 | Consensus |
-| Max fields per block | 16 | Deserialisation |
-| Max ladder witness size | 100,000 bytes | Deserialisation |
-| Max PUBKEY size | 2,048 bytes | Field validation |
-| Max SIGNATURE size | 50,000 bytes | Field validation |
-| Max PREIMAGE size | 32 bytes | Field validation |
-| Max SCRIPT_BODY size | 80 bytes | Field validation |
-| HASH256 size | Exactly 32 bytes | Field validation |
-| HASH160 size | Exactly 20 bytes | Field validation |
-| NUMERIC size | 1-4 bytes | Field validation |
-| SCHEME size | Exactly 1 byte | Field validation |
-| DATA size | 1-40 bytes | Field validation |
-
-### 11. How do coil types work?
-
-Each output has a coil that determines what happens when a rung is satisfied:
-
-- **UNLOCK** (0x01): Standard spend. The output is consumed and the value
-  goes to the spending transaction's outputs without further constraint.
-- **UNLOCK_TO** (0x02): Directed unlock. The output must go to a specific
-  destination address encoded in the coil.
-- **COVENANT** (0x03): The spending transaction's outputs must satisfy
-  additional conditions encoded in the coil. Used with recursion blocks.
-
-### 12. What is the difference between conditions and witness?
-
-**Conditions** are the locking side. For `0xC2` (MLSC) outputs, only a 32-byte
-Merkle root is in the scriptPubKey; the actual conditions are revealed at spend
-time via a Merkle proof. Conditions contain only *condition data types*:
-HASH256, HASH160, NUMERIC, SCHEME, DATA. Witness-only types (PUBKEY, PREIMAGE,
-SIGNATURE, SCRIPT_BODY) are forbidden in conditions. Public keys are not stored
-in conditions at all —they are folded into the Merkle leaf hash (merkle_pub_key).
-
-The **witness** is the unlocking side, stored in the transaction input's
-witness field. It contains the attestations: signatures, preimages, and other
-proof data needed to satisfy the conditions. For MLSC outputs, the witness
-also includes the revealed conditions and their Merkle proof.
-
-Both sides use the same serialisation format (rungs, blocks, fields), but the
-conditions side is strictly a subset: it defines what must be proven, not the
-proofs themselves.
-
-### 12a. What is a diff witness and when should I use one?
-
-A diff witness allows one input's witness to inherit its structure from another
-input in the same transaction. Instead of serialising a full witness for every
-input, you provide only the fields that differ (typically just signatures,
-since each input has a unique sighash). Use diff witnesses when a transaction
-spends multiple UTXOs with identical or similar conditions —batch
-consolidation, covenant chain spends, and MULTISIG batches all benefit.
-
-### 12b. Can diff witnesses be chained?
-
-No. A diff witness can only reference a full (non-diff) witness. The source
-input must have a standard witness with `n_rungs > 0`. This prevents circular
-dependencies and keeps resolution to a single level of indirection. If you
-need three identical inputs, inputs 1 and 2 can both reference input 0, but
-input 2 cannot reference input 1 if input 1 is itself a diff witness.
-
-### 12c. What are relays?
-
-Relays are shared sub-condition blocks that are evaluated once and referenced
-by multiple rungs via `relay_refs`. A relay contains blocks (like a rung) but
-has no coil —it produces a boolean result that any rung can consume.
-
-Relays are evaluated before any rungs. If a relay returns UNSATISFIED, every
-rung that references it fails without evaluating its own blocks. This enables
-AND composition across rungs without duplicating blocks, and in MLSC trees,
-only the relays referenced by the exercised rung are revealed.
+**ANYPREVOUTANYSCRIPT** enables rebindable signatures across different scripts
+by additionally skipping the conditions commitment.
 
 ---
 
-## Covenants
+## Q9: How does the wire format work?
 
-### 13. How does RECURSE_SAME work?
+### Micro-headers
 
-`RECURSE_SAME` (0x0401) enforces that one of the spending transaction's outputs
-has a scriptPubKey byte-identical to the input's scriptPubKey. This creates a
-perpetual covenant: the UTXO re-encumbers itself with the exact same conditions
-on every spend.
+Each block begins with a single-byte **micro-header** that maps to a block type
+via a 128-entry lookup table (`MICRO_HEADER_TABLE`):
 
-The block takes one NUMERIC field: `max_depth`. Each spend decrements the depth.
-When depth reaches 0, the covenant expires and the block returns SATISFIED
-without enforcing output structure, allowing free spending.
+- `0x00`-`0x7F`: Lookup table index (1 byte total for block header)
+- `0x80`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, not inverted)
+- `0x81`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, inverted)
 
-### 14. How does RECURSE_MODIFIED enforce mutations?
+All 59 active block types have assigned micro-header slots (slots 0x00 through
+0x3E). Slots 0x07 and 0x08 are reserved (formerly HASH_PREIMAGE and
+HASH160_PREIMAGE).
 
-`RECURSE_MODIFIED` (0x0402) allows a covenant to re-encumber with controlled
-mutations. The block specifies:
+### Implicit field layouts
 
-- **Target rung index**: which rung in the conditions to mutate
-- **Target block index**: which block within that rung
-- **Target parameter index**: which field within that block
-- **Delta**: the exact signed change to apply
+When a block uses a micro-header and has a known implicit field layout for the
+current serialization context (WITNESS or CONDITIONS), field count bytes and
+data type bytes are omitted. The deserializer knows the exact number, types,
+and sizes of fields from the block type alone.
 
-The evaluator verifies that the spending transaction's output conditions are
-identical to the input conditions except for the specified field, which must
-differ by exactly the specified delta. Multiple mutations can be specified in
-a single block using the multi-mutation format.
+For example, SIG in CONDITIONS context has the implicit layout `[SCHEME(1)]`,
+meaning exactly 1 byte follows (the scheme byte, no length prefix). SIG in
+WITNESS context has `[SCHEME(1), PUBKEY(var), SIGNATURE(var)]`.
 
-### 15. Can covenants be infinite?
+**Varint NUMERIC optimization**: NUMERIC fields are encoded as CompactSize
+values directly (no length prefix), saving 1-4 bytes per numeric field. They
+are always deserialized into 4-byte little-endian storage.
 
-No. Every recursion block type includes a termination mechanism that limits the
-total number of recursive spends. This prevents unbounded covenant chains that
-could create perpetual UTXO set obligations.
+**Fixed-size fields**: Fields like SCHEME (always 1 byte), HASH256 (always 32
+bytes), and HASH160 (always 20 bytes) skip the length prefix entirely in
+implicit layouts.
 
-- `RECURSE_SAME`: depth decrements each spend; covenant expires at 0.
-- `RECURSE_COUNT`: count decrements each spend; covenant expires at 0.
-- `RECURSE_UNTIL`: covenant expires when block height reaches the target.
-- `RECURSE_DECAY`: parameters decay toward zero; covenant expires when all
-  decayed parameters reach their floor.
-
-### 16. What is RECURSE_DECAY?
-
-`RECURSE_DECAY` (0x0406) is a recursion block where specified parameters
-decrease by a fixed amount on each spend. Unlike RECURSE_MODIFIED (which
-applies an exact delta), RECURSE_DECAY is designed for constraints that
-gradually relax over time.
-
-Example: a COMPARE threshold that starts at 500,000 sats and decays by 50,000
-per spend. After 10 spends, the threshold has relaxed to 0, effectively removing
-the constraint. Multiple parameters can decay at different rates using the
-multi-mutation format.
-
-### 16a. Why are covenants built in rather than requiring new opcodes?
-
-Covenant semantics are encoded as block types with typed fields. RECURSE_SAME,
-RECURSE_MODIFIED, CTV, VAULT_LOCK —each is a single block with explicit
-parameters. The evaluator knows exactly what each block constrains. There is no
-need to propose new opcodes, debate script semantics, or worry about
-interactions with existing stack operations. A new covenant pattern is a new
-block type with a defined evaluation function —not a new language primitive
-that could conflict with existing ones.
-
----
-
-## Post-Quantum
-
-### 17. Which PQ algorithms are supported?
-
-Four post-quantum signature schemes, all implemented and running on the live
-signet:
-
-| Scheme | Byte | Public Key Size | Signature Size |
-|--------|------|-----------------|----------------|
-| FALCON-512 | 0x10 | 897 bytes | ~690 bytes |
-| FALCON-1024 | 0x11 | 1,793 bytes | ~1,330 bytes |
-| Dilithium3 | 0x12 | 1,952 bytes | 3,293 bytes |
-| SPHINCS+ | 0x13 | 32 bytes | ~7,856 bytes |
-
-Classical schemes are also supported: Schnorr (0x01) and ECDSA (0x02).
-
-### 18. What is merkle_pub_key and why does it matter?
-
-merkle_pub_key is the scheme by which public keys are bound to conditions without
-appearing in them. Instead of storing a key commitment field in the conditions,
-the node folds all public keys consumed by a rung into the Merkle leaf hash:
+### Full wire format
 
 ```
-leaf = TaggedHash("LadderLeaf", SerializeRung(rung) || pk1 || pk2 || ... || pkN)
+[n_rungs: varint]
+for each rung:
+  [n_blocks: varint]
+  for each block:
+    [micro_header or escape + type]
+    [implicit fields] or [n_fields: varint, explicit fields]
+[coil: coil_type(1) + attestation(1) + scheme(1) + addr_len(varint) + addr + n_coil_conditions(varint)]
+[rung_destinations: n(varint) + entries]
+[relays section (optional)]
+[per-rung relay_refs (optional)]
 ```
 
-Keys are appended in block order (left to right), with the count determined by
-`PubkeyCountForBlock()` for each block type. The result is a single 32-byte leaf
-with no writable surface —an attacker constructing a raw transaction has nowhere
-to embed arbitrary data, because there is no key commitment field in the conditions
-at all.
-
-At spend time, the witness provides the public keys. The verifier recomputes the
-leaf from the revealed conditions plus the witness keys. If the leaf does not match
-the committed Merkle root, verification fails before signature checking begins.
-
-For PQ keys, this also provides massive UTXO savings: a 1,952-byte Dilithium3 key
-contributes only to the 32-byte Merkle leaf. The full key is revealed only at
-spend time in the witness, which is prunable.
-
-### 19. What is the COSIGN anchor pattern?
-
-The COSIGN anchor pattern provides post-quantum protection for multiple UTXOs
-using a single perpetual PQ anchor:
-
-1. **Anchor UTXO**: `SIG(FALCON512) + RECURSE_SAME(depth=1000)`
-   The anchor carries the PQ key (bound via merkle_pub_key) and re-encumbers itself on every spend.
-
-2. **Child UTXOs**: `SIG(Schnorr) + COSIGN(SHA256(anchor_scriptPubKey))`
-   Children use lightweight Schnorr signatures but cannot be spent unless the
-   anchor is present as a co-input in the same transaction.
-
-3. **Co-spend transaction**: Both anchor and child(ren) are inputs. The anchor
-   provides the PQ signature; children provide Schnorr signatures. The COSIGN
-   evaluator scans all other inputs for a matching scriptPubKey hash.
-
-The anchor's scriptPubKey hash never changes (RECURSE_SAME), so children created
-at any future time can reference the same anchor hash.
-
-### 20. How much UTXO space does merkle_pub_key save?
-
-| Key Type | Full Key | In UTXO (merkle_pub_key) | Savings |
-|----------|----------|--------------------------|---------|
-| FALCON-512 | 897 bytes | 0 bytes (folded into leaf) | 897 bytes (100%) |
-| FALCON-1024 | 1,793 bytes | 0 bytes (folded into leaf) | 1,793 bytes (100%) |
-| Dilithium3 | 1,952 bytes | 0 bytes (folded into leaf) | 1,952 bytes (100%) |
-
-With merkle_pub_key, no public key data appears in the UTXO set at all. Keys are
-folded into the 32-byte Merkle leaf hash. The full key is provided only at spend
-time in the prunable witness.
-
-### 20a. Can I migrate an existing Schnorr key to PQ without moving funds?
-
-Not directly —the UTXO's conditions are fixed at creation. But the COSIGN
-pattern (Q19) lets you add PQ protection to any existing spending pattern by
-creating a PQ anchor and requiring it as a co-input. Your Schnorr UTXOs keep
-their existing conditions; the PQ requirement is additive.
-
-### 20b. Why not wait for a single PQ standard?
-
-Because the threat is real and the migration takes time. Ladder Script ships
-four schemes now. When the cryptographic community converges on a winner, that
-scheme is already available. Meanwhile, SPHINCS+ (hash-based, 32-byte keys) is
-considered the most conservative choice, and FALCON-512 offers the best
-size/speed tradeoff. Users choose based on their own risk assessment —the
-system supports all four today.
+**Diff witness mode**: When `n_rungs == 0`, the witness is a reference to
+another input's witness with field-level diffs (see Q19).
 
 ---
 
-## PLC Blocks
+## Q10: What anti-spam properties exist?
 
-### 21. What are PLC blocks?
+Ladder Script enforces multiple layers of anti-spam protection:
 
-PLC (Programmable Logic Controller) blocks are block types in the 0x06xx range
-that implement stateful industrial automation primitives: timers, counters,
-latches, comparators, sequencers, and hysteresis bands. They carry state in
-their NUMERIC fields and update that state across covenant spends.
+1. **Typed fields with size bounds**: Every data type has a minimum and maximum
+   size. PUBKEY: 1-2048 bytes. SIGNATURE: 1-50000 bytes. HASH256: exactly 32
+   bytes. HASH160: exactly 20 bytes. PREIMAGE: exactly 32 bytes. NUMERIC:
+   1-4 bytes. SCHEME: 1 byte. SCRIPT_BODY: 1-80 bytes. DATA: 1-40 bytes.
 
-PLC blocks enable complex, multi-step smart contracts without requiring an
-external state machine. The UTXO itself is the state register, and each spend
-is one scan cycle of the PLC program.
+2. **PREIMAGE/SCRIPT_BODY field cap**: Maximum 2 PREIMAGE or SCRIPT_BODY
+   fields per witness (`MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`). This limits
+   user-chosen data to 64 bytes (2 x 32 bytes) per input.
 
-### 22. How do counters work across covenant spends?
+3. **Data-embedding type rejection**: For blocks without an implicit layout,
+   high-bandwidth data types (PUBKEY_COMMIT, HASH256, HASH160, DATA) are
+   rejected. This prevents layout-less blocks from carrying
+   16 x 80 = 1280 bytes of unvalidated payload. ACCUMULATOR is whitelisted
+   (needs variable HASH256 fields for Merkle proofs, capped at 10).
 
-Counter blocks (COUNTER_DOWN, COUNTER_UP, COUNTER_PRESET) store their current
-count in a NUMERIC field. When combined with a recursion block (RECURSE_MODIFIED
-or RECURSE_SAME), the counter state persists across spends:
+4. **DATA type restriction**: The DATA type is only allowed in DATA_RETURN
+   blocks. Using it in any other block type causes a deserialization error.
 
-- **COUNTER_DOWN** (0x0631): Starts at a count value. Returns SATISFIED while
-  count > 0, allowing the rung to fire. At count == 0, returns UNSATISFIED.
-  Used with RECURSE_MODIFIED to decrement on each spend.
+5. **merkle_pub_key**: Public keys removed from conditions eliminates the
+   PUBKEY_COMMIT writable surface.
 
-- **COUNTER_UP** (0x0633): Starts at 0 and increments toward a target. Returns
-  SATISFIED while current < target. At current >= target, returns UNSATISFIED.
+6. **Inverted key-consuming block rejection**: Blocks that consume pubkeys
+   cannot be inverted, preventing garbage-pubkey data embedding.
 
-- **COUNTER_PRESET** (0x0632): Like COUNTER_UP but with a preset threshold.
-  Returns SATISFIED while current < preset; UNSATISFIED when the preset is
-  reached or exceeded.
+7. **Strict field enforcement**: When a block type has an implicit layout, the
+   explicit field count and types must match exactly.
 
-### 23. What is a latch?
+8. **Hash-preimage binding**: Anchor blocks (ANCHOR_POOL, ANCHOR_RESERVE,
+   ANCHOR_SEAL) and ONE_SHOT verify that every HASH256 field equals
+   SHA256(corresponding PREIMAGE), preventing unverified hash data embedding.
 
-LATCH_SET (0x0621) and LATCH_RESET (0x0622) implement bistable state elements.
-A latch has a state field (NUMERIC): 0 = unset, nonzero = set.
+9. **Consensus limits**:
+   - `MAX_RUNGS = 16`
+   - `MAX_BLOCKS_PER_RUNG = 8`
+   - `MAX_FIELDS_PER_BLOCK = 16`
+   - `MAX_LADDER_WITNESS_SIZE = 100000` bytes
+   - `MAX_RELAYS = 8`
+   - `MAX_REQUIRES = 8` (relay_refs per rung or relay)
+   - `MAX_RELAY_DEPTH = 4` (transitive chain depth)
+   - `MAX_COIL_CONDITION_RUNGS = 0` (coil conditions reserved)
+   - `MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`
+   - `COIL_ADDRESS_HASH_SIZE = 32` (SHA256 of raw address)
 
-- **LATCH_SET**: Returns SATISFIED when state == 0 (the latch can fire). Once
-  the rung executes, the latch is considered "set" and a RECURSE_MODIFIED block
-  would update its state to 1, preventing re-firing until reset.
+10. **Deprecated block rejection**: HASH_PREIMAGE and HASH160_PREIMAGE are
+    rejected at deserialization with the message "deprecated block type: use
+    HTLC or HASH_SIG".
 
-- **LATCH_RESET**: Returns SATISFIED when state != 0. Resets the latch to 0.
-
-Latches are used for one-time authorisation, state machine gating, and
-preventing double-execution of covenant logic.
-
-### 24. What is HYSTERESIS_FEE for?
-
-HYSTERESIS_FEE (0x0601) is a fee-rate band gate. It computes the spending
-transaction's actual fee rate (in sat/vB) from `(sum_inputs - sum_outputs) / vsize`
-and checks that it falls within a specified band `[low_sat_vb, high_sat_vb]`.
-
-Use cases:
-
-- **Prevent panic-spending** during fee spikes (reject transactions with
-  fee rate > ceiling).
-- **Prevent low-fee transactions** that might be vulnerable to replacement
-  or fail to confirm (reject transactions with fee rate < floor).
-- **Treasury governance**: ensure organizational funds are only spent during
-  normal fee conditions.
+11. **Blanket HASH256 rejection**: In blocks without implicit layouts, HASH256
+    fields are rejected by the `IsDataEmbeddingType` check, closing the gap
+    where arbitrary 32-byte data could be injected.
 
 ---
 
-## Security
+## Q11: What coil types exist? What are rung_destinations?
 
-### 25. Can arbitrary data be stored in Ladder Script?
+### Coil types
 
-No. The typed field system eliminates arbitrary data embedding at multiple
-layers:
+Every Ladder Script output carries a **coil** with three metadata bytes:
 
-1. **merkle_pub_key eliminates the writable surface.** Public keys are folded
-   into the Merkle leaf hash —no key commitment field exists in conditions.
-   There is no writable slot for an attacker to fill with arbitrary data.
-2. **Type enforcement.** Every field must conform to a declared data type with
-   strict size bounds. Unknown data types are rejected at deserialisation.
-3. **Context separation.** Witness-only types (PUBKEY, PREIMAGE, SIGNATURE,
-   SCRIPT_BODY) cannot appear in conditions. Data-embedding types (HASH256,
-   HASH160, DATA) are rejected in witness context for blocks without implicit
-   witness layouts.
-4. **Selective inversion.** Key-consuming blocks cannot be inverted, preventing
-   an attacker from using a garbage pubkey with an inverted SIG to embed data.
-5. **Witness data limits.** PREIMAGE (max 32 bytes) and SCRIPT_BODY (max 80
-   bytes) share a limit of 2 fields per witness
-   (`MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`). PUBKEY and SIGNATURE are cryptographically
-   constrained —they must correspond to valid keys and signatures. Maximum
-   embeddable data per witness: ~64 bytes.
-6. **Build-time validation.** Public keys are checked for compressed key prefix
-   (0x02/0x03 for 33-byte keys), SCHEME values are validated against the enum.
-7. **Economic deterrent.** Even if structurally valid data gets into a UTXO
-   (e.g., a PUBKEY field with non-key bytes), no valid signature can be produced.
-   The attacker pays for storage they can never recover.
+| Field | Type | Values |
+|-------|------|--------|
+| `coil_type` | `RungCoilType` | `UNLOCK (0x01)`: standard spend; `UNLOCK_TO (0x02)`: send to specific destination; `COVENANT (0x03)`: constrains spending transaction |
+| `attestation` | `RungAttestationMode` | `INLINE (0x01)`: signatures inline in witness; `AGGREGATE (0x02)`: block-level aggregate signature; `DEFERRED (0x03)`: template hash (not yet supported, fail-closed) |
+| `scheme` | `RungScheme` | `SCHNORR (0x01)`, `ECDSA (0x02)`, `FALCON512 (0x10)`, `FALCON1024 (0x11)`, `DILITHIUM3 (0x12)`, `SPHINCS_SHA (0x13)` |
 
-### 26. What happens with unknown block types?
+The coil also carries:
+- **address_hash**: 0 or 32 bytes. When present, it is `SHA256(raw_address)`.
+  The raw address never goes on-chain.
+- **conditions**: Reserved (must be 0 rungs; `MAX_COIL_CONDITION_RUNGS = 0`).
 
-Unknown block types are rejected at consensus during deserialization.
-`IsKnownBlockType()` is checked in `DeserializeBlock()` —transactions
-containing unrecognised block types cannot enter the mempool or be included in
-blocks. This is a fail-closed design: no unknown type can reach the evaluator.
+### Rung destinations
 
-New block types require a code update and a soft fork activation to be
-recognised. Pre-upgrade nodes reject transactions using the new types entirely
-(they never reach evaluation), which is the standard soft fork security model.
+`rung_destinations` is a per-rung extension of the coil. Each entry is a pair
+of `(rung_index: uint16_t, address_hash: 32 bytes)`. This allows different
+rungs to route funds to different destinations.
 
-### 27. How does fail-closed work?
-
-Ladder Script follows the fail-closed principle throughout:
-
-- Unknown block types: rejected at deserialisation (consensus failure).
-- Unknown data types: rejected at deserialisation (not passed through).
-- Missing fields: ERROR (consensus failure, not silent acceptance).
-- Deferred attestation: unconditionally returns false (`VerifyDeferredAttestation`
-  is not yet supported and does not silently pass).
-- Out-of-range field sizes: rejected at deserialisation.
-- Empty rungs (no blocks): ERROR.
-
-No ambiguous input can result in a transaction being accepted. Every path
-through the evaluator either explicitly validates or explicitly rejects.
-
-### 27a. How does Ladder Script handle the inscription / data embedding problem?
-
-By design, there is no writable surface for arbitrary data in conditions.
-merkle_pub_key folds public keys into the Merkle leaf hash —no key commitment
-field exists in conditions. Hash fields (HASH256, HASH160) are fixed-size.
-NUMERIC fields are 1-4 bytes. SCHEME is 1 byte from a validated enum.
-Witness-only types are blocked from conditions at both the RPC and consensus
-layers. Key-consuming blocks cannot be inverted (selective inversion), closing
-the garbage-pubkey-with-inverted-SIG vector.
-
-MLSC outputs take this further: the UTXO stores only 33-73 bytes
-(`0xC2` + 32-byte Merkle root, optionally with a DATA_RETURN payload). The
-conditions are never in the UTXO set at all. An attacker could create a fake
-`0xC2` output with a garbage root, but it would be unspendable —no valid
-Merkle proof exists —so the fake data is never published on-chain. The
-attacker burns their funds for nothing.
-
-On the witness side, cryptographically constrained fields (PUBKEY, SIGNATURE)
-leave no room for arbitrary data. PREIMAGE is capped at 32 bytes, SCRIPT_BODY
-at 80 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 2
-such fields total. Data-embedding types (HASH256, HASH160, DATA) are rejected
-in witness context for blocks without implicit witness layouts. The maximum
-embeddable data per witness is ~64 bytes —and only as valid hash preimages
-or serialised Ladder Script conditions.
-
-The Legacy family (0x0900) extends this to traditional transaction types. P2SH,
-P2WSH, and taproot script-path —the primary inscription vectors today —are
-wrapped as typed blocks where the inner script must be valid Ladder Script
-conditions. Arbitrary bytes are rejected.
-
-### 27b. What is the coil address_hash?
-
-UNLOCK_TO coils store `SHA256(destination_scriptPubKey)` instead of the raw
-destination address. The field is `address_hash`: 0 bytes (no destination) or
-exactly 32 bytes (SHA256 hash). The raw address is never stored on-chain in
-the coil data.
-
-At evaluation time, the verifier computes `SHA256` of the spending transaction's
-output `scriptPubKey` and compares it to the committed hash. This provides
-destination binding without revealing the destination in the UTXO set.
-
-### 27c. What are the exact anti-spam byte limits?
-
-| Channel | Maximum | Enforcement |
-|---------|---------|-------------|
-| Output data (DATA_RETURN) | 40 bytes, 1/tx, zero-value | Consensus |
-| Conditions writable surface | 0 bytes (merkle_pub_key) | Consensus |
-| Witness PREIMAGE/SCRIPT_BODY | 2 fields, 32B + 80B max | Consensus |
-| ACCUMULATOR proof fields | 10 HASH256 max | Consensus |
-| Total embeddable per witness | ~64 bytes | Consensus |
-| Total per 1-input tx | ~104 bytes | Combined |
-
-For comparison, a single Bitcoin Taproot transaction can embed ~400,000 bytes
-of arbitrary data via the script-path witness.
-
-### 27d. What is leaf-centric covenant verification?
-
-For MLSC outputs, covenant blocks (RECURSE_SAME, RECURSE_MODIFIED, etc.) use
-the `MLSCVerifiedLeaves` structure rather than comparing full deserialized
-conditions. The verifier:
-
-1. Caches the input's verified leaf hashes from the Merkle proof.
-2. Applies the declared mutation to the target leaf hash.
-3. Rebuilds the Merkle root from the modified leaf array.
-4. Compares against the output's committed root.
-
-For cross-rung mutations (where the RECURSE_MODIFIED targets a different rung
-than the one being exercised), the MLSC proof includes `revealed_mutation_targets`
-with the target rung's condition blocks. This enables mutation verification
-without revealing the entire ladder.
+Constraints:
+- Maximum entries: `MAX_RUNGS` (16)
+- Rung indices must be unique (duplicate indices rejected at deserialization)
+- Coil leaf computation includes rung_destinations (Merkle-committed)
 
 ---
 
-## Tooling
+## Q12: What is a relay?
 
-### 28. What is the Ladder Engine?
+A **relay** is a reusable set of condition blocks that can be shared across
+multiple rungs. Relays are evaluated independently before rungs, and their
+results are cached. Rungs and other relays can declare **relay_refs** (indices
+into the relay array), requiring all referenced relays to be SATISFIED before
+the rung/relay is evaluated.
 
-The Ladder Engine is a single-page web application (vanilla JS, no framework)
-for building, simulating, and broadcasting Ladder Script transactions. Located
-at `tools/ladder-engine/index.html` —runs entirely client-side with no build
-step.
+Example use case: a shared signature check. If 4 rungs all require Alice's
+signature, Alice's SIG block can be placed in a relay. Each rung declares a
+relay_ref to that relay. Alice signs once; the relay is evaluated once and
+cached.
 
-Features include:
+Constraints from the serialization layer:
+- Maximum 8 relays per ladder (`MAX_RELAYS = 8`)
+- Maximum 8 blocks per relay (`MAX_BLOCKS_PER_RUNG`)
+- Maximum 8 relay_refs per rung or relay (`MAX_REQUIRES = 8`)
+- Maximum transitive relay chain depth: 4 (`MAX_RELAY_DEPTH = 4`)
+- Relay relay_refs must point backward (no forward or self references)
+- Relays participate in the MLSC Merkle tree as `relay_leaf` entries
 
-- **Build Mode**: Drag blocks from a palette onto rungs, configure fields via
-  a properties panel, define inputs/outputs, and generate `createrungtx` JSON.
-- **Simulate Mode**: Step through rung evaluation visually. Power flows left
-  to right through blocks. Click contacts to authorise them. Alt+click to
-  force-toggle blocks. Coils fire when all contacts pass.
-- **Send/Spend**: Fund outputs on the live signet and spend them —no local
-  node required.
-- **Examples Library**: Pre-built examples covering all major patterns.
-- **Import/Export**: Load and save `createrungtx` JSON.
+Relay evaluation uses AND logic (same as rung evaluation): every block in the
+relay must return SATISFIED. If a relay's relay_refs are not all SATISFIED, the
+relay itself evaluates to UNSATISFIED.
 
-### 29. What RPCs are available?
-
-| RPC | Purpose |
-|-----|---------|
-| `createrungtx` | Create a v4 RUNG_TX transaction from JSON conditions |
-| `signrungtx` | Sign a v4 transaction (Schnorr, ECDSA, or PQ) |
-| `decoderung` | Decode and display a v4 transaction's conditions and witness |
-| `generatepqkeypair` | Generate a post-quantum keypair (FALCON512, etc.) |
-| `pqpubkeycommit` | Compute SHA-256 commitment for a PQ public key |
-| `extractadaptorsecret` | Extract adaptor secret from adapted/pre-signatures |
-| `verifyadaptorpresig` | Verify an adaptor pre-signature |
-
-### 30. How do I create a v4 transaction?
-
-1. **Define conditions** as JSON with inputs, outputs, and per-output condition
-   arrays. Each condition is a rung; each rung contains blocks; each block
-   contains typed fields.
-
-2. **Submit via RPC**: `ghost-cli createrungtx '<json>'`
-   The node serialises the conditions, folds public keys into the Merkle leaf
-   hash (merkle_pub_key), sets the scriptPubKey to `0xC2` (MLSC with Merkle
-   root), and returns a hex-encoded raw transaction.
-
-3. **Sign via RPC**: `ghost-cli signrungtx '<hex>' '<options>'`
-   The RPC computes the LadderSighash and produces the appropriate signature
-   type (Schnorr by default, or PQ if specified).
-
-4. **Broadcast**: `ghost-cli sendrawtransaction '<signed_hex>'`
-
-The Ladder Engine tool automates steps 1-2 visually and can fund and broadcast
-directly on the signet.
+`KEY_REF_SIG` blocks can reference a relay's pubkey: the block carries
+`NUMERIC(relay_index)` and `NUMERIC(block_index)` in conditions, plus a
+SIGNATURE in the witness. At evaluation, the pubkey (and optionally SCHEME) is
+resolved from the referenced relay block.
 
 ---
 
-## MLSC (Merkelised Ladder Script Conditions)
+## Q13: How do covenant/recursion blocks work?
 
-### 31. What is MLSC?
+### Covenant blocks
 
-MLSC is the `0xC2` output format. Instead of storing full conditions inline,
-the scriptPubKey contains `0xC2` + a 32-byte Merkle root (33 bytes standard,
-or 34-73 bytes with a DATA_RETURN payload appended). The root is computed from
-the ladder's rungs using BIP-341-style tagged hashing:
+**CTV** (`0x0301`): Implements BIP-119 `OP_CHECKTEMPLATEVERIFY`. Conditions
+carry a 32-byte HASH256 template hash. At evaluation, `ComputeCTVHash` computes
+the BIP-119 template hash from the spending transaction and compares it to the
+committed hash. SATISFIED when they match.
 
-- **Leaf:** `TaggedHash("LadderLeaf", SerializeRung(rung[i]) || pk1 || ... || pkN)`
-- **Internal:** `TaggedHash("LadderInternal", min(A,B) || max(A,B))`
+**VAULT_LOCK** (`0x0302`): Two-path vault with recovery key and hot key. The
+block carries two PUBKEYs (recovery and hot) and a NUMERIC delay. If the
+recovery key's signature verifies, SATISFIED immediately (cold sweep). If the
+hot key's signature verifies, the CSV delay must also be met.
 
-Public keys consumed by blocks in the rung are appended to the leaf preimage
-in block order (merkle_pub_key). This binds keys to conditions without storing
-them in the UTXO set.
+**AMOUNT_LOCK** (`0x0303`): Checks that the output amount is within a range.
+Carries two NUMERICs (min_sats, max_sats). SATISFIED when
+`min_sats <= output_amount <= max_sats`.
 
-At spend time, the witness includes the revealed rung(s) and a Merkle proof.
-Unrevealed rungs remain hidden, providing MAST-style privacy.
+### Recursion blocks
 
-### 32. Why use MLSC instead of inline conditions?
+All recursion blocks enforce that the spending transaction's output carries
+specific MLSC conditions, creating covenant chains.
 
-Three reasons:
+**RECURSE_SAME** (`0x0401`): Output must carry identical conditions (same MLSC
+root). Carries a NUMERIC max_depth. SATISFIED when depth > 0 and the output
+MLSC root matches the input MLSC root.
 
-1. **Privacy.** Only the executed rung is revealed. Recovery paths, emergency
-   keys, and alternative spending conditions stay hidden if never used.
-2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-73
-   with DATA_RETURN) regardless of how complex the conditions are. A 16-rung
-   ladder with 8 blocks each takes the same UTXO space as a single SIG block.
-3. **Spam resistance.** The UTXO set never contains conditions —only a Merkle
-   root. There is no space for arbitrary data in the persistent state.
+**RECURSE_MODIFIED** (`0x0402`): Output must carry conditions with specific
+NUMERIC field mutations. Carries max_depth + mutation specs (rung_idx,
+block_idx, param_idx, delta). Verifies the output root matches the expected
+root after applying mutations.
 
-### 33. How does the sighash work for MLSC?
+**RECURSE_UNTIL** (`0x0403`): Recursive until a block height. Carries a NUMERIC
+until_height. If the effective height >= until_height, the covenant terminates
+(SATISFIED without recursion). Otherwise, the output must re-encumber with
+identical conditions.
 
-For `0xC2` outputs, the sighash commits to the `conditions_root` directly
-(the 32-byte Merkle root from the scriptPubKey) rather than hashing the full
-serialised conditions. This means the sighash is the same size regardless of
-ladder complexity, and the signer does not need access to unrevealed rungs.
+**RECURSE_COUNT** (`0x0404`): Countdown covenant. Carries a NUMERIC count. If
+count == 0, the covenant terminates. Otherwise, the output must re-encumber
+with count-1. The evaluator recomputes the MLSC leaf with the decremented count
+and verifies the output root.
 
-### 34. Can data be embedded in MLSC outputs?
+**RECURSE_SPLIT** (`0x0405`): Recursive output splitting. Carries max_splits
+and min_split_sats. Decrements max_splits, ensures every output has the new
+MLSC root and meets min_split_sats, and verifies total outputs do not exceed
+total inputs (value conservation).
 
-The only data surface is DATA_RETURN: up to 40 bytes appended after the Merkle
-root, making the output 34-73 bytes. DATA_RETURN outputs must be zero-value
-(provably unspendable), are limited to 1 per transaction, and cost 4 WU per
-byte —the same economics as OP_RETURN. This provides a structured, visible,
-prunable channel for protocol metadata (timestamps, commitments, anchors).
+**RECURSE_DECAY** (`0x0406`): Like RECURSE_MODIFIED but with negated deltas
+(parameters decrease over time). Uses the same mutation spec format.
 
-Beyond DATA_RETURN, there is no writable surface. The Merkle root is
-cryptographically bound to the conditions and keys. An attacker could create a
-fake `0xC2` output with a garbage root, but it would be unspendable —no valid
-Merkle proof exists —and the funds are permanently burned.
-
----
-
-## Wire Format
-
-### 35. What are micro-headers?
-
-Micro-headers are a wire format optimisation. Instead of encoding a block's
-type as a 2-byte `uint16_t`, all 61 block types are assigned a 1-byte slot
-index (0x00 to 0x3D) in a compile-time lookup table. This saves 1 byte per
-block.
-
-For blocks not in the table (future types), escape bytes are used: `0x80`
-followed by a 2-byte type code for non-inverted blocks, `0x81` followed by
-a 2-byte type code for inverted blocks.
-
-### 36. What are implicit fields?
-
-When the deserialiser knows a block's field layout from its type (via the
-implicit layout table), it can skip the field type byte during serialisation.
-The field order is fixed by the block definition, so only the field *data* is
-written. This saves 1 byte per field for all standard block types.
-
-Additionally, fixed-size fields (HASH256 32B, HASH160 20B, SCHEME 1B) skip
-the CompactSize length prefix entirely in implicit encoding —the deserialiser
-knows the exact size from the layout definition.
-
-### 37. How does context-aware serialisation work?
-
-The wire format distinguishes between CONDITIONS context and WITNESS context.
-In CONDITIONS context, witness-only data types (PUBKEY, SIGNATURE, PREIMAGE,
-SCRIPT_BODY) are forbidden. In WITNESS context, condition-only types may be
-omitted if they can be inferred from the corresponding conditions. This
-eliminates redundant data in the witness without ambiguity.
+Leaf-centric verification: when `MLSCVerifiedLeaves` is available, recursion
+evaluators replace only the mutated leaf in the verified leaf array and rebuild
+the Merkle tree, avoiding the need to know all other rungs' pubkeys.
 
 ---
 
-## Compound Blocks
+## Q14: What post-quantum schemes are supported?
 
-### 38. What are compound blocks?
+Ladder Script supports four post-quantum signature schemes via liboqs:
 
-Compound blocks combine two or more primitive operations into a single block
-with a single header, saving wire bytes. There are 6 compound types:
+| Scheme | Enum | Value | Pubkey size | Sig size |
+|--------|------|-------|-------------|----------|
+| FALCON-512 | `FALCON512` | `0x10` | 897 bytes | ~690 bytes |
+| FALCON-1024 | `FALCON1024` | `0x11` | 1793 bytes | ~1330 bytes |
+| Dilithium3 | `DILITHIUM3` | `0x12` | 1952 bytes | 3293 bytes |
+| SPHINCS+-SHA2-256f | `SPHINCS_SHA` | `0x13` | 64 bytes | 49216 bytes |
 
-| Compound Block | Replaces | Savings |
-|----------------|----------|---------|
-| HTLC (0x0702) | hash lock + CSV + SIG | ~16 bytes |
-| TIMELOCKED_SIG (0x0701) | SIG + CSV | ~8 bytes |
-| HASH_SIG (0x0703) | hash lock + SIG | ~8 bytes |
-| PTLC (0x0704) | ADAPTOR_SIG + CSV | ~8 bytes |
-| CLTV_SIG (0x0705) | SIG + CLTV | ~8 bytes |
-| TIMELOCKED_MULTISIG (0x0706) | MULTISIG + CSV | ~8 bytes |
+PQ schemes are identified by `IsPQScheme()`: any scheme with value >= `0x10`.
 
-### 39. When should I use a compound block vs. separate blocks?
+PQ signature verification is handled by `VerifyPQSignature()` in `pq_verify.h`.
+The ladder sighash is computed first via `LadderSignatureChecker::ComputeSighash`,
+then passed as the message to the PQ verifier. If PQ support is not compiled in
+(`HasPQSupport()` returns false), verification returns ERROR.
 
-Use compound blocks when the pattern matches exactly. HTLC is always better
-than separate hash + timelock + signature blocks for atomic swaps.
-TIMELOCKED_SIG is always better than SIG + CSV for time-delayed authorisation.
+PQ schemes work with: SIG, MULTISIG, TIMELOCKED_SIG, CLTV_SIG,
+TIMELOCKED_MULTISIG, and KEY_REF_SIG blocks. The SCHEME field in conditions
+routes the evaluator to the PQ verification path.
 
-Use separate blocks when you need different configuration (e.g., CSV on one
-rung but CLTV on another), when you want to invert individual blocks, or
-when the compound doesn't match your exact pattern.
+The PUBKEY data type allows up to 2048 bytes, and SIGNATURE allows up to 50000
+bytes, accommodating even SPHINCS+ signatures.
 
----
-
-## Governance Blocks
-
-### 40. What are governance blocks?
-
-Governance blocks (0x08xx family) constrain the *structure* of the spending
-transaction rather than its *authorisation*. They enforce spending windows,
-transaction size limits, I/O fanout bounds, and value ratios:
-
-- **EPOCH_GATE** (0x0801): Only spendable during periodic windows (e.g.,
-  first 144 blocks of every 2016-block epoch).
-- **WEIGHT_LIMIT** (0x0802): Maximum transaction weight in weight units.
-- **INPUT_COUNT** (0x0803): Min/max number of inputs.
-- **OUTPUT_COUNT** (0x0804): Min/max number of outputs.
-- **RELATIVE_VALUE** (0x0805): Output must be >= a ratio of the input value
-  (anti-siphon protection).
-- **ACCUMULATOR** (0x0806): Merkle set membership proof for allowlists.
-- **OUTPUT_CHECK** (0x0807): Per-output value and script constraint.
-
-### 41. How does ACCUMULATOR work?
-
-ACCUMULATOR stores a Merkle root in the conditions. At spend time, the
-witness provides a leaf value and a Merkle proof. The evaluator recomputes
-the root from the proof and checks it matches. This enables allowlists,
-blocklists, and set membership verification without storing the full set
-on-chain.
+The `MAX_LADDER_WITNESS_SIZE = 100000` bytes accommodates PQ signatures.
 
 ---
 
-## Anchor Blocks
+## Q15: How does OUTPUT_CHECK work?
 
-### 42. What are anchor blocks?
+`OUTPUT_CHECK` (`0x0807`) is a per-output value and script constraint. It
+verifies that a specific output in the spending transaction meets value and
+script requirements.
 
-Anchor blocks (0x05xx family) commit metadata to a UTXO via typed hash fields.
-There are 7 anchor types:
+**Conditions fields**: 4 fields
+1. `NUMERIC` (output_index): which output to check
+2. `NUMERIC` (min_sats): minimum output value
+3. `NUMERIC` (max_sats): maximum output value
+4. `HASH256` (script_hash): SHA256 of the expected scriptPubKey
 
-- **ANCHOR** (0x0501): Generic 32-byte data commitment.
-- **ANCHOR_CHANNEL** (0x0502): Lightning channel commitment binding.
-- **ANCHOR_POOL** (0x0503): Pool / VTXO tree root.
-- **ANCHOR_RESERVE** (0x0504): N-of-M guardian reserve set commitment.
-- **ANCHOR_SEAL** (0x0505): Permanent, immutable data seal.
-- **ANCHOR_ORACLE** (0x0506): Oracle attestation key binding.
-- **DATA_RETURN** (0x0507): Prunable data carrier. Up to 40 bytes appended
-  after the MLSC Merkle root (`0xC2 || root || data`). Zero-value, max 1 per
-  transaction. Replaces OP_RETURN for v4 transactions.
+**Evaluation logic** (`EvalOutputCheckBlock`):
+1. Validate all fields are present and non-negative, min_sats <= max_sats
+2. Bounds check: output_index must be within `tx.vout.size()`
+3. Value check: `vout[output_index].nValue` must be in `[min_sats, max_sats]`
+4. Script check: `SHA256(vout[output_index].scriptPubKey)` must equal
+   script_hash. If script_hash is all zeros (32 zero bytes), the script check
+   is skipped (value-only constraint).
 
-Each anchor type validates its metadata fields and returns ERROR if required
-fields are missing or malformed.
+**Descriptor notation**: `output_check(idx, min, max, hex_hash)`
 
-### 43. Why use anchor blocks instead of OP_RETURN?
-
-Anchor blocks are semantically typed and structurally validated. An
-ANCHOR_CHANNEL carries a 32-byte commitment that parsers can identify by
-type code without guessing the data format. Anchor blocks also live inside
-the conditions structure, so they benefit from the same size limits, type
-validation, and MLSC privacy as all other blocks.
+OUTPUT_CHECK is in the Governance family. It is not invertible (not in the
+`IsInvertibleBlockType` allowlist). It has micro-header slot `0x3E`.
 
 ---
 
-## Legacy Blocks
+## Q16: How does the descriptor language work?
 
-### 44. What is the Legacy family?
+The descriptor language provides human-readable notation for Ladder Script
+conditions. The parser (`ParseDescriptor`) converts descriptor strings into
+`RungConditions` + per-rung pubkey lists for MLSC commitment.
 
-The Legacy family (0x0900-0x09FF) wraps traditional Bitcoin transaction types
-as typed Ladder Script blocks. Seven block types cover the full range: P2PK,
-P2PKH, P2SH, P2WPKH, P2WSH, P2TR (key-path), and P2TR_SCRIPT (script-path).
+**Grammar**:
 
-Each preserves the spending semantics of its original format but enforces typed
-fields. P2SH, P2WSH, and P2TR_SCRIPT inner scripts must be valid Ladder Script
-conditions —arbitrary bytes are rejected.
+```
+ladder(or(rung1, rung2, ...))         -- multiple rungs (OR)
+ladder(rung)                          -- single rung
 
-### 45. Why wrap legacy types as blocks?
+rung = block                          -- single block rung
+     | and(block, block, ...)         -- multi-block rung (AND)
 
-Because the raw legacy formats have writable surfaces for arbitrary data. Taproot
-script-path is the primary inscription vector today. By wrapping legacy semantics
-in typed blocks, those surfaces are closed. Legacy blocks compose with all other
-block types —you can put a P2PKH_LEGACY in a rung alongside a CSV timelock, a
-COSIGN requirement, or a governance constraint. Legacy users get access to the
-full Ladder Script composability without changing their spending semantics.
+block = sig(@alias)                   -- Schnorr signature (default)
+      | sig(@alias, scheme)           -- signature with explicit scheme
+      | csv(N) | csv_time(N)          -- relative timelocks
+      | cltv(N) | cltv_time(N)        -- absolute timelocks
+      | multisig(M, @pk1, @pk2, ...)  -- M-of-N threshold
+      | hash_guarded(hex)             -- SHA256 preimage check
+      | tagged_hash(hex1, hex2)       -- tagged hash verification
+      | ctv(hex)                      -- CTV template hash
+      | amount_lock(min, max)         -- output amount range
+      | timelocked_sig(@alias, N)     -- SIG + CSV compound
+      | output_check(idx, min, max, hex) -- per-output constraint
+      | !block                        -- inverted block
+```
+
+**Scheme names**: `schnorr`, `ecdsa`, `falcon512`, `falcon1024`, `dilithium3`,
+`sphincs_sha`
+
+**Key aliases**: `@alice`, `@bob`, etc. Mapped to pubkey bytes via the keys
+parameter. The formatter (`FormatDescriptor`) reverses the process, using an
+alias map to produce readable output.
 
 ---
 
-## Design Rationale
+## Q17: What is batch Schnorr verification?
 
-### 46. Why typed fields instead of a stack machine?
+`BatchVerifier` is a structure that collects `(sighash, pubkey, signature)`
+tuples during evaluation and verifies them all in a single batch after all
+inputs pass.
 
-A stack machine processes opaque byte vectors. You push data, run opcodes, and
-check the stack state. The machine cannot tell a public key from a preimage
-from garbage without executing the full script. This means:
+```cpp
+struct BatchVerifier {
+    struct Entry {
+        uint256 sighash;
+        XOnlyPubKey pubkey;
+        std::vector<unsigned char> sig;
+    };
+    std::vector<Entry> entries;
+    bool active{false};
+};
+```
 
-- You cannot validate a transaction without simulating execution.
-- You cannot determine what conditions a UTXO requires by inspecting it.
-- You cannot prevent arbitrary data from entering the stack.
+When `batch->active` is true in `LadderSignatureChecker::CheckSchnorrSignature`,
+the signature is not verified immediately. Instead, it is added to the batch via
+`batch->Add()` and the function returns true (deferred).
 
-Typed fields flip this. Every field declares its type. The node validates type
-and size before evaluation begins. A PUBKEY is always a PUBKEY. A SIGNATURE is
-always a SIGNATURE. Conditions can be machine-parsed without execution. And
-since every byte is accounted for, there is no room for arbitrary data.
+After all inputs are evaluated, `batch->Verify()` verifies all entries. The
+current implementation falls back to individual verification (the secp256k1
+batch API is not yet available), but the interface is ready for true batch
+verification.
 
-### 47. Why are conditions and witness structurally identical?
+On batch failure, `batch->FindFailure()` identifies the first invalid entry by
+testing each individually, enabling precise error reporting.
 
-Because they are two views of the same data. Conditions say "this rung needs a
-SIG block with SCHEME Schnorr." The witness says "here is PUBKEY Y and
-SIGNATURE Z for that SIG block." Same rung index, same block index, same field
-slots. The evaluator merges them and evaluates. The public key is bound to
-conditions via merkle_pub_key (folded into the Merkle leaf), not stored as a
-field in the conditions themselves.
+Batch verification applies only to BIP-340 Schnorr signatures. ECDSA and PQ
+signatures are always verified immediately.
 
-This makes the system self-describing. You can look at a UTXO's conditions and
-know exactly what the witness must provide —field by field, type by type. No
-simulation required.
+---
 
-### 48. Why fold keys into the Merkle leaf instead of storing them in conditions?
+## Q18: How does COSIGN work?
 
-Three reasons, all critical:
+`COSIGN` (`0x0681`) is a cross-input spending constraint in the PLC family. It
+requires that another input in the same transaction is spending a UTXO whose
+scriptPubKey matches a committed hash.
 
-1. **Anti-spam.** merkle_pub_key eliminates every writable surface in conditions.
-   There is no key commitment field for an attacker to fill with arbitrary data.
-   The Merkle leaf is a cryptographic hash —it cannot be reverse-engineered
-   to embed meaningful data.
-2. **UTXO efficiency.** No public key data appears in the UTXO set at all. A
-   1,952-byte Dilithium3 key contributes zero additional bytes —it is folded
-   into the 32-byte leaf. The full key appears only at spend time in the
-   prunable witness.
-3. **Quantum stealth.** Until a UTXO is spent, the public key is hidden inside
-   the Merkle leaf hash. A quantum attacker cannot derive the key from the hash,
-   so they cannot forge signatures for unspent outputs.
+**Conditions fields**: `HASH256` containing `SHA256(anchor_scriptPubKey)`
 
-### 49. Why AND-within-rung and OR-across-rungs?
+**Evaluation logic** (`EvalCosignBlock`):
+1. Extract the 32-byte HASH256 field
+2. Iterate over all other inputs in the transaction (skip self)
+3. For each other input, compute `SHA256(spent_output.scriptPubKey)`
+4. If any match the committed hash, return SATISFIED
 
-Because it maps directly to how people think about spending policies:
+This creates a "paired UTXO" pattern: two UTXOs that can only be spent
+together. UTXO A carries `COSIGN(SHA256(scriptPubKey_B))` and UTXO B carries
+`COSIGN(SHA256(scriptPubKey_A))`. Neither can be spent without the other being
+present in the same transaction.
 
-- "Alice AND Bob must both sign" → one rung, two SIG blocks
-- "Alice alone OR Bob alone" → two rungs, one SIG block each
-- "Alice AND Bob, OR Carol after 30 days" → two rungs, one with two SIGs,
-  one with a SIG and a CSV
+COSIGN is a key-consuming block type and cannot be inverted. It has an implicit
+conditions layout of `[HASH256(32)]` and micro-header slot `0x26`.
 
-This is disjunctive normal form (DNF). Every boolean spending condition can be
-expressed in DNF. The two-level structure makes it trivial to read, compose, and
-verify. No need to trace stack operations or reason about execution order.
+---
 
-### 50. Why is the evaluation model fail-closed?
+## Q19: What is a witness reference (diff witness)?
 
-Because the cost of a false positive is catastrophic —funds stolen. The cost of
-a false negative is recoverable —funds temporarily unspendable, fixed by a
-software upgrade.
+A **witness reference** (also called a **diff witness**) allows an input to
+inherit its witness structure from another input in the same transaction,
+providing only field-level diffs.
 
-Every unknown, ambiguous, or malformed input results in rejection. Unknown block
-type? Rejected at deserialization. Missing field? ERROR. Wrong preimage?
-UNSATISFIED. This is the only safe default for a consensus system that secures
-real money.
+**Wire format**: When `n_rungs == 0` at the start of the witness, the
+deserializer enters diff witness mode:
 
-### 51. What can Ladder Script do that Bitcoin Script cannot?
+```
+[0: varint]                    -- sentinel: n_rungs == 0
+[input_index: varint]          -- which input's witness to inherit
+[n_diffs: varint]              -- number of field replacements
+for each diff:
+  [rung_index: varint]
+  [block_index: varint]
+  [field_index: varint]
+  [type_byte: uint8]
+  [field_data]
+[coil section]                 -- fresh coil (always present)
+```
 
-Several things that are either impossible or require contentious new opcodes:
+**Allowed diff field types**: PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY, SCHEME.
+Only witness-side types can be diffed.
 
-- **Native covenants.** RECURSE_SAME, RECURSE_MODIFIED, CTV, VAULT_LOCK --
-  all work today. No OP_CTV debate required.
-- **Stateful contracts.** Counters, latches, timers, sequencers —UTXO state
-  that updates across spends. Not possible in a stateless stack machine.
-- **Transaction structure constraints.** INPUT_COUNT, OUTPUT_COUNT, WEIGHT_LIMIT,
-  EPOCH_GATE —enforce rules about the spending transaction itself.
-- **Fee-rate gates.** HYSTERESIS_FEE lets a UTXO reject spends during fee spikes.
-  There is no way to inspect fee rates in Bitcoin Script.
-- **Post-quantum signatures.** Drop-in PQ schemes across all block types. No
-  new address format, no new script version, no migration ceremony.
-- **Typed UTXO introspection.** Every field is machine-readable. Wallets,
-  explorers, and policy engines can parse conditions without executing anything.
+**Constraints**:
+- Maximum diffs: `MAX_FIELDS_PER_BLOCK * MAX_BLOCKS_PER_RUNG * MAX_RUNGS`
+  (2048)
+- PREIMAGE/SCRIPT_BODY fields in diffs are capped at
+  `MAX_PREIMAGE_FIELDS_PER_WITNESS` (2)
+- Source input must not itself be a diff witness (no chaining, same as template
+  references)
+- Relays are inherited from the source (no relay section in diff witness)
 
-### 52. How does Ladder Script compare to Taproot?
+This is useful when multiple inputs spend UTXOs with identical conditions but
+different signatures.
 
-Taproot provides MAST (hiding unused spending paths behind a Merkle root) and
-Schnorr signatures. MLSC provides the same MAST privacy model with tagged hashing
-and sorted interior nodes, extended to 61 block types including covenants, PLC
-state machines, governance constraints, and PQ signatures.
+---
 
-Taproot script-path spends execute Bitcoin Script inside a revealed leaf. MLSC
-reveals typed conditions —no script execution, no stack, no data embedding
-surface.
+## Q20: How does CTV work in Ladder Script?
 
-### 53. Is the wire format efficient?
+CTV (CheckTemplateVerify, `0x0301`) implements BIP-119 template verification as
+a native block type.
 
-Yes. Two optimisations stack:
+**Conditions**: A single HASH256 field containing the pre-computed BIP-119
+template hash.
 
-- **Micro-headers:** 1 byte per block type instead of 2 (all 61 types have slots).
-- **Implicit fields:** Field type bytes omitted when the layout is known from the
-  block type (saves 1 byte per field). Fixed-size fields skip the length prefix.
+**Template hash computation** (`ComputeCTVHash`):
 
-A single-sig MLSC output is 33 bytes regardless of condition complexity. Public
-keys add zero bytes to conditions (merkle_pub_key folds them into the leaf).
-Diff witnesses save further when spending multiple similar UTXOs in one
-transaction.
+```
+SHA256(
+  version         (4 bytes LE)
+  locktime        (4 bytes LE)
+  scriptsigs_hash (SHA256 of concatenated scriptSigs)
+  num_inputs      (4 bytes LE)
+  sequences_hash  (SHA256 of concatenated sequences)
+  num_outputs     (4 bytes LE)
+  outputs_hash    (SHA256 of concatenated outputs: amount + spk_len + scriptPubKey)
+  input_index     (4 bytes LE)
+)
+```
+
+**Evaluation**: `EvalCTVBlock` computes the template hash from the spending
+transaction at the current input index and compares it byte-for-byte to the
+committed hash. SATISFIED on match.
+
+CTV has an implicit conditions layout of `[HASH256(32)]` (1 byte micro-header +
+32 bytes hash = 33 bytes total in conditions). It is invertible.
+
+---
+
+## Q21: What legacy Bitcoin types are supported?
+
+The Legacy family (`0x0900`-`0x09FF`) wraps 7 traditional Bitcoin transaction
+types as Ladder Script block types:
+
+| Block | Code | Evaluation |
+|-------|------|------------|
+| `P2PK_LEGACY` | `0x0901` | Identical to SIG (delegates to `EvalSigBlock`) |
+| `P2PKH_LEGACY` | `0x0902` | HASH160(pubkey) == committed hash, then verify signature |
+| `P2SH_LEGACY` | `0x0903` | HASH160(preimage) == committed hash, then deserialize and evaluate inner conditions |
+| `P2WPKH_LEGACY` | `0x0904` | Identical to P2PKH (delegates to `EvalP2PKHLegacyBlock`) |
+| `P2WSH_LEGACY` | `0x0905` | SHA256(preimage) == committed hash, then deserialize and evaluate inner conditions |
+| `P2TR_LEGACY` | `0x0906` | Identical to SIG (key-path, delegates to `EvalSigBlock`) |
+| `P2TR_SCRIPT_LEGACY` | `0x0907` | SHA256(leaf) == Merkle root, then deserialize and evaluate inner conditions |
+
+P2SH, P2WSH, and P2TR_SCRIPT support recursive inner conditions: the PREIMAGE
+(or SCRIPT_BODY) field is deserialized as a LadderWitness in CONDITIONS context,
+then evaluated with remaining outer witness fields. Maximum recursion depth is 2
+(`MAX_LEGACY_INNER_DEPTH = 2`).
+
+---
+
+## Q22: How is DATA_RETURN handled?
+
+`DATA_RETURN` (`0x0507`) replaces `OP_RETURN` for data commitments. It is an
+**unspendable** block type: if evaluation reaches a DATA_RETURN block, it
+returns ERROR (the output should never have been spent).
+
+**DATA type**: The DATA data type (`0x0B`) is restricted to DATA_RETURN blocks
+only. Using DATA in any other block type causes a deserialization error.
+
+**Size limits**: DATA fields are 1-40 bytes (hash 32 bytes + 8 bytes protocol
+metadata).
+
+**MLSC integration**: DATA_RETURN payload can be appended to MLSC scriptPubKeys
+after the 32-byte conditions root, producing a scriptPubKey of 34-73 bytes:
+`0xC2 + conditions_root(32) + data(1-40)`.
+
+**Consensus**: `ValidateRungOutputs` allows exactly one DATA_RETURN per
+transaction. The maximum data payload is 80 bytes.
+
+---
+
+## Q23: What are the consensus limits?
+
+| Limit | Value | Source |
+|-------|-------|--------|
+| Max rungs per ladder | 16 | `MAX_RUNGS` |
+| Max blocks per rung | 8 | `MAX_BLOCKS_PER_RUNG` |
+| Max fields per block | 16 | `MAX_FIELDS_PER_BLOCK` |
+| Max witness size | 100,000 bytes | `MAX_LADDER_WITNESS_SIZE` |
+| Max relays per ladder | 8 | `MAX_RELAYS` |
+| Max relay_refs per rung/relay | 8 | `MAX_REQUIRES` |
+| Max relay chain depth | 4 | `MAX_RELAY_DEPTH` |
+| Max PREIMAGE/SCRIPT_BODY fields | 2 | `MAX_PREIMAGE_FIELDS_PER_WITNESS` |
+| Coil condition rungs | 0 (reserved) | `MAX_COIL_CONDITION_RUNGS` |
+| Coil address hash size | 32 bytes | `COIL_ADDRESS_HASH_SIZE` |
+| Max PUBKEY size | 2,048 bytes | `FieldMaxSize(PUBKEY)` |
+| Max SIGNATURE size | 50,000 bytes | `FieldMaxSize(SIGNATURE)` |
+| Max SCRIPT_BODY size | 80 bytes | `FieldMaxSize(SCRIPT_BODY)` |
+| Max DATA size | 40 bytes | `FieldMaxSize(DATA)` |
+| HASH256 size | exactly 32 bytes | `FieldMinSize == FieldMaxSize` |
+| HASH160 size | exactly 20 bytes | `FieldMinSize == FieldMaxSize` |
+| PREIMAGE size | exactly 32 bytes | `FieldMinSize == FieldMaxSize` |
+| NUMERIC size | 1-4 bytes | `FieldMinSize(NUMERIC)` / `FieldMaxSize(NUMERIC)` |
+| SCHEME size | 1 byte | Fixed |
+| SPEND_INDEX size | 4 bytes | Fixed |
+| PUBKEY_COMMIT size | exactly 32 bytes | Fixed |
+| Max ACCUMULATOR fields | 10 | root + 8 proof nodes + leaf |
+| Legacy inner depth | 2 | `MAX_LEGACY_INNER_DEPTH` |
+| Max implicit fields per layout | 8 | `MAX_IMPLICIT_FIELDS` |
+| Micro-header slots | 128 | `MICRO_HEADER_SLOTS` |
+| Transaction version | 4 | `RUNG_TX_VERSION` |
+
+---
+
+## Q24: How does the block descriptor table work?
+
+The **block descriptor table** is the combination of the micro-header lookup
+table and the implicit field layouts that together define the complete wire
+encoding for every block type.
+
+### Micro-header table
+
+The `MICRO_HEADER_TABLE` is a 128-entry array mapping slot index to block type
+(`uint16_t`). Unused slots contain `0xFFFF`. Every active block type has a
+slot assignment:
+
+- Slots 0x00-0x02: Signature (SIG, MULTISIG, ADAPTOR_SIG)
+- Slots 0x03-0x06: Timelock (CSV, CSV_TIME, CLTV, CLTV_TIME)
+- Slots 0x07-0x08: Reserved (deprecated HASH_PREIMAGE, HASH160_PREIMAGE)
+- Slot 0x09: TAGGED_HASH
+- Slots 0x0A-0x0C: Covenant (CTV, VAULT_LOCK, AMOUNT_LOCK)
+- Slots 0x0D-0x12: Recursion (6 types)
+- Slots 0x13-0x18: Anchor (6 types, excluding DATA_RETURN)
+- Slots 0x19-0x26: PLC (14 types)
+- Slots 0x27-0x2C: Compound (6 types)
+- Slots 0x2D-0x32: Governance (6 types, excluding OUTPUT_CHECK)
+- Slots 0x33-0x34: Late-added Signature (MUSIG_THRESHOLD, KEY_REF_SIG)
+- Slots 0x35-0x3B: Legacy (7 types)
+- Slot 0x3C: DATA_RETURN
+- Slot 0x3D: HASH_GUARDED
+- Slot 0x3E: OUTPUT_CHECK
+- Slots 0x3F-0x7F: Unused (65 slots reserved for future block types)
+
+### Implicit field layouts
+
+`GetImplicitLayout(block_type, ctx)` returns the fixed field layout for a block
+type in a given serialization context (0 = WITNESS, 1 = CONDITIONS). When a
+micro-header is used and a layout exists, field count bytes and type bytes are
+omitted, producing minimal wire encoding.
+
+Example layouts (CONDITIONS context):
+
+| Block type | Layout |
+|------------|--------|
+| SIG | `[SCHEME(1)]` |
+| CSV, CSV_TIME, CLTV, CLTV_TIME | `[NUMERIC(varint)]` |
+| CTV | `[HASH256(32)]` |
+| TAGGED_HASH | `[HASH256(32), HASH256(32)]` |
+| AMOUNT_LOCK | `[NUMERIC(varint), NUMERIC(varint)]` |
+| COSIGN | `[HASH256(32)]` |
+| TIMELOCKED_SIG | `[SCHEME(1), NUMERIC(varint)]` |
+| HTLC | `[HASH256(32), NUMERIC(varint)]` |
+| OUTPUT_CHECK | `[NUMERIC(varint), NUMERIC(varint), NUMERIC(varint), HASH256(32)]` |
+
+The `MatchesImplicitLayout` function checks whether a block's actual fields
+match the expected implicit layout (correct count and types). If they do not
+match, the serializer falls back to explicit encoding with escape headers.
+
+The `VerifyImplicitLayoutPairing` function validates that all block types have
+consistent implicit layouts between CONDITIONS and WITNESS contexts.
