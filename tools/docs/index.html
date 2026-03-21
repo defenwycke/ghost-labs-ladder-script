@@ -1,826 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Documentation | Ladder Script</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
-      --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
-      --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
-      --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
-      --white: #f0f0f0;
-      --orange: #f7931a; --orange-light: #ffb347;
-      --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
-      --amber: #e6a817; --amber-dim: #8a6a10; --amber-glow: #e6a81740;
-      --font-display: 'Outfit', system-ui, sans-serif;
-      --font-mono: 'Geist Mono', monospace;
-      --font-engine: 'IBM Plex Mono', 'Consolas', monospace;
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
-    ::selection { background: var(--orange); color: var(--black); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation | Ladder Script</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f5f5f5;
+  --bg-code: #f0f0f0;
+  --text: #1a1a1a;
+  --text-body: #333333;
+  --text-dim: #666666;
+  --text-light: #999999;
+  --accent: #e67e22;
+  --accent-dark: #d35400;
+  --green: #27ae60;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+::selection { background: var(--accent); color: #fff; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-    /* Nav */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 12px 0; background: rgba(5, 5, 5, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
-    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--white); }
-    .logo-icon { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; }
-    .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
-    .logo-text { font-weight: 700; font-size: 18px; }
-    .logo-text span { color: var(--orange); }
-    .nav-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gray-400); }
-    .nav-breadcrumb a { color: var(--gray-400); text-decoration: none; }
-    .nav-breadcrumb a:hover { color: var(--white); }
-    .nav-breadcrumb .sep { color: var(--gray-600); }
-    .nav-breadcrumb .current { color: var(--orange); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .nav-right { display: flex; align-items: center; gap: 8px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-family: var(--font-display); font-size: 13px; font-weight: 600; border-radius: 8px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
-    .btn-secondary { background: var(--gray-800); color: var(--white); }
-    .btn-secondary:hover { background: var(--gray-700); }
-    .btn-ghost { background: transparent; color: var(--gray-300); padding: 8px 12px; }
-    .btn-ghost:hover { color: var(--white); }
+/* -- HEADER -- */
+.site-header { background: #fff; border-bottom: 1px solid var(--border); padding: 0; }
+.site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+.header-title:hover { text-decoration: none; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; }
+.header-right a:hover { color: var(--accent); }
+.header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
+.header-right .gh-icon:hover { color: var(--accent); }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding-top: 10px; padding-bottom: 10px; }
+.header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
+.header-nav a:hover { color: var(--accent); text-decoration: none; }
+.header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-    /* Layout */
-    .layout { display: grid; grid-template-columns: 240px 1fr; margin-top: 53px; min-height: calc(100vh - 53px); }
+/* -- LAYOUT -- */
+.page-layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 96px); }
 
-    /* Sidebar */
-    .sidebar { background: var(--gray-900); border-right: 1px solid var(--gray-800); padding: 24px 0; position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto; }
-    .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-400); padding: 8px 20px; }
-    .sidebar-link { display: block; padding: 8px 20px; font-size: 14px; color: var(--gray-300); text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent; }
-    .sidebar-link:hover { color: var(--white); background: var(--gray-800); }
-    .sidebar-link.active { color: var(--orange); border-left-color: var(--orange); background: rgba(247, 147, 26, 0.05); }
-    .sidebar-divider { height: 1px; background: var(--gray-800); margin: 12px 0; }
+/* -- SIDEBAR -- */
+.sidebar { background: #fff; border-right: 1px solid var(--border); padding: 24px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-light); padding: 16px 20px 6px; }
+.sidebar-label:first-child { padding-top: 8px; }
+.sidebar-link { display: block; padding: 7px 20px; font-size: 14px; color: var(--text-dim); text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent; }
+.sidebar-link:hover { color: var(--text); background: var(--bg-alt); text-decoration: none; }
+.sidebar-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(230, 126, 34, 0.04); }
+.sidebar-divider { height: 1px; background: var(--border-light); margin: 12px 0; }
 
-    /* Content */
-    .content { padding: 40px 48px 80px; max-width: 900px; }
-    .content-loading { text-align: center; padding: 80px 0; color: var(--gray-400); font-family: var(--font-mono); }
+/* -- CONTENT -- */
+.content { padding: 40px 48px 80px; }
+.content-inner { max-width: 760px; }
+.content-loading { text-align: center; padding: 80px 0; color: var(--text-light); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
 
-    /* Markdown Styles */
-    .md h1 { font-size: 32px; font-weight: 800; color: var(--white); margin: 0 0 24px; letter-spacing: -0.02em; }
-    .md h2 { font-size: 24px; font-weight: 700; color: var(--white); margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-800); }
-    .md h3 { font-size: 18px; font-weight: 600; color: var(--white); margin: 32px 0 12px; }
-    .md h4 { font-size: 15px; font-weight: 600; color: var(--gray-200); margin: 24px 0 8px; }
-    .md p { font-size: 15px; color: var(--gray-300); line-height: 1.8; margin: 0 0 16px; }
-    .md a { color: var(--orange); text-decoration: none; }
-    .md a:hover { text-decoration: underline; }
-    .md strong { color: var(--white); font-weight: 600; }
-    .md em { color: var(--gray-200); }
-    .md ul, .md ol { margin: 0 0 16px 24px; color: var(--gray-300); }
-    .md li { margin-bottom: 6px; font-size: 15px; line-height: 1.7; }
-    .md li p { margin-bottom: 6px; }
-    .md blockquote { border-left: 3px solid var(--orange); padding: 12px 20px; margin: 16px 0; background: rgba(247, 147, 26, 0.05); border-radius: 0 8px 8px 0; }
-    .md blockquote p { color: var(--gray-200); margin-bottom: 0; }
-    .md code { font-family: var(--font-engine); font-size: 13px; background: #2a2a2a; color: var(--amber); padding: 2px 6px; border-radius: 4px; }
-    .md pre { background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 16px; overflow-x: auto; margin: 16px 0; }
-    .md pre code { background: none; padding: 0; font-size: 13px; color: #d4d4d4; line-height: 1.6; }
-    .md table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    .md th { text-align: left; padding: 10px 12px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--white); font-weight: 600; font-size: 13px; }
-    .md td { padding: 8px 12px; border: 1px solid var(--gray-800); color: var(--gray-300); font-size: 13px; }
-    .md td code { font-size: 12px; }
-    .md tr:hover td { background: rgba(247, 147, 26, 0.03); }
-    .md hr { border: none; height: 1px; background: var(--gray-800); margin: 32px 0; }
-    .md img { max-width: 100%; border-radius: 8px; margin: 16px 0; }
+/* -- MARKDOWN STYLES -- */
+.md h1 { font-size: 28px; font-weight: 700; color: var(--text); margin: 0 0 20px; letter-spacing: -0.02em; line-height: 1.3; }
+.md h2 { font-size: 22px; font-weight: 600; color: var(--text); margin: 40px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+.md h3 { font-size: 18px; font-weight: 600; color: var(--text); margin: 28px 0 10px; }
+.md h4 { font-size: 15px; font-weight: 600; color: var(--text-dim); margin: 20px 0 8px; }
+.md p { font-size: 15px; color: var(--text-body); line-height: 1.8; margin: 0 0 16px; }
+.md a { color: var(--accent); text-decoration: none; }
+.md a:hover { text-decoration: underline; }
+.md strong { color: var(--text); font-weight: 600; }
+.md em { color: var(--text-dim); }
+.md ul, .md ol { margin: 0 0 16px 24px; color: var(--text-body); }
+.md li { margin-bottom: 6px; font-size: 15px; line-height: 1.7; }
+.md li p { margin-bottom: 6px; }
+.md blockquote { border-left: 3px solid var(--accent); padding: 12px 20px; margin: 16px 0; background: rgba(230, 126, 34, 0.04); border-radius: 0 6px 6px 0; }
+.md blockquote p { color: var(--text-dim); margin-bottom: 0; }
+.md code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: var(--bg-code); color: var(--accent-dark); padding: 2px 6px; border-radius: 4px; }
+.md pre { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 16px; overflow-x: auto; margin: 16px 0; }
+.md pre code { background: none; padding: 0; font-size: 13px; color: var(--text-body); line-height: 1.6; }
+.md table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.md th { text-align: left; padding: 10px 12px; background: var(--bg-alt); border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 13px; }
+.md td { padding: 8px 12px; border: 1px solid var(--border); color: var(--text-body); font-size: 13px; }
+.md td code { font-size: 12px; }
+.md tr:nth-child(even) td { background: var(--bg-alt); }
+.md tr:hover td { background: rgba(230, 126, 34, 0.04); }
+.md hr { border: none; height: 1px; background: var(--border); margin: 32px 0; }
+.md img { max-width: 100%; border-radius: 6px; margin: 16px 0; }
 
-    /* Block Reference styles (inline for docs shell) */
-    .block-ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
-    @media (max-width: 640px) { .block-ref-grid { grid-template-columns: 1fr; } }
+/* -- FOOTER -- */
+.site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
+.site-footer a { color: var(--text-light); text-decoration: none; }
+.site-footer a:hover { color: var(--accent); }
 
-    .block-ref-card {
-      display: block;
-      background: var(--gray-900);
-      border: 1px solid var(--gray-800);
-      border-radius: 10px;
-      padding: 16px 20px;
-      text-decoration: none;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-    .block-ref-card:hover { transform: translateY(-2px); }
-    .block-ref-card:not([data-family-color]):hover { border-color: var(--orange); }
-    .block-ref-card[data-family-color]:hover { border-color: var(--family-color) !important; background: color-mix(in srgb, var(--family-color) 6%, var(--gray-900)); }
-    .block-ref-card.fam-signature { --family-color: #ff1744; }
-    .block-ref-card.fam-timelock { --family-color: #ff6d00; }
-    .block-ref-card.fam-hash { --family-color: #00e676; }
-    .block-ref-card.fam-covenant { --family-color: #2979ff; }
-    .block-ref-card.fam-anchor { --family-color: #ffea00; }
-    .block-ref-card.fam-recursion { --family-color: #aa00ff; }
-    .block-ref-card.fam-plc { --family-color: #ff4081; }
-    .block-ref-card.fam-compound { --family-color: #ffffff; }
-    .block-ref-card.fam-governance { --family-color: #9e9e9e; }
-    .block-ref-card.fam-legacy { --family-color: #00e5ff; }
-    .block-ref-code { font-size: 10px; font-family: var(--font-mono); color: var(--gray-500); letter-spacing: 1.5px; margin-bottom: 2px; }
-    .block-ref-name { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; letter-spacing: 0.5px; }
-    .block-ref-desc { font-size: 13px; color: var(--gray-400); line-height: 1.5; }
-    .block-ref-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      font-size: 9px;
-      font-family: var(--font-mono);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      border-radius: 4px;
-      margin-top: 10px;
-    }
-
-    .family-section { margin-bottom: 40px; }
-    .family-title {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      padding-bottom: 8px;
-      border-bottom: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-      margin-bottom: 16px;
-    }
-    .family-intro { font-size: 14px; color: var(--gray-400); line-height: 1.7; margin-bottom: 16px; max-width: 640px; }
-
-    .md .family-signature, .family-signature { color: #ff1744; }
-    .md .family-timelock, .family-timelock { color: #ff6d00; }
-    .md .family-hash, .family-hash { color: #00e676; }
-    .md .family-covenant, .family-covenant { color: #2979ff; }
-    .md .family-anchor, .family-anchor { color: #ffea00; }
-    .md .family-recursion, .family-recursion { color: #aa00ff; }
-    .md .family-plc, .family-plc { color: #ff4081; }
-    .md .family-compound, .family-compound { color: #ffffff; }
-    .md .family-governance, .family-governance { color: #9e9e9e; }
-    .md .family-legacy, .family-legacy { color: #00e5ff; }
-
-    .badge-signature { color: #ff1744; background: rgba(255, 23, 68, 0.1); }
-    .badge-timelock { color: #ff6d00; background: rgba(255, 109, 0, 0.1); }
-    .badge-hash { color: #00e676; background: rgba(0, 230, 118, 0.1); }
-    .badge-covenant { color: #2979ff; background: rgba(41, 121, 255, 0.1); }
-    .badge-anchor { color: #ffea00; background: rgba(255, 234, 0, 0.1); }
-    .badge-recursion { color: #aa00ff; background: rgba(170, 0, 255, 0.1); }
-    .badge-plc { color: #ff4081; background: rgba(255, 64, 129, 0.1); }
-    .badge-compound { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
-    .badge-governance { color: #9e9e9e; background: rgba(158, 158, 158, 0.1); }
-    .badge-legacy { color: #00e5ff; background: rgba(0, 229, 255, 0.1); }
-
-    /* Block detail page styles (when loaded via AJAX) */
-    .block-detail-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-family: var(--font-mono);
-      color: var(--gray-400);
-      text-decoration: none;
-      margin-bottom: 24px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-    .block-detail-back:hover { color: var(--orange); background: var(--gray-900); }
-
-    .block-title-section { margin-bottom: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--gray-800); }
-    .block-type-code { font-family: var(--font-mono); font-size: 12px; color: var(--orange); letter-spacing: 1px; margin-bottom: 8px; }
-    .block-title { font-size: 32px; font-weight: 800; color: var(--white); letter-spacing: -0.02em; margin-bottom: 12px; }
-    .block-subtitle { font-size: 15px; color: var(--gray-300); max-width: 640px; line-height: 1.7; }
-    .block-family-badge { display: inline-block; padding: 4px 12px; border: 1px solid; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; margin-top: 14px; }
-
-    .doc-section { margin-bottom: 40px; }
-    .section-label { font-family: var(--font-mono); font-size: 12px; color: var(--orange); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-800); }
-    .section-text { color: var(--gray-300); margin-bottom: 12px; font-size: 15px; }
-
-    .ladder-diagram { background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 12px; padding: 24px; margin: 16px 0 24px; overflow-x: auto; }
-    .ladder-diagram svg { display: block; margin: 0 auto; }
-
-    .field-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    .field-table th { text-align: left; padding: 10px 14px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--gray-300); font-weight: 600; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
-    .field-table td { padding: 10px 14px; border: 1px solid var(--gray-800); vertical-align: top; }
-    .field-table tr:hover td { background: var(--gray-900); }
-    .field-name { color: var(--orange); font-weight: 600; font-family: var(--font-mono); }
-    .field-type { color: var(--cyan); font-family: var(--font-mono); }
-    .field-size { color: var(--gray-400); font-family: var(--font-mono); }
-    .field-side-c { color: #5b9bd5; }
-    .field-side-w { color: var(--green); }
-    .field-desc { color: var(--gray-300); }
-
-    .eval-box { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; font-size: 14px; line-height: 1.8; }
-    .eval-step { display: flex; gap: 12px; margin-bottom: 8px; }
-    .eval-step-num { color: var(--orange); font-weight: 700; font-family: var(--font-mono); min-width: 24px; }
-    .eval-step-text { color: var(--gray-100); }
-    .eval-keyword { color: var(--orange); font-weight: 600; font-family: var(--font-mono); }
-    .eval-result-sat { color: var(--green); font-weight: 600; }
-    .eval-result-unsat { color: var(--red); font-weight: 600; }
-    .eval-result-err { color: var(--red); font-weight: 600; }
-
-    .result-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    .result-table th { text-align: left; padding: 10px 14px; background: var(--gray-900); border: 1px solid var(--gray-800); color: var(--gray-300); font-weight: 600; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
-    .result-table td { padding: 10px 14px; border: 1px solid var(--gray-800); }
-    td.r-sat { color: var(--green); font-weight: 600; }
-    td.r-unsat { color: var(--red); font-weight: 600; }
-    td.r-err { color: var(--red); opacity: 0.7; font-weight: 600; }
-
-    .json-block { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; font-size: 13px; line-height: 1.6; }
-    .json-block pre { margin: 0; font-family: var(--font-engine); color: var(--gray-100); }
-    .json-key { color: var(--cyan); }
-    .json-str { color: var(--green); }
-    .json-num { color: var(--orange); }
-    .json-label { font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--gray-400); margin-bottom: 8px; }
-
-    .wire-breakdown { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
-    .wire-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
-    .wire-segment { display: inline-flex; align-items: center; justify-content: center; height: 28px; padding: 0 8px; border: 1px solid; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
-    .wire-type { background: rgba(247, 147, 26, 0.1); border-color: var(--amber-dim); color: var(--orange); }
-    .wire-inv { background: rgba(100, 100, 140, 0.1); border-color: #4a4a6a; color: #8888bb; min-width: 20px; }
-    .wire-count { background: rgba(0, 255, 136, 0.08); border-color: #1a5c28; color: var(--green); min-width: 20px; }
-    .wire-field { border-color: var(--gray-700); color: var(--gray-300); }
-    .wire-field-pubkey { background: rgba(45, 125, 210, 0.1); border-color: #1a4a7a; color: #5b9bd5; }
-    .wire-field-hash { background: rgba(176, 112, 176, 0.1); border-color: #5a3a5a; color: #b070b0; }
-    .wire-field-sig { background: rgba(176, 176, 112, 0.1); border-color: #5a5a3a; color: #b0b070; }
-    .wire-field-num { background: rgba(0, 212, 255, 0.08); border-color: #3a5a5a; color: var(--cyan); }
-    .wire-field-pre { background: rgba(192, 112, 112, 0.1); border-color: #5a3a3a; color: #c07070; }
-    .wire-bytes { font-size: 11px; font-family: var(--font-mono); color: var(--gray-400); margin-left: auto; }
-    .wire-total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--gray-800); font-weight: 600; }
-    .wire-total-label { color: var(--gray-300); font-size: 12px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; }
-    .wire-total-bytes { color: var(--orange); font-family: var(--font-mono); }
-
-    .use-case { background: var(--gray-900); border: 1px solid var(--gray-800); border-left: 3px solid var(--orange); border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 12px 0; transition: all 0.2s; }
-    .use-case:hover { border-left-color: var(--orange-light); background: var(--gray-800); }
-    .use-case-title { color: var(--white); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
-    .use-case-desc { color: var(--gray-300); font-size: 14px; line-height: 1.6; }
-
-    .invertible-badge { display: inline-block; padding: 4px 10px; font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; margin-left: 8px; border-radius: 6px; }
-    .inv-yes { color: var(--green); border: 1px solid rgba(0, 255, 136, 0.3); background: rgba(0, 255, 136, 0.08); }
-    .inv-no { color: var(--gray-400); border: 1px solid var(--gray-700); background: var(--gray-900); }
-
-    .doc-nav { display: flex; justify-content: space-between; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--gray-800); }
-    .doc-nav a, .doc-nav span { color: var(--gray-300); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; }
-    .doc-nav a:hover, .doc-nav span:hover { color: var(--orange); background: var(--gray-900); }
-
-    @media (max-width: 768px) {
-      .layout { grid-template-columns: 1fr; }
-      .sidebar { position: fixed; left: -260px; width: 260px; z-index: 50; transition: left 0.3s; height: 100vh; top: 0; padding-top: 70px; }
-      .sidebar.open { left: 0; }
-      .content { padding: 24px 20px 80px; }
-      .block-ref-grid { grid-template-columns: 1fr; }
-      .wire-row { flex-wrap: wrap; }
-    }
-  </style>
+/* -- RESPONSIVE -- */
+@media (max-width: 768px) {
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
+  .header-nav { flex-wrap: wrap; gap: 16px; }
+  .site-header-inner { padding: 0 16px; }
+  .page-layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
+  .content { padding: 24px 16px 60px; }
+}
+</style>
 </head>
 <body>
-  <nav>
-    <div class="nav-inner">
-      <a href="../../index.html" class="logo">
-        <div class="logo-icon"><img src="../../logo.png" alt="Bitcoin Ghost"></div>
-        <div class="logo-text">Bitcoin<span>Ghost</span></div>
-      </a>
-      <div class="nav-breadcrumb">
-        <a href="../ladder-script.html">Ladder Script</a>
-        <span class="sep">/</span>
-        <span class="current" id="breadcrumb-title">Documentation</span>
-      </div>
-      <div class="nav-right">
-        <a href="../../ghost-labs.html" class="btn btn-ghost">Labs</a>
-        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" class="btn btn-ghost" target="_blank">
-          <svg style="width:20px;height:20px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="header-top">
+      <a href="../../ghost-labs.html" class="header-title">Ghost Labs</a>
+      <div class="header-right">
+        <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
+        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
       </div>
     </div>
-  </nav>
-
-  <div class="layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-label">Documentation</div>
-      <a href="#INTRODUCTION" class="sidebar-link" data-doc="INTRODUCTION.md" data-title="Introduction">Introduction</a>
-      <a href="#BIP-XXXX" class="sidebar-link" data-doc="BIP-XXXX.md" data-title="BIP-XXXX">BIP-XXXX</a>
-      <div class="sidebar-divider"></div>
-      <a href="#BLOCK_LIBRARY" class="sidebar-link" data-doc="BLOCK_LIBRARY.md" data-title="Block Library">Block Library</a>
-      <a href="#EXAMPLES" class="sidebar-link" data-doc="EXAMPLES.md" data-title="Examples">Examples</a>
-      <a href="#INTEGRATION" class="sidebar-link" data-doc="INTEGRATION.md" data-title="Integration Guide">Integration Guide</a>
-      <a href="#SOFT_FORK_GUIDE" class="sidebar-link" data-doc="SOFT_FORK_GUIDE.md" data-title="Soft Fork Guide">Soft Fork Guide</a>
-      <a href="#MERKLE-UTXO-SPEC" class="sidebar-link" data-doc="MERKLE-UTXO-SPEC.md" data-title="MLSC Specification">MLSC Specification</a>
-      <div class="sidebar-divider"></div>
-      <a href="#ENGINE_GUIDE" class="sidebar-link" data-doc="ENGINE_GUIDE.md" data-title="Engine Guide">Engine Guide</a>
-      <a href="#POSSIBILITIES" class="sidebar-link" data-doc="POSSIBILITIES.md" data-title="Patterns &amp; Possibilities">Patterns &amp; Possibilities</a>
-      <div class="sidebar-divider"></div>
-      <a href="#FAQ" class="sidebar-link" data-doc="FAQ.md" data-title="FAQ">FAQ</a>
-      <a href="#GLOSSARY" class="sidebar-link" data-doc="GLOSSARY.md" data-title="Glossary">Glossary</a>
-      <a href="#README" class="sidebar-link" data-doc="README.md" data-title="README">README</a>
-      <div class="sidebar-divider"></div>
-      <div class="sidebar-label">Block Reference</div>
-      <a href="#BLOCKS" class="sidebar-link" data-doc="__BLOCK_INDEX__" data-title="Block Reference">All 61 Blocks</a>
-    </aside>
-
-    <main class="content">
-      <div class="content-loading" id="loading">Loading documentation...</div>
-      <div class="md" id="doc-content"></div>
-    </main>
+    <nav class="header-nav">
+      <a href="../ladder-script.html">Ladder Script</a>
+      <a href="../rung-tx-anatomy.html">Anatomy</a>
+      <a href="../block-docs/">Blocks</a>
+      <a href="./" class="active">Docs</a>
+      <a href="../patch-overview.html">Patch</a>
+      <a href="../get-started.html">Get Started</a>
+      <a href="../ladder-engine.html">Engine</a>
+    </nav>
   </div>
+</header>
 
-  <script>
-    const docContent = document.getElementById('doc-content');
-    const loading = document.getElementById('loading');
-    const breadcrumb = document.getElementById('breadcrumb-title');
-    const links = document.querySelectorAll('.sidebar-link');
-    let currentDoc = null;
+<div class="page-layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Getting Started</div>
+    <a href="#INTRODUCTION" class="sidebar-link" data-doc="INTRODUCTION.md" data-title="Introduction">Introduction</a>
+    <a href="#FAQ" class="sidebar-link" data-doc="FAQ.md" data-title="FAQ">FAQ</a>
+    <a href="#GLOSSARY" class="sidebar-link" data-doc="GLOSSARY.md" data-title="Glossary">Glossary</a>
 
-    // Block reference data — all 61 blocks organized by family
-    const BLOCK_FAMILIES = [
-      {
-        name: 'Signature Family', range: '0x0000', cls: 'signature',
-        intro: 'Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization.',
-        blocks: [
-          { code: '0x0001', name: 'SIG', file: 'sig', desc: 'Single Schnorr signature verification against a committed public key. The most fundamental block type.' },
-          { code: '0x0002', name: 'MULTISIG', file: 'multisig', desc: 'M-of-N threshold signature verification. Conditions commit to N pubkeys and threshold M.' },
-          { code: '0x0003', name: 'ADAPTOR_SIG', file: 'adaptor-sig', desc: 'Adaptor signature verification for atomic swaps and DLCs. Reveals a secret scalar upon completion.' },
-          { code: '0x0004', name: 'MUSIG_THRESHOLD', file: 'musig-threshold', desc: 'MuSig2/FROST aggregate threshold signature. M-of-N signers produce a single Schnorr signature.' },
-          { code: '0x0005', name: 'KEY_REF_SIG', file: 'key-ref-sig', desc: 'Signature verification against a key committed in an earlier rung. Enables key reuse across rungs without repeating the pubkey.' },
-        ]
-      },
-      {
-        name: 'Timelock Family', range: '0x0100', cls: 'timelock',
-        intro: 'Timelock blocks enforce temporal constraints on spending \u2014 either relative to confirmation (CSV) or absolute block height / timestamp (CLTV).',
-        blocks: [
-          { code: '0x0101', name: 'CSV', file: 'csv', desc: 'Relative timelock by block count. UTXO cannot be spent until N blocks after confirmation.' },
-          { code: '0x0102', name: 'CSV_TIME', file: 'csv-time', desc: 'Relative timelock by time (512-second granularity).' },
-          { code: '0x0103', name: 'CLTV', file: 'cltv', desc: 'Absolute timelock by block height. UTXO cannot be spent until block height reaches N.' },
-          { code: '0x0104', name: 'CLTV_TIME', file: 'cltv-time', desc: 'Absolute timelock by Unix timestamp.' },
-        ]
-      },
-      {
-        name: 'Hash Family', range: '0x0200', cls: 'hash',
-        intro: 'BIP-340 domain-separated hash verification and guarded preimage checks. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated \u2014 use HTLC, HASH_SIG, or HASH_GUARDED for hash-lock use cases.',
-        blocks: [
-          { code: '0x0203', name: 'TAGGED_HASH', file: 'tagged-hash', desc: 'BIP-340 tagged hash preimage verification. Domain-separated hashing for protocol-specific commitments.' },
-          { code: '0x0204', name: 'HASH_GUARDED', file: 'hash-guarded', desc: 'Raw SHA-256 preimage verification. Non-invertible, fail-closed. Safe replacement for deprecated HASH_PREIMAGE.' },
-        ]
-      },
-      {
-        name: 'Covenant Family', range: '0x0300', cls: 'covenant',
-        intro: 'Covenant blocks enforce constraints on how a UTXO can be spent by inspecting the spending transaction itself.',
-        blocks: [
-          { code: '0x0301', name: 'CTV', file: 'ctv', desc: 'CheckTemplateVerify (BIP-119). Verifies spending transaction matches a committed template hash.' },
-          { code: '0x0302', name: 'VAULT_LOCK', file: 'vault-lock', desc: 'Two-path vault with recovery key (immediate) and hot key (CSV-delayed).' },
-          { code: '0x0303', name: 'AMOUNT_LOCK', file: 'amount-lock', desc: 'Output amount range check. Verifies min_sats \u2264 output_amount \u2264 max_sats.' },
-        ]
-      },
-      {
-        name: 'Recursion Family', range: '0x0400', cls: 'recursion',
-        intro: 'Recursion blocks create self-referencing covenants \u2014 outputs that enforce spending back into the same (or modified) covenant structure.',
-        blocks: [
-          { code: '0x0401', name: 'RECURSE_SAME', file: 'recurse-same', desc: 'Enforces that an output recreates the identical covenant verbatim.' },
-          { code: '0x0402', name: 'RECURSE_MODIFIED', file: 'recurse-modified', desc: 'Recursive covenant with allowed field mutations between iterations.' },
-          { code: '0x0403', name: 'RECURSE_UNTIL', file: 'recurse-until', desc: 'Conditional recursion \u2014 continues until a termination condition is met.' },
-          { code: '0x0404', name: 'RECURSE_COUNT', file: 'recurse-count', desc: 'Count-limited recursion. Decrements each spend, terminates at zero.' },
-          { code: '0x0405', name: 'RECURSE_SPLIT', file: 'recurse-split', desc: 'Recursive split \u2014 one input fans out into multiple output covenants.' },
-          { code: '0x0406', name: 'RECURSE_DECAY', file: 'recurse-decay', desc: 'Value-decaying recursion. Each spend reduces output value by a committed factor.' },
-        ]
-      },
-      {
-        name: 'Anchor Family', range: '0x0500', cls: 'anchor',
-        intro: 'Anchor blocks commit to external state references \u2014 channel IDs, pool IDs, reserve requirements, oracle attestations, and tamper-evident seals.',
-        blocks: [
-          { code: '0x0501', name: 'ANCHOR', file: 'anchor', desc: 'Generic anchor point. Commits to a 32-byte hash identifying an off-chain structure.' },
-          { code: '0x0502', name: 'ANCHOR_CHANNEL', file: 'anchor-channel', desc: 'Payment channel anchor. Commits to a channel ID and sequence number.' },
-          { code: '0x0503', name: 'ANCHOR_POOL', file: 'anchor-pool', desc: 'Liquidity pool anchor. Commits to a pool ID binding the UTXO to a pool structure.' },
-          { code: '0x0504', name: 'ANCHOR_RESERVE', file: 'anchor-reserve', desc: 'Reserve proof anchor. Commits to a minimum reserve amount.' },
-          { code: '0x0505', name: 'ANCHOR_SEAL', file: 'anchor-seal', desc: 'Tamper-evident seal. Single-use commitment for client-side validation.' },
-          { code: '0x0506', name: 'ANCHOR_ORACLE', file: 'anchor-oracle', desc: 'Oracle attestation anchor. Requires oracle\'s signed attestation of event outcome.' },
-          { code: '0x0507', name: 'DATA_RETURN', file: 'data-return', desc: 'Unspendable data output (max 40 bytes). Typed replacement for OP_RETURN.' },
-        ]
-      },
-      {
-        name: 'PLC Family', range: '0x0600', cls: 'plc',
-        intro: 'PLC (Programmable Logic Controller) blocks bring industrial automation primitives to Bitcoin \u2014 hysteresis, timers, latches, counters, comparators, sequencers, and rate limiters.',
-        blocks: [
-          { code: '0x0601', name: 'HYSTERESIS_FEE', file: 'hysteresis-fee', desc: 'Fee-rate hysteresis controller. Allows spending when fee rate crosses a threshold with deadband.' },
-          { code: '0x0602', name: 'HYSTERESIS_VALUE', file: 'hysteresis-value', desc: 'Value-based hysteresis controller with high/low thresholds.' },
-          { code: '0x0611', name: 'TIMER_CONTINUOUS', file: 'timer-continuous', desc: 'Continuous on-delay timer. Spending allowed after preset duration elapses.' },
-          { code: '0x0612', name: 'TIMER_OFF_DELAY', file: 'timer-off-delay', desc: 'Off-delay timer. Allows spending during a window after a trigger event.' },
-          { code: '0x0621', name: 'LATCH_SET', file: 'latch-set', desc: 'Set-dominant latch. Once set, remains set permanently.' },
-          { code: '0x0622', name: 'LATCH_RESET', file: 'latch-reset', desc: 'Reset-dominant latch. Default set; trigger resets permanently.' },
-          { code: '0x0631', name: 'COUNTER_DOWN', file: 'counter-down', desc: 'Down counter. Starts at preset, decrements each spend. Triggers at zero.' },
-          { code: '0x0632', name: 'COUNTER_PRESET', file: 'counter-preset', desc: 'Preset counter. Counts up to target value, resets on trigger.' },
-          { code: '0x0633', name: 'COUNTER_UP', file: 'counter-up', desc: 'Up counter. Increments each recursive spend with no upper bound.' },
-          { code: '0x0641', name: 'COMPARE', file: 'compare', desc: 'Numeric comparator with configurable operator (EQ, NE, LT, LE, GT, GE).' },
-          { code: '0x0651', name: 'SEQUENCER', file: 'sequencer', desc: 'Step sequencer. Advances through committed states, one per spend.' },
-          { code: '0x0661', name: 'ONE_SHOT', file: 'one-shot', desc: 'Single-pulse trigger. Allows exactly one spend, then permanently disables.' },
-          { code: '0x0671', name: 'RATE_LIMIT', file: 'rate-limit', desc: 'Spend rate limiter. Maximum spends within a block-height window.' },
-          { code: '0x0681', name: 'COSIGN', file: 'cosign', desc: 'Co-spend constraint. Requires another input with matching scriptPubKey hash.' },
-        ]
-      },
-      {
-        name: 'Compound Family', range: '0x0700', cls: 'compound',
-        intro: 'Compound blocks collapse common multi-block patterns into single blocks, reducing wire overhead by eliminating duplicate block headers.',
-        blocks: [
-          { code: '0x0701', name: 'TIMELOCKED_SIG', file: 'timelocked-sig', desc: 'Signature verification with relative timelock in a single block. Replaces SIG + CSV.' },
-          { code: '0x0702', name: 'HTLC', file: 'htlc', desc: 'Hash Time Locked Contract \u2014 hash preimage + timelock + signature in one block.' },
-          { code: '0x0703', name: 'HASH_SIG', file: 'hash-sig', desc: 'Hash preimage verification combined with signature check.' },
-          { code: '0x0704', name: 'PTLC', file: 'ptlc', desc: 'Point Time Locked Contract \u2014 adaptor point, relative timelock, and signature in one block.' },
-          { code: '0x0705', name: 'CLTV_SIG', file: 'cltv-sig', desc: 'Signature verification with absolute timelock. Replaces SIG + CLTV.' },
-          { code: '0x0706', name: 'TIMELOCKED_MULTISIG', file: 'timelocked-multisig', desc: 'M-of-N threshold signatures with relative timelock. Replaces MULTISIG + CSV.' },
-        ]
-      },
-      {
-        name: 'Governance Family', range: '0x0800', cls: 'governance',
-        intro: 'Governance blocks enforce transaction-level constraints \u2014 structure, weight, input/output counts, and value ratios at the consensus level.',
-        blocks: [
-          { code: '0x0801', name: 'EPOCH_GATE', file: 'epoch-gate', desc: 'Periodic spending windows using block height modular arithmetic.' },
-          { code: '0x0802', name: 'WEIGHT_LIMIT', file: 'weight-limit', desc: 'Maximum transaction weight constraint.' },
-          { code: '0x0803', name: 'INPUT_COUNT', file: 'input-count', desc: 'Bounds on number of inputs in the spending transaction.' },
-          { code: '0x0804', name: 'OUTPUT_COUNT', file: 'output-count', desc: 'Bounds on number of outputs in the spending transaction.' },
-          { code: '0x0805', name: 'RELATIVE_VALUE', file: 'relative-value', desc: 'Anti-siphon ratio enforcement between input and output values.' },
-          { code: '0x0806', name: 'ACCUMULATOR', file: 'accumulator', desc: 'Merkle set membership proof using sorted-pair Merkle proofs.' },
-          { code: '0x0807', name: 'OUTPUT_CHECK', file: 'output-check', desc: 'Per-output value and script constraint.' },
-        ]
-      },
-      {
-        name: 'Legacy Family', range: '0x0900', cls: 'legacy',
-        intro: 'Legacy blocks wrap Bitcoin\u2019s original transaction types as typed Ladder Script blocks. They preserve spending semantics while closing data-embedding surfaces. Inner scripts (P2SH/P2WSH/P2TR_SCRIPT) must be valid Ladder Script conditions.',
-        blocks: [
-          { code: '0x0901', name: 'P2PK_LEGACY', file: 'p2pk-legacy', desc: 'P2PK wrapped \u2014 pubkey bound via Merkle leaf + signature verification.' },
-          { code: '0x0902', name: 'P2PKH_LEGACY', file: 'p2pkh-legacy', desc: 'P2PKH wrapped \u2014 HASH160(pubkey) check + signature verify.' },
-          { code: '0x0903', name: 'P2SH_LEGACY', file: 'p2sh-legacy', desc: 'P2SH wrapped \u2014 inner script must be valid Ladder conditions.' },
-          { code: '0x0904', name: 'P2WPKH_LEGACY', file: 'p2wpkh-legacy', desc: 'P2WPKH wrapped \u2014 delegates to P2PKH evaluator.' },
-          { code: '0x0905', name: 'P2WSH_LEGACY', file: 'p2wsh-legacy', desc: 'P2WSH wrapped \u2014 SHA256 of inner Ladder conditions.' },
-          { code: '0x0906', name: 'P2TR_LEGACY', file: 'p2tr-legacy', desc: 'P2TR key-path wrapped \u2014 same as SIG block.' },
-          { code: '0x0907', name: 'P2TR_SCRIPT_LEGACY', file: 'p2tr-script-legacy', desc: 'P2TR script-path wrapped \u2014 closes the inscription vector.' },
-        ]
-      },
-    ];
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Specification</div>
+    <a href="#BIP-XXXX" class="sidebar-link" data-doc="BIP-XXXX.md" data-title="BIP-XXXX">BIP-XXXX</a>
+    <a href="#BLOCK_LIBRARY" class="sidebar-link" data-doc="BLOCK_LIBRARY.md" data-title="Block Library">Block Library</a>
+    <a href="#MERKLE-UTXO-SPEC" class="sidebar-link" data-doc="MERKLE-UTXO-SPEC.md" data-title="MLSC Specification">MLSC Specification</a>
 
-    // TX examples removed — use the Engine instead
-    const TX_EXAMPLES = [
-      {
-        name: 'REMOVED', color: '#000',
-        intro: '',
-        txs: [
-          { file: 'single-sig-compact', name: 'Single SIG', desc: 'Simplest possible RUNG_TX. Single SIG rung with scheme byte.', date: '2026-03-13', scheme: 'SIG' },
-          { file: 'dual-sig-compact', name: 'Dual SIG', desc: 'Two independent SIG rungs. Hot key for daily spending, cold key for recovery.', date: '2026-03-13', scheme: 'SIG' },
-          { file: '2-of-3-multisig-vault', name: '2-of-3 Multisig Vault', desc: 'Multi-output vault with 2-of-3 Schnorr threshold primary spend, CSV-gated single-key recovery, and change.', date: '2026-03-13', scheme: 'MULTISIG' },
-          { file: 'musig-threshold-treasury', name: 'MuSig Threshold Treasury', desc: 'MUSIG_THRESHOLD aggregate signature — M-of-N signers produce a single Schnorr signature off-chain.', date: '2026-03-13', scheme: 'MUSIG_THR' },
-          { file: 'timelocked-multisig-vault-recovery', name: 'Timelocked Multisig Vault Recovery', desc: 'TIMELOCKED_MULTISIG with built-in CSV delay. Single block encodes threshold + timelock.', date: '2026-03-13', scheme: 'TIMELOCKED_MULTISIG' },
-          { file: 'multi-input-consolidation', name: 'Multi-Input Consolidation', desc: 'Multiple inputs consolidated into a single output. Demonstrates multi-input RUNG_TX spending.', date: '2026-03-13', scheme: 'SCHNORR' },
-          { file: 'escrow-with-oracle', name: 'Escrow with Oracle', desc: 'Three-party escrow: buyer, seller, and oracle arbiter. Any 2-of-3 can release funds.', date: '2026-03-13', scheme: 'SCHNORR' },
-        ]
-      },
-      {
-        name: 'Atomic Swaps', color: '#ff6d00',
-        intro: 'On-chain atomic swap transactions using adaptor signatures, hash-locked contracts, and point-locked contracts.',
-        txs: [
-          { file: 'atomic-swap-htlc', name: 'Atomic Swap (HTLC)', desc: 'Hash Time-Locked Contract swap. Compound HTLC claim path with CSV-gated refund.', date: '2026-03-13', scheme: 'SCHNORR' },
-          { file: 'adaptor-sig-swap', name: 'Adaptor Sig Swap', desc: 'Schnorr adaptor signature atomic swap. ADAPTOR_SIG execute path reveals adaptor secret on-chain.', date: '2026-03-13', scheme: 'SCHNORR' },
-          { file: 'htlc-compact-swap', name: 'HTLC Compact Swap', desc: 'Compact HTLC swap with HASH_SIG combined block — hash preimage + signature in a single condition.', date: '2026-03-13', scheme: 'HASH_SIG' },
-          { file: 'hash-sig-atomic-claim', name: 'Hash-SIG Atomic Claim', desc: 'HASH_SIG block for atomic claim — combined preimage reveal + signature check in one block.', date: '2026-03-13', scheme: 'HASH_SIG' },
-          { file: 'ptlc-payment-channel', name: 'PTLC Payment Channel', desc: 'Point Time-Locked Contract channel using adaptor signatures for scriptless script routing.', date: '2026-03-13', scheme: 'ADAPTOR_SIG' },
-        ]
-      },
-      {
-        name: 'Covenants & Vaults', color: '#2979ff',
-        intro: 'Vault patterns, recursive covenants, and spending condition enforcement with built-in timelocks.',
-        txs: [
-          { file: 'vault-with-unvault-clawback', name: 'Vault with Unvault + Clawback', desc: 'Bitcoin vault with hot key CSV-delayed spend and recovery key instant clawback.', date: '2026-03-13', scheme: 'VAULT_LOCK' },
-          { file: 'dead-man-s-switch-inheritance', name: 'Dead Man\'s Switch (Inheritance)', desc: 'Recursive inheritance pattern. Owner keepalive via RECURSE_SAME resets CSV clock. Heir claims after timeout.', date: '2026-03-13', scheme: 'RECURSE_SAME' },
-          { file: 'dca-covenant-chain', name: 'DCA Covenant Chain', desc: 'Dollar-cost averaging via recursive covenant. Each spend peels off a fixed amount and recurses the remainder.', date: '2026-03-13', scheme: 'RECURSE_SAME' },
-          { file: 'recursive-split-tree', name: 'Recursive Split (Tree)', desc: 'RECURSE_SPLIT creates child UTXOs that inherit parent conditions. Tree-structured payout.', date: '2026-03-13', scheme: 'RECURSE_SPLIT' },
-          { file: 'rate-limited-wallet', name: 'Rate-Limited Wallet', desc: 'AMOUNT_LOCK + RECURSE_SAME enforce per-spend limits. Remainder recurses with same conditions.', date: '2026-03-13', scheme: 'AMOUNT_LOCK' },
-          { file: 'fee-gated-covenant', name: 'Fee-Gated Covenant', desc: 'HYSTERESIS_FEE bounds + AMOUNT_LOCK output range. Treasury governance with emergency bypass.', date: '2026-03-13', scheme: 'HYSTERESIS_FEE' },
-          { file: 'anchored-channel-recurse-until', name: 'Anchored Channel + Recurse Until', desc: 'Lightning channel with ANCHOR_CHANNEL binding and RECURSE_UNTIL bounded recursion lifetime.', date: '2026-03-13', scheme: 'ANCHOR_CHANNEL' },
-        ]
-      },
-      {
-        name: 'Payment Channels', color: '#ffffff',
-        intro: 'Lightning-style payment channel patterns with cooperative and unilateral close paths.',
-        txs: [
-          { file: 'payment-channel', name: 'Payment Channel', desc: 'Dual-SIG cooperative close, CSV_TIME-gated force close, and CTV template constraints.', date: '2026-03-13', scheme: 'SCHNORR' },
-          { file: 'sequenced-payout', name: 'Sequenced Payout', desc: 'Multi-phase payout with sequenced CSV delays. Each phase unlocks after the previous completes.', date: '2026-03-13', scheme: 'SCHNORR' },
-        ]
-      },
-      {
-        name: 'Timelocks', color: '#ff6d00',
-        intro: 'Block-height and calendar-time lock patterns using CSV, CLTV, CLTV_SIG, and CLTV_TIME blocks.',
-        txs: [
-          { file: 'block-height-timelock-compare', name: 'Block-Height Timelock + Compare', desc: 'CLTV absolute height lock with COMPARE validation. Funds locked until target block height.', date: '2026-03-13', scheme: 'CLTV' },
-          { file: 'cltv-sig-vesting-schedule', name: 'CLTV_SIG Vesting Schedule', desc: 'Multi-output vesting with CLTV_SIG blocks — combined absolute timelock + signature in one block.', date: '2026-03-13', scheme: 'CLTV_SIG' },
-          { file: 'cltv-time-calendar-lock', name: 'CLTV_TIME Calendar Lock', desc: 'Calendar-based absolute timelock using CLTV_TIME. Funds locked until a specific date.', date: '2026-03-13', scheme: 'CLTV_TIME' },
-        ]
-      },
-      {
-        name: 'Stateful Blocks', color: '#ff4081',
-        intro: 'Counter, timer, and latch patterns that maintain on-chain state across recursive spends.',
-        txs: [
-          { file: 'counter-up-subscription', name: 'Counter-Up Subscription', desc: 'COUNTER_UP increments per spend, enforcing a maximum number of recurring payments.', date: '2026-03-13', scheme: 'COUNTER_UP' },
-          { file: 'preset-counter-board-vote', name: 'Preset Counter Board Vote', desc: 'COUNTER_PRESET for multi-party voting. Preset value decrements to zero for approval threshold.', date: '2026-03-13', scheme: 'COUNTER_PRESET' },
-          { file: 'timer-watchdog', name: 'Timer Watchdog', desc: 'TIMER_CONTINUOUS accumulates block time. Watchdog monitors liveness with automatic timeout sweep.', date: '2026-03-13', scheme: 'TIMER_CONTINUOUS' },
-          { file: 'one-shot-trigger-latch', name: 'One-Shot Trigger + Latch', desc: 'ONE_SHOT fires once then permanently latches. LATCH provides irreversible state transition.', date: '2026-03-13', scheme: 'ONE_SHOT' },
-        ]
-      },
-      {
-        name: 'Governance & Validation', color: '#9e9e9e',
-        intro: 'Treasury governance, allowlist verification, and spending policy enforcement.',
-        txs: [
-          { file: 'governance-gated-treasury', name: 'Governance-Gated Treasury', desc: 'Multi-party treasury with threshold approval, fee bounds, and amount constraints.', date: '2026-03-13', scheme: 'SCHNORR' },
-          { file: 'accumulator-allowlist', name: 'Accumulator Allowlist', desc: 'ACCUMULATOR block verifies destination against a Merkle allowlist. Restricts where funds can be sent.', date: '2026-03-13', scheme: 'ACCUMULATOR' },
-        ]
-      },
-      {
-        name: 'Post-Quantum', color: '#ff1744',
-        intro: 'Post-quantum signature schemes supported by Ladder Script. Each demonstrates a complete fund-and-spend round-trip with PQ key material.',
-        txs: [
-          { file: 'single-sig-dilithium3', name: 'Single SIG (Dilithium3)', desc: 'NIST FIPS 204 ML-DSA-65. Largest PQ signature (~3,300 bytes) with strongest lattice security.', date: '2026-03-13', scheme: 'DILITHIUM3' },
-          { file: 'single-sig-falcon512', name: 'Single SIG (FALCON-512)', desc: 'NIST FIPS 206 FN-DSA Level 1. Compact lattice signatures (~690 bytes) with fast verification.', date: '2026-03-13', scheme: 'FALCON-512' },
-          { file: 'single-sig-falcon1024', name: 'Single SIG (FALCON-1024)', desc: 'NIST FIPS 206 FN-DSA Level 5. Higher-security lattice signatures (~1,800 bytes). Maximum PQ lattice security.', date: '2026-03-13', scheme: 'FALCON-1024' },
-          { file: 'single-sig-sphincs', name: 'Single SIG (SPHINCS+)', desc: 'NIST FIPS 205 SLH-DSA. Hash-based stateless signatures (~50,000 bytes). Most conservative PQ assumption — SHA-256 only.', date: '2026-03-13', scheme: 'SPHINCS+-SHA2' },
-          { file: 'quantum-safe-vault', name: 'Quantum-Safe Vault', desc: 'PQ vault with Falcon-512 hot spend, Dilithium3+Falcon recovery with CSV delay. Multi-scheme PQ protection.', date: '2026-03-13', scheme: 'FALCON-512' },
-          { file: 'quantum-vault-children', name: 'Quantum Vault + Children', desc: 'PQ vault with RECURSE_SPLIT creating child UTXOs. Emergency multisig + CSV sweep. Full PQ inheritance.', date: '2026-03-13', scheme: 'FALCON-512' },
-        ]
-      },
-      {
-        name: 'Legacy Wrapped', color: '#00e5ff',
-        intro: 'Legacy Bitcoin transaction types (P2PKH, P2SH, P2WPKH, P2TR) wrapped as typed Ladder Script blocks. Same spending semantics, no arbitrary data surfaces. Demonstrates migration from legacy scripts to Ladder Script composability.',
-        txs: [
-          { file: 'legacy-p2pkh-recovery', name: 'Legacy P2PKH + Recovery', desc: 'P2PKH legacy spend with time-locked recovery path. HASH160(pubkey) verification wrapped in typed fields.', date: '2026-03-14', scheme: 'P2PKH_LEGACY' },
-          { file: 'legacy-p2sh-multisig-vault', name: 'Legacy P2SH Multisig Vault', desc: 'P2SH wrapping inner Ladder Script conditions. P2WPKH hot spend, P2SH vault with PREIMAGE reveal, CLTV cold sweep.', date: '2026-03-14', scheme: 'P2SH_LEGACY' },
-          { file: 'p2tr-taproot-migration', name: 'P2TR Taproot Migration', desc: 'Taproot key-path and script-path legacy blocks with PQ-safe FALCON-512 emergency recovery. Closes inscription vector.', date: '2026-03-14', scheme: 'P2TR_LEGACY' },
-        ]
-      },
-    ];
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Guides</div>
+    <a href="#EXAMPLES" class="sidebar-link" data-doc="EXAMPLES.md" data-title="Examples">Examples</a>
+    <a href="#INTEGRATION" class="sidebar-link" data-doc="INTEGRATION.md" data-title="Integration Guide">Integration Guide</a>
+    <a href="#ENGINE_GUIDE" class="sidebar-link" data-doc="ENGINE_GUIDE.md" data-title="Engine Guide">Engine Guide</a>
+    <a href="#SOFT_FORK_GUIDE" class="sidebar-link" data-doc="SOFT_FORK_GUIDE.md" data-title="Soft Fork Guide">Soft Fork Guide</a>
+    <a href="#REVIEW_GUIDE" class="sidebar-link" data-doc="REVIEW_GUIDE.md" data-title="Review Guide">Review Guide</a>
 
-    function renderTxIndex() {
-      let html = '<h1 style="font-size:32px;font-weight:800;color:var(--white);margin-bottom:8px;">Transaction Examples</h1>';
-      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Proven Ladder Script transaction round-trips. Each record documents a UTXO funded with rung conditions and then successfully spent on-chain, with full witness verification.</p>';
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">More</div>
+    <a href="#POSSIBILITIES" class="sidebar-link" data-doc="POSSIBILITIES.md" data-title="Possibilities">Possibilities</a>
+  </aside>
 
-      for (const cat of TX_EXAMPLES) {
-        html += '<div class="family-section">';
-        html += '<h2 class="family-title" style="color: ' + cat.color + ';">' + cat.name + '</h2>';
-        html += '<p class="family-intro">' + cat.intro + '</p>';
-        html += '<div class="block-ref-grid">';
-        for (const tx of cat.txs) {
-          html += '<div class="block-ref-card" data-family-color onclick="loadTx(\'' + tx.file + '\', \'' + tx.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer; border-color: ' + cat.color + '20; --family-color: ' + cat.color + ';">';
-          html += '<div class="block-ref-code" style="color: ' + cat.color + ';">' + tx.scheme + '</div>';
-          html += '<div class="block-ref-name">' + tx.name + '</div>';
-          html += '<div class="block-ref-desc">' + tx.desc + '</div>';
-          html += '<div class="block-ref-badge" style="color: ' + cat.color + '; background: ' + cat.color + '18;">VERIFIED</div>';
-          html += '</div>';
-        }
-        html += '</div></div>';
-      }
-      return html;
-    }
+  <main class="content">
+    <div class="content-inner">
+      <div class="content-loading" id="loading">Loading...</div>
+      <div class="md" id="doc-content"></div>
+    </div>
+  </main>
+</div>
 
-    async function loadTx(file, name) {
-      loading.style.display = 'block';
-      docContent.innerHTML = '';
-      breadcrumb.textContent = name;
-      document.title = name + ' | Transaction Examples | Ladder Script';
-      currentDoc = '__TX__' + file;
+<footer class="site-footer">
+  <a href="../../ghost-labs.html">Ghost Labs</a> &middot; Ladder Script (BIP-XXXX) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
+</footer>
 
-      links.forEach(l => l.classList.remove('active'));
-      const txLink = document.querySelector('[data-doc="__TX_INDEX__"]');
-      if (txLink) txLink.classList.add('active');
+<script>
+  const loading = document.getElementById('loading');
+  const docContent = document.getElementById('doc-content');
+  const links = document.querySelectorAll('.sidebar-link');
+  let currentDoc = null;
 
-      history.pushState(null, '', '#TX_' + file);
+  async function loadDoc(filename, title) {
+    if (currentDoc === filename) return;
+    currentDoc = filename;
 
-      try {
-        const res = await fetch('txs/' + file + '.html');
-        if (!res.ok) throw new Error('Not found');
-        const html = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const content = doc.querySelector('.doc-content');
+    loading.style.display = 'block';
+    docContent.innerHTML = '';
+    document.title = title + ' | Ladder Script';
 
-        if (content) {
-          loading.style.display = 'none';
-          let txHtml = '<span class="block-detail-back" onclick="loadTxIndex()">\u2190 All Transaction Examples</span>';
-          txHtml += content.innerHTML;
-          docContent.innerHTML = txHtml;
+    links.forEach(l => l.classList.remove('active'));
+    const activeLink = document.querySelector('[data-doc="' + filename + '"]');
+    if (activeLink) activeLink.classList.add('active');
 
-          // Rewrite doc-nav spans to use loadTxIndex() instead of navigating
-          docContent.querySelectorAll('.doc-nav span').forEach(s => {
-            if (s.getAttribute('onclick') && s.getAttribute('onclick').includes('TX_INDEX')) {
-              s.setAttribute('onclick', 'loadTxIndex()');
-            }
-          });
-        } else {
-          loading.style.display = 'none';
-          docContent.innerHTML = '<p style="color:var(--gray-400);">Could not parse transaction documentation.</p>';
-        }
-      } catch (e) {
-        loading.style.display = 'none';
-        docContent.innerHTML = '<p style="color:var(--gray-400);">Could not load transaction documentation.</p>';
-      }
-
-      window.scrollTo(0, 0);
-    }
-
-    function loadTxIndex() {
-      currentDoc = '__TX_INDEX__';
+    try {
+      const res = await fetch(filename);
+      if (!res.ok) throw new Error('Not found');
+      const md = await res.text();
       loading.style.display = 'none';
-      breadcrumb.textContent = 'Transaction Examples';
-      document.title = 'Transaction Examples | Ladder Script';
-
-      links.forEach(l => l.classList.remove('active'));
-      const txLink = document.querySelector('[data-doc="__TX_INDEX__"]');
-      if (txLink) txLink.classList.add('active');
-
-      history.pushState(null, '', '#TX_INDEX');
-      docContent.innerHTML = renderTxIndex();
-      window.scrollTo(0, 0);
-    }
-
-    function renderBlockIndex() {
-      let html = '<h1 style="font-size:32px;font-weight:800;color:var(--white);margin-bottom:8px;">Block Reference</h1>';
-      html += '<p style="font-size:15px;color:var(--gray-400);margin-bottom:32px;max-width:640px;line-height:1.7;">Deep-dive documentation for each of the 61 block types in the Ladder Script evaluation engine. Each page covers wire format, fields, evaluation logic, JSON output, and real-world use cases.</p>';
-
-      for (const family of BLOCK_FAMILIES) {
-        html += `<div class="family-section">`;
-        html += `<h2 class="family-title family-${family.cls}">${family.name} \u2014 ${family.range}</h2>`;
-        html += `<p class="family-intro">${family.intro}</p>`;
-        html += `<div class="block-ref-grid">`;
-        for (const block of family.blocks) {
-          html += `<div class="block-ref-card fam-${family.cls}" data-family-color data-block-file="${block.file}" onclick="loadBlock('${block.file}', '${block.name}')">`;
-          html += `<div class="block-ref-code" style="color: var(--family-color);">${block.code}</div>`;
-          html += `<div class="block-ref-name">${block.name}</div>`;
-          html += `<div class="block-ref-desc">${block.desc}</div>`;
-          html += `<div class="block-ref-badge badge-${family.cls}">${family.name.replace(' Family', '')}</div>`;
-          html += `</div>`;
-        }
-        html += `</div></div>`;
-      }
-      return html;
-    }
-
-    async function loadBlock(file, name) {
-      loading.style.display = 'block';
-      docContent.innerHTML = '';
-      breadcrumb.textContent = name;
-      document.title = name + ' | Block Reference | Ladder Script';
-      currentDoc = '__BLOCK__' + file;
-
-      // Update sidebar active state
-      links.forEach(l => l.classList.remove('active'));
-      const blockLink = document.querySelector('[data-doc="__BLOCK_INDEX__"]');
-      if (blockLink) blockLink.classList.add('active');
-
-      history.pushState(null, '', '#BLOCK_' + file);
-
-      try {
-        const res = await fetch('blocks/' + file + '.html');
-        if (!res.ok) throw new Error('Not found');
-        const html = await res.text();
-
-        // Parse the HTML and extract the .doc-content inner HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const content = doc.querySelector('.doc-content');
-
-        if (content) {
-          loading.style.display = 'none';
-          // Add back-to-index link at top
-          let blockHtml = '<span class="block-detail-back" onclick="loadBlockIndex()">\u2190 All Blocks</span>';
-          blockHtml += content.innerHTML;
-
-          // Replace the doc-nav links with JS click handlers
-          docContent.innerHTML = blockHtml;
-
-          // Intercept doc-nav links to load blocks via JS
-          docContent.querySelectorAll('.doc-nav a').forEach(a => {
-            const href = a.getAttribute('href');
-            if (href && href.endsWith('.html') && href !== 'index.html') {
-              const blockFile = href.replace('.html', '');
-              const blockName = a.textContent.replace(/[^\w_]/g, '').trim();
-              a.href = '#';
-              a.onclick = function(e) { e.preventDefault(); loadBlock(blockFile, blockName); window.scrollTo(0, 0); };
-            } else if (href === 'index.html') {
-              a.href = '#';
-              a.onclick = function(e) { e.preventDefault(); loadBlockIndex(); };
-            }
-          });
-        } else {
-          loading.style.display = 'none';
-          docContent.innerHTML = '<p style="color:var(--gray-400);">Could not parse block documentation.</p>';
-        }
-      } catch (e) {
-        loading.style.display = 'none';
-        docContent.innerHTML = '<p style="color:var(--gray-400);">Could not load block documentation.</p>';
-      }
-
-      window.scrollTo(0, 0);
-    }
-
-    function loadBlockIndex() {
-      currentDoc = '__BLOCK_INDEX__';
+      docContent.innerHTML = marked.parse(md);
+    } catch (e) {
       loading.style.display = 'none';
-      breadcrumb.textContent = 'Block Reference';
-      document.title = 'Block Reference | Ladder Script';
-
-      links.forEach(l => l.classList.remove('active'));
-      const blockLink = document.querySelector('[data-doc="__BLOCK_INDEX__"]');
-      if (blockLink) blockLink.classList.add('active');
-
-      history.pushState(null, '', '#BLOCKS');
-      docContent.innerHTML = renderBlockIndex();
-      window.scrollTo(0, 0);
+      docContent.innerHTML = '<p style="color:var(--text-light);">Could not load document.</p>';
     }
 
-    async function loadDoc(filename, title) {
-      if (currentDoc === filename) return;
-      currentDoc = filename;
+    window.scrollTo(0, 0);
+  }
 
-      if (filename === '__BLOCK_INDEX__') {
-        loadBlockIndex();
-        return;
-      }
-
-      if (filename === '__TX_INDEX__') {
-        loadTxIndex();
-        return;
-      }
-
-      loading.style.display = 'block';
-      docContent.innerHTML = '';
-      breadcrumb.textContent = title;
-      document.title = title + ' | Ladder Script';
-
-      links.forEach(l => l.classList.remove('active'));
-      const activeLink = document.querySelector(`[data-doc="${filename}"]`);
-      if (activeLink) activeLink.classList.add('active');
-
-      try {
-        const res = await fetch(filename);
-        if (!res.ok) throw new Error('Not found');
-        const md = await res.text();
-        loading.style.display = 'none';
-        docContent.innerHTML = marked.parse(md);
-      } catch (e) {
-        loading.style.display = 'none';
-        docContent.innerHTML = '<p style="color:var(--gray-400);">Could not load document.</p>';
-      }
-
-      window.scrollTo(0, 0);
-    }
-
-    links.forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const doc = link.dataset.doc;
-        const title = link.dataset.title;
-        if (doc === '__BLOCK_INDEX__') {
-          loadBlockIndex();
-        } else {
-          history.pushState(null, '', '#' + doc.replace('.md', ''));
-          loadDoc(doc, title);
-        }
-      });
+  links.forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      var doc = link.dataset.doc;
+      var title = link.dataset.title;
+      history.pushState(null, '', '#' + doc.replace('.md', ''));
+      loadDoc(doc, title);
     });
+  });
 
-    function loadFromHash() {
-      const hash = location.hash.slice(1);
-      if (!hash) {
-        loadDoc('INTRODUCTION.md', 'Introduction');
-        return;
-      }
-
-      // Block reference index
-      if (hash === 'BLOCKS') {
-        loadBlockIndex();
-        return;
-      }
-
-      // TX examples removed — redirect to intro
-      if (hash === 'TX_INDEX' || hash.startsWith('TX_')) {
-        loadDoc('INTRODUCTION.md', 'Introduction');
-        return;
-      }
-
-      // Individual block page: #BLOCK_sig, #BLOCK_multisig, etc.
-      // Skip BLOCK_LIBRARY and BLOCK_LIBRARY_IMPL — those are markdown docs, not block pages.
-      if (hash.startsWith('BLOCK_') && hash !== 'BLOCK_LIBRARY' && hash !== 'BLOCK_LIBRARY_IMPL') {
-        const file = hash.substring(6);
-        // Find the block name from our data
-        let blockName = file.toUpperCase().replace(/-/g, '_');
-        for (const family of BLOCK_FAMILIES) {
-          for (const block of family.blocks) {
-            if (block.file === file) { blockName = block.name; break; }
-          }
-        }
-        loadBlock(file, blockName);
-        return;
-      }
-
-      // Markdown docs
-      const link = document.querySelector(`[data-doc="${hash}.md"]`) ||
-                   document.querySelector(`[data-doc="${hash}"]`);
-      if (link) {
-        loadDoc(link.dataset.doc, link.dataset.title);
-      } else {
-        loadDoc('INTRODUCTION.md', 'Introduction');
-      }
+  function loadFromHash() {
+    var hash = location.hash.slice(1);
+    if (!hash) {
+      loadDoc('INTRODUCTION.md', 'Introduction');
+      return;
     }
 
-    window.addEventListener('hashchange', loadFromHash);
-    window.addEventListener('DOMContentLoaded', loadFromHash);
-  </script>
+    var link = document.querySelector('[data-doc="' + hash + '.md"]') ||
+              document.querySelector('[data-doc="' + hash + '"]');
+    if (link) {
+      loadDoc(link.dataset.doc, link.dataset.title);
+    } else {
+      loadDoc('INTRODUCTION.md', 'Introduction');
+    }
+  }
+
+  window.addEventListener('hashchange', loadFromHash);
+  window.addEventListener('DOMContentLoaded', loadFromHash);
+</script>
 <script>(function(){var a=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8801':'https://bitcoinghost.org';fetch(a+'/api/ladder/analytics/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:location.pathname,referrer:document.referrer})}).catch(function(){});})()</script>
 </body>
 </html>
