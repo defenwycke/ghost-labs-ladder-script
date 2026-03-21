@@ -1,552 +1,521 @@
 # Ladder Script Engine Guide
 
-The Ladder Script Engine is a single-page web application for building, simulating,
-and deploying Ladder Script transactions on Ghost signet. It runs entirely client-side
-with no build step. Open `tools/ladder-engine/index.html` in a browser.
+## 1. Overview
 
-For the block type reference, see [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md). For
-terminology, see [GLOSSARY.md](GLOSSARY.md).
+The Ladder Script Engine is a single-page React application for building,
+simulating, and deploying RUNG_TX (version 4) transactions on Ghost signet.
+It runs entirely client-side with no build step: open
+`tools/ladder-engine/index.html` in any modern browser. The file loads React 18,
+ReactDOM 18, and Babel standalone from CDN, then transpiles an inline JSX
+`<script type="text/babel">` block at page load.
 
----
+The engine version string is **GHOST LADDER v2.0**.
 
-## Table of Contents
+### How to run
 
-1. [Tabs](#1-tabs)
-2. [Toolbar](#2-toolbar)
-3. [Block Palette](#3-block-palette)
-4. [Building Ladders](#4-building-ladders)
-5. [Right Panel](#5-right-panel)
-6. [Simulation](#6-simulation)
-7. [Convert](#7-convert)
-8. [Send](#8-send)
-9. [Spend](#9-spend)
-10. [Review](#10-review)
-11. [Navigation](#11-navigation)
-12. [Import / Export](#12-import--export)
-13. [Examples Library](#13-examples-library)
-14. [Status Bar](#14-status-bar)
-15. [Visual Reference](#15-visual-reference)
+1. Open `tools/ladder-engine/index.html` directly in a browser (file:// works).
+2. For signet features (Send, Spend), either run the ladder-script proxy on
+   `http://localhost:8801` or access the hosted version at
+   `https://bitcoinghost.org`.
 
----
+### Component architecture
 
-## 1. Tabs
+The top-level `App` component uses `useReducer` with an `appReducer` and
+`INITIAL_STATE`. Two React contexts distribute state and dispatch:
 
-The engine has six tabs in the main header:
+| Context       | Provides                    |
+|---------------|-----------------------------|
+| `AppContext`  | Full state object           |
+| `AppDispatch` | The `dispatch` function     |
 
-### 1.1 Build
+Major child components:
 
-The default tab. Full editing: drag blocks from the palette, configure fields, manage
-rungs, assign transaction inputs and outputs. The right panel shows **Properties**,
-**TX**, and **RPC** sub-tabs.
-
-### 1.2 Simulate
-
-Step through rung evaluation visually. Power flows left to right through blocks in
-each rung. The palette is locked (read-only).
-
-- Click rung labels to step to a specific rung.
-- Alt+click any block to cycle its forced state: AUTO -> FORCED ON -> FORCED OFF -> AUTO.
-- The scan bar provides playback controls (reset, step back, play/pause, step forward)
-  with adjustable speed from 100ms to 2000ms per step.
-- Blocks show pass/fail states with colour highlighting: green for passed, red for
-  failed, amber for energised.
-- When all blocks in a rung pass, an **EXECUTE** button appears on the coil. Clicking
-  it marks the rung as SPENT.
-- The **Context** sub-tab replaces TX, showing simulation state: block height, fee
-  rate, available keys, and known preimages.
-
-### 1.3 Convert
-
-Paste RPC JSON output to convert back into a visual ladder diagram. Works offline;
-no signet connection needed. Accepts three JSON formats: `decoderung` output,
-`createrungtx` format, and `decoderawtransaction` output. Click **VIEW AS LADDER**
-to load the parsed result into Build mode.
-
-### 1.4 Send
-
-Create and fund Ladder Script outputs on Ghost signet. Build a ladder diagram in
-Build mode, then switch to Send to fund it with real signet coins, sign, broadcast,
-and mine. See [Section 8](#8-send) for full details.
-
-### 1.5 Spend
-
-Spend existing RUNG outputs on signet. Loads saved records from previous Send
-operations, lets you select which condition path to satisfy, and handles signing,
-timelocks, covenants, and recursion automatically. See [Section 9](#9-spend) for
-full details.
-
-### 1.6 Review
-
-Review fund and spend JSON for all transactions created during the session. Each
-entry tracks the full UTXO lifecycle: the `createrungtx` payload that funded the
-output (left panel) and the `createrungtx` payload that spent it (right panel).
-See [Section 10](#10-review) for full details.
+- **PalettePanel** (left sidebar, block palette)
+- **LadderView** (central ladder diagram, contains RungView / ContactView)
+- **PropertiesPanel** / **CoilPropertiesPanel** / **InputPropertiesPanel** (right panel, Properties tab)
+- **TxPanel** (right panel, TX tab)
+- **SimulationPanel** (right panel, Context tab in Simulate mode)
+- **HighlightedJson** (right panel, RPC tab with line-level simulation annotations)
+- **RegisterTable** (collapsible bottom table)
+- **SignetPanel** (Send tab full-panel view)
+- **SpendPanel** (Spend tab full-panel view)
+- **ReviewPanel** (Review tab full-panel view)
+- **ConvertPanel** (Convert tab full-panel view)
+- **ExamplesModal** (template browser overlay)
+- **BlockModal** / **InputModal** / **OutputModal** (inspector overlays)
+- **BlockContextMenu** / **InputContextMenu** / **OutputContextMenu** (right-click menus)
+- **GuidedWalkthrough** (first-visit tutorial overlay)
 
 ---
 
-## 2. Toolbar
+## 2. Tabs
 
-### 2.1 Main Header
+The header contains six mode tabs. Switching tabs changes what occupies the
+central content area.
 
-| Control | Description |
-|---------|-------------|
-| **EXAMPLES** | Opens a modal with 39 pre-built example programs. Click any card to load it into the builder. |
-| **IMPORT** | Paste `createrungtx` JSON from the clipboard to load a ladder. |
-| **COPY JSON** | Copies the current ladder as `createrungtx` wire-format JSON to the clipboard. |
-| **PRINT** | Render the ladder diagram to PDF for printing. |
-| Tab bar | **BUILD** · **SIMULATE** · **CONVERT** · **SEND** · **SPEND** · **REVIEW** |
+### Build
 
-### 2.2 Ladder Toolbar (Build Mode)
+Default mode. The three-column layout is visible: block palette on the left,
+ladder diagram in the centre, right panel on the right. Drag blocks from the
+palette onto rung slots to construct spending conditions. Blocks can be
+reordered by dragging within or across rungs.
 
-| Control | Description |
-|---------|-------------|
-| **− / level / +** | Zoom controls. Click the level display to reset to 100%. Mouse wheel also zooms (0.1 increments). Ctrl+wheel for fine zoom (0.05 steps). |
-| **⌂ Reset View** | Zoom to 100% and centre the diagram. |
-| **⫷ Justify Left** | Pack all blocks to the left of their rungs, removing gaps. |
-| **+ RUNG** | Add a new empty rung at the bottom. |
-| **CLEAR** | Delete all rungs. Prompts for confirmation. |
-| **⊞ / ⊡ Fullscreen** | Toggle fullscreen view. Also bound to F11. |
+### Simulate
 
-### 2.3 Scan Bar (Simulate Mode)
+Same three-column layout, but the palette is read-only and the right panel
+switches to the Context tab. The scan bar appears above the ladder with
+playback controls (reset, step back, play/pause, step forward) and a speed
+slider (100 ms to 2000 ms). Blocks can be force-overridden with Alt+click
+(cycles through FORCE ON, BLOCK OFF, AUTO). Clicking a rung label starts
+step-through for that rung. The JSON viewer in the RPC tab shows line-level
+annotations (cursor, passed, failed, executed, blocked).
 
-| Control | Description |
-|---------|-------------|
-| **⏮ Reset** | Return to the start of the scan and clear all forced states. |
-| **⏪ Step Back** | Move to the previous evaluation step. |
-| **▶ Play / ⏸ Pause** | Start or pause automatic scanning. |
-| **⏩ Step Forward** | Advance one evaluation step. |
-| **Position** | Displays the current evaluation point: `R##.B#` (rung/block), `R##.OUT` (coil), or `READY` / `COMPLETE`. |
-| **Step Counter** | Shows current step out of total steps. |
-| **Speed Slider** | Adjustable scan interval from 100ms (fast) to 2000ms (slow). |
-| **RESET SIM** | Clear all forced block states and spent rungs. |
+### Convert
+
+Full-width panel replacing the three-column layout. Paste JSON from
+`decoderung`, `createrungtx`, or `decoderawtransaction` and click
+VIEW AS LADDER to import it into the builder. Works offline with no signet
+connection.
+
+### Send
+
+Full-width SignetPanel. Connects to the signet node to:
+- Check node status, wallet balance, mempool info, and recent blocks.
+- Generate a new signet address.
+- Request test coins from the faucet.
+- Execute the three-step pipeline: CREATE (createrungtx) then SIGN
+  (signrawtransactionwithwallet) then BROADCAST (sendrawtransaction).
+- Look up transactions by txid.
+- Decode raw hex and validate rung transactions.
+
+The panel auto-detects the signature scheme from the diagram (Schnorr, ECDSA,
+or any post-quantum scheme) and supports auto or none change modes.
+
+### Spend
+
+Full-width SpendPanel. Lists saved fund records from localStorage. Select a
+record, choose which rung (spending path) to use, pick a vout, enter a
+destination address, and execute the spend pipeline. The engine builds the
+witness, signs with stored keys, and broadcasts.
+
+### Review
+
+Full-width ReviewPanel. Shows a session transaction log stored in
+localStorage (up to 50 entries). Each entry can hold both the fund JSON and
+the spend JSON side by side, with badges indicating which are present. Click
+an entry to view, copy, or compare the raw JSON.
 
 ---
 
 ## 3. Block Palette
 
-The palette is organised into 10 families matching the Ladder Script block type
-system. Click any family header to collapse or expand its section. Drag a block from
-the palette onto a rung slot or the "+ ADD RUNG" drop area.
+The left sidebar organizes **61 block types** (59 active, 2 deprecated) into
+**10 families**. Each family has a colour-coded dot. Groups are collapsible.
+Hovering a palette item shows a tooltip with the block description and hex
+type code.
 
-| Family | Blocks |
-|--------|--------|
-| **Signature** | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG |
-| **Timelock** | CSV, CSV_TIME, CLTV, CLTV_TIME |
-| **Hash** | TAGGED_HASH, HASH_GUARDED |
-| **Covenant** | CTV, VAULT_LOCK, AMOUNT_LOCK |
-| **Recursion** | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY |
-| **Anchor** | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN |
-| **PLC** | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN (functionally cross-input) |
-| **Compound** | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG |
-| **Governance** | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK |
-| **Legacy** | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY |
+| Family      | Colour    | Blocks |
+|-------------|-----------|--------|
+| SIGNATURE   | `#ff1744` | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THR, KEY_REF_SIG |
+| TIMELOCK    | `#ff6d00` | CSV, CSV_TIME, CLTV, CLTV_TIME |
+| HASH        | `#00e676` | HASH_PRE (deprecated), HASH160 (deprecated), TAGGED, GUARDED |
+| COVENANT    | `#2979ff` | CTV, VAULT, AMT_LOCK |
+| RECURSION   | `#aa00ff` | REC_SAME, REC_MOD, REC_UNTIL, REC_COUNT, REC_SPLIT, REC_DECAY |
+| ANCHOR      | `#ffea00` | ANCHOR, A_CHAN, A_POOL, A_RESV, A_SEAL, A_ORACLE, DATA_RET |
+| PLC         | `#ff4081` | HYST_FEE, HYST_VAL, TMR_CONT, TMR_OFF, LATCH_S, LATCH_R, CTR_DN, CTR_PRE, CTR_UP, COMPARE, SEQ, ONE_SHOT, RATE_LIM, COSIGN |
+| COMPOUND    | `#ffffff` | TL_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TL_MULTI |
+| GOVERNANCE  | `#9e9e9e` | EPOCH, WT_LIMIT, IN_COUNT, OUT_COUNT, REL_VAL, ACCUM |
+| LEGACY      | `#00e5ff` | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_S |
 
-61 block types total (HASH_PREIMAGE and HASH160_PREIMAGE are deprecated —use HTLC,
-HASH_SIG, or HASH_GUARDED instead). For detailed documentation on each, see
-[BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) or the [Block Reference](../tools/block-docs/).
+**Deprecated blocks:** HASH_PREIMAGE (0x0201) and HASH160_PREIMAGE (0x0202).
+Their descriptions state "DEPRECATED: Use HTLC, HASH_SIG, or HASH_GUARDED
+instead" and they are rejected at consensus.
+
+An internal block type `OUTPUT_REF` (not in the palette) references named
+output coils from other rungs.
 
 ---
 
 ## 4. Building Ladders
 
-### 4.1 Adding Rungs
+### Adding rungs
 
-Click **+ RUNG** in the toolbar or drag a block to the empty area below existing rungs.
-Maximum 16 rungs per ladder (MAX_RUNGS = 16). Rungs are evaluated with OR logic: first satisfied rung
-wins.
+- Click **+ RUNG** in the ladder toolbar to append an empty rung (max 8).
+- Click **+ CHANGE** to add a pre-configured SIG change output rung.
+- Drop a block from the palette onto the "+ ADD RUNG" zone at the bottom.
 
-### 4.2 Adding Blocks
+### Adding blocks
 
-Drag a block from the palette to a rung slot. Each rung holds a maximum of 8 blocks.
-Blocks within a rung are evaluated with AND logic: all must pass.
+- Drag a block type from the palette onto any of the 8 slots in a rung.
+- Each rung supports up to 8 blocks.
+- Blocks within a rung use AND logic: all must be satisfied.
+- Rungs use OR logic: any satisfied rung unlocks the output.
 
-### 4.3 Rung Controls
+### Rung labels
 
-| Action | Method |
-|--------|--------|
-| **Reorder** | Hover over the rung number to reveal ▲/▼ arrows, or drag the rung number. |
-| **Delete** | Click the ✕ on hover. |
-| **Rename** | Double-click the rung number. Press Enter to save, Escape to cancel. |
-| **Right-click** | Context menu: RENAME, INSPECT, CLEAR INPUTS, CLEAR OUTPUT. |
+Double-click the rung number to rename it (max 12 characters, auto-uppercased).
+Default labels follow the pattern R000, R001, etc.
 
-### 4.4 Block Interactions
+### Block configuration
 
-| Action | Method |
-|--------|--------|
-| **Select** | Click a block to edit its properties in the right panel. |
-| **Rename** | Double-click the block label, or right-click ->RENAME. |
-| **Configure** | Click the block or right-click ->INSPECT to open the full modal. |
-| **Invert** | Right-click -> INVERT (NOT). Toggles the inverted flag. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted. |
-| **Duplicate** | Right-click ->DUPLICATE. |
-| **Delete** | Click ✕ on hover, right-click ->DELETE, or press Delete/Backspace. |
-| **Reorder** | Drag blocks left/right within a rung, or across rungs. |
+Click a block to select it and edit its fields in the Properties panel.
+Double-click a block to open the inline name editor. Right-click for the
+context menu (Rename, Inspect, Fill Test Data, Invert, Duplicate, Delete).
 
-### 4.5 Coil Configuration
+### Inversion
 
-Click the coil at the right end of a rung to configure it.
+Any block can be inverted (NOT). An inverted block flips SATISFIED to
+UNSATISFIED and vice versa. Visual indicator: a red diagonal line through the
+block body and a "NOT" label above it. Toggle via the context menu or the
+checkbox in the Properties/Inspector panels.
 
-**Visual coil types** (diagram display):
+### Dragging and reordering
 
-| Type | Symbol | Meaning |
-|------|--------|---------|
-| Standard | `( )` | Standard unlock |
-| Latch | `(L)` | Latch set |
-| Unlatch | `(U)` | Unlatch |
-| Retentive | `(M)` | Retentive memory |
-| Negated | `(/)` | Negated output |
-| Relay | `◇R` | Internal reference. Other rungs reference via input contacts. |
+- Blocks can be dragged between slots within a rung to reorder.
+- Blocks can be dragged across rungs (cross-rung move).
+- Rung labels are draggable to reorder rungs. Arrow buttons on hover also
+  move rungs up/down.
+- The **Justify Left** button (`\u2AEF`) in the toolbar packs all blocks to
+  leftmost slots.
 
-**Wire-level coil types** (RPC output, under "C++ RPC coil settings"):
+### Fill Test Data
 
-| Type | Code | Meaning |
-|------|------|---------|
-| UNLOCK | 0x01 | Standard spend, no constraints |
-| UNLOCK_TO | 0x02 | Spend to a specific destination address |
-| COVENANT | 0x03 | Constrain the spending transaction's outputs |
-
-Additional wire-level fields: **attestation** (default INLINE) and **scheme**
-(default SCHNORR).
-
-### 4.6 Input Configuration
-
-Click the input contact at the left end of a rung to assign TX inputs (UTXO
-references) and relay references from other rungs. A ⚠ badge appears when inputs
-are unassigned.
+The toolbar button "FILL TEST DATA" populates all empty fields across all
+blocks with deterministic test values. Individual blocks can be filled via
+their context menu or the inspector modal.
 
 ---
 
 ## 5. Right Panel
 
-The right panel contains tabbed sections that change based on the current tab and
-selection.
+The right panel has a draggable resize handle on its left edge (200 px to
+600 px). Its tab bar changes depending on mode.
 
-### 5.1 Properties (Build)
+### Properties tab (Build mode)
 
-Visible when a block is selected:
+Shown when a block, input contact, or coil is selected.
 
-- Block name / label input field.
-- **Inverted (NOT)** checkbox.
-- Field values editor with type-specific inputs (public keys, hashes, integers, etc.).
-- Info section showing the block's family name and type ID hex code.
-- Expand button to open the full configuration modal.
+- **Block selected:** Shows block type, name input, inverted checkbox, and
+  all configurable fields with tooltips. Buttons for TEST DATA and
+  EXPAND (opens BlockModal inspector). OUTPUT_REF blocks get a dropdown of
+  named coils. SCHEME fields get a dropdown with SCHNORR, ECDSA, FALCON-512,
+  FALCON-1024, DILITHIUM3, and SPHINCS+-SHA2 options.
+- **Input contact selected:** InputPropertiesPanel showing TX input
+  (UTXO) checkboxes and relay reference checkboxes.
+- **Coil selected:** CoilPropertiesPanel showing coil name, coil type
+  dropdown, wire format settings (coil type, attestation, scheme), and TX
+  output assignment dropdown.
 
-### 5.2 TX (Build)
+### TX tab (Build mode)
 
-Manages the raw transaction structure:
+TxPanel for configuring transaction inputs, outputs, and locktime.
+Each input has TXID, VOUT, and Sequence fields. Each output has Address and
+Amount (sats) fields. Summary section shows input count, total output amount,
+and estimated vsize.
 
-- **Inputs:** add/remove, configure UTXO references (txid, vout), amounts, sequences.
-- **Outputs:** add/remove, configure amounts and destination addresses.
-- **Locktime** field.
+### Context tab (Simulate mode)
 
-### 5.3 Context (Simulate)
+SimulationPanel with context inputs: Block Height, CSV Blocks, CSV Seconds,
+Median Time, Input Amount (sats), Output Amount (sats), Fee Rate. Text areas
+for available public keys, known preimages, known templates, and known
+Merkle roots.
 
-Replaces TX during simulation. Displays and allows editing of:
+### RPC tab (both modes)
 
-- Block height (manual entry).
-- Fee rate.
-- Available signing keys.
-- Known hash preimages.
-- Available UTXOs.
-
-### 5.4 RPC (All Tabs)
-
-Displays the current ladder as `createrungtx` wire-format JSON, updating live as the
-ladder is edited. Warnings shown for unassigned outputs and configuration issues.
-
-In Simulate mode, JSON entries are colour-highlighted: green for executed rung, red
-for blocked, amber for currently stepping.
+Shows the `createrungtx` wire-format JSON. In Build mode this is plain green
+text. In Simulate mode it is rendered by HighlightedJson with line-level
+colour coding (green for passed/executed, red for failed/blocked, pulsing
+white for the active cursor, dim for neutral/pending).
 
 ---
 
 ## 6. Simulation
 
-### 6.1 Stepping Through Execution
+### Scan playback
 
-1. Switch to **SIMULATE**.
-2. Press **▶** to auto-scan, or **⏩** to step one block at a time.
-3. Watch power flow left to right. Each block lights green (passed) or red (failed).
-4. When all blocks in a rung pass, the coil energises with an amber glow.
-5. The position indicator shows `R##.B#` for the current point, `R##.OUT` at the coil,
-   or `COMPLETE` when the scan finishes.
+The scan bar provides VCR-style controls. The engine builds a flat scan
+sequence: for each rung, it visits the input contact, then each block
+left-to-right, then the coil. The speed slider controls delay between steps
+(100 ms fast to 2000 ms slow).
 
-### 6.2 Force States
+Scan phases: `idle`, `running`, `paused`, `done`.
 
-Alt+click any block to cycle:
+Position display format: `R00.IN`, `R00.B0`, `R00.B1`, ..., `R00.OUT`.
 
-| State | Indicator | Behaviour |
-|-------|-----------|----------|
-| **AUTO** | Default | Evaluates normally. |
-| **FORCED ON** | Green highlight | Always SATISFIED. |
-| **FORCED OFF** | Red highlight | Always UNSATISFIED. |
+### Step-through
 
-### 6.3 Execute and Spend
+Click a rung label in Simulate mode to start step-through for that rung.
+The first block pulses green ("step-next"). Click it to pass and advance.
+After all blocks pass, the coil fires (SPENT) and the rung is marked as
+executed after a 600 ms delay.
 
-When a rung is fully energised, an **EXECUTE** button appears on the coil. Clicking
-it marks the rung as SPENT (green indicator). Spending cascades to shared inputs.
+### Forced blocks
 
-### 6.4 Reset
+Alt+click a block in Simulate mode to cycle its force state:
+1. **FORCE** (forced ON, green) - block always satisfied.
+2. **BLOCK** (forced OFF, red) - block always unsatisfied.
+3. **AUTO** (no override) - normal evaluation.
 
-- **RESET SIM** clears all forced states and spent rungs.
-- **⏮** returns to the beginning of the scan without clearing forces.
+A force badge appears on the block.
 
----
+### Register table
 
-## 7. Convert
+The collapsible bottom panel shows one row per block with columns: Tag
+(e.g. R000.B0), Type, Value, and Status (ENERGIZED / OFF / FAULT in Simulate
+mode). Status indicators use symbols: filled square for ENERGIZED, light shade
+for OFF, dark shade for FAULT.
 
-The Convert tab provides offline JSON-to-ladder conversion:
+### Evaluation
 
-1. Paste JSON into the text area.
-2. Click **VIEW AS LADDER** to parse and load into Build mode.
-3. **PASTE FROM CLIPBOARD** fills the text area from the system clipboard.
-4. **CLEAR** empties the text area.
-
-Accepted formats:
-- `decoderung` RPC output
-- `createrungtx` JSON
-- `decoderawtransaction` output (v4 transactions with `rung_conditions`)
+Each block type has an `evaluate(block, simState)` method in BlockRegistry
+returning `'satisfied'`, `'unsatisfied'`, or `'unknown'`. The wrapper
+`evaluateBlock()` checks forced overrides first, then calls the registry
+method, then applies inversion. A rung is energized when all its blocks are
+satisfied and all its relay references (outputRefs) are satisfied.
 
 ---
 
-## 8. Send
+## 7. Coil Types
 
-The Send tab creates and funds Ladder Script outputs on Ghost signet. Build your
-ladder in Build mode, then switch to Send to deploy it.
+Each rung has an output coil. The visual symbol and engine semantics:
 
-### 8.1 Connection
+| Type       | Symbol | Label       | Meaning |
+|------------|--------|-------------|---------|
+| standard   | `( )`  | Standard    | Normal spend output |
+| latch      | `(L)`  | Latch Set   | Latching output |
+| unlatch    | `(U)`  | Unlatch     | Reset a latch |
+| retentive  | `(M)`  | Retentive   | State-retaining output |
+| negated    | `(/)`  | Negated     | Output inverted |
+| relay      | `\u25C7R` | Relay     | Internal logic gate, not tied to a TX output |
 
-The engine connects to Ghost signet via an API proxy. The proxy URL is determined
-automatically: `localhost:8801` for local development, `bitcoinghost.org` for
-production. Connection status shows **GHOST SIGNET ONLINE** (green) or **SIGNET
-OFFLINE** (red), with current block height and mempool info.
+### Wire-level coil types
 
-### 8.2 Wallet
+Configured in the output inspector under "Wire Format":
 
-| Feature | Description |
-|---------|-------------|
-| **Balance** | tBTC and sats display, unconfirmed balance, TX count, REFRESH button. |
-| **Address** | GENERATE NEW ADDRESS button with copy. |
-| **Faucet** | Input a signet address + REQUEST 0.001 tBTC button. |
-| **UTXOs** | LOAD button shows available spendable outputs (txid, vout, amount, confirmations). |
+| Wire Type     | Meaning |
+|---------------|---------|
+| `UNLOCK`      | Standard spend |
+| `UNLOCK_TO`   | Spend to address + conditions |
+| `COVENANT`    | Constrain spending transaction |
 
-### 8.3 Build & Broadcast
+### Attestation types
 
-The pipeline uses the current ladder diagram from Build mode:
+| Attestation  | Meaning |
+|--------------|---------|
+| `INLINE`     | Signatures in witness data |
+| `AGGREGATE`  | Block-level aggregate |
+| `DEFERRED`   | Template hash only |
 
-1. **Select scheme**: dropdown with SCHNORR, ECDSA, FALCON-512, FALCON-1024,
-   DILITHIUM-3, SPHINCS+. Auto-detected from diagram blocks when possible.
-2. **FUND FROM WALLET**: replaces example inputs with real wallet UTXOs, generates
-   keypairs (supports PQ schemes), computes change output automatically.
-3. **Creates** the v4 RUNG_TX via `createrungtx` RPC.
-4. **Signs** all inputs via `signrawtransaction`.
-5. **Broadcasts** via `sendrawtransaction`.
-6. **Mines** a block to confirm (optional).
+### Signature schemes
 
-After broadcast, the output record (keys, txid, conditions) is saved to localStorage
-so the Spend tab can find it. The fund JSON is also saved to the session log for the
-Review tab.
-
-### 8.4 Additional Tools
-
-| Tool | Description |
-|------|-------------|
-| **TX LOOKUP** | Fetch any transaction by txid with detailed output display. |
-| **DECODE RAW TX** | Paste raw hex to decode. |
-| **VALIDATE RUNG TX** | Paste raw hex to validate against consensus rules. |
-| **RECENT BLOCKS** | Shows recent block data. |
-| **TX HISTORY** | Session log of broadcast transactions with confirmation tracking. |
-
-All COPY buttons show green "✓ COPIED" confirmation feedback.
+| Scheme        | Description |
+|---------------|-------------|
+| `SCHNORR`     | BIP-340 default |
+| `ECDSA`       | Legacy |
+| `FALCON512`   | Post-quantum NIST FIPS 206 |
+| `FALCON1024`  | Post-quantum NIST FIPS 206 Level 5 |
+| `DILITHIUM3`  | Post-quantum NIST FIPS 204 (ML-DSA-65) |
+| `SPHINCS_SHA` | Post-quantum NIST FIPS 205 (SLH-DSA) |
 
 ---
 
-## 9. Spend
+## 8. Signet Mode (Send Tab)
 
-The Spend tab consumes existing RUNG outputs on signet.
+The SignetPanel connects to the signet API. The base URL is
+`http://localhost:8801` when running locally, or `https://bitcoinghost.org`
+when hosted.
 
-### 9.1 Saved Records
+### API endpoints used
 
-Lists all RUNG outputs saved by previous Send operations (from localStorage). Each
-record shows txid, scheme, amount, timestamp, rung count, and key count. Records can
-be deleted individually.
+| Endpoint                                | Method | Purpose |
+|-----------------------------------------|--------|---------|
+| `/api/ladder/status`                    | GET    | Node status check |
+| `/api/ladder/wallet/balance`            | GET    | Wallet balance |
+| `/api/ladder/wallet/newaddress`         | POST   | Generate new address |
+| `/api/ladder/faucet`                    | POST   | Request test coins |
+| `/api/ladder/wallet/utxos`              | GET    | List UTXOs |
+| `/api/ladder/createrungtx`              | POST   | Create RUNG TX |
+| `/api/ladder/signrawtransactionwithwallet` | POST | Sign raw transaction |
+| `/api/ladder/sendrawtransaction`        | POST   | Broadcast transaction |
+| `/api/ladder/tx/{txid}`                 | GET    | Look up transaction |
+| `/api/ladder/decoderawtransaction`      | POST   | Decode raw hex |
+| `/api/ladder/validaterungtx`            | POST   | Validate rung TX |
+| `/api/ladder/mempool`                   | GET    | Mempool info |
+| `/api/ladder/blocks/recent`             | GET    | Recent blocks |
+| `/api/ladder/mine`                      | POST   | Mine a block (regtest) |
 
-### 9.2 Manual Lookup
+### Wallet features
 
-Enter a txid (64 hex chars) + vout number and click **LOAD**. If the output matches
-a saved record, keys are auto-loaded.
+- **Generate New Address**: creates a keypair and displays the address.
+- **Faucet**: paste an address and request 0.001 tBTC.
+- **UTXO list**: view available unspent outputs.
+- **Transaction history**: track funded transactions with confirmation
+  polling.
 
-### 9.3 Spending an Output
+### Create / Sign / Broadcast pipeline
 
-After selecting a record or loading a txid:
-
-1. **Select output**: if the transaction has multiple vouts, choose which to spend.
-2. **Select condition path**: if the output has multiple rungs (OR paths), choose
-   which rung to satisfy. The conditions display shows all rungs with block types and
-   highlights the active path with "SPENDING THIS".
-3. **Signing keys**: shows pubkey/privkey pairs stored with the record.
-4. **Destination address**: enter an address, or leave blank to auto-generate one.
-   UNLOCK_TO coils force a specific destination.
-5. **SIGN & SPEND**: executes the full spending workflow:
-   - Plans the spend (signer blocks, timelocks, output classification).
-   - Looks up the UTXO on-chain.
-   - Computes fees (accounts for PQ witness overhead).
-   - Handles COSIGN co-inputs, CTV children, RECURSE outputs, ACCUMULATOR proofs.
-   - Signs, broadcasts, and optionally mines.
-
-A real-time **SPEND LOG** shows each step of the process. On success, the confirmed
-txid is displayed.
-
-### 9.4 URL Parameters
-
-The Spend tab supports direct linking: `?spend_txid=...&spend_vout=...` pre-loads
-the specified output.
-
----
-
-## 10. Review
-
-The Review tab shows fund and spend JSON side by side for every transaction created
-during the session. Each entry represents one UTXO lifecycle.
-
-### 10.1 Session Log
-
-The left sidebar lists all session transactions. Each entry shows:
-
-- **FUND / SPEND badges** —green when that JSON is recorded, dim when not yet available.
-- **Fund txid** —the transaction that created the RUNG output.
-- **Timestamp** —relative time since the transaction was created.
-
-Entries are created automatically when you broadcast from the Send tab. When you
-later spend that output from the Spend tab, the spend JSON is attached to the same
-entry.
-
-### 10.2 JSON Panels
-
-Select an entry to view two side-by-side panels:
-
-| Panel | Content |
-|-------|---------|
-| **FUND JSON** (left) | The `createrungtx` payload that created the output. Inputs, outputs, conditions, relays. |
-| **SPEND JSON** (right) | The `createrungtx` payload that spent the output. Inputs referencing the fund txid, destination outputs. |
-
-Each panel has a **COPY** button. The header bar shows both txids (fund and spend)
-with individual copy buttons.
-
-### 10.3 Controls
-
-| Control | Description |
-|---------|-------------|
-| **REFRESH** | Reload the session log from localStorage. |
-| **CLEAR** | Delete all session log entries. |
-
-Session data persists across page reloads (stored in localStorage under
-`ghost_session_txlog`). Maximum 50 entries.
+1. **CREATE**: calls `createrungtx` with the ladder conditions, inputs,
+   and outputs. The engine runs `planFund()` to inventory keys, hashes,
+   and timelocks, then auto-assigns pubkeys and generates keypairs as needed.
+   A fund record is saved to localStorage for later spending.
+2. **SIGN**: calls `signrawtransactionwithwallet` with the raw hex.
+3. **BROADCAST**: calls `sendrawtransaction` with the signed hex. A session
+   log entry is saved for the Review tab.
 
 ---
 
-## 11. Navigation
+## 9. Spend Tab
 
-### 10.1 Mouse
+The SpendPanel loads saved fund records from localStorage. It provides:
 
-| Input | Action |
-|-------|--------|
-| Scroll wheel | Zoom in/out (0.1 increments). |
-| Ctrl + scroll wheel | Fine zoom (0.05 increments). |
-| Shift + scroll wheel | Horizontal pan. |
-| Middle-click drag | Pan the view. |
-| Right-click drag | Pan the view. |
-| Shift + left-click drag | Pan the view. |
+- **Record list**: all previously funded outputs with txid, amount, scheme,
+  and block type checksums.
+- **UTXO lookup**: enter a txid and vout to look up a specific output.
+- **Rung selection**: choose which spending path (rung index) to use.
+- **VOUT selection**: pick which output vout to spend.
+- **Destination address**: where to send the funds.
+- **Spend execution**: the engine calls each block's `buildSigner()` method
+  from BlockRegistry, assembles the witness, signs the spend transaction, and
+  broadcasts it. For legacy blocks (P2SH, P2WSH, P2TR_SCRIPT), inner block
+  keys are resolved via `_findInnerKey()`.
 
-### 10.2 Keyboard
-
-| Key | Action |
-|-----|--------|
-| Delete / Backspace | Delete the selected block. |
-| Escape | Deselect or close modals. |
-| Enter | Save field edits or confirm. |
-| F11 | Toggle fullscreen. |
+Spend JSON is attached to the fund entry in the session log via
+`updateSessionTxSpend()`.
 
 ---
 
-## 12. Import / Export
+## 10. Review Tab
 
-### 12.1 Import JSON
+The ReviewPanel shows session transactions from localStorage (up to 50
+entries, stored under key `ghost_session_txlog`). The left sidebar lists
+entries with timestamps, txid prefixes, and badges for FUND and SPEND
+presence. Selecting an entry shows:
 
-Click **IMPORT** in the header. Paste `createrungtx` JSON. The engine parses and
-populates the ladder. The current diagram is replaced.
+- Fund JSON (formatted, copyable).
+- Spend JSON (formatted, copyable) if a spend has been performed.
+- Transaction size data when available.
 
-### 12.2 Export JSON
-
-Click **COPY JSON** in the header. The current ladder is serialised to `createrungtx`
-format and copied to the clipboard. The RPC sub-tab shows the live JSON for manual
-inspection.
-
-### 12.3 Print
-
-Click **PRINT** to render the ladder diagram as a PDF.
+Buttons: REFRESH, CLEAR (wipes the session log).
 
 ---
 
-## 13. Examples Library
+## 11. Convert Tab
 
-Click **EXAMPLES** in the header. The library contains 39 pre-built examples covering:
+The ConvertPanel accepts pasted JSON in three formats:
 
-- Single-sig and multisig patterns
-- HTLCs, PTLCs, and atomic swaps
-- Covenant chains and recursion
-- Post-quantum anchor patterns
-- Governance gates and spending controls
-- DCA vaults and streaming payments
-- State machines (latches, counters, sequencers)
-- Legacy block wrapping
-- MLSC Merkle root outputs
+1. **`decoderung` output**: `{ rungs: [{ blocks: [...], coil: {...} }] }` or
+   `{ n_rungs, rungs: [...] }`.
+2. **`createrungtx` format**: `{ inputs: [...], outputs: [{ conditions: [{ blocks: [...] }] }] }`.
+3. **`decoderawtransaction` output**: raw tx with `version: 4` and
+   `vout[].rung_conditions`.
 
-Click any example card to load it into the builder (replaces the current ladder).
+The converter function `decodedToBuilderRungs()` normalizes all three formats
+into the builder's internal rung model and dispatches a `VIEW_AS_LADDER`
+action to populate the diagram. Works entirely offline.
 
 ---
 
-## 14. Status Bar
+## 12. Keyboard Shortcuts
 
-| Element | Description |
-|---------|-------------|
-| **Rung count** | Number of rungs (16 max). |
-| **Block count** | Total blocks (8/rung max). |
-| **Energised count** | (Simulate) Currently energised rungs. |
-| **Warnings** | Unassigned rungs, missing OUTPUT_REF assignments. |
-| **Validation** | VALID or error/warning count. |
-| **Tooltip toggle** | `? ON` / `? OFF`: context-sensitive help tooltips. |
-| **Version** | GHOST LADDER v2.0 |
+| Key                        | Action |
+|----------------------------|--------|
+| `Escape`                   | Close context menu, modal, step-through, examples, or exit fullscreen (in priority order) |
+| `F11`                      | Toggle fullscreen mode |
+| `Delete` / `Backspace`     | Delete selected block, clear selected input assignments, or clear selected coil assignments (Build mode only, ignored when focus is in a text input) |
+| `Ctrl+Scroll` / `Meta+Scroll` | Fine zoom (5% increments) |
+| `Scroll`                   | Zoom (10% increments) |
+| `Shift+Scroll`             | Horizontal pan |
+| `Middle-click drag`        | Pan the ladder view |
+| `Shift+left-click drag`    | Pan the ladder view |
+| `Alt+click` (Simulate)     | Cycle block force state (ON / OFF / AUTO) |
+| `Enter`                    | Close modal (when not in a text input) |
 
 ---
 
-## 15. Visual Reference
+## 13. Status Bar
 
-### Block States
+The bottom 24 px bar displays, left to right:
 
-| State | Colour | Meaning |
-|-------|--------|---------|
-| Normal | Grey | Not yet evaluated. |
-| Energised | Amber | Condition satisfied. |
-| Passed | Green | Passed during simulation step. |
-| Failed | Red | Failed during simulation step. |
-| Selected | White border | Selected for editing. |
-| Forced ON | Green highlight | Override: always SATISFIED. |
-| Forced OFF | Red highlight | Override: always UNSATISFIED. |
+1. **Rung count** with green/amber dot (green if at least one block exists).
+2. **Block count** with limits reminder: "N BLOCKS (8/RUNG MAX, 8 RUNGS MAX)".
+3. **Energized count** (Simulate mode only) with amber/red dot.
+4. **Unassigned rungs** warning (red) if any rungs lack a TX output assignment.
+5. **OUTPUT_REF deprecation** warning (amber) if any OUTPUT_REF blocks exist.
+6. **Validation status**: red dot + error count, amber dot + warning count,
+   or green dot + "VALID". Clicking opens the validation panel.
+7. **Spacer**.
+8. **Tooltip toggle** button ("? ON" / "? OFF").
+9. **Version label**: "GHOST LADDER v2.0".
 
-### Wire States
+---
 
-| State | Colour | Meaning |
-|-------|--------|---------|
-| De-energised | Grey | No power flow. |
-| Energised | Amber | Power flowing. |
-| Stepping | Green | Currently being evaluated. |
+## 14. Tutorial (Guided Walkthrough)
 
-### Coil States
+The GuidedWalkthrough component auto-shows on first visit (controlled by
+`localStorage` key `ladder-walkthrough-complete`). It is an 8-step overlay
+with spotlight masking, step counter, progress dots, and SKIP / BACK / NEXT
+buttons.
 
-| State | Colour | Meaning |
-|-------|--------|---------|
-| Unassigned | Grey | No TX output linked. |
-| TX assigned | Cyan | Linked to a transaction output. |
-| Energised | Amber glow | All blocks satisfied. |
-| Relay | Dashed amber border | Internal reference coil. |
-| Referenced | Green | Another rung references this coil. |
-| Spent | Green "SPENT" label | Executed in simulation. |
+| Step | Title | Focus |
+|------|-------|-------|
+| 1 | Welcome to Ladder Script Engine | None (centered) |
+| 2 | Templates | EXAMPLES button |
+| 3 | The Ladder Diagram | Ladder area |
+| 4 | Signet Mode | Mode tabs |
+| 5 | Generate Keys | Mode tabs |
+| 6 | Get Test Coins | Mode tabs |
+| 7 | Create & Broadcast | Mode tabs |
+| 8 | You're Ready! | None (centered) |
+
+Press Escape or click SKIP at any time to dismiss. Completion is persisted
+so the walkthrough does not reappear.
+
+---
+
+## 15. Templates
+
+The ExamplesModal displays a two-column grid of **39 template programs**.
+Each card shows a title, description, and coloured tag badges. Clicking a
+card loads its rungs, TX inputs, and TX outputs into the builder.
+
+Complete list of template names:
+
+1. 2-of-3 MULTISIG VAULT
+2. ATOMIC SWAP (HTLC)
+3. ADAPTOR SIG SWAP
+4. DCA COVENANT CHAIN
+5. VAULT WITH UNVAULT + CLAWBACK
+6. RATE-LIMITED WALLET
+7. DEAD MAN'S SWITCH (INHERITANCE)
+8. ESCROW WITH ORACLE
+9. PAYMENT CHANNEL
+10. SEQUENCED PAYOUT
+11. FEE-GATED COVENANT
+12. ONE-SHOT TRIGGER + LATCH
+13. RECURSIVE SPLIT (TREE)
+14. BLOCK-HEIGHT TIMELOCK + COMPARE
+15. COUNTER-UP SUBSCRIPTION
+16. QUANTUM-SAFE VAULT
+17. QUANTUM VAULT + CHILDREN
+18. MULTI-INPUT CONSOLIDATION
+19. MUSIG_THRESHOLD TREASURY
+20. PTLC PAYMENT CHANNEL
+21. CLTV_SIG VESTING SCHEDULE
+22. TIMELOCKED_MULTISIG VAULT RECOVERY
+23. HTLC COMPACT SWAP
+24. HASH_SIG ATOMIC CLAIM
+25. GOVERNANCE-GATED TREASURY
+26. ACCUMULATOR ALLOWLIST
+27. CLTV_TIME CALENDAR LOCK
+28. TIMER WATCHDOG
+29. PRESET COUNTER BOARD VOTE
+30. ANCHORED CHANNEL + RECURSE_UNTIL
+31. SINGLE SIG
+32. DUAL SIG
+33. SINGLE SIG (DILITHIUM3)
+34. SINGLE SIG (FALCON512)
+35. SINGLE SIG (FALCON1024)
+36. LEGACY P2PKH + RECOVERY
+37. LEGACY P2SH MULTISIG VAULT
+38. P2TR TAPROOT MIGRATION
+39. SINGLE SIG (SPHINCS+)
