@@ -56,7 +56,8 @@ a:hover { text-decoration: underline; }
 .section p { margin-bottom: 12px; }
 
 /* -- PROJECT CARD -- */
-.project { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 28px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.project { display: block; text-decoration: none; color: inherit; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 28px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
+.project:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.12); text-decoration: none; }
 .project-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .project-name { font-size: 18px; font-weight: 700; color: var(--text); }
 .project-status { font-size: 13px; color: var(--green); font-weight: 500; }
@@ -93,18 +94,18 @@ a:hover { text-decoration: underline; }
     <div class="header-top">
       <a href="ghost-labs.html" class="header-title">Ghost Labs</a>
       <div class="header-right">
-        <a href="tools/ladder-engine.html">Engine</a>
+        <a href="labs/ladder-engine.html">Engine</a>
         <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
           <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
       </div>
     </div>
     <nav class="header-nav">
-      <a href="tools/ladder-script.html">Ladder Script</a>
-      <a href="tools/get-started.html">Get Started</a>
-      <a href="tools/patch-overview.html">Patch</a>
-      <a href="tools/block-docs/">Blocks</a>
-      <a href="tools/rung-tx-anatomy.html">Anatomy</a>
+      <a href="labs/ladder-script.html">Ladder Script</a>
+      <a href="labs/get-started.html">Get Started</a>
+      <a href="labs/patch-overview.html">Patch</a>
+      <a href="labs/block-docs/">Blocks</a>
+      <a href="labs/rung-tx-anatomy.html">Anatomy</a>
       <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Code</a>
     </nav>
   </div>
@@ -123,30 +124,23 @@ a:hover { text-decoration: underline; }
   <div class="section">
     <div class="section-head">Projects</div>
 
-    <div class="project">
+    <a href="labs/ladder-script.html" class="project">
       <div class="project-header">
         <span class="project-name">Ladder Script</span>
-        <span class="project-status">Active -- signet testing</span>
+        <span class="project-status">Active &mdash; signet testing</span>
       </div>
       <div class="project-desc">
-        <p>A typed, structured transaction format for Bitcoin. Replaces opcode-based scripting with a declarative block model. 61 block types across 10 families cover signatures, timelocks, hashes, covenants, recursion, anchors, programmable logic, compound patterns, governance, and legacy Bitcoin transaction types. Every byte in a witness is typed. Evaluation is deterministic with bounded execution time.</p>
-        <p>Native post-quantum support, covenant recursion, and anti-spam hardening via merkle_pub_key and selective inversion.</p>
+        <p>A typed, structured transaction format for Bitcoin. Replaces opcode-based scripting with a declarative block model. 61 block types across 10 families. Every byte in a witness is typed. Evaluation is deterministic with bounded execution time. Native post-quantum support, covenant recursion, and anti-spam hardening.</p>
       </div>
       <div class="project-stats">
-        <span><span class="stat-key">TX_VERSION=</span><span class="stat-val">4</span></span>
-        <span><span class="stat-key">BLOCK_TYPES=</span><span class="stat-val">61</span></span>
-        <span><span class="stat-key">UNIT_TESTS=</span><span class="stat-val">480</span></span>
-        <span><span class="stat-key">FUNC_TESTS=</span><span class="stat-val">60</span></span>
-        <span><span class="stat-key">TLA+_PROPS=</span><span class="stat-val">80</span></span>
+        <span><span class="stat-key">Version </span><span class="stat-val">4</span></span>
+        <span><span class="stat-key">Block types </span><span class="stat-val">61</span></span>
+        <span><span class="stat-key">Unit tests </span><span class="stat-val">480</span></span>
+        <span><span class="stat-key">Functional tests </span><span class="stat-val">60</span></span>
+        <span><span class="stat-key">TLA+ properties </span><span class="stat-val">80</span></span>
       </div>
-      <div class="project-links">
-        <a href="tools/ladder-script.html">Overview</a>
-        <a href="tools/get-started.html">Get Started</a>
-        <a href="tools/ladder-engine.html">Engine</a>
-        <a href="tools/patch-overview.html">Patch</a>
-        <a href="tools/block-docs/">Block Reference</a>
-      </div>
-    </div>
+      <div class="project-arrow" style="margin-top:12px;color:var(--accent);font-weight:600;font-size:14px;">Explore project &rarr;</div>
+    </a>
   </div>
 
   <div class="section">
@@ -181,7 +175,7 @@ a:hover { text-decoration: underline; }
 </div>
 
 <footer class="site-footer">
-  Ghost Labs &middot; Ladder Script (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
+  Ghost Labs &middot; Ladder Script (BIP-XXXX) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
 </footer>
 
 </body>
