@@ -3,36 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RUNG_TX Anatomy -- Ladder Script</title>
+<title>Transaction Anatomy — Ladder Script</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #ffffff;
-  --bg-alt: #f5f5f5;
-  --bg-code: #f0f0f0;
-  --text: #1a1a1a;
-  --text-body: #333333;
-  --text-dim: #666666;
-  --text-light: #999999;
-  --accent: #e67e22;
-  --accent-dark: #d35400;
-  --green: #27ae60;
-  --red: #c0392b;
-  --blue: #2980b9;
-  --purple: #8e44ad;
-  --teal: #16a085;
-  --border: #e0e0e0;
-  --border-light: #eeeeee;
+  --bg: #ffffff; --bg-alt: #f5f5f5; --bg-code: #f0f0f0;
+  --text: #1a1a1a; --text-body: #333333; --text-dim: #666666; --text-light: #999999;
+  --accent: #e67e22; --accent-dark: #d35400; --green: #27ae60; --red: #c0392b; --blue: #2980b9;
+  --border: #e0e0e0; --border-light: #eeeeee;
+  --c-version: #e74c3c; --c-marker: #9b59b6; --c-inputs: #2980b9;
+  --c-outputs: #27ae60; --c-witness: #e67e22; --c-locktime: #7f8c8d;
+  --c-mlsc: #16a085; --c-micro: #8e44ad; --c-fields: #d35400;
+  --c-coil: #2c3e50; --c-proof: #c0392b;
 }
 html { scroll-behavior: smooth; }
-body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
 ::selection { background: var(--accent); color: #fff; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* -- HEADER -- */
-.site-header { background: #fff; border-bottom: 1px solid var(--border); padding: 0; }
+.site-header { background: #fff; border-bottom: 1px solid var(--border); }
 .site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
 .header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
 .header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
@@ -42,92 +33,56 @@ a:hover { text-decoration: underline; }
 .header-right a:hover { color: var(--accent); }
 .header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
 .header-right .gh-icon:hover { color: var(--accent); }
-.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding-top: 10px; padding-bottom: 10px; }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding: 10px 0; }
 .header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
 .header-nav a:hover { color: var(--accent); text-decoration: none; }
 .header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-/* -- MAIN -- */
 .main { max-width: 1100px; margin: 0 auto; padding: 48px 32px 80px; }
 .page-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 .page-sub { color: var(--text-dim); font-size: 15px; margin-bottom: 48px; }
-
-/* -- SECTIONS -- */
-.section { margin-bottom: 56px; }
-.section-head { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.section { margin-bottom: 64px; }
+.section-head { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.section-sub { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; }
 .section p { margin-bottom: 12px; }
 
-/* -- LAYER BOX -- */
-.layer-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 14px; padding-top: 36px; }
-.box { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
-.box-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border-light); }
-.box-head .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.box-head .tag { margin-left: auto; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 3px; background: var(--bg-alt); color: var(--text-dim); }
-.box-body { padding: 14px 16px; }
-.box-inner { padding: 8px 16px 14px; }
+.byte-bar { display: flex; margin: 24px 0 8px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.byte-seg { padding: 14px 12px; text-align: center; color: #fff; min-width: 40px; }
+.byte-seg .seg-label { font-weight: 700; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; }
+.byte-seg .seg-size { font-size: 10px; opacity: 0.8; }
+.byte-seg .seg-hex { font-size: 9px; opacity: 0.6; margin-top: 2px; word-break: break-all; }
+.byte-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0 24px; font-size: 12px; }
+.byte-legend-item { display: flex; align-items: center; gap: 6px; }
+.byte-legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
 
-/* -- FIELD LINE -- */
-.f { display: flex; align-items: baseline; gap: 10px; padding: 4px 0; font-size: 13px; }
-.f .fn { font-weight: 500; min-width: 130px; flex-shrink: 0; }
-.f .ft { font-size: 11px; padding: 1px 6px; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); flex-shrink: 0; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
-.f .fd { color: var(--text-dim); font-size: 13px; }
+.detail { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 20px 24px; margin: 16px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.detail-swatch { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+.detail-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.detail-bytes { font-size: 12px; color: var(--text-dim); }
+.detail code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: var(--bg-code); padding: 2px 6px; border-radius: 3px; }
+.detail table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+.detail th { text-align: left; font-weight: 600; color: var(--text-dim); padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.detail td { padding: 6px 8px; border-bottom: 1px solid var(--border-light); }
+.detail td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--blue); font-size: 12px; }
 
-/* -- PILLS -- */
-.pill { font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 10px; display: inline-block; border-radius: 3px; }
-.pill-or { background: rgba(230,126,34,0.1); color: var(--accent); border: 1px solid rgba(230,126,34,0.3); }
-.pill-and { background: rgba(41,128,185,0.08); color: var(--blue); border: 1px solid rgba(41,128,185,0.25); }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+.compare-card { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+.compare-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.compare-card p { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.note { background: var(--bg-alt); border-left: 3px solid var(--accent); padding: 12px 16px; margin: 16px 0; font-size: 14px; color: var(--text-dim); border-radius: 0 4px 4px 0; }
 
-/* -- NOTE -- */
-.note { font-size: 12px; color: var(--text-light); padding: 8px 0; border-top: 1px solid var(--border-light); margin-top: 8px; }
-
-/* -- CONNECTOR -- */
-.conn { display: flex; align-items: center; justify-content: center; padding: 10px 0; gap: 10px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
-.conn::before, .conn::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* -- ROW -- */
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-/* -- COLOR VARIANTS -- */
-.b-accent { border-color: rgba(230,126,34,0.3); }
-.b-accent > .box-head { background: rgba(230,126,34,0.05); color: var(--accent-dark); }
-.b-accent > .box-head .dot { background: var(--accent); }
-
-.b-blue { border-color: rgba(41,128,185,0.3); }
-.b-blue > .box-head { background: rgba(41,128,185,0.04); color: var(--blue); }
-.b-blue > .box-head .dot { background: var(--blue); }
-
-.b-green { border-color: rgba(39,174,96,0.25); }
-.b-green > .box-head { background: rgba(39,174,96,0.04); color: var(--green); }
-.b-green > .box-head .dot { background: var(--green); }
-
-.b-purple { border-color: rgba(142,68,173,0.25); }
-.b-purple > .box-head { background: rgba(142,68,173,0.04); color: var(--purple); }
-.b-purple > .box-head .dot { background: var(--purple); }
-
-.b-teal { border-color: rgba(22,160,133,0.25); }
-.b-teal > .box-head { background: rgba(22,160,133,0.04); color: var(--teal); }
-.b-teal > .box-head .dot { background: var(--teal); }
-
-.b-gray { border-color: var(--border); }
-.b-gray > .box-head { background: var(--bg-alt); color: var(--text-dim); }
-.b-gray > .box-head .dot { background: var(--text-light); }
-
-.b-red { border-color: rgba(192,57,43,0.2); }
-.b-red > .box-head { background: rgba(192,57,43,0.03); color: var(--red); }
-.b-red > .box-head .dot { background: var(--red); }
-
-/* -- FOOTER -- */
 .site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
 .site-footer a { color: var(--text-light); }
 .site-footer a:hover { color: var(--accent); }
 
-@media (max-width: 600px) {
-  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
-  .header-nav { flex-wrap: wrap; }
-  .row { grid-template-columns: 1fr; }
-  .f .fn { min-width: 90px; }
+@media (max-width: 700px) {
+  .byte-bar { flex-wrap: wrap; }
+  .compare { grid-template-columns: 1fr; }
   .main { padding: 32px 16px 60px; }
   .site-header-inner { padding: 0 16px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
+  .header-nav { flex-wrap: wrap; }
 }
 </style>
 </head>
@@ -158,250 +113,160 @@ a:hover { text-decoration: underline; }
 
 <div class="main">
 
-  <h1 class="page-title">RUNG_TX Anatomy</h1>
-  <p class="page-sub">Transaction version 4 -- broken down layer by layer</p>
+  <h1 class="page-title">Transaction Anatomy</h1>
+  <p class="page-sub">How Ladder Script transactions are structured, byte by byte</p>
 
-  <!-- === LAYER 1 -- TRANSACTION === -->
-  <div class="layer-label" style="color:var(--accent);padding-top:0;">Layer 1 -- Transaction</div>
+  <div class="section">
+    <div class="section-head">1. Funding Transaction</div>
+    <div class="section-sub">A standard Bitcoin input creates a Ladder Script output. This is how coins enter the system.</div>
 
-  <div class="box b-accent">
-    <div class="box-head"><span class="dot"></span> RUNG_TX <span class="tag">nVersion 4</span></div>
-    <div class="box-body">
+    <div class="byte-bar">
+      <div class="byte-seg" style="background:var(--c-version);flex:1"><div class="seg-label">Version</div><div class="seg-size">4 bytes</div><div class="seg-hex">04000000</div></div>
+      <div class="byte-seg" style="background:var(--c-marker);flex:0.5"><div class="seg-label">Marker</div><div class="seg-size">2 B</div><div class="seg-hex">0001</div></div>
+      <div class="byte-seg" style="background:var(--c-inputs);flex:4"><div class="seg-label">Input (P2PKH)</div><div class="seg-size">~148 bytes</div><div class="seg-hex">txid + vout + scriptSig + sequence</div></div>
+      <div class="byte-seg" style="background:var(--c-mlsc);flex:1.5"><div class="seg-label">Output (MLSC)</div><div class="seg-size">33 bytes</div><div class="seg-hex">c2 + root</div></div>
+      <div class="byte-seg" style="background:var(--c-locktime);flex:1"><div class="seg-label">Locktime</div><div class="seg-size">4 bytes</div><div class="seg-hex">00000000</div></div>
+    </div>
 
-      <div class="box b-accent" style="margin-bottom:10px;">
-        <div class="box-head"><span class="dot"></span> Header</div>
-        <div class="box-inner">
-          <div class="f"><span class="fn" style="color:var(--accent-dark);">nVersion</span><span class="ft">int32</span><span class="fd">= 4 -- triggers Ladder Script evaluation</span></div>
-          <div class="f"><span class="fn" style="color:var(--accent-dark);">marker + flag</span><span class="ft">2 B</span><span class="fd">0x00 0x01 -- SegWit</span></div>
-          <div class="f"><span class="fn" style="color:var(--accent-dark);">nLockTime</span><span class="ft">uint32</span><span class="fd">Absolute locktime (used by CLTV blocks)</span></div>
-        </div>
-      </div>
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-version)"></div><div class="detail-title">Version</div><div class="detail-bytes">4 bytes, little-endian</div></div>
+      <p>Transaction version <code>4</code> signals a RUNG_TX. Nodes without Ladder Script treat it as a standard transaction (soft fork compatibility). The version routes validation to <code>VerifyRungTx</code> instead of <code>VerifyScript</code>.</p>
+    </div>
 
-      <div class="box b-gray" style="margin-bottom:10px;">
-        <div class="box-head"><span class="dot"></span> Inputs (vin[]) <span class="tag">standard</span></div>
-        <div class="box-inner">
-          <div class="f"><span class="fn">prevout</span><span class="ft">36 B</span><span class="fd">txid + vout index of UTXO being spent</span></div>
-          <div class="f"><span class="fn">nSequence</span><span class="ft">uint32</span><span class="fd">Relative locktime (used by CSV blocks)</span></div>
-        </div>
-      </div>
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-inputs)"></div><div class="detail-title">Input</div><div class="detail-bytes">~148 bytes for P2PKH</div></div>
+      <p>The funding input is a standard Bitcoin input: P2PKH, P2WPKH, P2TR, or any existing type. The wallet signs it normally. Ladder Script only governs the output side.</p>
+    </div>
 
-      <div class="box b-blue" style="margin-bottom:10px;">
-        <div class="box-head"><span class="dot"></span> Conditions (vout[]) <span class="tag">0xC2 MLSC</span></div>
-        <div class="box-inner">
-          <div class="f"><span class="fn" style="color:var(--blue);">nValue</span><span class="ft">int64</span><span class="fd">Amount in satoshis</span></div>
-          <div class="f"><span class="fn" style="color:var(--blue);">scriptPubKey</span><span class="ft">var</span><span class="fd">Ladder Script locking conditions</span></div>
-          <div class="note">0xC2 -- 32-byte Merkle root only (MLSC). Conditions revealed at spend time in the witness.</div>
-        </div>
-      </div>
-
-      <div class="box b-green">
-        <div class="box-head"><span class="dot"></span> Witness (per input) <span class="tag">segregated</span></div>
-        <div class="box-inner">
-          <div class="f"><span class="fn" style="color:var(--green);">LadderWitness</span><span class="ft">var</span><span class="fd">Serialised witness -- secrets + proofs</span></div>
-          <div class="note">SIGNATURE, PREIMAGE, PUBKEY -- revealed at spend time only</div>
-        </div>
-      </div>
-
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-mlsc)"></div><div class="detail-title">MLSC Output</div><div class="detail-bytes">33 bytes</div></div>
+      <p>The scriptPubKey is exactly 33 bytes: <code>0xC2</code> prefix + 32-byte Merkle root of the spending conditions. No matter how complex the conditions are, the on-chain footprint is always 33 bytes.</p>
+      <table>
+        <tr><td>0xC2</td><td>MLSC prefix (1 byte)</td></tr>
+        <tr><td>root</td><td>SHA-256 Merkle root of conditions, relays, and coil (32 bytes)</td></tr>
+      </table>
     </div>
   </div>
 
-  <!-- === LAYER 2 -- CONDITIONS + WITNESS === -->
-  <div class="layer-label" style="color:var(--blue);">Layer 2 -- Conditions + Witness</div>
+  <div class="section">
+    <div class="section-head">2. Spending Transaction</div>
+    <div class="section-sub">An MLSC input spends a Ladder Script output. The witness carries the conditions and proof.</div>
 
-  <div class="row">
-    <div class="box b-blue">
-      <div class="box-head"><span class="dot"></span> Conditions <span class="tag">locking</span></div>
-      <div class="box-body">
-        <div class="box b-accent" style="margin-bottom:8px;">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Rungs[]</div>
-          <div class="box-inner">
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">PUBKEY_COMMIT</span><span class="ft">32 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">HASH256</span><span class="ft">32 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">HASH160</span><span class="ft">20 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">NUMERIC</span><span class="ft">1-4 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">SPEND_INDEX</span><span class="ft">4 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--accent);font-size:12px;">SCHEME</span><span class="ft">1 B</span></div>
-          </div>
-        </div>
-        <div class="box b-purple" style="margin-bottom:8px;">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Coil</div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Output semantics + attestation mode</div>
-        </div>
-        <div class="box b-blue">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Relays[]</div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Shared conditions for cross-input AND</div>
-        </div>
-        <div class="note">Condition-safe types only -- no secrets on-chain. 0xC2: all behind a Merkle root.</div>
-      </div>
+    <div class="byte-bar">
+      <div class="byte-seg" style="background:var(--c-version);flex:1"><div class="seg-label">Version</div><div class="seg-size">4 B</div><div class="seg-hex">04000000</div></div>
+      <div class="byte-seg" style="background:var(--c-marker);flex:0.5"><div class="seg-label">Marker</div><div class="seg-size">2 B</div></div>
+      <div class="byte-seg" style="background:var(--c-inputs);flex:2"><div class="seg-label">Input</div><div class="seg-size">41 B</div><div class="seg-hex">txid + vout + empty scriptSig + seq</div></div>
+      <div class="byte-seg" style="background:var(--c-mlsc);flex:1.5"><div class="seg-label">Output</div><div class="seg-size">33 B</div><div class="seg-hex">c2 + new root</div></div>
+      <div class="byte-seg" style="background:var(--c-witness);flex:4"><div class="seg-label">Witness</div><div class="seg-size">variable</div><div class="seg-hex">ladder witness + MLSC proof</div></div>
+      <div class="byte-seg" style="background:var(--c-locktime);flex:1"><div class="seg-label">Locktime</div><div class="seg-size">4 B</div></div>
     </div>
 
-    <div class="box b-green">
-      <div class="box-head"><span class="dot"></span> Witness <span class="tag">unlocking</span></div>
-      <div class="box-body">
-        <div class="box b-accent" style="margin-bottom:8px;">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Rungs[]</div>
-          <div class="box-inner">
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PUBKEY</span><span class="ft">1-2,048 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">SIGNATURE</span><span class="ft">1-50 KB</span></div>
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PREIMAGE</span><span class="ft">32 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">SCHEME</span><span class="ft">1 B</span></div>
-          </div>
-        </div>
-        <div class="box b-purple" style="margin-bottom:8px;">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Coil</div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Always fresh (never inherited)</div>
-        </div>
-        <div class="box b-blue" style="margin-bottom:8px;">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> Relays[]</div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Witness-side relay data</div>
-        </div>
-        <div class="box b-gray">
-          <div class="box-head" style="padding:6px 10px;"><span class="dot"></span> MLSC Proof <span class="tag">0xC2 only</span></div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Merkle sibling hashes + revealed rung</div>
-        </div>
-        <div class="note">Secrets revealed at spend time. Merged with conditions for evaluation.</div>
-      </div>
+    <p>The witness stack has exactly 2 elements:</p>
+
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-witness)"></div><div class="detail-title">Witness Stack[0]: Ladder Witness</div></div>
+      <p>The serialised rung with all blocks and their witness fields (signatures, pubkeys, preimages), plus coil metadata and relay definitions.</p>
+    </div>
+
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-proof)"></div><div class="detail-title">Witness Stack[1]: MLSC Proof</div></div>
+      <p>The Merkle proof linking the revealed conditions to the root in the spent output. Contains the rung index, revealed conditions, and sibling hashes.</p>
     </div>
   </div>
 
-  <div class="conn">MERGE AT EVALUATION</div>
+  <div class="section">
+    <div class="section-head">3. Inside the Ladder Witness</div>
+    <div class="section-sub">The witness encodes exactly one rung with all its blocks and fields.</div>
 
-  <!-- === LAYER 3 -- RUNG STRUCTURE === -->
-  <div class="layer-label" style="color:var(--accent);">Layer 3 -- Rung Structure</div>
+    <div class="byte-bar">
+      <div class="byte-seg" style="background:var(--c-inputs);flex:0.5"><div class="seg-label">Rungs</div><div class="seg-size">1 B</div><div class="seg-hex">01</div></div>
+      <div class="byte-seg" style="background:var(--c-inputs);flex:0.5"><div class="seg-label">Blocks</div><div class="seg-size">1 B</div><div class="seg-hex">02</div></div>
+      <div class="byte-seg" style="background:var(--c-micro);flex:1"><div class="seg-label">Block 1</div><div class="seg-size">header + fields</div></div>
+      <div class="byte-seg" style="background:var(--c-fields);flex:1.5"><div class="seg-label">Block 2</div><div class="seg-size">header + fields</div></div>
+      <div class="byte-seg" style="background:var(--c-coil);flex:2"><div class="seg-label">Coil</div><div class="seg-size">type + scheme + address + destinations</div></div>
+    </div>
 
-  <div class="box b-accent">
-    <div class="box-head"><span class="dot"></span> Rungs <span class="pill pill-or" style="margin-left:auto;">OR</span></div>
-    <div class="box-body">
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-micro)"></div><div class="detail-title">Micro-header encoding</div></div>
+      <p>Each block starts with a single byte. Values <code>0x00</code>&ndash;<code>0x3E</code> are micro-headers that encode the block type via a lookup table. Fields use the implicit layout, so no field count or type bytes are needed. Values <code>0x80</code>/<code>0x81</code> are escape codes for full 2-byte type + explicit fields.</p>
+      <table>
+        <tr><td>0x00</td><td>SIG</td></tr>
+        <tr><td>0x01</td><td>MULTISIG</td></tr>
+        <tr><td>0x03</td><td>CSV</td></tr>
+        <tr><td>0x0A</td><td>CTV</td></tr>
+        <tr><td>0x3E</td><td>OUTPUT_CHECK</td></tr>
+        <tr><td>0x80</td><td>Escape (full type follows)</td></tr>
+        <tr><td>0x81</td><td>Escape + inverted</td></tr>
+      </table>
+    </div>
 
-      <div class="box b-blue" style="margin-bottom:10px;">
-        <div class="box-head"><span class="dot"></span> Rung 0 <span class="pill pill-and" style="margin-left:auto;">AND</span></div>
-        <div class="box-body">
-          <div class="row" style="margin-bottom:8px;">
-            <div class="box b-accent">
-              <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> SIG <span class="tag">0x00</span></div>
-              <div class="box-inner">
-                <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">PUBKEY_COMMIT</span><span class="ft">32 B</span></div>
-                <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PUBKEY</span><span class="ft">32 B</span></div>
-                <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">SIGNATURE</span><span class="ft">64 B</span></div>
-              </div>
-            </div>
-            <div class="box b-blue">
-              <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> CSV <span class="tag">0x03</span></div>
-              <div class="box-inner">
-                <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">NUMERIC</span><span class="ft">varint</span></div>
-                <div class="note">144 blocks (~1 day)</div>
-              </div>
-            </div>
-          </div>
-          <div class="f"><span class="fn" style="color:var(--text-dim);font-size:12px;">relay_refs[]</span><span class="ft">u16[]</span><span class="fd">indices into relay array</span></div>
-        </div>
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-fields)"></div><div class="detail-title">Typed fields</div></div>
+      <p>Every field has a declared type with enforced size. No arbitrary data is possible.</p>
+      <table>
+        <thead><tr><th>Type</th><th>Size</th><th>Used for</th></tr></thead>
+        <tr><td>PUBKEY</td><td>1&ndash;2,048 B</td><td>Public keys (Schnorr 33B, PQ up to 2KB)</td></tr>
+        <tr><td>SIGNATURE</td><td>1&ndash;50,000 B</td><td>Signatures (Schnorr 64B, PQ up to 49KB)</td></tr>
+        <tr><td>HASH256</td><td>32 B</td><td>SHA-256 commitments</td></tr>
+        <tr><td>NUMERIC</td><td>1&ndash;4 B</td><td>Thresholds, timelocks, counts</td></tr>
+        <tr><td>SCHEME</td><td>1 B</td><td>Signature scheme selector</td></tr>
+        <tr><td>PREIMAGE</td><td>32 B</td><td>Hash preimage (max 2 per witness)</td></tr>
+      </table>
+    </div>
+
+    <div class="detail">
+      <div class="detail-head"><div class="detail-swatch" style="background:var(--c-coil)"></div><div class="detail-title">Coil</div></div>
+      <p>Defines what happens when a rung is satisfied.</p>
+      <table>
+        <tr><td>coil_type</td><td>UNLOCK (0x01), UNLOCK_TO (0x02), or COVENANT (0x03)</td></tr>
+        <tr><td>attestation</td><td>INLINE (0x01), AGGREGATE (0x02), or DEFERRED (0x03)</td></tr>
+        <tr><td>scheme</td><td>SCHNORR, ECDSA, or PQ scheme</td></tr>
+        <tr><td>address_hash</td><td>0 or 32 bytes (destination for UNLOCK_TO)</td></tr>
+        <tr><td>rung_destinations</td><td>Per-rung destination overrides</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">4. Funding vs Spending</div>
+    <div class="compare">
+      <div class="compare-card">
+        <div class="compare-title" style="color:var(--c-inputs)">Funding (coins enter)</div>
+        <p><strong>Input:</strong> any standard Bitcoin output</p>
+        <p><strong>Output:</strong> <code>0xC2</code> + 32-byte Merkle root</p>
+        <p><strong>Witness:</strong> standard Bitcoin witness</p>
+        <p>The wallet does not need to know about Ladder Script. It sends to a 33-byte scriptPubKey.</p>
       </div>
-
-      <div class="box b-blue" style="margin-bottom:6px;opacity:0.6;">
-        <div class="box-head"><span class="dot"></span> Rung 1 <span class="pill pill-and" style="margin-left:auto;">AND</span></div>
-        <div class="box-body">
-          <div class="box b-teal">
-            <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> HTLC <span class="tag">0x28</span></div>
-            <div class="box-inner">
-              <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">HASH256</span><span class="ft">32 B</span></div>
-              <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">NUMERIC</span><span class="ft">varint</span></div>
-              <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PREIMAGE</span><span class="ft">var</span></div>
-              <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">SIGNATURE</span><span class="ft">64 B</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="text-align:center;color:var(--text-light);font-size:13px;padding:6px 0;">... up to 16 rungs</div>
-    </div>
-  </div>
-
-  <!-- === COIL === -->
-  <div class="box b-purple" style="margin-top:16px;">
-    <div class="box-head"><span class="dot"></span> Coil -- Output Semantics</div>
-    <div class="box-body">
-      <div class="f"><span class="fn" style="color:var(--purple);">coil_type</span><span class="ft">uint8</span><span class="fd">UNLOCK / UNLOCK_TO / COVENANT</span></div>
-      <div class="f"><span class="fn" style="color:var(--purple);">attestation</span><span class="ft">uint8</span><span class="fd">INLINE / AGGREGATE / DEFERRED</span></div>
-      <div class="f"><span class="fn" style="color:var(--purple);">scheme</span><span class="ft">uint8</span><span class="fd">SCHNORR / ECDSA / FALCON / DILITHIUM / SPHINCS</span></div>
-      <div class="f"><span class="fn" style="color:var(--purple);">address</span><span class="ft">var</span><span class="fd">Destination scriptPubKey (0 = none)</span></div>
-      <div class="f"><span class="fn" style="color:var(--purple);">conditions[]</span><span class="ft">Rung[]</span><span class="fd">Extra conditions for UNLOCK_TO recipients</span></div>
-    </div>
-  </div>
-
-  <!-- === RELAYS === -->
-  <div class="box b-blue" style="margin-top:16px;">
-    <div class="box-head"><span class="dot"></span> Relays -- Cross-Input Composition <span class="tag">optional</span></div>
-    <div class="box-body">
-      <div class="f"><span class="fn" style="color:var(--blue);">relay_refs[]</span><span class="ft">u16[]</span><span class="fd">Required co-spend input indices</span></div>
-      <div class="f"><span class="fn" style="color:var(--blue);">blocks[]</span><span class="ft">RungBlock[]</span><span class="fd">Shared condition blocks</span></div>
-      <div class="note">Up to 8 relays, max depth 4 (transitive chain)</div>
-    </div>
-  </div>
-
-  <!-- === LAYER 4 -- BLOCK ENCODING === -->
-  <div class="layer-label" style="color:var(--green);">Layer 4 -- Block Encoding</div>
-
-  <div class="box b-green">
-    <div class="box-head"><span class="dot"></span> RungBlock</div>
-    <div class="box-body">
-      <div class="f"><span class="fn" style="color:var(--green);">type</span><span class="ft">uint16</span><span class="fd">Block type enum (61 types across 10 families)</span></div>
-      <div class="f"><span class="fn" style="color:var(--green);">fields[]</span><span class="ft">RungField[]</span><span class="fd">Typed parameter fields</span></div>
-      <div class="f"><span class="fn" style="color:var(--red);">inverted</span><span class="ft">bool</span><span class="fd">Flip SATISFIED / UNSATISFIED</span></div>
-
-      <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
-
-      <div class="row">
-        <div class="box b-accent">
-          <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> Micro-Header <span class="tag">0x00-0x3E</span></div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">Single byte maps to block type. Implicit layout: field count + type bytes omitted.</div>
-        </div>
-        <div class="box b-gray">
-          <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> Escape <span class="tag">0x80 / 0x81</span></div>
-          <div class="box-inner" style="font-size:13px;color:var(--text-dim);">0x80 = normal, 0x81 = inverted. Followed by block_type (2B) + explicit fields.</div>
-        </div>
+      <div class="compare-card">
+        <div class="compare-title" style="color:var(--c-witness)">Spending (coins leave)</div>
+        <p><strong>Input:</strong> references the MLSC output</p>
+        <p><strong>Output:</strong> another MLSC output</p>
+        <p><strong>Witness:</strong> ladder witness + MLSC proof</p>
+        <p>The node verifies the Merkle proof, merges conditions with witness, and evaluates the ladder.</p>
       </div>
     </div>
   </div>
 
-  <!-- === LAYER 5 -- FIELD === -->
-  <div class="layer-label" style="color:var(--teal);">Layer 5 -- Field</div>
-
-  <div class="box b-teal">
-    <div class="box-head"><span class="dot"></span> RungField</div>
-    <div class="box-body">
-      <div class="f"><span class="fn" style="color:var(--teal);">data_type</span><span class="ft">uint8</span><span class="fd">One of 9 typed formats</span></div>
-      <div class="f"><span class="fn" style="color:var(--teal);">data</span><span class="ft">var</span><span class="fd">Type-dependent encoding</span></div>
-
-      <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
-
-      <div class="row">
-        <div class="box b-blue">
-          <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> Condition Types</div>
-          <div class="box-inner">
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">PUBKEY_COMMIT</span><span class="ft">0x02</span><span class="fd">32 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">HASH256</span><span class="ft">0x03</span><span class="fd">32 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">HASH160</span><span class="ft">0x04</span><span class="fd">20 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">NUMERIC</span><span class="ft">0x08</span><span class="fd">1-4 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">SPEND_INDEX</span><span class="ft">0x07</span><span class="fd">4 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--blue);font-size:12px;">SCHEME</span><span class="ft">0x09</span><span class="fd">1 B</span></div>
-          </div>
-        </div>
-        <div class="box b-green">
-          <div class="box-head" style="padding:6px 10px;font-size:13px;"><span class="dot"></span> Witness Types</div>
-          <div class="box-inner">
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PUBKEY</span><span class="ft">0x01</span><span class="fd">1-2,048 B</span></div>
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">SIGNATURE</span><span class="ft">0x06</span><span class="fd">1-50 KB</span></div>
-            <div class="f"><span class="fn" style="color:var(--green);font-size:12px;">PREIMAGE</span><span class="ft">0x05</span><span class="fd">32 B</span></div>
-          </div>
-        </div>
-      </div>
+  <div class="section">
+    <div class="section-head">5. Verification flow</div>
+    <div class="detail" style="border-left: 3px solid var(--accent);">
+      <p><strong>1.</strong> Node sees tx version 4, input spending an MLSC output</p>
+      <p><strong>2.</strong> Routes to <code>VerifyRungTx</code></p>
+      <p><strong>3.</strong> Validates all outputs are MLSC format</p>
+      <p><strong>4.</strong> Deserialises witness stack[0] as LadderWitness</p>
+      <p><strong>5.</strong> Deserialises witness stack[1] as MLSCProof</p>
+      <p><strong>6.</strong> Extracts pubkeys from witness blocks (merkle_pub_key)</p>
+      <p><strong>7.</strong> Verifies Merkle proof against root from spent output</p>
+      <p><strong>8.</strong> Merges conditions with witness into single structure</p>
+      <p><strong>9.</strong> Evaluates the ladder (AND within rung, OR across rungs)</p>
+      <p><strong>10.</strong> If SATISFIED, the input is valid</p>
     </div>
   </div>
 
 </div>
 
 <footer class="site-footer">
-  <a href="../ghost-labs.html">Ghost Labs</a> \&middot; <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
+  <a href="../ghost-labs.html">Ghost Labs</a> &middot; <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
 </footer>
 
 </body>
