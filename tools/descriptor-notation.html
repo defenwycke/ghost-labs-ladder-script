@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descriptor Notation — Ladder Script</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg-alt: #f5f5f5; --bg-code: #f0f0f0;
+  --text: #1a1a1a; --text-body: #333333; --text-dim: #666666; --text-light: #999999;
+  --accent: #e67e22; --accent-dark: #d35400; --green: #27ae60; --red: #c0392b; --blue: #2980b9; --purple: #8e44ad;
+  --border: #e0e0e0; --border-light: #eeeeee;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+::selection { background: var(--accent); color: #fff; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.site-header { background: #fff; border-bottom: 1px solid var(--border); }
+.site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+.header-title:hover { text-decoration: none; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; }
+.header-right a:hover { color: var(--accent); }
+.header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
+.header-right .gh-icon:hover { color: var(--accent); }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding: 10px 0; }
+.header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
+.header-nav a:hover { color: var(--accent); text-decoration: none; }
+.header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+.main { max-width: 1100px; margin: 0 auto; padding: 48px 32px 80px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 15px; margin-bottom: 48px; }
+.section { margin-bottom: 56px; }
+.section-head { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.section p { margin-bottom: 12px; }
+
+code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: var(--bg-code); padding: 2px 6px; border-radius: 3px; }
+.code-block { background: var(--bg-code); border: 1px solid #ddd; border-radius: 6px; padding: 20px 24px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.7; overflow-x: auto; white-space: pre; color: var(--text-body); }
+.code-block .kw { color: var(--blue); font-weight: 600; }
+.code-block .alias { color: var(--accent); }
+.code-block .num { color: var(--green); }
+.code-block .cm { color: var(--text-light); }
+.code-block .fn { color: var(--purple); }
+
+.example { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 24px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.example-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.example-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+th { text-align: left; padding: 10px 14px; background: var(--bg-alt); border-bottom: 2px solid var(--border); color: var(--text-dim); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
+td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--blue); }
+tr:nth-child(even) td { background: #fafafa; }
+
+.note { background: var(--bg-alt); border-left: 3px solid var(--accent); padding: 12px 16px; margin: 16px 0; font-size: 14px; color: var(--text-dim); border-radius: 0 4px 4px 0; }
+
+.site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
+.site-footer a { color: var(--text-light); }
+.site-footer a:hover { color: var(--accent); }
+
+@media (max-width: 600px) {
+  .main { padding: 32px 16px 60px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
+  .header-nav { flex-wrap: wrap; }
+  .site-header-inner { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="header-top">
+      <a href="../ghost-labs.html" class="header-title">Ghost Labs</a>
+      <div class="header-right">
+        <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
+        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <a href="ladder-script.html">Ladder Script</a>
+      <a href="rung-tx-anatomy.html">Anatomy</a>
+      <a href="block-docs/">Blocks</a>
+      <a href="docs/">Docs</a>
+      <a href="patch-overview.html">Patch</a>
+      <a href="get-started.html">Get Started</a>
+      <a href="ladder-engine.html">Engine</a>
+    </nav>
+  </div>
+</header>
+
+<div class="main">
+
+  <h1 class="page-title">Descriptor Notation</h1>
+  <p class="page-sub">A compact human-readable notation for writing Ladder Script spending conditions</p>
+
+  <!-- OVERVIEW -->
+  <div class="section">
+    <div class="section-head">What it looks like</div>
+    <p>Instead of building conditions block by block in JSON, you can write them as a single expression:</p>
+    <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@hot_key</span>), <span class="fn">csv</span>(<span class="num">144</span>)),
+  <span class="fn">multisig</span>(<span class="num">2</span>, <span class="alias">@key_a</span>, <span class="alias">@key_b</span>, <span class="alias">@key_c</span>)
+))</div>
+    <p>This describes a vault: spend with a hot key after 144 blocks, or immediately with any 2 of 3 recovery keys. The notation maps directly to the rung/block structure. <code>or()</code> creates multiple rungs. <code>and()</code> puts multiple blocks in one rung. Each function name is a block type.</p>
+  </div>
+
+  <!-- GRAMMAR -->
+  <div class="section">
+    <div class="section-head">Grammar</div>
+    <div class="code-block"><span class="cm">// A ladder wraps one or more rungs</span>
+<span class="fn">ladder</span>(<span class="cm">rung</span>)                    <span class="cm">// single rung</span>
+<span class="fn">ladder</span>(<span class="fn">or</span>(<span class="cm">rung</span>, <span class="cm">rung</span>, ...))      <span class="cm">// multiple rungs (OR logic)</span>
+
+<span class="cm">// A rung is a single block or multiple blocks combined with AND</span>
+<span class="fn">sig</span>(<span class="alias">@alice</span>)                       <span class="cm">// single block = single rung</span>
+<span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@alice</span>), <span class="fn">csv</span>(<span class="num">100</span>))       <span class="cm">// two blocks in one rung (AND logic)</span>
+
+<span class="cm">// Inversion: prefix with !</span>
+!<span class="fn">csv</span>(<span class="num">100</span>)                        <span class="cm">// inverted: SATISFIED when csv FAILS</span>
+
+<span class="cm">// Keys are referenced by alias with @</span>
+<span class="alias">@alice</span>                            <span class="cm">// resolved from a key map at parse time</span></div>
+  </div>
+
+  <!-- BLOCK TYPES -->
+  <div class="section">
+    <div class="section-head">Supported block types</div>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>sig(@alias)</td><td>SIG</td><td>Key alias. Optional scheme: <code>sig(@alice, falcon512)</code></td></tr>
+        <tr><td>csv(N)</td><td>CSV</td><td>Relative timelock in blocks</td></tr>
+        <tr><td>csv_time(N)</td><td>CSV_TIME</td><td>Relative timelock in seconds</td></tr>
+        <tr><td>cltv(N)</td><td>CLTV</td><td>Absolute block height</td></tr>
+        <tr><td>cltv_time(N)</td><td>CLTV_TIME</td><td>Absolute time (MTP)</td></tr>
+        <tr><td>multisig(M, @k1, @k2, ...)</td><td>MULTISIG</td><td>Threshold M, then key aliases</td></tr>
+        <tr><td>hash_guarded(hex)</td><td>HASH_GUARDED</td><td>32-byte SHA-256 hash commitment</td></tr>
+        <tr><td>ctv(hex)</td><td>CTV</td><td>32-byte template hash</td></tr>
+        <tr><td>amount_lock(min, max)</td><td>AMOUNT_LOCK</td><td>Output value range in satoshis</td></tr>
+        <tr><td>timelocked_sig(@alias, N)</td><td>TIMELOCKED_SIG</td><td>Signature + CSV compound</td></tr>
+        <tr><td>output_check(idx, min, max, hex)</td><td>OUTPUT_CHECK</td><td>Output index, value range, script hash</td></tr>
+      </tbody>
+    </table>
+    <div class="note">Not all 61 block types have descriptor notation. Complex types (HTLC, PTLC, recursion, PLC) are built using the JSON RPC or the engine. The descriptor language covers the most common patterns.</div>
+  </div>
+
+  <!-- SCHEMES -->
+  <div class="section">
+    <div class="section-head">Signature schemes</div>
+    <p>The optional second argument to <code>sig()</code> selects the signature scheme:</p>
+    <table>
+      <thead><tr><th>Name</th><th>Scheme</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>schnorr</td><td>BIP-340 Schnorr (default)</td><td><code>sig(@alice)</code></td></tr>
+        <tr><td>ecdsa</td><td>ECDSA</td><td><code>sig(@alice, ecdsa)</code></td></tr>
+        <tr><td>falcon512</td><td>FALCON-512 (PQ)</td><td><code>sig(@alice, falcon512)</code></td></tr>
+        <tr><td>falcon1024</td><td>FALCON-1024 (PQ)</td><td><code>sig(@alice, falcon1024)</code></td></tr>
+        <tr><td>dilithium3</td><td>Dilithium3 (PQ)</td><td><code>sig(@alice, dilithium3)</code></td></tr>
+        <tr><td>sphincs_sha</td><td>SPHINCS+-SHA2 (PQ)</td><td><code>sig(@alice, sphincs_sha)</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- EXAMPLES -->
+  <div class="section">
+    <div class="section-head">Examples</div>
+
+    <div class="example">
+      <div class="example-title">Simple spend</div>
+      <div class="example-desc">One key, one signature.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">sig</span>(<span class="alias">@alice</span>))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Vault with recovery</div>
+      <div class="example-desc">Hot key + 1 day delay, or 2-of-3 multisig immediately.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@hot</span>), <span class="fn">csv</span>(<span class="num">144</span>)),
+  <span class="fn">multisig</span>(<span class="num">2</span>, <span class="alias">@cold_a</span>, <span class="alias">@cold_b</span>, <span class="alias">@cold_c</span>)
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Dead man's switch</div>
+      <div class="example-desc">Owner spends any time. If inactive for 1 year, heir can claim.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">sig</span>(<span class="alias">@owner</span>),
+  <span class="fn">and</span>(<span class="fn">csv</span>(<span class="num">52560</span>), <span class="fn">sig</span>(<span class="alias">@heir</span>))
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Inverted timelock</div>
+      <div class="example-desc">Spendable only BEFORE block 100 passes (emergency window).</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@admin</span>), !<span class="fn">csv</span>(<span class="num">100</span>)))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Post-quantum vault</div>
+      <div class="example-desc">Classical Schnorr for daily use, FALCON-512 fallback.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">sig</span>(<span class="alias">@daily</span>),
+  <span class="fn">sig</span>(<span class="alias">@pq_backup</span>, <span class="kw">falcon512</span>)
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Governance with output check</div>
+      <div class="example-desc">2-of-3 treasury, output 0 must have at least 1M sats.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">and</span>(
+  <span class="fn">multisig</span>(<span class="num">2</span>, <span class="alias">@dir_a</span>, <span class="alias">@dir_b</span>, <span class="alias">@dir_c</span>),
+  <span class="fn">output_check</span>(<span class="num">0</span>, <span class="num">1000000</span>, <span class="num">4294967295</span>, <span class="num">0000...0000</span>)
+))</div>
+    </div>
+  </div>
+
+  <!-- RPC USAGE -->
+  <div class="section">
+    <div class="section-head">Using the RPC</div>
+    <p>Two RPC commands work with descriptor notation:</p>
+
+    <div class="example">
+      <div class="example-title">parseladder</div>
+      <div class="example-desc">Parse a descriptor into conditions hex and MLSC root.</div>
+      <div class="code-block"><span class="cm">$ ghost-cli -signet parseladder \</span>
+  <span class="cm">"ladder(or(sig(@alice), and(csv(52560), sig(@bob))))" \</span>
+  <span class="cm">'{"alice":"02abc...","bob":"03def..."}'</span>
+
+{
+  <span class="kw">"conditions_hex"</span>: <span class="num">"020100010203fd50cd0001010101000000"</span>,
+  <span class="kw">"mlsc_root"</span>: <span class="num">"adbd9257578360bc6884ef46b18f30e1..."</span>,
+  <span class="kw">"n_rungs"</span>: <span class="num">2</span>
+}</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">formatladder</div>
+      <div class="example-desc">Convert conditions hex back to a descriptor string.</div>
+      <div class="code-block"><span class="cm">$ ghost-cli -signet formatladder "01010364010101000000"</span>
+
+{
+  <span class="kw">"descriptor"</span>: <span class="num">"ladder(csv(100))"</span>
+}</div>
+    </div>
+  </div>
+
+  <!-- KEY MAP -->
+  <div class="section">
+    <div class="section-head">Key aliases</div>
+    <p>Aliases like <code>@alice</code> are resolved from a JSON key map passed as the second argument to <code>parseladder</code>. The map contains alias names and their compressed public keys:</p>
+    <div class="code-block">{
+  <span class="kw">"alice"</span>: <span class="num">"0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"</span>,
+  <span class="kw">"bob"</span>:   <span class="num">"02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"</span>
+}</div>
+    <p>Different aliases with different keys produce different MLSC roots. The keys are folded into the Merkle leaf hash via merkle_pub_key, so they never appear in the on-chain output.</p>
+  </div>
+
+  <!-- ROUND-TRIP -->
+  <div class="section">
+    <div class="section-head">Round-trip</div>
+    <p>Descriptors round-trip through <code>parseladder</code> and <code>formatladder</code>:</p>
+    <div class="code-block"><span class="fn">ladder</span>(<span class="fn">csv</span>(<span class="num">100</span>))  →  <span class="num">01010364010101000000</span>  →  <span class="fn">ladder</span>(<span class="fn">csv</span>(<span class="num">100</span>))</div>
+    <p>Key aliases are not preserved in the hex (the keys are hashed into the Merkle tree). When formatting back, unknown keys appear as <code>@?</code> or truncated hex.</p>
+  </div>
+
+</div>
+
+<footer class="site-footer">
+  <a href="../ghost-labs.html">Ghost Labs</a> &middot; <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
+</footer>
+
+</body>
+</html>
