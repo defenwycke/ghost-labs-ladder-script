@@ -2,7 +2,7 @@
 
 The Ladder Script Engine is a single-page web application for building, simulating,
 and deploying Ladder Script transactions on Ghost signet. It runs entirely client-side
-with no build step -- open `tools/ladder-engine/index.html` in a browser.
+with no build step. Open `tools/ladder-engine/index.html` in a browser.
 
 For the block type reference, see [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md). For
 terminology, see [GLOSSARY.md](GLOSSARY.md).
@@ -57,7 +57,7 @@ each rung. The palette is locked (read-only).
 
 ### 1.3 Convert
 
-Paste RPC JSON output to convert back into a visual ladder diagram. Works offline --
+Paste RPC JSON output to convert back into a visual ladder diagram. Works offline;
 no signet connection needed. Accepts three JSON formats: `decoderung` output,
 `createrungtx` format, and `decoderawtransaction` output. Click **VIEW AS LADDER**
 to load the parsed result into Build mode.
@@ -141,7 +141,7 @@ the palette onto a rung slot or the "+ ADD RUNG" drop area.
 | **Governance** | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK |
 | **Legacy** | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY |
 
-61 block types total (HASH_PREIMAGE and HASH160_PREIMAGE are deprecated -- use HTLC,
+61 block types total (HASH_PREIMAGE and HASH160_PREIMAGE are deprecated —use HTLC,
 HASH_SIG, or HASH_GUARDED instead). For detailed documentation on each, see
 [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) or the [Block Reference](../tools/block-docs/).
 
@@ -194,7 +194,7 @@ Click the coil at the right end of a rung to configure it.
 | Unlatch | `(U)` | Unlatch |
 | Retentive | `(M)` | Retentive memory |
 | Negated | `(/)` | Negated output |
-| Relay | `◇R` | Internal reference --other rungs reference via input contacts |
+| Relay | `◇R` | Internal reference. Other rungs reference via input contacts. |
 
 **Wire-level coil types** (RPC output, under "C++ RPC coil settings"):
 
@@ -332,9 +332,9 @@ OFFLINE** (red), with current block height and mempool info.
 
 The pipeline uses the current ladder diagram from Build mode:
 
-1. **Select scheme** --dropdown: SCHNORR, ECDSA, FALCON-512, FALCON-1024,
+1. **Select scheme**: dropdown with SCHNORR, ECDSA, FALCON-512, FALCON-1024,
    DILITHIUM-3, SPHINCS+. Auto-detected from diagram blocks when possible.
-2. **FUND FROM WALLET** --replaces example inputs with real wallet UTXOs, generates
+2. **FUND FROM WALLET**: replaces example inputs with real wallet UTXOs, generates
    keypairs (supports PQ schemes), computes change output automatically.
 3. **Creates** the v4 RUNG_TX via `createrungtx` RPC.
 4. **Signs** all inputs via `signrawtransaction`.
@@ -378,14 +378,14 @@ a saved record, keys are auto-loaded.
 
 After selecting a record or loading a txid:
 
-1. **Select output** --if the transaction has multiple vouts, choose which to spend.
-2. **Select condition path** --if the output has multiple rungs (OR paths), choose
+1. **Select output**: if the transaction has multiple vouts, choose which to spend.
+2. **Select condition path**: if the output has multiple rungs (OR paths), choose
    which rung to satisfy. The conditions display shows all rungs with block types and
    highlights the active path with "SPENDING THIS".
-3. **Signing keys** --shows pubkey/privkey pairs stored with the record.
-4. **Destination address** --enter an address, or leave blank to auto-generate one.
+3. **Signing keys**: shows pubkey/privkey pairs stored with the record.
+4. **Destination address**: enter an address, or leave blank to auto-generate one.
    UNLOCK_TO coils force a specific destination.
-5. **SIGN & SPEND** --executes the full spending workflow:
+5. **SIGN & SPEND**: executes the full spending workflow:
    - Plans the spend (signer blocks, timelocks, output classification).
    - Looks up the UTXO on-chain.
    - Computes fees (accounts for PQ witness overhead).
@@ -411,9 +411,9 @@ during the session. Each entry represents one UTXO lifecycle.
 
 The left sidebar lists all session transactions. Each entry shows:
 
-- **FUND / SPEND badges** -- green when that JSON is recorded, dim when not yet available.
-- **Fund txid** -- the transaction that created the RUNG output.
-- **Timestamp** -- relative time since the transaction was created.
+- **FUND / SPEND badges** —green when that JSON is recorded, dim when not yet available.
+- **Fund txid** —the transaction that created the RUNG output.
+- **Timestamp** —relative time since the transaction was created.
 
 Entries are created automatically when you broadcast from the Send tab. When you
 later spend that output from the Spend tab, the spend JSON is attached to the same
@@ -513,7 +513,7 @@ Click any example card to load it into the builder (replaces the current ladder)
 | **Energised count** | (Simulate) Currently energised rungs. |
 | **Warnings** | Unassigned rungs, missing OUTPUT_REF assignments. |
 | **Validation** | VALID or error/warning count. |
-| **Tooltip toggle** | `? ON` / `? OFF` --context-sensitive help tooltips. |
+| **Tooltip toggle** | `? ON` / `? OFF`: context-sensitive help tooltips. |
 | **Version** | GHOST LADDER v2.0 |
 
 ---

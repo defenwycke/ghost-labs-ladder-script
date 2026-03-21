@@ -12,7 +12,7 @@ A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`)
 
 1. **Select inputs.** Any UTXOs can be spent by a v4 transaction, including outputs locked by v1/v2 scripts (bootstrap mode) or prior v4 rung conditions.
 
-2. **Define output conditions.** Each output's `scriptPubKey` is MLSC (`0xC2 || 32-byte Merkle root`), or inline (`0xC1 || serialised_conditions`) for regtest/signet testing only. The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA) may appear. PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, and SCRIPT_BODY are forbidden in conditions. Public keys are folded into the Merkle leaf hash (merkle_pub_key).
+2. **Define output conditions.** Each output's `scriptPubKey` is MLSC (`0xC2 || 32-byte Merkle root`). The conditions encode the typed blocks and fields that a future spender must satisfy. Only condition-allowed data types (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA) may appear. PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, and SCRIPT_BODY are forbidden in conditions. Public keys are folded into the Merkle leaf hash (merkle_pub_key).
 
 3. **Construct the transaction.** Use the `createrungtx` RPC, which takes an array of input outpoints and an array of output specifications (amount + conditions JSON). The RPC returns a raw unsigned v4 transaction.
 
@@ -48,9 +48,7 @@ At consensus time, `VerifyRungTx()` is called for each input. It:
 
 1. Extracts the witness from `tx.vin[nIn].scriptWitness.stack[0]`.
 2. Deserializes the witness as a `LadderWitness`.
-3. Checks if the spent output is inline (`0xC1`) or MLSC (`0xC2`):
-   - **Inline:** Deserializes conditions from the scriptPubKey. Merges conditions with witness.
-   - **MLSC:** Deserializes the MLSC proof from `stack[1]`. Verifies the Merkle proof against the UTXO root via `VerifyMLSCProof()`. Uses the revealed rung as conditions.
+3. Deserializes the MLSC proof from the witness. Verifies the Merkle proof against the UTXO root via `VerifyMLSCProof()`. Uses the revealed rung as conditions.
 4. Constructs a `LadderSignatureChecker` wrapping the standard signature checker.
 5. Calls `EvalLadder()` with `SigVersion::LADDER`.
 6. Returns true if any rung is satisfied (OR logic).
@@ -103,41 +101,22 @@ For non-LADDER sig versions, the checker falls through to the wrapped `BaseSigna
 A v4 rung conditions output has the following `scriptPubKey` format:
 
 ```
-[0xC1] [serialised conditions using ladder wire format]
+[0xC2] [32-byte Merkle root] [optional DATA_RETURN payload, max 40 bytes]
 ```
 
-Two output formats are supported:
+**MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 40 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 73 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only output format.
 
-- **MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 40 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 73 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only accepted format on mainnet.
-- **Inline (`0xC1`):** `RUNG_CONDITIONS_PREFIX`. Full conditions in the scriptPubKey. Detected by `IsRungConditionsScript()`: `scriptPubKey.size() >= 2 && scriptPubKey[0] == 0xc1`. Rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`); regtest/signet testing only.
-
-The helper `IsRungScript()` returns true for either format.
+Inline conditions (`0xC1`) have been removed. MLSC is the sole output format on all networks.
 
 ### 3.2 Serialization
 
-**Inline (`0xC1`):**
-
-`SerializeRungConditions()` converts a `RungConditions` structure to a `CScript`:
-
-1. Serialize the conditions as a `LadderWitness` (same wire format).
-2. Prepend the `0xC1` prefix byte.
-
-`DeserializeRungConditions()` performs the reverse:
-
-1. Verify the `0xC1` prefix.
-2. Strip the prefix and deserialize as a `LadderWitness`.
-3. Validate that only condition-allowed data types appear (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA). PUBKEY_COMMIT, SIGNATURE, PREIMAGE, PUBKEY, and SCRIPT_BODY are rejected.
-
-**MLSC (`0xC2`):**
-
-`CreateMLSCScript()` takes a 32-byte `conditions_root` and returns `0xC2 || root`. An overload accepts an optional DATA_RETURN payload (exactly 32 bytes) and returns `0xC2 || root || data`. The root is computed locally by the transaction creator using `ComputeConditionsRoot()`. See MERKLE-UTXO-SPEC.md for full details.
+`CreateMLSCScript()` takes a 32-byte `conditions_root` and returns `0xC2 || root`. An overload accepts an optional DATA_RETURN payload (up to 40 bytes) and returns `0xC2 || root || data`. The root is computed locally by the transaction creator using `ComputeConditionsRoot()`. See MERKLE-UTXO-SPEC.md for full details.
 
 ### 3.3 Output Restrictions
 
-All outputs in a v4 transaction must be rung conditions outputs (`0xC1` or `0xC2`). Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected by `ValidateRungOutputs()`, which is a consensus-level function (not policy).
+All outputs in a v4 transaction must be MLSC outputs (`0xC2`). Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected by `ValidateRungOutputs()`, which is a consensus-level function (not policy).
 
 - **DATA_RETURN** is handled by appending data to an MLSC output (`0xC2 || root || data`), not via OP_RETURN.
-- **`0xC1` inline** is rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`).
 - At most 1 DATA_RETURN output per transaction, with zero value.
 
 ---
@@ -162,7 +141,7 @@ This merge step is handled by `MergeConditionsAndWitness()`. If the structures d
 
 ### 4.3 Bootstrap Mode
 
-When a v4 transaction spends a v1/v2 UTXO (one whose `scriptPubKey` does not begin with `0xC1` or `0xC2`), no merge is performed. The witness is evaluated directly with empty conditions. This allows v4 transactions to spend existing UTXOs by providing self-contained witness data.
+When a v4 transaction spends a v1/v2 UTXO (one whose `scriptPubKey` does not begin with `0xC2`), no merge is performed. The witness is evaluated directly with empty conditions. This allows v4 transactions to spend existing UTXOs by providing self-contained witness data.
 
 ---
 
@@ -225,9 +204,7 @@ Diff witnesses pass mempool standardness checks. The function validates deserial
 
 All outputs in a v4 transaction are validated by `ValidateRungOutputs()`, which is a consensus function in `evaluator.cpp`:
 
-- All outputs must be rung conditions (`0xC1` or `0xC2`).
-- MLSC outputs (`0xC2`) must be 33-73 bytes.
-- Inline outputs (`0xC1`) are rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`).
+- All outputs must be MLSC (`0xC2`), 33-73 bytes.
 - DATA_RETURN payloads are validated (max 40 bytes, zero-value output, max 1 per tx).
 - Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected.
 
@@ -400,7 +377,7 @@ The routing decision is made solely on `tx.version` in `validation.cpp`. There i
 
 ### 10.2 Spending v1/v2 UTXOs from v4
 
-A v4 transaction can spend any UTXO, including v1/v2 outputs. When the spent output's `scriptPubKey` does not begin with `0xC1` or `0xC2`:
+A v4 transaction can spend any UTXO, including v1/v2 outputs. When the spent output's `scriptPubKey` does not begin with `0xC2`:
 
 - No conditions merge is performed.
 - The witness is evaluated directly as a self-contained `LadderWitness`.
@@ -411,7 +388,7 @@ This bootstrap path enables migration from existing outputs to Ladder Script wit
 
 ### 10.3 Spending v4 UTXOs from v1/v2
 
-A v1 or v2 transaction cannot spend a v4 rung conditions output. Neither the `0xC1` nor `0xC2` prefix corresponds to a valid Bitcoin Script opcode sequence, so any attempt to evaluate either format as standard script would fail.
+A v1 or v2 transaction cannot spend a v4 rung conditions output. The `0xC2` prefix does not correspond to a valid Bitcoin Script opcode sequence, so any attempt to evaluate the format as standard script would fail.
 
 ### 10.4 Block Validation
 

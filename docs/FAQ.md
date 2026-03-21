@@ -19,17 +19,17 @@ Both use the same wire format: rungs containing blocks containing typed fields.
 
 Three:
 
-- **Programmability.** 61 block types (59 active, 2 deprecated) across 10 families -- signatures, timelocks,
+- **Programmability.** 61 block types (59 active, 2 deprecated) across 10 families —signatures, timelocks,
   hash locks, covenants, recursion, PLC state machines, governance constraints,
-  and more -- that compose freely within rungs and ladders. Any combination of
+  and more —that compose freely within rungs and ladders. Any combination of
   AND/OR spending logic, built declaratively.
 - **Quantum hardening.** Four post-quantum signature schemes (FALCON-512,
   FALCON-1024, Dilithium3, SPHINCS+) are implemented, tested, and running on a
-  live signet. Any block that takes a signature -- SIG, MULTISIG, HTLC, vaults,
-  covenants -- can use PQ keys with zero structural changes.
+  live signet. Any block that takes a signature —SIG, MULTISIG, HTLC, vaults,
+  covenants —can use PQ keys with zero structural changes.
 - **Data abuse resistance.** Every byte in a transaction belongs to a declared
   data type with enforced size constraints. On the conditions side, the node
-  computes all key and hash commitments -- no arbitrary data enters the UTXO set.
+  computes all key and hash commitments —no arbitrary data enters the UTXO set.
   On the witness side, PUBKEY and SIGNATURE are cryptographically constrained,
   PREIMAGE and SCRIPT_BODY are capped (32 and 80 bytes) with a combined limit
   of 2 per witness, and data-embedding types are rejected in witness context for
@@ -59,10 +59,10 @@ Ladder Script maps this directly:
 ### 4. Is this a hard fork or soft fork?
 
 Soft fork. Ladder Script uses transaction version 4 (v4) and the `0xC2`
-scriptPubKey prefix byte for Merkelised conditions (MLSC). Inline `0xC1` exists
-for regtest/signet testing only and is rejected on mainnet.
-Non-upgraded nodes treat v4 transactions as anyone-can-spend under the standard
-soft fork activation rules. Upgraded nodes enforce the full condition evaluation.
+scriptPubKey prefix byte for Merkelised conditions (MLSC). MLSC is the only
+output format. Non-upgraded nodes treat v4 transactions as anyone-can-spend
+under the standard soft fork activation rules. Upgraded nodes enforce the full
+condition evaluation.
 
 ### 5. What transaction version does Ladder Script use?
 
@@ -117,8 +117,7 @@ commits to:
 - Outputs hash (unless SIGHASH_NONE)
 - Spend type (always 0; no annex or extensions)
 - Input-specific data (prevout or index)
-- **Conditions hash**: SHA-256 of the serialised rung conditions from the spent
-  output's scriptPubKey (for `0xC1`), or the conditions root directly (for `0xC2`).
+- **Conditions hash**: the conditions root directly from the `0xC2` MLSC output.
   Skipped if ANYPREVOUTANYSCRIPT.
 
 The conditions hash binds the signature to the exact set of conditions being
@@ -126,23 +125,19 @@ satisfied, preventing condition substitution attacks. ANYPREVOUT (0x40) skips
 prevouts commitment, enabling LN-Symmetry/eltoo. ANYPREVOUTANYSCRIPT (0xC0)
 skips both prevouts and conditions commitments for fully rebindable signatures.
 
-### 9. What are the output format prefixes?
+### 9. What is the output format?
 
-Ladder Script defines two output formats:
+Ladder Script uses a single output format:
 
-- **`0xC2` - Merkelised Ladder Script Conditions (MLSC).** A 32-byte
+- **`0xC2` (MLSC: Merkelised Ladder Script Conditions).** A 32-byte
   Merkle root follows the prefix byte (33 bytes standard, or 34-73 bytes
   with a DATA_RETURN payload appended). The actual conditions are revealed
   at spend time via a Merkle proof in the witness. This provides MAST-style
-  privacy and keeps the UTXO set compact. This is the only format accepted
-  on mainnet.
+  privacy and keeps the UTXO set compact.
 
-- **`0xC1` - Inline Conditions.** The full serialised conditions follow the
-  prefix byte in the scriptPubKey. Rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`).
-  Used for regtest/signet testing only.
-
-Both prefixes were chosen to avoid collision with any existing OP_ opcode,
-witness version, or Taproot annex byte.
+The `0xC2` prefix byte was chosen to avoid collision with any existing OP_
+opcode, witness version, or Taproot annex byte. Inline conditions (`0xC1`)
+have been removed; MLSC is the only output format.
 
 ### 10. What are the size limits?
 
@@ -175,13 +170,12 @@ Each output has a coil that determines what happens when a rung is satisfied:
 
 ### 12. What is the difference between conditions and witness?
 
-**Conditions** are the locking side. For `0xC1` outputs, conditions are stored
-inline in the scriptPubKey. For `0xC2` (MLSC) outputs, only a 32-byte Merkle
-root is in the scriptPubKey; the actual conditions are revealed at spend time
-via a Merkle proof. Conditions contain only *condition data types*:
+**Conditions** are the locking side. For `0xC2` (MLSC) outputs, only a 32-byte
+Merkle root is in the scriptPubKey; the actual conditions are revealed at spend
+time via a Merkle proof. Conditions contain only *condition data types*:
 HASH256, HASH160, NUMERIC, SCHEME, DATA. Witness-only types (PUBKEY, PREIMAGE,
 SIGNATURE, SCRIPT_BODY) are forbidden in conditions. Public keys are not stored
-in conditions at all -- they are folded into the Merkle leaf hash (merkle_pub_key).
+in conditions at all —they are folded into the Merkle leaf hash (merkle_pub_key).
 
 The **witness** is the unlocking side, stored in the transaction input's
 witness field. It contains the attestations: signatures, preimages, and other
@@ -198,7 +192,7 @@ A diff witness allows one input's witness to inherit its structure from another
 input in the same transaction. Instead of serialising a full witness for every
 input, you provide only the fields that differ (typically just signatures,
 since each input has a unique sighash). Use diff witnesses when a transaction
-spends multiple UTXOs with identical or similar conditions -- batch
+spends multiple UTXOs with identical or similar conditions —batch
 consolidation, covenant chain spends, and MULTISIG batches all benefit.
 
 ### 12b. Can diff witnesses be chained?
@@ -213,7 +207,7 @@ input 2 cannot reference input 1 if input 1 is itself a diff witness.
 
 Relays are shared sub-condition blocks that are evaluated once and referenced
 by multiple rungs via `relay_refs`. A relay contains blocks (like a rung) but
-has no coil -- it produces a boolean result that any rung can consume.
+has no coil —it produces a boolean result that any rung can consume.
 
 Relays are evaluated before any rungs. If a relay returns UNSATISFIED, every
 rung that references it fails without evaluating its own blocks. This enables
@@ -277,11 +271,11 @@ multi-mutation format.
 ### 16a. Why are covenants built in rather than requiring new opcodes?
 
 Covenant semantics are encoded as block types with typed fields. RECURSE_SAME,
-RECURSE_MODIFIED, CTV, VAULT_LOCK -- each is a single block with explicit
+RECURSE_MODIFIED, CTV, VAULT_LOCK —each is a single block with explicit
 parameters. The evaluator knows exactly what each block constrains. There is no
 need to propose new opcodes, debate script semantics, or worry about
 interactions with existing stack operations. A new covenant pattern is a new
-block type with a defined evaluation function -- not a new language primitive
+block type with a defined evaluation function —not a new language primitive
 that could conflict with existing ones.
 
 ---
@@ -314,7 +308,7 @@ leaf = TaggedHash("LadderLeaf", SerializeRung(rung) || pk1 || pk2 || ... || pkN)
 
 Keys are appended in block order (left to right), with the count determined by
 `PubkeyCountForBlock()` for each block type. The result is a single 32-byte leaf
-with no writable surface -- an attacker constructing a raw transaction has nowhere
+with no writable surface —an attacker constructing a raw transaction has nowhere
 to embed arbitrary data, because there is no key commitment field in the conditions
 at all.
 
@@ -359,7 +353,7 @@ time in the prunable witness.
 
 ### 20a. Can I migrate an existing Schnorr key to PQ without moving funds?
 
-Not directly -- the UTXO's conditions are fixed at creation. But the COSIGN
+Not directly —the UTXO's conditions are fixed at creation. But the COSIGN
 pattern (Q19) lets you add PQ protection to any existing spending pattern by
 creating a PQ anchor and requiring it as a co-input. Your Schnorr UTXOs keep
 their existing conditions; the PQ requirement is additive.
@@ -370,7 +364,7 @@ Because the threat is real and the migration takes time. Ladder Script ships
 four schemes now. When the cryptographic community converges on a winner, that
 scheme is already available. Meanwhile, SPHINCS+ (hash-based, 32-byte keys) is
 considered the most conservative choice, and FALCON-512 offers the best
-size/speed tradeoff. Users choose based on their own risk assessment -- the
+size/speed tradeoff. Users choose based on their own risk assessment —the
 system supports all four today.
 
 ---
@@ -444,7 +438,7 @@ No. The typed field system eliminates arbitrary data embedding at multiple
 layers:
 
 1. **merkle_pub_key eliminates the writable surface.** Public keys are folded
-   into the Merkle leaf hash -- no key commitment field exists in conditions.
+   into the Merkle leaf hash —no key commitment field exists in conditions.
    There is no writable slot for an attacker to fill with arbitrary data.
 2. **Type enforcement.** Every field must conform to a declared data type with
    strict size bounds. Unknown data types are rejected at deserialisation.
@@ -457,7 +451,7 @@ layers:
 5. **Witness data limits.** PREIMAGE (max 32 bytes) and SCRIPT_BODY (max 80
    bytes) share a limit of 2 fields per witness
    (`MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`). PUBKEY and SIGNATURE are cryptographically
-   constrained -- they must correspond to valid keys and signatures. Maximum
+   constrained —they must correspond to valid keys and signatures. Maximum
    embeddable data per witness: ~64 bytes.
 6. **Build-time validation.** Public keys are checked for compressed key prefix
    (0x02/0x03 for 33-byte keys), SCHEME values are validated against the enum.
@@ -468,7 +462,7 @@ layers:
 ### 26. What happens with unknown block types?
 
 Unknown block types are rejected at consensus during deserialization.
-`IsKnownBlockType()` is checked in `DeserializeBlock()` -- transactions
+`IsKnownBlockType()` is checked in `DeserializeBlock()` —transactions
 containing unrecognised block types cannot enter the mempool or be included in
 blocks. This is a fail-closed design: no unknown type can reach the evaluator.
 
@@ -494,7 +488,7 @@ through the evaluator either explicitly validates or explicitly rejects.
 ### 27a. How does Ladder Script handle the inscription / data embedding problem?
 
 By design, there is no writable surface for arbitrary data in conditions.
-merkle_pub_key folds public keys into the Merkle leaf hash -- no key commitment
+merkle_pub_key folds public keys into the Merkle leaf hash —no key commitment
 field exists in conditions. Hash fields (HASH256, HASH160) are fixed-size.
 NUMERIC fields are 1-4 bytes. SCHEME is 1 byte from a validated enum.
 Witness-only types are blocked from conditions at both the RPC and consensus
@@ -504,8 +498,8 @@ the garbage-pubkey-with-inverted-SIG vector.
 MLSC outputs take this further: the UTXO stores only 33-73 bytes
 (`0xC2` + 32-byte Merkle root, optionally with a DATA_RETURN payload). The
 conditions are never in the UTXO set at all. An attacker could create a fake
-`0xC2` output with a garbage root, but it would be unspendable -- no valid
-Merkle proof exists -- so the fake data is never published on-chain. The
+`0xC2` output with a garbage root, but it would be unspendable —no valid
+Merkle proof exists —so the fake data is never published on-chain. The
 attacker burns their funds for nothing.
 
 On the witness side, cryptographically constrained fields (PUBKEY, SIGNATURE)
@@ -513,11 +507,11 @@ leave no room for arbitrary data. PREIMAGE is capped at 32 bytes, SCRIPT_BODY
 at 80 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 2
 such fields total. Data-embedding types (HASH256, HASH160, DATA) are rejected
 in witness context for blocks without implicit witness layouts. The maximum
-embeddable data per witness is ~64 bytes -- and only as valid hash preimages
+embeddable data per witness is ~64 bytes —and only as valid hash preimages
 or serialised Ladder Script conditions.
 
 The Legacy family (0x0900) extends this to traditional transaction types. P2SH,
-P2WSH, and taproot script-path -- the primary inscription vectors today -- are
+P2WSH, and taproot script-path —the primary inscription vectors today —are
 wrapped as typed blocks where the inner script must be valid Ladder Script
 conditions. Arbitrary bytes are rejected.
 
@@ -570,7 +564,7 @@ without revealing the entire ladder.
 
 The Ladder Engine is a single-page web application (vanilla JS, no framework)
 for building, simulating, and broadcasting Ladder Script transactions. Located
-at `tools/ladder-engine/index.html` -- runs entirely client-side with no build
+at `tools/ladder-engine/index.html` —runs entirely client-side with no build
 step.
 
 Features include:
@@ -580,7 +574,7 @@ Features include:
 - **Simulate Mode**: Step through rung evaluation visually. Power flows left
   to right through blocks. Click contacts to authorise them. Alt+click to
   force-toggle blocks. Coils fire when all contacts pass.
-- **Send/Spend**: Fund outputs on the live signet and spend them -- no local
+- **Send/Spend**: Fund outputs on the live signet and spend them —no local
   node required.
 - **Examples Library**: Pre-built examples covering all major patterns.
 - **Import/Export**: Load and save `createrungtx` JSON.
@@ -647,7 +641,7 @@ Three reasons:
 2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-73
    with DATA_RETURN) regardless of how complex the conditions are. A 16-rung
    ladder with 8 blocks each takes the same UTXO space as a single SIG block.
-3. **Spam resistance.** The UTXO set never contains conditions -- only a Merkle
+3. **Spam resistance.** The UTXO set never contains conditions —only a Merkle
    root. There is no space for arbitrary data in the persistent state.
 
 ### 33. How does the sighash work for MLSC?
@@ -662,13 +656,13 @@ ladder complexity, and the signer does not need access to unrevealed rungs.
 The only data surface is DATA_RETURN: up to 40 bytes appended after the Merkle
 root, making the output 34-73 bytes. DATA_RETURN outputs must be zero-value
 (provably unspendable), are limited to 1 per transaction, and cost 4 WU per
-byte -- the same economics as OP_RETURN. This provides a structured, visible,
+byte —the same economics as OP_RETURN. This provides a structured, visible,
 prunable channel for protocol metadata (timestamps, commitments, anchors).
 
 Beyond DATA_RETURN, there is no writable surface. The Merkle root is
 cryptographically bound to the conditions and keys. An attacker could create a
-fake `0xC2` output with a garbage root, but it would be unspendable -- no valid
-Merkle proof exists -- and the funds are permanently burned.
+fake `0xC2` output with a garbage root, but it would be unspendable —no valid
+Merkle proof exists —and the funds are permanently burned.
 
 ---
 
@@ -693,7 +687,7 @@ The field order is fixed by the block definition, so only the field *data* is
 written. This saves 1 byte per field for all standard block types.
 
 Additionally, fixed-size fields (HASH256 32B, HASH160 20B, SCHEME 1B) skip
-the CompactSize length prefix entirely in implicit encoding -- the deserialiser
+the CompactSize length prefix entirely in implicit encoding —the deserialiser
 knows the exact size from the layout definition.
 
 ### 37. How does context-aware serialisation work?
@@ -802,14 +796,14 @@ P2PKH, P2SH, P2WPKH, P2WSH, P2TR (key-path), and P2TR_SCRIPT (script-path).
 
 Each preserves the spending semantics of its original format but enforces typed
 fields. P2SH, P2WSH, and P2TR_SCRIPT inner scripts must be valid Ladder Script
-conditions -- arbitrary bytes are rejected.
+conditions —arbitrary bytes are rejected.
 
 ### 45. Why wrap legacy types as blocks?
 
 Because the raw legacy formats have writable surfaces for arbitrary data. Taproot
 script-path is the primary inscription vector today. By wrapping legacy semantics
 in typed blocks, those surfaces are closed. Legacy blocks compose with all other
-block types -- you can put a P2PKH_LEGACY in a rung alongside a CSV timelock, a
+block types —you can put a P2PKH_LEGACY in a rung alongside a CSV timelock, a
 COSIGN requirement, or a governance constraint. Legacy users get access to the
 full Ladder Script composability without changing their spending semantics.
 
@@ -842,7 +836,7 @@ conditions via merkle_pub_key (folded into the Merkle leaf), not stored as a
 field in the conditions themselves.
 
 This makes the system self-describing. You can look at a UTXO's conditions and
-know exactly what the witness must provide -- field by field, type by type. No
+know exactly what the witness must provide —field by field, type by type. No
 simulation required.
 
 ### 48. Why fold keys into the Merkle leaf instead of storing them in conditions?
@@ -851,10 +845,10 @@ Three reasons, all critical:
 
 1. **Anti-spam.** merkle_pub_key eliminates every writable surface in conditions.
    There is no key commitment field for an attacker to fill with arbitrary data.
-   The Merkle leaf is a cryptographic hash -- it cannot be reverse-engineered
+   The Merkle leaf is a cryptographic hash —it cannot be reverse-engineered
    to embed meaningful data.
 2. **UTXO efficiency.** No public key data appears in the UTXO set at all. A
-   1,952-byte Dilithium3 key contributes zero additional bytes -- it is folded
+   1,952-byte Dilithium3 key contributes zero additional bytes —it is folded
    into the 32-byte leaf. The full key appears only at spend time in the
    prunable witness.
 3. **Quantum stealth.** Until a UTXO is spent, the public key is hidden inside
@@ -876,8 +870,8 @@ verify. No need to trace stack operations or reason about execution order.
 
 ### 50. Why is the evaluation model fail-closed?
 
-Because the cost of a false positive is catastrophic -- funds stolen. The cost of
-a false negative is recoverable -- funds temporarily unspendable, fixed by a
+Because the cost of a false positive is catastrophic —funds stolen. The cost of
+a false negative is recoverable —funds temporarily unspendable, fixed by a
 software upgrade.
 
 Every unknown, ambiguous, or malformed input results in rejection. Unknown block
@@ -891,10 +885,10 @@ Several things that are either impossible or require contentious new opcodes:
 
 - **Native covenants.** RECURSE_SAME, RECURSE_MODIFIED, CTV, VAULT_LOCK --
   all work today. No OP_CTV debate required.
-- **Stateful contracts.** Counters, latches, timers, sequencers -- UTXO state
+- **Stateful contracts.** Counters, latches, timers, sequencers —UTXO state
   that updates across spends. Not possible in a stateless stack machine.
 - **Transaction structure constraints.** INPUT_COUNT, OUTPUT_COUNT, WEIGHT_LIMIT,
-  EPOCH_GATE -- enforce rules about the spending transaction itself.
+  EPOCH_GATE —enforce rules about the spending transaction itself.
 - **Fee-rate gates.** HYSTERESIS_FEE lets a UTXO reject spends during fee spikes.
   There is no way to inspect fee rates in Bitcoin Script.
 - **Post-quantum signatures.** Drop-in PQ schemes across all block types. No
@@ -910,7 +904,7 @@ and sorted interior nodes, extended to 61 block types including covenants, PLC
 state machines, governance constraints, and PQ signatures.
 
 Taproot script-path spends execute Bitcoin Script inside a revealed leaf. MLSC
-reveals typed conditions -- no script execution, no stack, no data embedding
+reveals typed conditions —no script execution, no stack, no data embedding
 surface.
 
 ### 53. Is the wire format efficient?

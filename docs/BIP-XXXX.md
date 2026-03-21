@@ -34,17 +34,11 @@ Ladder Script addresses these limitations by replacing opcode sequences with a t
 
 ### Transaction Format
 
-A Ladder Script transaction is identified by `nVersion = 4` (constant `CTransaction::RUNG_TX_VERSION`). When a node encounters a version 4 transaction spending an output whose `scriptPubKey` begins with `0xC1` or `0xC2`, it invokes the ladder evaluator instead of the Script interpreter.
+A Ladder Script transaction is identified by `nVersion = 4` (constant `CTransaction::RUNG_TX_VERSION`). When a node encounters a version 4 transaction spending an output whose `scriptPubKey` begins with `0xC2`, it invokes the ladder evaluator instead of the Script interpreter.
 
-**Output formats:**
+**Output format:**
 
-1. **Inline conditions (`0xC1`).** Full conditions embedded in the output:
-   ```
-   0xC1 || SerialisedRungConditions
-   ```
-   Inline conditions are for testing and development purposes only. They are non-standard on mainnet. All mainnet outputs must use MLSC (`0xC2`).
-
-2. **MLSC: Merkelised Ladder Script Conditions (`0xC2`).** A 32-byte Merkle root with an optional DATA_RETURN payload:
+**MLSC: Merkelised Ladder Script Conditions (`0xC2`).** A 32-byte Merkle root with an optional DATA_RETURN payload:
    ```
    0xC2 || conditions_root                    (33 bytes, standard)
    0xC2 || conditions_root || data            (34-73 bytes, DATA_RETURN)
@@ -55,15 +49,15 @@ MLSC outputs store no condition data in the UTXO set. All conditions are reveale
 
 The Merkle tree uses BIP-341-style tagged hashes for domain separation. Leaf nodes are computed as `TaggedHash("LadderLeaf", SerializeRungBlocks(rung) || pk1 || pk2 || ... || pkN)` where `pk1...pkN` are the public keys consumed by blocks in the rung, walked left-to-right using `PubkeyCountForBlock()`. Interior nodes are computed as `TaggedHash("LadderInternal", min(A,B) || max(A,B))`. See the Merkle Leaf Computation section for the full specification.
 
-The prefix bytes `0xC1` and `0xC2` were chosen after collision analysis against all existing standard scriptPubKey first bytes. They do not collide with P2PKH (`0x76`), P2SH (`0xa9`), witness v0 (`0x00`), witness v1 (`0x51`), OP_RETURN (`0x6a`), any witness version opcode (`0x00`-`0x60`), or any data push prefix (`0x01`-`0x4e`). The bytes fall in the undefined opcode range (`0xBB`-`0xFE`) above `OP_CHECKSIGADD` (`0xBA`).
+The prefix byte `0xC2` was chosen after collision analysis against all existing standard scriptPubKey first bytes. It does not collide with P2PKH (`0x76`), P2SH (`0xa9`), witness v0 (`0x00`), witness v1 (`0x51`), OP_RETURN (`0x6a`), any witness version opcode (`0x00`-`0x60`), or any data push prefix (`0x01`-`0x4e`). The byte falls in the undefined opcode range (`0xBB`-`0xFE`) above `OP_CHECKSIGADD` (`0xBA`).
 
 **Input (unlocking side):**
 
-The first element of the segregated witness stack for each v4 input is a serialised `LadderWitness`. For `0xC1` outputs, this contains the same rung/block layout as the conditions plus SIGNATURE, PUBKEY, and PREIMAGE fields. For `0xC2` (MLSC) outputs, the witness additionally contains the revealed rung conditions, Merkle proof hashes, and coil data.
+The first element of the segregated witness stack for each v4 input is a serialised `LadderWitness`. For `0xC2` (MLSC) outputs, the witness contains the revealed rung conditions, Merkle proof hashes, and coil data.
 
 **Evaluation entry point:**
 
-The function `VerifyRungTx` is called for each input of a v4 transaction. For `0xC1` inputs, it deserializes conditions from the spent output's `scriptPubKey` and the witness from the spending input. For `0xC2` inputs, it deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 59 active block evaluators are identical for both output formats.
+The function `VerifyRungTx` is called for each input of a v4 transaction. It deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 59 active block evaluators operate on the same deserialized structures.
 
 ### Wire Format
 
@@ -666,7 +660,7 @@ All limits are enforced during deserialization:
 
 ### Address Format
 
-Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encoding (BIP-350). The address encodes the raw conditions bytes (the `scriptPubKey` payload after the `0xC1` prefix).
+Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encoding (BIP-350). The address encodes the 32-byte Merkle root (the `scriptPubKey` payload after the `0xC2` prefix).
 
 **Encoding:** Convert conditions bytes to 5-bit groups using Bech32 base conversion, then encode with `bech32::Encode(bech32::Encoding::BECH32M, "rung", data)`.
 
@@ -674,7 +668,7 @@ Ladder Script outputs use the `rung1` human-readable prefix with Bech32m encodin
 
 **Character limit:** 500 characters (`CharLimit::RUNG_ADDRESS`), accommodating variable-length conditions from simple single-block to complex multi-rung PQ conditions.
 
-**Script detection:** The `Solver` identifies rung conditions by the `0xC1` prefix, returning `TxoutType::RUNG_CONDITIONS`.
+**Script detection:** The `Solver` identifies MLSC outputs by the `0xC2` prefix, returning `TxoutType::RUNG_CONDITIONS`.
 
 ### RPC Interface
 
@@ -878,7 +872,7 @@ Wallets cannot spend ladder-locked outputs without implementing the ladder evalu
 
 | Component | Location | Weight |
 |-----------|----------|--------|
-| Conditions (`0xC1` prefix) | `scriptPubKey` (non-witness) | 4 WU per byte |
+| MLSC output (`0xC2` prefix) | `scriptPubKey` (non-witness) | 4 WU per byte |
 | Witness (signatures, keys, preimages, SCRIPT_BODY) | Witness field | 1 WU per byte |
 | Transaction structure (version, inputs, outputs, locktime) | Non-witness | 4 WU per byte |
 
@@ -914,7 +908,7 @@ The reference implementation is located in the `src/rung/` directory. A step-by-
 | File | Purpose |
 |------|---------|
 | `types.h` / `types.cpp` | Core type definitions: `RungBlockType`, `RungDataType`, `RungCoilType`, `RungAttestationMode`, `RungScheme`, helper functions (`IsKnownBlockType`, `IsKeyConsumingBlockType`, `IsInvertibleBlockType`, `PubkeyCountForBlock`), and all struct definitions. |
-| `conditions.h` / `conditions.cpp` | Conditions (locking side): `RungConditions`, serialization to/from `CScript` with `0xC1` prefix, `ComputeRungLeaf` with pubkey folding, `ComputeConditionsRoot`, template inheritance resolution. |
+| `conditions.h` / `conditions.cpp` | Conditions (locking side): `RungConditions`, MLSC Merkle tree with `0xC2` prefix, `ComputeRungLeaf` with pubkey folding, `ComputeConditionsRoot`, template inheritance resolution. |
 | `serialize.h` / `serialize.cpp` | Wire format serialization/deserialization with micro-headers, implicit fields, varint NUMERIC, context-aware encoding, and policy limit constants. |
 | `evaluator.h` / `evaluator.cpp` | Block evaluators for all 61 block types (59 active + 2 deprecated). Rung AND logic, ladder OR logic, selective inversion enforcement. `VerifyRungTx` entry point. `ValidateRungOutputs` (consensus-level output validation). `LadderSignatureChecker` for Schnorr/PQ signature verification. |
 | `sighash.h` / `sighash.cpp` | `SignatureHashLadder` tagged hash computation. |
@@ -948,7 +942,7 @@ The line count is higher because Ladder Script replaces the entire Script evalua
 
 The implementation includes comprehensive test coverage across two layers:
 
-**Unit tests** (`src/test/rung_tests.cpp`): 440+ test cases covering:
+**Unit tests** (`src/test/rung_tests.cpp`): 480 test cases covering:
 - Field validation for all 10 active data types with boundary conditions
 - Serialization round-trips for all 59 active block types
 - Deserialization rejection of deprecated types (HASH_PREIMAGE, HASH160_PREIMAGE)
@@ -977,7 +971,7 @@ The implementation includes comprehensive test coverage across two layers:
 - Inverted key-consuming block rejection at deserialization
 - Cross-phase integration (multi-block, multi-rung optimised roundtrips)
 
-**Functional tests** (`tests/functional/rung_basic.py`): 158 end-to-end test scenarios covering:
+**Functional tests** (60 regtest functional tests across 6 test suites) covering:
 - RPC interface for rung creation, decoding, and validation
 - Full transaction lifecycle (create, sign, broadcast, confirm, spend) for all block types
 - Negative tests (wrong signature, wrong preimage, timelock too early, wrong template, wrong key)
@@ -1116,15 +1110,15 @@ At spend time, only the satisfied rung is revealed in the witness. Unsatisfied r
 
 **Caveat (condition reuse):** If identical conditions are used across multiple outputs (same Merkle root), spending one output reveals the structure for all outputs sharing that root. Implementations SHOULD generate unique condition trees per output where possible.
 
-### 0xC1/0xC2 Prefix Collision Analysis
+### 0xC2 Prefix Collision Analysis
 
-The `0xC1` and `0xC2` bytes identify Ladder Script conditions as the first byte of scriptPubKey.
+The `0xC2` byte identifies Ladder Script MLSC outputs as the first byte of scriptPubKey.
 
-- **Standard output types.** P2PKH starts with `0x76` (OP_DUP), P2SH with `0xa9` (OP_HASH160), witness v0 with `0x00` (OP_0), witness v1 with `0x51` (OP_1), OP_RETURN with `0x6a`. None use `0xC1` or `0xC2`.
-- **Witness version range.** BIP-141 witness versions use `OP_0` (`0x00`) through `OP_16` (`0x60`). Both bytes are outside this range.
-- **Data push range.** Script data push opcodes occupy `0x01`-`0x4E`. Both bytes are outside this range.
-- **Opcode range.** Both bytes fall in the undefined opcode range (`0xBB`-`0xFE`), above `OP_CHECKSIGADD` (`0xBA`). They are not assigned to any defined Script opcode.
-- **Soft fork compatibility.** Non-upgraded nodes encountering a `0xC1` or `0xC2` scriptPubKey treat it as a non-standard output type, which is the correct behaviour for soft fork deployment.
+- **Standard output types.** P2PKH starts with `0x76` (OP_DUP), P2SH with `0xa9` (OP_HASH160), witness v0 with `0x00` (OP_0), witness v1 with `0x51` (OP_1), OP_RETURN with `0x6a`. None use `0xC2`.
+- **Witness version range.** BIP-141 witness versions use `OP_0` (`0x00`) through `OP_16` (`0x60`). `0xC2` is outside this range.
+- **Data push range.** Script data push opcodes occupy `0x01`-`0x4E`. `0xC2` is outside this range.
+- **Opcode range.** `0xC2` falls in the undefined opcode range (`0xBB`-`0xFE`), above `OP_CHECKSIGADD` (`0xBA`). It is not assigned to any defined Script opcode.
+- **Soft fork compatibility.** Non-upgraded nodes encountering a `0xC2` scriptPubKey treat it as a non-standard output type, which is the correct behaviour for soft fork deployment.
 
 ## Copyright
 

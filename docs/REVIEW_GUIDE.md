@@ -71,10 +71,10 @@ No condition field across all 61 block types accepts arbitrary user-chosen bytes
 |--------|--------|-------|---------|
 | Signature | 5 | 0x0001-0x00FF | Key-based authorization |
 | Timelock | 4 | 0x0100-0x01FF | Time and height constraints |
-| Hash | 3 | 0x0200-0x02FF | Preimage reveals and tagged hashes |
+| Hash | 4 | 0x0200-0x02FF | Tagged hashes, hash-guarded preimage (2 deprecated: HASH_PREIMAGE, HASH160_PREIMAGE) |
 | Covenant | 3 | 0x0300-0x03FF | CTV templates, vaults, amount locks |
 | Recursion | 6 | 0x0400-0x04FF | Self-referencing outputs (perpetual, decay, split) |
-| Anchor | 6 | 0x0500-0x05FF | L2 anchors (channels, pools, oracles) |
+| Anchor | 7 | 0x0500-0x05FF | L2 anchors (channels, pools, oracles), DATA_RETURN |
 | PLC | 14 | 0x0600-0x06FF | Industrial logic (timers, counters, latches, rate limits) |
 | Compound | 6 | 0x0700-0x07FF | Collapsed multi-block patterns (HTLC, PTLC) |
 | Governance | 7 | 0x0800-0x08FF | Transaction-level constraints (weight, I/O counts, output checks) |
@@ -83,7 +83,7 @@ No condition field across all 61 block types accepts arbitrary user-chosen bytes
 ## Running Tests
 
 ```bash
-# Unit tests (422 test cases)
+# Unit tests (480 test cases)
 make -j2 && src/test/test_bitcoin --run_test=rung_tests
 
 # Functional tests (on signet)

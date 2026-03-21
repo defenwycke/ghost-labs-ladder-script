@@ -337,12 +337,12 @@ nav .badge {
       <div class="box-head">
         <span class="dot"></span>
         Conditions (vout[])
-        <span class="tag" style="background:rgba(0,212,255,0.1);color:var(--cyan);">0xC1 / 0xC2</span>
+        <span class="tag" style="background:rgba(0,212,255,0.1);color:var(--cyan);">0xC2 MLSC</span>
       </div>
       <div class="box-inner">
         <div class="f"><span class="fn" style="color:var(--cyan);">nValue</span><span class="ft">int64</span><span class="fd">Amount in satoshis</span></div>
         <div class="f"><span class="fn" style="color:var(--cyan);">scriptPubKey</span><span class="ft">var</span><span class="fd">Ladder Script locking conditions</span></div>
-        <div class="note">0xC1 — condition-safe fields inline (PUBKEY_COMMIT, HASH256, NUMERIC, etc.)<br>0xC2 — 32-byte Merkle root only (MLSC)</div>
+        <div class="note">0xC2 &mdash; 32-byte Merkle root only (MLSC). Conditions revealed at spend time in the witness.</div>
       </div>
     </div>
 

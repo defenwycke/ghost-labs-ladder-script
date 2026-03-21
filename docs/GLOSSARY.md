@@ -97,7 +97,7 @@ A spending requirement embedded in a v4 output's scriptPubKey. Conditions are th
 "locking" side of Ladder Script: they specify what must be satisfied to spend the
 UTXO. Conditions contain only condition data types (HASH256, HASH160, NUMERIC, SCHEME,
 SPEND_INDEX, DATA) and never contain witness-only types (PUBKEY, SIGNATURE, PREIMAGE). Public keys
-are not stored in conditions -- they are folded into the Merkle leaf hash
+are not stored in conditions —they are folded into the Merkle leaf hash
 (merkle_pub_key). On mainnet, conditions are always Merkelised (`0xC2` MLSC).
 
 ### COSIGN
@@ -180,7 +180,7 @@ evaluated. This means the first satisfied rung determines the spend path. Define
 
 A per-block-type schema that defines the expected number, order, and types of fields
 for both conditions and witness sides. When a block's fields match its implicit layout,
-the wire format can omit individual field type tags -- the deserialiser infers them from
+the wire format can omit individual field type tags —the deserialiser infers them from
 the block type. This reduces per-block overhead by 1 byte per field. Layouts are defined
 in `GetImplicitLayout()` in `src/rung/types.h`.
 
@@ -232,8 +232,7 @@ sighash commits to:
 - Outputs hash (unless SIGHASH_NONE)
 - Spend type (always 0 for ladder; no annex or extensions)
 - Input-specific data (prevout or index)
-- Conditions hash (SHA-256 of serialised rung conditions for `0xC1` outputs, or the
-  conditions root directly for `0xC2` MLSC outputs)
+- Conditions hash (the conditions root directly from the `0xC2` MLSC output)
 - Output for SIGHASH_SINGLE
 
 Similar to BIP-341 sighash but without annex, tapscript, or codeseparator extensions.
@@ -245,10 +244,10 @@ BIP-341-style tagged hash domain tags used in MLSC Merkle tree construction. A t
 hash is computed as `SHA256(SHA256(tag) || SHA256(tag) || data)`, where the 64-byte
 prefix of the doubled tag hash provides domain separation.
 
-- **"LadderLeaf"** -- Used for leaf nodes: rung leaves, coil leaf, relay leaves, and the
+- **"LadderLeaf"** —Used for leaf nodes: rung leaves, coil leaf, relay leaves, and the
   empty padding leaf. Rung and relay leaves include public keys appended after the
   serialised blocks (merkle_pub_key). Pre-computed as `LEAF_HASHER` in `conditions.cpp`.
-- **"LadderInternal"** -- Used for interior (branch) nodes. Takes `min(A,B) || max(A,B)`
+- **"LadderInternal"** —Used for interior (branch) nodes. Takes `min(A,B) || max(A,B)`
   as data for canonical sorted construction. Pre-computed as `INTERNAL_HASHER`.
 
 The domain separation ensures a valid leaf hash can never be mistaken for a valid interior
@@ -263,17 +262,15 @@ The witness data for a v4 (RUNG_TX) input. Contains:
   (signatures, preimages)
 - `coil`: The output coil (per-output, not per-rung)
 
-For `0xC1` (inline) outputs, the witness is merged with the conditions from the spent
-output's scriptPubKey. For `0xC2` (MLSC) outputs, the witness additionally contains the
-revealed rung conditions, Merkle proof, and coil data. In both cases, the merge combines
-condition fields (locks) with witness fields (keys) into a unified structure that the
-evaluator processes.
+For `0xC2` (MLSC) outputs, the witness contains the revealed rung conditions, Merkle proof,
+and coil data. The merge combines condition fields (locks) with witness fields (keys) into a
+unified structure that the evaluator processes.
 
 ### Merkle Proof (MLSC)
 
 The set of sibling hashes needed to reconstruct the conditions root from a revealed leaf.
 For a tree with M leaves (padded to the next power of 2), the proof contains at most
-`ceil(log2(M))` hashes -- e.g., 0 hashes for a single-rung condition, 1 hash for 2 rungs,
+`ceil(log2(M))` hashes —e.g., 0 hashes for a single-rung condition, 1 hash for 2 rungs,
 5 hashes for 16 rungs + coil (17 leaves, padded to 32). Each proof hash is 32 bytes. The verifier reconstructs the root
 bottom-up using `TaggedHash("LadderInternal", min(A,B) || max(A,B))` at each level and
 checks the result against the UTXO's conditions root.
@@ -308,7 +305,7 @@ Specified in `MERKLE-UTXO-SPEC.md`. Implemented in `src/rung/conditions.cpp`.
 The 32-byte Merkle root stored in an MLSC (`0xC2`) output. Computed as a binary Merkle
 tree over tagged leaf hashes of all rungs, relays, and the coil. Uses sorted interior
 hashing for canonical construction. The root transitively commits to every field of every
-block in every rung -- changing any byte in any condition changes the root and invalidates
+block in every rung —changing any byte in any condition changes the root and invalidates
 all signatures. Defined in `ComputeConditionsRoot()` in `src/rung/conditions.cpp`.
 
 ### MUSIG_THRESHOLD
@@ -397,7 +394,7 @@ by `PubkeyCountForBlock()`. At spend time, the verifier recomputes the leaf from
 revealed conditions plus the witness keys. If the recomputed leaf does not match the
 committed Merkle root, verification fails before signature checking begins.
 
-This eliminates all writable surfaces in conditions -- there is no field an attacker
+This eliminates all writable surfaces in conditions —there is no field an attacker
 can fill with arbitrary data. It also provides UTXO efficiency: no key data appears
 in the UTXO set regardless of key size (PQ keys can be 2 KB+).
 
@@ -406,7 +403,7 @@ in the UTXO set regardless of key size (PQ keys can be 2 KB+).
 A shared sub-condition block sequence that is evaluated once and referenced by multiple
 rungs via `relay_refs`. Represented by the `Relay` struct, which contains a vector of
 `RungBlock` objects (like a rung but without a coil). Relays are evaluated before any
-rungs. A rung that includes a relay reference inherits its result -- if the relay is
+rungs. A rung that includes a relay reference inherits its result —if the relay is
 UNSATISFIED, the referencing rung fails without evaluating its own blocks.
 
 Relays enable AND composition across rungs without duplicating blocks. Forward-only
@@ -479,16 +476,14 @@ partition the type space by family:
 The conditions embedded in a v4 output's scriptPubKey. Represented by the
 `RungConditions` struct, which mirrors the `LadderWitness` structure but contains only
 condition data types (no PUBKEY, SIGNATURE, or PREIMAGE). On mainnet, conditions are
-always Merkelised (`0xC2` MLSC) -- only the Merkle root is in the scriptPubKey. Inline
-`0xC1` encoding exists for regtest/signet testing only.
+always Merkelised (`0xC2` MLSC). Only the Merkle root is in the scriptPubKey.
 
 Contains:
 - `rungs`: Vector of `Rung` objects with condition-only fields
 - `coil`: Output coil with attestation mode, scheme, address, and coil conditions
 
-At spend time, conditions are deserialised from the spent output (inline) or revealed
-via Merkle proof (MLSC), then merged with the witness from the spending input before
-evaluation.
+At spend time, conditions are revealed via Merkle proof (MLSC) and merged with the
+witness from the spending input before evaluation.
 
 ### RungDataType
 
@@ -533,7 +528,7 @@ than the script interpreter.
 ### SCRIPT_BODY
 
 A data type (0x0A) for serialised inner Ladder Script conditions carried in the witness.
-Size range: exactly 32 bytes. Witness-only -- cannot appear in conditions. Used by the
+Size range: exactly 32 bytes. Witness-only —cannot appear in conditions. Used by the
 Legacy family blocks P2SH_LEGACY, P2WSH_LEGACY, and P2TR_SCRIPT_LEGACY to carry the
 inner conditions that must deserialise as valid Ladder Script. Rejecting arbitrary bytes
 in this field closes the data-embedding surface that raw P2SH/P2WSH/taproot script-path
@@ -587,8 +582,7 @@ Reduces transaction size when multiple outputs share similar condition structure
 ### Wire Format
 
 The serialised byte representation of Ladder Script structures. The wire format is used
-for both conditions and witness data. Inline conditions use `0xC1` prefix (regtest/signet
-only); mainnet uses `0xC2` MLSC. Key properties:
+for both conditions and witness data. All outputs use `0xC2` MLSC. Key properties:
 
 - Block types: 2 bytes, little-endian (uint16_t)
 - Data types: 1 byte (uint8_t)

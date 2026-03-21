@@ -10,17 +10,17 @@ A typed transaction format for Bitcoin, derived from industrial PLC ladder logic
 
 Bitcoin Script is a stack machine where every element is an opaque byte array. A public key, a hash, a timelock, and a JPEG are indistinguishable at the protocol level. Each new capability requires a new opcode, a soft fork, and years of coordination.
 
-Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error -- not policy, not non-standard, a *parse error*.
+Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error —not policy, not non-standard, a *parse error*.
 
 The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and every pending covenant proposal as individual block types within a unified system.
 
 ## What makes it different
 
-**Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" -- a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
+**Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" —a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
 
-**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. Conditions contain zero user-chosen bytes -- every field is a hash digest or bounded numeric. Public keys are folded into the Merkle leaf hash (merkle_pub_key), not stored in conditions. Preimage fields are limited to 1 per witness. There is no push-data opcode. If it doesn't parse as a typed field, it doesn't enter the mempool.
+**Spam is structural.** Nine data types, enforced at the deserialiser before any cryptographic operation. Conditions contain zero user-chosen bytes —every field is a hash digest or bounded numeric. Public keys are folded into the Merkle leaf hash (merkle_pub_key), not stored in conditions. Preimage fields are limited to 1 per witness. There is no push-data opcode. If it doesn't parse as a typed field, it doesn't enter the mempool.
 
-**Post-quantum ready.** FALCON-512 signatures work today. All keys are folded into the Merkle leaf (merkle_pub_key) -- zero key bytes in the UTXO set regardless of key size. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs (theoretical max depth ~4.3 billion spends).
+**Post-quantum ready.** FALCON-512 signatures work today. All keys are folded into the Merkle leaf (merkle_pub_key) —zero key bytes in the UTXO set regardless of key size. The COSIGN pattern lets a single PQ anchor protect unlimited child UTXOs (theoretical max depth ~4.3 billion spends).
 
 **Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
 
@@ -58,10 +58,10 @@ proxy/             FastAPI signet proxy for live testing
 
 ## Documentation
 
-- [Block Library](docs/BLOCK_LIBRARY.md) -- all 61 blocks with fields and semantics
-- [BIP Draft](docs/BIP-XXXX.md) -- formal Bitcoin Improvement Proposal
-- [Examples](docs/EXAMPLES.md) -- 8 worked scenarios with JSON
-- [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) -- spec deviations and why
+- [Block Library](docs/BLOCK_LIBRARY.md) —all 61 blocks with fields and semantics
+- [BIP Draft](docs/BIP-XXXX.md) —formal Bitcoin Improvement Proposal
+- [Examples](docs/EXAMPLES.md) —8 worked scenarios with JSON
+- [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) —spec deviations and why
 
 ## Links
 

@@ -10,19 +10,19 @@ A typed transaction format for Bitcoin, derived from industrial PLC ladder logic
 
 Bitcoin Script is a stack machine where every element is an opaque byte array. A public key, a hash, a timelock, and a JPEG are indistinguishable at the protocol level. Each new capability requires a new opcode, a soft fork, and years of coordination.
 
-Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error -- not policy, not non-standard, a *parse error*.
+Ladder Script replaces this with **typed function blocks** organised into **rungs**. Every byte has a declared type. Every condition is a named block with validated fields. Evaluation is deterministic: AND within rungs, OR across rungs, first satisfied rung wins. Untyped data is a parse error —not policy, not non-standard, a *parse error*.
 
 ## How it works
 
-The name and structure are borrowed from ladder logic, the programming model used in industrial PLCs (programmable logic controllers) for decades. A spending policy is a ladder. Each rung is a possible spending path containing typed condition blocks. Blocks on the same rung are AND -- all must be satisfied. Rungs are OR -- the first satisfied rung authorises the spend.
+The name and structure are borrowed from ladder logic, the programming model used in industrial PLCs (programmable logic controllers) for decades. A spending policy is a ladder. Each rung is a possible spending path containing typed condition blocks. Blocks on the same rung are AND —all must be satisfied. Rungs are OR —the first satisfied rung authorises the spend.
 
 The output format is **MLSC** (Merkelized Ladder Script Conditions): a 33-byte scriptPubKey (`0xC2 || merkle_root`) regardless of policy complexity. Only the exercised spending path is revealed at spend time. Unused paths stay permanently hidden. The UTXO footprint is 40 bytes per entry.
 
-Transaction version 4 (`RUNG_TX`). Soft fork activation -- non-upgraded nodes see v4 as anyone-can-spend, the same upgrade path as SegWit and Taproot.
+Transaction version 4 (`RUNG_TX`). Soft fork activation —non-upgraded nodes see v4 as anyone-can-spend, the same upgrade path as SegWit and Taproot.
 
 ## What makes it different
 
-**Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" -- a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
+**Contact inversion.** Non-key blocks can be inverted. `[/CSV: 144]` means "spend BEFORE 144 blocks" —a primitive Bitcoin has never had. Key-consuming blocks (SIG, MULTISIG, etc.) cannot be inverted, closing the garbage-pubkey data embedding vector. This enables breach remedies, dead man's switches, governance vetoes, and time-bounded escrows natively.
 
 **Anti-spam hardening.** Nine data types, enforced at the deserialiser before any cryptographic operation. Three coordinated defenses close all practical data embedding surfaces: `merkle_pub_key` folds public keys into the Merkle leaf hash (no writable pubkey field in conditions), selective inversion prevents key-consuming blocks from being inverted, and hash lock deprecation removes standalone preimage blocks. If it doesn't parse as a typed field, it doesn't enter the mempool.
 
@@ -53,8 +53,8 @@ The [Ladder Engine](https://bitcoinghost.org/labs/ladder-engine.html) is a brows
 
 ## Tests
 
-- **437 unit tests** (`src/test/rung_tests.cpp`) -- serialization, evaluation, all 61 block types, inversion, anti-spam, PQ signatures, legacy blocks
-- **229 functional tests** across 6 test suites -- end-to-end RPC flows, P2P relay, MLSC Merkle proofs, PQ block stress tests, signet integration
+- **480 unit tests** (`src/test/rung_tests.cpp`), serialization, evaluation, all 61 block types, inversion, anti-spam, PQ signatures, legacy blocks
+- **60 regtest functional tests** across 6 test suites, end-to-end RPC flows, P2P relay, MLSC Merkle proofs, PQ block stress tests, signet integration
 
 ```bash
 # Unit tests
@@ -82,15 +82,15 @@ proxy/                 FastAPI signet proxy for live testing
 
 ## Documentation
 
-- [BIP Draft](docs/BIP-XXXX.md) -- formal Bitcoin Improvement Proposal
-- [Block Library](docs/BLOCK_LIBRARY.md) -- all 61 blocks with fields and semantics
-- [Examples](docs/EXAMPLES.md) -- worked scenarios with RPC JSON
-- [Review Guide](docs/REVIEW_GUIDE.md) -- recommended reading order for the C++
-- [Engine Guide](docs/ENGINE_GUIDE.md) -- how to use the visual builder
-- [FAQ](docs/FAQ.md) -- common questions
-- [Glossary](docs/GLOSSARY.md) -- terminology reference
-- [Integration](docs/INTEGRATION.md) -- wallet and application integration guide
-- [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) -- spec deviations and why
+- [BIP Draft](docs/BIP-XXXX.md) —formal Bitcoin Improvement Proposal
+- [Block Library](docs/BLOCK_LIBRARY.md) —all 61 blocks with fields and semantics
+- [Examples](docs/EXAMPLES.md) —worked scenarios with RPC JSON
+- [Review Guide](docs/REVIEW_GUIDE.md) —recommended reading order for the C++
+- [Engine Guide](docs/ENGINE_GUIDE.md) —how to use the visual builder
+- [FAQ](docs/FAQ.md) —common questions
+- [Glossary](docs/GLOSSARY.md) —terminology reference
+- [Integration](docs/INTEGRATION.md) —wallet and application integration guide
+- [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) —spec deviations and why
 
 ## Reference Implementation
 
@@ -110,9 +110,9 @@ proxy/                 FastAPI signet proxy for live testing
 
 ## Links
 
-- [Ladder Engine (hosted)](https://bitcoinghost.org/labs/ladder-engine.html) -- build and broadcast on signet
-- [Block Reference (hosted)](https://bitcoinghost.org/labs/block-docs/) -- visual docs for all block types
-- [Ladder Script Overview](https://bitcoinghost.org/labs/ladder-script.html) -- how it works, use cases, diagrams
+- [Ladder Engine (hosted)](https://bitcoinghost.org/labs/ladder-engine.html) —build and broadcast on signet
+- [Block Reference (hosted)](https://bitcoinghost.org/labs/block-docs/) —visual docs for all block types
+- [Ladder Script Overview](https://bitcoinghost.org/labs/ladder-script.html) —how it works, use cases, diagrams
 
 ## License
 

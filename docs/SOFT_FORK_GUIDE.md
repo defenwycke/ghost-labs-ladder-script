@@ -6,7 +6,7 @@ Ladder Script introduces transaction version 4 (`RUNG_TX`) to Bitcoin, replacing
 
 **What changes:**
 - Transaction version 4 gains consensus meaning (currently non-standard, treated as anyone-can-spend).
-- Outputs with scriptPubKey prefix `0xC2` (MLSC Merkle root) are recognised as ladder conditions and evaluated by the ladder evaluator. Inline `0xC1` is rejected on mainnet (testing only).
+- Outputs with scriptPubKey prefix `0xC2` (MLSC Merkle root) are recognised as ladder conditions and evaluated by the ladder evaluator. MLSC is the only output format.
 - Witness validation for v4 inputs uses the ladder sighash (`TaggedHash("LadderSighash")`) instead of the Script interpreter.
 - Post-quantum signature schemes (FALCON-512/1024, Dilithium3, SPHINCS_SHA) become available through the SCHEME field.
 - All block types are standard.
@@ -45,7 +45,7 @@ All 61 block types (59 active + 2 deprecated) are documented in the BIP and Bloc
 
 ### Signature, Timelock, and Hash (0x0001-0x02FF) - 11 block types
 
-**Risk:** Low. These map directly to well-understood Script operations running on mainnet for years. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (rejected at consensus); use HTLC, HASH_SIG, or HASH_GUARDED instead. The new risk surface is the wire format deserialisation and ladder sighash, covered by 444 unit tests and 158 functional tests.
+**Risk:** Low. These map directly to well-understood Script operations running on mainnet for years. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (rejected at consensus); use HTLC, HASH_SIG, or HASH_GUARDED instead. The new risk surface is the wire format deserialisation and ladder sighash, covered by 480 unit tests and 60 regtest functional tests.
 
 **Enables:** Standard wallets, Lightning HTLCs, timelocked vaults, atomic swaps, post-quantum signatures via the SCHEME field.
 

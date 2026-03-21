@@ -11076,7 +11076,7 @@ function appReducer(state, action) {
 const WALKTHROUGH_STEPS = [
   {
     title: 'Welcome to Ladder Script Engine',
-    body: 'This is a visual builder for Ladder Script transactions -- a new programmable spending language for Bitcoin. Drag blocks to construct spending conditions, simulate execution, and broadcast to a live signet node.',
+    body: 'This is a visual builder for Ladder Script transactions. A new programmable spending language for Bitcoin. Drag blocks to construct spending conditions, simulate execution, and broadcast to a live signet node.',
     targetSelector: null,
   },
   {
@@ -11086,7 +11086,7 @@ const WALKTHROUGH_STEPS = [
   },
   {
     title: 'The Ladder Diagram',
-    body: 'Each horizontal <strong>rung</strong> is an OR path -- any satisfied rung unlocks the output. Within a rung, <strong>blocks</strong> are AND logic -- all must pass. The left rail shows <strong>inputs</strong>, the right rail shows <strong>outputs</strong> (coils). Click blocks to configure their parameters.',
+    body: 'Each horizontal <strong>rung</strong> is an OR path. Any satisfied rung unlocks the output. Within a rung, <strong>blocks</strong> use AND logic, so all must pass. The left rail shows <strong>inputs</strong>, the right rail shows <strong>outputs</strong> (coils). Click blocks to configure their parameters.',
     targetSelector: '.ladder-area',
   },
   {
@@ -11111,7 +11111,7 @@ const WALKTHROUGH_STEPS = [
   },
   {
     title: 'You\'re Ready!',
-    body: 'Explore the other templates -- <strong>HTLC Atomic Swap</strong>, <strong>Dead Man\'s Switch</strong>, <strong>CTV Vault</strong>, and more. Use <code>SIMULATE</code> mode to step through rung evaluation. Check the <code>HELP</code> button for the full engine guide.',
+    body: 'Explore the other templates: <strong>HTLC Atomic Swap</strong>, <strong>Dead Man\'s Switch</strong>, <strong>CTV Vault</strong>, and more. Use <code>SIMULATE</code> mode to step through rung evaluation. Check the <code>HELP</code> button for the full engine guide.',
     targetSelector: null,
   },
 ];
