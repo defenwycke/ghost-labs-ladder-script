@@ -1,235 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ghost Labs | Bitcoin Ghost</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
-      --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
-      --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
-      --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
-      --white: #f0f0f0;
-      --orange: #f7931a; --orange-light: #ffb347;
-      --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
-      --font-display: 'Outfit', system-ui, sans-serif;
-      --font-mono: 'Geist Mono', monospace;
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
-    ::selection { background: var(--orange); color: var(--black); }
-    .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghost Labs</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0a;
+  --bg-panel: #111111;
+  --border: #222222;
+  --text: #b0b0b0;
+  --text-dim: #555555;
+  --amber: #d4a017;
+  --green: #4ec94e;
+  --red: #e05555;
+  --cyan: #5cb8c4;
+  --font: 'IBM Plex Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 12px; }
+::selection { background: var(--amber); color: var(--bg); }
+a { color: var(--amber); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; background: rgba(5, 5, 5, 0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
-    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--white); }
-    .logo-icon { width: 40px; height: 40px; border-radius: 10px; overflow: hidden; }
-    .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
-    .logo-text { font-weight: 700; font-size: 20px; }
-    .logo-text span { color: var(--orange); }
-    .nav-links { display: flex; align-items: center; gap: 8px; }
-    .nav-links > a, .nav-dropdown > a { color: var(--gray-300); text-decoration: none; padding: 8px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; transition: all 0.2s; }
-    .nav-links > a:hover, .nav-dropdown > a:hover { color: var(--white); background: var(--gray-800); }
-    .nav-links > a.active, .nav-dropdown > a.active { color: var(--orange); }
-    .nav-dropdown { position: relative; }
-    .nav-dropdown-menu { position: absolute; top: 100%; left: 0; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 8px; padding: 8px; min-width: 160px; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: all 0.2s; }
-    .nav-dropdown:hover .nav-dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
-    .nav-dropdown-menu a { display: block; padding: 10px 16px; color: var(--gray-300); text-decoration: none; font-size: 14px; border-radius: 6px; }
-    .nav-dropdown-menu a:hover { background: var(--gray-800); color: var(--white); }
-    .nav-right { display: flex; align-items: center; gap: 12px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-family: var(--font-display); font-size: 14px; font-weight: 600; border-radius: 8px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
-    .btn-primary { background: var(--orange); color: var(--black); }
-    .btn-primary:hover { background: var(--orange-light); }
-    .btn-secondary { background: var(--gray-800); color: var(--white); }
-    .btn-secondary:hover { background: var(--gray-700); }
-    .btn-ghost { background: transparent; color: var(--gray-300); padding: 8px 12px; }
-    .btn-ghost:hover { color: var(--white); }
+/* ── HEADER ── */
+.site-header { border-bottom: 1px solid var(--border); padding: 16px 0 0; }
+.site-header-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.header-title { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
+.header-title:hover { text-decoration: none; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-right a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
+.header-right a:hover { color: var(--text); }
+.header-right .gh-icon { display: flex; align-items: center; }
+.header-rule { border: none; border-top: 1px solid var(--border); margin: 0 0 8px; }
+.header-nav { display: flex; gap: 24px; padding-bottom: 12px; }
+.header-nav a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-decoration: none; }
+.header-nav a:hover { color: var(--text); }
+.header-nav a.active { color: var(--amber); border-bottom: 1px solid var(--amber); padding-bottom: 2px; }
 
-    .page-header { padding: 140px 0 48px; text-align: center; background: linear-gradient(180deg, var(--gray-900) 0%, var(--black) 100%); }
-    .page-title { font-size: clamp(40px, 6vw, 64px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 16px; }
-    .page-title span { background: linear-gradient(135deg, var(--orange), var(--orange-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .page-subtitle { font-size: 20px; color: var(--gray-400); max-width: 600px; margin: 0 auto 24px; font-family: var(--font-mono); }
-    .page-badge { display: inline-block; font-size: 12px; font-family: var(--font-mono); font-weight: 600; color: var(--green); background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.3); padding: 4px 14px; border-radius: 100px; letter-spacing: 0.08em; }
+/* ── MAIN ── */
+.main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+.page-title { font-size: 16px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 48px; }
 
-    section { padding: 80px 0; border-bottom: 1px solid var(--gray-800); }
-    .section-num { font-size: 12px; font-family: var(--font-mono); color: var(--orange); margin-bottom: 8px; }
-    .section-title { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
-    .section-content { font-size: 16px; color: var(--gray-300); line-height: 1.8; }
-    .section-content p { margin-bottom: 20px; }
+/* ── SECTIONS ── */
+.section { margin-bottom: 56px; }
+.section-head { font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+.section p { margin-bottom: 12px; }
 
-    .project-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 16px; padding: 32px; margin-top: 32px; transition: all 0.3s; display: block; text-decoration: none; color: inherit; cursor: pointer; }
-    .project-card:hover { border-color: var(--orange); transform: translateY(-4px); }
-    .project-arrow { font-size: 14px; color: var(--orange); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; }
-    .project-arrow svg { transition: transform 0.2s; }
-    .project-card:hover .project-arrow svg { transform: translateX(4px); }
-    .project-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .project-name { font-size: 22px; font-weight: 700; color: var(--white); }
-    .project-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-family: var(--font-mono); color: var(--green); background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.2); padding: 4px 12px; border-radius: 100px; }
-    .project-status .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .project-desc { font-size: 15px; color: var(--gray-400); line-height: 1.7; margin-bottom: 20px; }
-    .project-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-    .project-meta-item { font-size: 13px; font-family: var(--font-mono); color: var(--gray-300); }
-    .project-meta-item strong { color: var(--orange); }
-    .project-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+/* ── PROJECT CARD ── */
+.project { background: var(--bg-panel); border: 1px solid var(--border); padding: 24px; margin-bottom: 24px; }
+.project-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.project-name { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 2px; text-transform: uppercase; }
+.project-status { font-size: 11px; color: var(--green); }
+.project-desc { margin-bottom: 16px; }
+.project-stats { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; font-size: 11px; }
+.project-stats .stat-key { color: var(--text-dim); }
+.project-stats .stat-val { color: var(--amber); font-weight: 600; }
+.project-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; }
 
-    .flow-container { margin: 40px 0; }
-    .flow-step { display: flex; gap: 24px; margin-bottom: 24px; padding: 24px; background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; }
-    .flow-num { width: 48px; height: 48px; background: var(--orange); color: var(--black); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; }
-    .flow-content h4 { font-size: 16px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
-    .flow-content p { font-size: 14px; color: var(--gray-400); margin: 0; }
+/* ── PROCESS ── */
+.step { display: flex; gap: 16px; margin-bottom: 16px; }
+.step-num { color: var(--amber); font-weight: 700; flex-shrink: 0; width: 24px; }
+.step-title { color: var(--text); font-weight: 600; }
+.step-desc { color: var(--text-dim); margin-top: 4px; }
 
-    footer { border-top: 1px solid var(--gray-800); padding: 40px 24px; }
-    .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-    .footer-left { display: flex; align-items: center; gap: 32px; }
-    .footer-links { display: flex; gap: 24px; }
-    .footer-links a { color: var(--gray-400); text-decoration: none; font-size: 14px; }
-    .footer-links a:hover { color: var(--white); }
-    .footer-right { font-size: 13px; color: var(--gray-500); }
+/* ── FOOTER ── */
+.site-footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 11px; color: var(--text-dim); }
+.site-footer a { color: var(--text-dim); }
+.site-footer a:hover { color: var(--amber); }
 
-    @media (max-width: 768px) {
-      .nav-links { display: none; }
-      .project-header { flex-direction: column; gap: 12px; }
-      .flow-step { flex-direction: column; gap: 16px; }
-    }
-    @media (max-width: 600px) {
-      .footer-inner { flex-direction: column; gap: 24px; text-align: center; }
-      .footer-left { flex-direction: column; gap: 16px; }
-      .project-actions { flex-direction: column; }
-    }
-  </style>
+@media (max-width: 600px) {
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-nav { flex-wrap: wrap; }
+  .project-stats { flex-direction: column; gap: 8px; }
+}
+</style>
 </head>
 <body>
-  <nav>
-    <div class="nav-inner">
-      <a href="index.html" class="logo">
-        <div class="logo-icon"><img src="logo.png" alt="Bitcoin Ghost"></div>
-        <div class="logo-text">Bitcoin<span>Ghost</span></div>
-      </a>
-      <div class="nav-links">
-        <a href="https://bitcoinghost.org">Bitcoin Ghost</a>
-        <a href="ghost-labs.html" class="active">Labs</a>
-        <a href="labs/ladder-script.html">Ladder Script</a>
-        <a href="labs/ladder-engine.html">Engine</a>
-        <a href="labs/block-docs/">Block Reference</a>
-        <a href="labs/patch-overview.html">Patch</a>
-        <a href="labs/get-started.html">Get Started</a>
-      </div>
-      <div class="nav-right">
-        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" class="btn btn-ghost" target="_blank">
-          <svg style="width:20px;height:20px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="header-top">
+      <a href="ghost-labs.html" class="header-title">Ghost Labs / Ladder Script</a>
+      <div class="header-right">
+        <a href="tools/ladder-engine.html">Engine</a>
+        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
-        <a href="labs/get-started.html" class="btn btn-primary">Get Started</a>
       </div>
     </div>
-  </nav>
+    <hr class="header-rule">
+    <nav class="header-nav">
+      <a href="tools/ladder-script.html">ladder-script</a>
+      <a href="tools/get-started.html">get-started</a>
+      <a href="tools/patch-overview.html">patch</a>
+      <a href="tools/block-docs/">blocks</a>
+      <a href="tools/rung-tx-anatomy.html">docs</a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">code</a>
+    </nav>
+  </div>
+</header>
 
-  <header class="page-header">
-    <div class="container">
-      <h1 class="page-title"><span>Ghost Labs</span></h1>
-      <p class="page-subtitle">Experimental Bitcoin tools and protocol proposals</p>
-      <div class="page-badge">EXPERIMENTAL</div>
-    </div>
-  </header>
+<div class="main">
 
-  <!-- What Is Ghost Labs -->
-  <section id="about">
-    <div class="container">
-      <div class="section-num">// 01</div>
-      <h2 class="section-title">What Is Ghost Labs</h2>
-      <div class="section-content">
-        <p>Ghost Labs is the experimental wing of Bitcoin Ghost. This is where we build, test, and propose new ideas for the Bitcoin protocol. Every project starts as a prototype, gets tested on signet, and graduates to a formal BIP proposal if the design holds up.</p>
-        <p>Labs projects are working code, not whitepapers. Each one ships with documentation, test suites, and tooling you can run yourself.</p>
+  <h1 class="page-title">Ghost Labs</h1>
+  <p class="page-sub">// experimental bitcoin tools and protocol proposals</p>
+
+  <div class="section">
+    <div class="section-head">// about</div>
+    <p>Ghost Labs builds, tests, and proposes new ideas for the Bitcoin protocol. Every project starts as working code on signet and graduates to a formal BIP if the design holds up. Labs projects ship with documentation, test suites, and tooling you can run yourself.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-head">// projects</div>
+
+    <div class="project">
+      <div class="project-header">
+        <span class="project-name">Ladder Script</span>
+        <span class="project-status">active -- signet testing</span>
+      </div>
+      <div class="project-desc">
+        <p>A typed, structured transaction format for Bitcoin. Replaces opcode-based scripting with a declarative block model. 61 block types across 10 families cover signatures, timelocks, hashes, covenants, recursion, anchors, programmable logic, compound patterns, governance, and legacy Bitcoin transaction types. Every byte in a witness is typed. Evaluation is deterministic with bounded execution time.</p>
+        <p>Native post-quantum support, covenant recursion, and anti-spam hardening via merkle_pub_key and selective inversion.</p>
+      </div>
+      <div class="project-stats">
+        <span><span class="stat-key">TX_VERSION=</span><span class="stat-val">4</span></span>
+        <span><span class="stat-key">BLOCK_TYPES=</span><span class="stat-val">61</span></span>
+        <span><span class="stat-key">UNIT_TESTS=</span><span class="stat-val">480</span></span>
+        <span><span class="stat-key">FUNC_TESTS=</span><span class="stat-val">60</span></span>
+        <span><span class="stat-key">TLA+_PROPS=</span><span class="stat-val">80</span></span>
+      </div>
+      <div class="project-links">
+        <a href="tools/ladder-script.html">overview</a>
+        <a href="tools/get-started.html">get started</a>
+        <a href="tools/ladder-engine.html">engine</a>
+        <a href="tools/patch-overview.html">patch</a>
+        <a href="tools/block-docs/">block reference</a>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Projects -->
-  <section id="projects">
-    <div class="container">
-      <div class="section-num">// 02</div>
-      <h2 class="section-title">Projects</h2>
+  <div class="section">
+    <div class="section-head">// process</div>
+    <p>Every Labs project follows the same pipeline.</p>
 
-      <a href="labs/ladder-script.html" class="project-card">
-        <div class="project-header">
-          <div class="project-name">Ladder Script</div>
-          <div class="project-status"><span class="dot"></span> Active &mdash; Signet Testing</div>
+    <div style="margin-top: 24px;">
+      <div class="step">
+        <span class="step-num">1.</span>
+        <div>
+          <div class="step-title">Research and prototype</div>
+          <div class="step-desc">Design the system, write a reference implementation in ghost-core, build comprehensive test coverage. Ship docs alongside code.</div>
         </div>
-        <div class="project-desc">A typed, structured transaction format for Bitcoin that replaces opcode-based scripting with a declarative block model. 61 block types (59 active + 2 deprecated) across 10 families cover signatures, timelocks, hashes, covenants, recursion, anchors, programmable logic controllers, compound patterns, governance constraints, and legacy Bitcoin transaction types. Every byte in a witness is typed. Evaluation is deterministic with bounded execution time. Native post-quantum support, covenant recursion, and anti-spam hardening via merkle_pub_key and selective inversion included.</div>
-        <div class="project-meta">
-          <div class="project-meta-item"><strong>TX Version:</strong> 4</div>
-          <div class="project-meta-item"><strong>Block Types:</strong> 61</div>
-          <div class="project-meta-item"><strong>Unit Tests:</strong> 480</div>
-          <div class="project-meta-item"><strong>Functional Tests:</strong> 60</div>
-          <div class="project-meta-item"><strong>TLA+ Properties:</strong> 80</div>
-        </div>
-        <div class="project-actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
-          <a href="labs/get-started.html" class="btn btn-primary" style="font-size:13px;padding:8px 18px;">Get Started</a>
-          <a href="labs/ladder-engine.html" class="btn btn-secondary" style="font-size:13px;padding:8px 18px;">Try the Engine</a>
-          <a href="labs/patch-overview.html" class="btn btn-secondary" style="font-size:13px;padding:8px 18px;">View Patch</a>
-          <a href="labs/block-docs/" class="btn btn-secondary" style="font-size:13px;padding:8px 18px;">Block Reference</a>
-        </div>
-      </a>
-    </div>
-  </section>
-
-  <!-- How Labs Works -->
-  <section id="process" style="border-bottom: none;">
-    <div class="container">
-      <div class="section-num">// 03</div>
-      <h2 class="section-title">How Labs Works</h2>
-      <div class="section-content">
-        <p>Every Labs project follows the same pipeline from idea to formal proposal.</p>
       </div>
-
-      <div class="flow-container">
-        <div class="flow-step">
-          <div class="flow-num">1</div>
-          <div class="flow-content">
-            <h4>Research & Prototype</h4>
-            <p>Design the system, write a reference implementation in ghost-core, and build comprehensive test coverage. Ship documentation alongside code.</p>
-          </div>
+      <div class="step">
+        <span class="step-num">2.</span>
+        <div>
+          <div class="step-title">Signet testing</div>
+          <div class="step-desc">Deploy to Bitcoin signet. Build interactive tools so anyone can construct, inspect, and broadcast test transactions.</div>
         </div>
-        <div class="flow-step">
-          <div class="flow-num">2</div>
-          <div class="flow-content">
-            <h4>Signet Testing</h4>
-            <p>Deploy to Bitcoin signet for real-world testing. Build interactive tools so anyone can construct, inspect, and broadcast test transactions.</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-num">3</div>
-          <div class="flow-content">
-            <h4>BIP Proposal</h4>
-            <p>Write the formal Bitcoin Improvement Proposal with specification, rationale, security analysis, test vectors, and reference implementation.</p>
-          </div>
+      </div>
+      <div class="step">
+        <span class="step-num">3.</span>
+        <div>
+          <div class="step-title">BIP proposal</div>
+          <div class="step-desc">Write the formal Bitcoin Improvement Proposal with specification, rationale, security analysis, test vectors, and reference implementation.</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-left">
-        <a href="index.html" class="logo">
-          <div class="logo-icon"><img src="logo.png" alt="Bitcoin Ghost"></div>
-          <div class="logo-text">Bitcoin<span>Ghost</span></div>
-        </a>
-        <div class="footer-links">
-          <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">GitHub</a>
-          <a href="docs/index.html">Docs</a>
-          <a href="economics.html">Economics</a>
-        </div>
-      </div>
-      <div class="footer-right">
-        &copy; 2026 Bitcoin Ghost. Open source under MIT License.
-      </div>
-    </div>
-  </footer>
+</div>
+
+<footer class="site-footer">
+  GHOST LABS &middot; LADDER SCRIPT (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">source</a>
+</footer>
+
 </body>
 </html>

@@ -1,2030 +1,340 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ladder Script | Ghost Labs</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --black: #050505; --darker: #0a0a0a; --dark: #0f0f0f;
-      --gray-900: #141414; --gray-800: #1a1a1a; --gray-700: #242424;
-      --gray-600: #333333; --gray-500: #4a4a4a; --gray-400: #666666;
-      --gray-300: #888888; --gray-200: #aaaaaa; --gray-100: #cccccc;
-      --white: #f0f0f0;
-      --orange: #f7931a; --orange-light: #ffb347;
-      --cyan: #00d4ff; --green: #00ff88; --red: #ff4444;
-      --amber: #e6a817; --amber-dim: #8a6a10; --amber-glow: #e6a81740;
-      --font-display: 'Outfit', system-ui, sans-serif;
-      --font-mono: 'Geist Mono', monospace;
-      --font-engine: 'IBM Plex Mono', 'Consolas', monospace;
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font-display); background: var(--black); color: var(--gray-100); line-height: 1.6; }
-    ::selection { background: var(--orange); color: var(--black); }
-    .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ladder Script -- Ghost Labs</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0a;
+  --bg-panel: #111111;
+  --border: #222222;
+  --text: #b0b0b0;
+  --text-dim: #555555;
+  --amber: #d4a017;
+  --green: #4ec94e;
+  --red: #e05555;
+  --cyan: #5cb8c4;
+  --font: 'IBM Plex Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 12px; }
+::selection { background: var(--amber); color: var(--bg); }
+a { color: var(--amber); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-    /* Nav */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; background: rgba(5, 5, 5, 0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--gray-800); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
-    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--white); }
-    .logo-icon { width: 40px; height: 40px; border-radius: 10px; overflow: hidden; }
-    .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
-    .logo-text { font-weight: 700; font-size: 20px; }
-    .logo-text span { color: var(--orange); }
-    .nav-right { display: flex; align-items: center; gap: 12px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-family: var(--font-display); font-size: 14px; font-weight: 600; border-radius: 8px; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer; }
-    .btn-primary { background: var(--orange); color: var(--black); }
-    .btn-primary:hover { background: var(--orange-light); }
-    .btn-secondary { background: var(--gray-800); color: var(--white); }
-    .btn-secondary:hover { background: var(--gray-700); }
-    .btn-ghost { background: transparent; color: var(--gray-300); padding: 8px 12px; }
-    .btn-ghost:hover { color: var(--white); }
+/* ── HEADER ── */
+.site-header { border-bottom: 1px solid var(--border); padding: 16px 0 0; }
+.site-header-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.header-title { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
+.header-title:hover { text-decoration: none; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-right a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
+.header-right a:hover { color: var(--text); }
+.header-right .gh-icon { display: flex; align-items: center; }
+.header-rule { border: none; border-top: 1px solid var(--border); margin: 0 0 8px; }
+.header-nav { display: flex; gap: 24px; padding-bottom: 12px; }
+.header-nav a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-decoration: none; }
+.header-nav a:hover { color: var(--text); }
+.header-nav a.active { color: var(--amber); border-bottom: 1px solid var(--amber); padding-bottom: 2px; }
 
-    /* Page Header */
-    .page-header { padding: 140px 0 48px; text-align: center; background: linear-gradient(180deg, var(--gray-900) 0%, var(--black) 100%); }
-    .page-title { font-size: clamp(40px, 6vw, 64px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 16px; }
-    .page-title span { background: linear-gradient(135deg, var(--orange), var(--orange-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .page-subtitle { font-size: 20px; color: var(--gray-400); max-width: 650px; margin: 0 auto 32px; font-family: var(--font-mono); }
-    .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+/* ── MAIN ── */
+.main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+.page-title { font-size: 16px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 48px; }
 
-    /* Sections */
-    section { padding: 80px 0; border-bottom: 1px solid var(--gray-800); }
-    .section-num { font-size: 12px; font-family: var(--font-mono); color: var(--orange); margin-bottom: 8px; }
-    .section-title { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
-    .section-content { font-size: 16px; color: var(--gray-300); line-height: 1.8; }
-    .section-content p { margin-bottom: 20px; }
+/* ── SECTIONS ── */
+.section { margin-bottom: 56px; }
+.section-head { font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+.section p { margin-bottom: 12px; }
 
-    /* Ladder Diagram — mimics engine visual style */
-    .ladder-diagram { background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 12px; padding: 24px; margin: 32px 0; font-family: var(--font-engine); }
-    .ladder-diagram-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-300); margin-bottom: 16px; }
-    .rung { display: flex; align-items: center; margin-bottom: 12px; }
-    .rung-label { font-size: 9px; color: #555; letter-spacing: 1px; width: 50px; text-align: right; margin-right: 8px; flex-shrink: 0; font-family: var(--font-engine); }
-    .rail { width: 3px; height: 44px; background: #4a4a4a; flex-shrink: 0; }
-    .rail.energized { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
-    .wire { height: 2px; min-width: 12px; flex: 1; background: #555; }
-    .wire.energized { background: var(--amber); box-shadow: 0 0 4px var(--amber-glow); }
-    .wire.short { flex: 0; min-width: 8px; }
-    .contact { display: flex; align-items: center; height: 34px; flex-shrink: 0; }
-    .contact-bracket { font-size: 16px; color: #555; line-height: 34px; font-family: var(--font-engine); }
-    .contact.energized .contact-bracket { color: var(--amber); }
-    .contact-body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 80px; height: 34px; padding: 0 8px; background: #2a2a2a; border: 1px solid #3a3a3a; }
-    .contact.energized .contact-body { background: #3a3018; border-color: var(--amber-dim); box-shadow: inset 0 0 12px var(--amber-glow); }
-    .contact-type { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; color: var(--gray-300); white-space: nowrap; }
-    .contact.energized .contact-type { color: var(--amber); }
-    .contact-value { font-size: 8px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-    .contact.energized .contact-value { color: var(--amber-dim); }
-    .coil { display: flex; align-items: center; height: 34px; flex-shrink: 0; }
-    .coil-paren { font-size: 16px; color: #555; font-family: var(--font-engine); }
-    .coil.energized .coil-paren { color: var(--amber); }
-    .coil-body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 50px; height: 34px; padding: 0 6px; background: #2a2a2a; border: 1px solid #3a3a3a; }
-    .coil.energized .coil-body { background: #3a3018; border-color: var(--amber-dim); box-shadow: inset 0 0 12px var(--amber-glow); }
-    .coil-type { font-size: 9px; font-weight: 600; color: var(--gray-300); }
-    .coil.energized .coil-type { color: var(--amber); }
+/* ── STATS ── */
+.stats-row { display: flex; gap: 32px; flex-wrap: wrap; margin: 24px 0; }
+.stat { text-align: center; }
+.stat-val { font-size: 20px; font-weight: 700; color: var(--amber); display: block; }
+.stat-key { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
 
-    /* Signet Badge */
-    .signet-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-family: var(--font-mono); color: var(--green); background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.2); padding: 4px 12px; border-radius: 100px; margin-bottom: 24px; }
-    .signet-badge .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: signet-pulse 2s infinite; }
-    @keyframes signet-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); } 50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(0, 255, 136, 0); } }
+/* ── ENV VARS ── */
+.env { margin: 16px 0; }
+.env-line { display: flex; gap: 4px; margin-bottom: 4px; }
+.env-key { color: var(--text-dim); }
+.env-val { color: var(--text); }
+.env-val.highlight { color: var(--amber); }
 
-    /* Engine Preview */
-    .engine-preview { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; margin: 32px 0; position: relative; }
-    .engine-preview-header { display: flex; align-items: center; padding: 10px 16px; background: #1a1a1a; border-bottom: 1px solid #2a2a2a; gap: 8px; }
-    .engine-preview-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .engine-preview-dot.r { background: #ff5f56; }
-    .engine-preview-dot.y { background: #ffbd2e; }
-    .engine-preview-dot.g { background: #27c93f; }
-    .engine-preview-title { font-size: 11px; color: var(--gray-400); font-family: var(--font-mono); margin-left: 8px; }
-    .engine-preview-body { display: grid; grid-template-columns: 1fr 1fr; min-height: 280px; }
-    .engine-preview-ladder { padding: 20px; border-right: 1px solid #2a2a2a; position: relative; }
-    .engine-preview-json { padding: 20px; font-family: var(--font-engine); font-size: 11px; line-height: 1.6; color: var(--gray-400); position: relative; overflow: hidden; }
-    .engine-preview-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; }
-    .ep-rung { display: flex; align-items: center; margin-bottom: 10px; opacity: 0; }
-    .engine-preview.playing .ep-rung { animation: ep-rung-in 0.4s ease forwards; }
-    .engine-preview.playing .ep-rung:nth-child(2) { animation-delay: 1s; }
-    .engine-preview.playing .ep-rung:nth-child(3) { animation-delay: 3s; }
-    .engine-preview.playing .ep-rung:nth-child(4) { animation-delay: 5s; }
-    @keyframes ep-rung-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-    .ep-rail { width: 2px; height: 32px; background: #3a3a3a; flex-shrink: 0; }
-    .ep-rail.on { background: var(--amber); box-shadow: 0 0 4px var(--amber-glow); }
-    .ep-wire { height: 1px; flex: 1; min-width: 8px; background: #3a3a3a; }
-    .ep-wire.on { background: var(--amber); }
-    .ep-block { display: flex; align-items: center; justify-content: center; height: 28px; padding: 0 10px; background: #222; border: 1px solid #3a3a3a; border-radius: 2px; font-family: var(--font-engine); font-size: 9px; font-weight: 600; color: var(--gray-300); white-space: nowrap; flex-shrink: 0; }
-    .ep-block.on { background: #3a3018; border-color: var(--amber-dim); color: var(--amber); box-shadow: inset 0 0 8px var(--amber-glow); }
-    .ep-coil { display: flex; align-items: center; justify-content: center; height: 28px; padding: 0 6px; font-family: var(--font-engine); font-size: 9px; color: #555; flex-shrink: 0; }
-    .ep-coil.on { color: var(--amber); }
+/* ── CODE BLOCK ── */
+.code-block { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; margin: 16px 0; font-size: 12px; overflow-x: auto; white-space: pre; line-height: 1.6; }
+.code-block .comment { color: var(--text-dim); }
+.code-block .keyword { color: var(--cyan); }
+.code-block .value { color: var(--amber); }
 
-    /* JSON typing animation — only plays when .playing */
-    .ep-json-line { opacity: 0; white-space: pre; }
-    .engine-preview.playing .ep-json-line { animation: ep-json-in 0.3s ease forwards; }
-    .engine-preview.playing .ep-json-line:nth-child(1) { animation-delay: 0.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(2) { animation-delay: 0.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(3) { animation-delay: 1.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(4) { animation-delay: 1.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(5) { animation-delay: 1.8s; }
-    .engine-preview.playing .ep-json-line:nth-child(6) { animation-delay: 2.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(7) { animation-delay: 3.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(8) { animation-delay: 3.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(9) { animation-delay: 3.8s; }
-    .engine-preview.playing .ep-json-line:nth-child(10) { animation-delay: 4.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(11) { animation-delay: 5.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(12) { animation-delay: 5.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(13) { animation-delay: 5.8s; }
-    .engine-preview.playing .ep-json-line:nth-child(14) { animation-delay: 6.2s; }
-    .engine-preview.playing .ep-json-line:nth-child(15) { animation-delay: 6.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(16) { animation-delay: 7.0s; }
-    .engine-preview.playing .ep-json-line:nth-child(17) { animation-delay: 7.5s; }
-    .engine-preview.playing .ep-json-line:nth-child(18) { animation-delay: 8.0s; }
-    @keyframes ep-json-in { from { opacity: 0; } to { opacity: 1; } }
-    .ej-key { color: #98c379; }
-    .ej-str { color: #e5c07b; }
-    .ej-num { color: #d19a66; }
-    .ej-brace { color: var(--gray-400); }
-    .ej-bracket { color: var(--gray-500); }
+/* ── PANEL ── */
+.panel { background: var(--bg-panel); border: 1px solid var(--border); padding: 20px; margin: 16px 0; }
+.panel-title { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
 
-    /* Energize rungs sequentially — only when .playing */
-    .engine-preview.playing .ep-rung:nth-child(2) .ep-rail, .engine-preview.playing .ep-rung:nth-child(2) .ep-wire, .engine-preview.playing .ep-rung:nth-child(2) .ep-block, .engine-preview.playing .ep-rung:nth-child(2) .ep-coil { animation: ep-energize 0.5s ease 2s forwards; }
-    .engine-preview.playing .ep-rung:nth-child(3) .ep-rail, .engine-preview.playing .ep-rung:nth-child(3) .ep-wire, .engine-preview.playing .ep-rung:nth-child(3) .ep-block, .engine-preview.playing .ep-rung:nth-child(3) .ep-coil { animation: ep-energize 0.5s ease 4s forwards; }
-    .engine-preview.playing .ep-rung:nth-child(4) .ep-rail, .engine-preview.playing .ep-rung:nth-child(4) .ep-wire, .engine-preview.playing .ep-rung:nth-child(4) .ep-block, .engine-preview.playing .ep-rung:nth-child(4) .ep-coil { animation: ep-energize 0.5s ease 6s forwards; }
-    @keyframes ep-energize {
-      from { border-color: #3a3a3a; color: var(--gray-300); background: #222; }
-      to { border-color: var(--amber-dim); color: var(--amber); background: #3a3018; }
-    }
+/* ── FAMILY GRID ── */
+.families { margin-top: 24px; }
+.family { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; margin-bottom: 8px; }
+.family-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.family-name { font-size: 12px; font-weight: 600; }
+.family-range { font-size: 10px; color: var(--text-dim); }
+.family-desc { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+.family-blocks { display: flex; flex-wrap: wrap; gap: 4px; }
+.family-block { font-size: 10px; padding: 2px 6px; background: var(--bg); border: 1px solid var(--border); color: var(--text); }
 
-    .engine-preview-replay { position: absolute; bottom: 12px; right: 12px; font-size: 10px; font-family: var(--font-mono); color: var(--gray-500); background: #1a1a1a; border: 1px solid #2a2a2a; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s; z-index: 2; }
-    .engine-preview-replay:hover { color: var(--gray-300); border-color: var(--gray-600); }
+/* ── LINKS ── */
+.link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.link-item { background: var(--bg-panel); border: 1px solid var(--border); padding: 12px 16px; display: block; text-decoration: none; }
+.link-item:hover { border-color: var(--amber); text-decoration: none; }
+.link-label { font-size: 12px; color: var(--amber); }
+.link-desc { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
-    @media (max-width: 640px) { .engine-preview-body { grid-template-columns: 1fr; } .engine-preview-ladder { border-right: none; border-bottom: 1px solid #2a2a2a; } }
-    .rung-logic { font-size: 10px; color: var(--gray-500); font-family: var(--font-engine); margin: 0 4px; flex-shrink: 0; }
+/* ── FOOTER ── */
+.site-footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 11px; color: var(--text-dim); }
+.site-footer a { color: var(--text-dim); }
+.site-footer a:hover { color: var(--amber); }
 
-    /* JSON Panel */
-    .json-panel { background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 12px; overflow: hidden; margin: 32px 0; }
-    .json-panel-header { display: flex; align-items: center; padding: 8px 16px; background: #222; border-bottom: 1px solid #3a3a3a; gap: 8px; }
-    .json-panel-tab { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--amber); font-family: var(--font-engine); }
-    .json-panel-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .json-panel-dot.green { background: #2ea043; }
-    .json-body { padding: 16px; overflow-x: auto; }
-    .json-body pre { font-family: var(--font-engine); font-size: 12px; line-height: 1.6; color: #d4d4d4; margin: 0; }
-    .json-body .jk { color: #9cdcfe; }
-    .json-body .js { color: #ce9178; }
-    .json-body .jn { color: #b5cea8; }
-    .json-body .jp { color: #d4d4d4; }
-    .json-body .jc { color: #6a9955; font-style: italic; }
-
-    /* Explainer — side-by-side diagram + text */
-    .explainer { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 40px 0; align-items: start; }
-    .explainer-text h4 { font-size: 18px; font-weight: 600; color: var(--white); margin-bottom: 12px; }
-    .explainer-text p { font-size: 14px; color: var(--gray-400); line-height: 1.7; margin-bottom: 12px; }
-    .explainer-text .tag { display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 8px; border-radius: 4px; margin-right: 4px; }
-    .tag-and { color: var(--green); background: rgba(0, 255, 136, 0.1); }
-    .tag-or { color: var(--cyan); background: rgba(0, 212, 255, 0.1); }
-
-    /* Family Grid */
-    .family-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 32px; }
-    .family-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px; transition: all 0.3s; }
-    .family-card:hover { border-color: var(--gray-700); }
-    .family-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .family-name { font-size: 16px; font-weight: 600; color: var(--white); }
-    .family-range { font-size: 11px; font-family: var(--font-mono); color: var(--orange); }
-    .family-desc { font-size: 13px; color: var(--gray-400); line-height: 1.6; margin-bottom: 10px; }
-    .family-blocks { display: flex; flex-wrap: wrap; gap: 4px; }
-    .family-block { font-size: 10px; font-family: var(--font-engine); padding: 2px 6px; background: #2a2a2a; border: 1px solid #3a3a3a; color: var(--gray-200); }
-
-    /* Callout */
-    .callout { background: rgba(247, 147, 26, 0.1); border: 1px solid rgba(247, 147, 26, 0.3); border-radius: 12px; padding: 20px 24px; margin: 24px 0; }
-    .callout-title { font-weight: 600; color: var(--orange); margin-bottom: 8px; }
-    .callout-content { font-size: 14px; color: var(--gray-300); }
-
-    /* Doc Grid */
-    .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
-    .doc-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px; text-decoration: none; transition: all 0.3s; display: block; }
-    .doc-card:hover { border-color: var(--orange); transform: translateY(-4px); }
-    .doc-title { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
-    .doc-desc { font-size: 13px; color: var(--gray-400); line-height: 1.5; }
-
-    /* Use Case Grid */
-    .use-case-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
-    .use-case { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 24px; }
-    .use-case-title { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 8px; font-family: var(--font-mono); }
-    .use-case-desc { font-size: 14px; color: var(--gray-400); line-height: 1.6; }
-    .use-case-tag { display: inline-block; font-size: 11px; font-family: var(--font-mono); color: var(--cyan); background: rgba(0, 212, 255, 0.1); padding: 2px 8px; border-radius: 4px; margin-top: 8px; }
-
-    /* Example Cards */
-    .example-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
-    .example-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; text-decoration: none; display: block; }
-    .example-card:hover { border-color: var(--orange); transform: translateY(-2px); }
-    .example-title { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 6px; font-family: var(--font-engine); letter-spacing: 0.5px; }
-    .example-desc { font-size: 13px; color: var(--gray-400); line-height: 1.5; margin-bottom: 12px; }
-    .example-rungs { background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 6px; padding: 10px 12px; }
-    .example-rung { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
-    .example-rung:last-child { margin-bottom: 0; }
-    .example-rung-label { font-size: 8px; font-family: var(--font-engine); color: #555; width: 32px; flex-shrink: 0; letter-spacing: 0.5px; }
-    .example-rail { width: 2px; height: 22px; background: #4a4a4a; flex-shrink: 0; }
-    .example-wire { height: 1px; width: 6px; background: #555; flex-shrink: 0; }
-    .example-block { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; background: #2a2a2a; border: 1px solid #3a3a3a; font-size: 8px; font-family: var(--font-engine); font-weight: 600; color: var(--gray-200); letter-spacing: 0.3px; flex-shrink: 0; }
-    .example-block.sig { color: var(--amber); border-color: var(--amber-dim); }
-    .example-block.time { color: #5b9bd5; border-color: #2d5a8a; }
-    .example-block.hash { color: #5bc0cd; border-color: #2d7a85; }
-    .example-block.cov { color: #5bcd5b; border-color: #2d852d; }
-    .example-block.rec { color: #cd8f5b; border-color: #856a2d; }
-    .example-block.plc { color: #b55bcd; border-color: #6a2d85; }
-    .example-block.compound { color: #ffffff; border-color: #999999; }
-    .example-block.gov { color: #9e9e9e; border-color: #666666; }
-    .example-block.anchor { color: #ffea00; border-color: #b3a400; }
-    .example-coil { font-size: 8px; font-family: var(--font-engine); color: #555; flex-shrink: 0; }
-
-    /* Footer */
-    footer { border-top: 1px solid var(--gray-800); padding: 40px 24px; }
-    .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-    .footer-left { display: flex; align-items: center; gap: 32px; }
-    .footer-links { display: flex; gap: 24px; }
-    .footer-links a { color: var(--gray-400); text-decoration: none; font-size: 14px; }
-    .footer-links a:hover { color: var(--white); }
-    .footer-right { font-size: 13px; color: var(--gray-500); }
-
-    @media (max-width: 768px) {
-      .explainer { grid-template-columns: 1fr; }
-      .family-grid { grid-template-columns: 1fr; }
-      .doc-grid { grid-template-columns: 1fr; }
-      .use-case-grid { grid-template-columns: 1fr; }
-      .example-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 600px) {
-      .footer-inner { flex-direction: column; gap: 24px; text-align: center; }
-      .footer-left { flex-direction: column; gap: 16px; }
-      .hero-ctas { flex-direction: column; align-items: center; }
-      .rung { overflow-x: auto; }
-    }
-  </style>
+@media (max-width: 600px) {
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-nav { flex-wrap: wrap; }
+  .stats-row { gap: 16px; }
+  .link-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
-  <nav>
-    <div class="nav-inner">
-      <a href="../index.html" class="logo">
-        <div class="logo-icon"><img src="../logo.png" alt="Bitcoin Ghost"></div>
-        <div class="logo-text">Bitcoin<span>Ghost</span></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="header-top">
+      <a href="../ghost-labs.html" class="header-title">Ghost Labs / Ladder Script</a>
+      <div class="header-right">
+        <a href="ladder-engine.html">Engine</a>
+        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+    <hr class="header-rule">
+    <nav class="header-nav">
+      <a href="ladder-script.html" class="active">ladder-script</a>
+      <a href="get-started.html">get-started</a>
+      <a href="patch-overview.html">patch</a>
+      <a href="block-docs/">blocks</a>
+      <a href="rung-tx-anatomy.html">docs</a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">code</a>
+    </nav>
+  </div>
+</header>
+
+<div class="main">
+
+  <h1 class="page-title">Ladder Script</h1>
+  <p class="page-sub">// typed structured transaction conditions for bitcoin</p>
+
+  <div class="stats-row">
+    <div class="stat"><span class="stat-val">4</span><span class="stat-key">TX Version</span></div>
+    <div class="stat"><span class="stat-val">61</span><span class="stat-key">Block Types</span></div>
+    <div class="stat"><span class="stat-val">10</span><span class="stat-key">Families</span></div>
+    <div class="stat"><span class="stat-val">480</span><span class="stat-key">Unit Tests</span></div>
+    <div class="stat"><span class="stat-val">60</span><span class="stat-key">Func Tests</span></div>
+    <div class="stat"><span class="stat-val">80</span><span class="stat-key">TLA+ Props</span></div>
+  </div>
+
+  <!-- ── OVERVIEW ── -->
+  <div class="section">
+    <div class="section-head">// overview</div>
+    <p>Ladder Script introduces transaction version 4 (RUNG_TX). Spending conditions are declared as named, typed blocks organised into rungs -- a model borrowed from industrial PLC ladder diagrams. Every byte in every block has a declared type with enforced size constraints. Evaluation is deterministic with bounded execution time.</p>
+    <p>61 block types (59 active + 2 deprecated) across 10 families: signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance, and legacy Bitcoin transaction types.</p>
+  </div>
+
+  <!-- ── HOW IT WORKS ── -->
+  <div class="section">
+    <div class="section-head">// evaluation model</div>
+    <p>Rungs = OR. Blocks within a rung = AND. First rung where every block returns SATISFIED wins. If no rung passes, the transaction is invalid.</p>
+    <div class="code-block"><span class="comment">// EvalLadder iterates rungs (OR)</span>
+<span class="comment">//   EvalRung iterates blocks (AND)</span>
+<span class="comment">//     EvalBlock dispatches to type-specific evaluator</span>
+
+<span class="keyword">Rung 0:</span>  <span class="value">SIG(hot_key)</span> AND <span class="value">CSV(144)</span>     -> UNLOCK
+<span class="keyword">Rung 1:</span>  <span class="value">MULTISIG(2-of-3)</span>              -> UNLOCK
+
+<span class="comment">// Rung 0 satisfied? Power flows. Done.</span>
+<span class="comment">// Rung 0 fails? Try Rung 1.</span></div>
+    <p>Each rung terminates in a coil: UNLOCK (standard spend), UNLOCK_TO (spend to specific address), or COVENANT (constrain spending tx structure). Relays provide shared condition blocks that multiple rungs reference via relay_refs for cross-rung AND composition.</p>
+  </div>
+
+  <!-- ── ANTI-SPAM ── -->
+  <div class="section">
+    <div class="section-head">// anti-spam hardening</div>
+    <p>Three coordinated defences close all practical data-embedding surfaces:</p>
+    <div class="env">
+      <div class="env-line"><span class="env-key">merkle_pub_key=</span><span class="env-val highlight">pubkeys folded into Merkle leaf hash, no writable pubkey slot in conditions</span></div>
+      <div class="env-line"><span class="env-key">selective_inversion=</span><span class="env-val highlight">key-consuming blocks (SIG, MULTISIG, HTLC, ...) cannot be inverted</span></div>
+      <div class="env-line"><span class="env-key">hash_lock_deprecation=</span><span class="env-val highlight">HASH_PREIMAGE/HASH160_PREIMAGE removed; use HTLC, HASH_SIG, or HASH_GUARDED</span></div>
+    </div>
+    <p>With MLSC (0xC2), the on-chain output is a fixed 33-byte scriptPubKey regardless of condition complexity. Conditions are never stored on-chain -- only a 32-byte Merkle root appears in the UTXO set.</p>
+  </div>
+
+  <!-- ── POST-QUANTUM ── -->
+  <div class="section">
+    <div class="section-head">// post-quantum</div>
+    <p>Four native PQ signature schemes: FALCON-512, FALCON-1024, Dilithium3, SPHINCS+. A single SCHEME field routes any signature block to classical or PQ verification without changing wire format. With merkle_pub_key, condition size is constant regardless of key size -- a 33-byte Schnorr key and a 1,952-byte Dilithium3 key produce the same Merkle leaf.</p>
+    <p>COSIGN lets a single PQ-secured UTXO serve as a co-spending guardian for unlimited classical UTXOs -- incremental migration without a flag day.</p>
+  </div>
+
+  <!-- ── TYPED DATA ── -->
+  <div class="section">
+    <div class="section-head">// typed data model</div>
+    <div class="code-block"><span class="comment">// Condition fields (stored on-chain)</span>
+<span class="keyword">HASH256</span>      <span class="comment">// 32 bytes       SHA-256 digest</span>
+<span class="keyword">HASH160</span>      <span class="comment">// 20 bytes       RIPEMD160(SHA256)</span>
+<span class="keyword">SPEND_INDEX</span>  <span class="comment">// 4 bytes        uint32 LE</span>
+<span class="keyword">NUMERIC</span>      <span class="comment">// 1-4 bytes      uint32 LE</span>
+<span class="keyword">SCHEME</span>       <span class="comment">// 1 byte         01=Schnorr 02=ECDSA 10=FALCON-512 ...</span>
+
+<span class="comment">// Witness fields (revealed at spend time)</span>
+<span class="keyword">PUBKEY</span>       <span class="comment">// 1-2,048 bytes  bound by Merkle leaf</span>
+<span class="keyword">SIGNATURE</span>    <span class="comment">// 1-50,000 bytes</span>
+<span class="keyword">PREIMAGE</span>     <span class="comment">// exactly 32 bytes</span></div>
+    <p>Static analysis requires only parsing, not execution simulation. Every field can be identified, validated, and displayed without running any code.</p>
+  </div>
+
+  <!-- ── WIRE FORMAT ── -->
+  <div class="section">
+    <div class="section-head">// wire format</div>
+    <p>Two output formats. Inline (0xC1) stores full serialised conditions. MLSC (0xC2) stores only a 32-byte Merkle root -- conditions revealed at spend time in the witness.</p>
+    <p>Blocks use micro-headers -- a 1-byte lookup table (0x00-0x3C) that encodes block type, inversion flag, and implicit field layout in a single byte. Known blocks skip the 2-byte type code and field metadata entirely. Escape codes (0x80/0x81) fall back to full headers.</p>
+    <div class="code-block"><span class="comment">// MLSC output: 33-byte scriptPubKey</span>
+<span class="keyword">0xC2</span> || <span class="value">conditions_root</span> (32 bytes)
+
+<span class="comment">// Witness structure</span>
+[<span class="keyword">n_rungs</span>: varint]
+  [<span class="keyword">n_blocks</span>: varint]
+    [<span class="keyword">micro_header</span>: uint8]   <span class="comment">// 0x00-0x3C lookup</span>
+    [<span class="keyword">fields...</span>]              <span class="comment">// implicit layout</span>
+  [<span class="keyword">coil_type</span>: uint8]
+  [<span class="keyword">attestation</span>: uint8]
+  [<span class="keyword">n_relays</span>: varint]</div>
+  </div>
+
+  <!-- ── BLOCK FAMILIES ── -->
+  <div class="section">
+    <div class="section-head">// block type families</div>
+    <p>61 block types across 10 numbered families. See the <a href="block-docs/">block reference</a> for deep-dive documentation on each type.</p>
+
+    <div class="families">
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#ff1744;">Signature</span><span class="family-range">0x0001-0x00FF</span></div>
+        <div class="family-desc">Identity verification with native PQ support via SCHEME field.</div>
+        <div class="family-blocks">
+          <span class="family-block">SIG</span><span class="family-block">MULTISIG</span><span class="family-block">ADAPTOR_SIG</span><span class="family-block">MUSIG_THRESHOLD</span><span class="family-block">KEY_REF_SIG</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#ff6d00;">Timelock</span><span class="family-range">0x0100-0x01FF</span></div>
+        <div class="family-desc">Relative (BIP-68) and absolute timelocks in blocks or seconds.</div>
+        <div class="family-blocks">
+          <span class="family-block">CSV</span><span class="family-block">CSV_TIME</span><span class="family-block">CLTV</span><span class="family-block">CLTV_TIME</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#b070b0;">Hash</span><span class="family-range">0x0200-0x02FF</span></div>
+        <div class="family-desc">Domain-separated hash verification. HASH_PREIMAGE/HASH160_PREIMAGE deprecated.</div>
+        <div class="family-blocks">
+          <span class="family-block">TAGGED_HASH</span><span class="family-block">HASH_GUARDED</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#e06c75;">Covenant</span><span class="family-range">0x0300-0x03FF</span></div>
+        <div class="family-desc">Output constraints. Template verification (BIP-119), vaults, amount bounds.</div>
+        <div class="family-blocks">
+          <span class="family-block">CTV</span><span class="family-block">VAULT_LOCK</span><span class="family-block">AMOUNT_LOCK</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#e5c07b;">Recursion</span><span class="family-range">0x0400-0x04FF</span></div>
+        <div class="family-desc">Self-referential conditions for perpetual covenants and state machines.</div>
+        <div class="family-blocks">
+          <span class="family-block">RECURSE_SAME</span><span class="family-block">RECURSE_MODIFIED</span><span class="family-block">RECURSE_UNTIL</span><span class="family-block">RECURSE_COUNT</span><span class="family-block">RECURSE_SPLIT</span><span class="family-block">RECURSE_DECAY</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#56b6c2;">Anchor</span><span class="family-range">0x0500-0x05FF</span></div>
+        <div class="family-desc">Typed L2 metadata for channels, pools, reserves, seals, oracles.</div>
+        <div class="family-blocks">
+          <span class="family-block">ANCHOR</span><span class="family-block">ANCHOR_CHANNEL</span><span class="family-block">ANCHOR_POOL</span><span class="family-block">ANCHOR_RESERVE</span><span class="family-block">ANCHOR_SEAL</span><span class="family-block">ANCHOR_ORACLE</span><span class="family-block">DATA_RETURN</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#98c379;">PLC</span><span class="family-range">0x0600-0x06FF</span></div>
+        <div class="family-desc">Industrial automation patterns for stateful, rate-governed, sequenced tx logic.</div>
+        <div class="family-blocks">
+          <span class="family-block">HYSTERESIS_FEE</span><span class="family-block">HYSTERESIS_VALUE</span><span class="family-block">TIMER_CONTINUOUS</span><span class="family-block">TIMER_OFF_DELAY</span><span class="family-block">LATCH_SET</span><span class="family-block">LATCH_RESET</span><span class="family-block">COUNTER_DOWN</span><span class="family-block">COUNTER_PRESET</span><span class="family-block">COUNTER_UP</span><span class="family-block">COMPARE</span><span class="family-block">SEQUENCER</span><span class="family-block">ONE_SHOT</span><span class="family-block">RATE_LIMIT</span><span class="family-block">COSIGN</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#ffffff;">Compound</span><span class="family-range">0x0700-0x07FF</span></div>
+        <div class="family-desc">Multi-block patterns collapsed into single blocks for wire savings.</div>
+        <div class="family-blocks">
+          <span class="family-block">TIMELOCKED_SIG</span><span class="family-block">HTLC</span><span class="family-block">HASH_SIG</span><span class="family-block">PTLC</span><span class="family-block">CLTV_SIG</span><span class="family-block">TIMELOCKED_MULTISIG</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#9e9e9e;">Governance</span><span class="family-range">0x0800-0x08FF</span></div>
+        <div class="family-desc">Transaction-level constraints: weight, I/O counts, value ratios, spending windows.</div>
+        <div class="family-blocks">
+          <span class="family-block">EPOCH_GATE</span><span class="family-block">WEIGHT_LIMIT</span><span class="family-block">INPUT_COUNT</span><span class="family-block">OUTPUT_COUNT</span><span class="family-block">RELATIVE_VALUE</span><span class="family-block">ACCUMULATOR</span>
+        </div>
+      </div>
+      <div class="family">
+        <div class="family-header"><span class="family-name" style="color:#00e5ff;">Legacy</span><span class="family-range">0x0900-0x09FF</span></div>
+        <div class="family-desc">Wraps P2PK through P2TR script-path as typed blocks. Closes inscription vectors.</div>
+        <div class="family-blocks">
+          <span class="family-block">P2PK_LEGACY</span><span class="family-block">P2PKH_LEGACY</span><span class="family-block">P2SH_LEGACY</span><span class="family-block">P2WPKH_LEGACY</span><span class="family-block">P2WSH_LEGACY</span><span class="family-block">P2TR_LEGACY</span><span class="family-block">P2TR_SCRIPT_LEGACY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LINKS ── -->
+  <div class="section">
+    <div class="section-head">// links</div>
+    <div class="link-grid">
+      <a href="ladder-engine.html" class="link-item">
+        <div class="link-label">Engine</div>
+        <div class="link-desc">Visual builder with live signet connection</div>
       </a>
-      <div class="nav-right">
-        <a href="../ghost-labs.html" class="btn btn-ghost">Labs</a>
-        <a href="ladder-engine.html" class="btn btn-ghost">Engine</a>
-        <a href="get-started.html" class="btn btn-ghost">Get Started</a>
-        <a href="patch-overview.html" class="btn btn-ghost">Patch</a>
-        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" class="btn btn-ghost" target="_blank">
-          <svg style="width:20px;height:20px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        </a>
-      </div>
+      <a href="get-started.html" class="link-item">
+        <div class="link-label">Get Started</div>
+        <div class="link-desc">Download binary, configure, run</div>
+      </a>
+      <a href="patch-overview.html" class="link-item">
+        <div class="link-label">Patch Overview</div>
+        <div class="link-desc">What changes and how much code</div>
+      </a>
+      <a href="block-docs/" class="link-item">
+        <div class="link-label">Block Reference</div>
+        <div class="link-desc">Documentation for all 61 block types</div>
+      </a>
+      <a href="rung-tx-anatomy.html" class="link-item">
+        <div class="link-label">RUNG_TX Anatomy</div>
+        <div class="link-desc">Transaction format layer by layer</div>
+      </a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" class="link-item">
+        <div class="link-label">Source Code</div>
+        <div class="link-desc">Full repository on GitHub</div>
+      </a>
     </div>
-  </nav>
+  </div>
 
-  <header class="page-header">
-    <div class="container">
-      <h1 class="page-title"><span>Ladder Script</span></h1>
-      <p class="page-subtitle">Typed structured transaction conditions for Bitcoin. A declarative block model replacing opcode-based Script.</p>
-      <div class="signet-badge"><div class="dot"></div>Active — Signet Testing</div>
-      <div class="hero-ctas">
-        <a href="ladder-engine.html" class="btn btn-primary">Open Builder</a>
-        <a href="docs/#BIP-XXXX" class="btn btn-secondary">Read the BIP</a>
-        <a href="docs/#SUMMARY" class="btn btn-secondary">Documentation</a>
-        <a href="docs/#BLOCKS" class="btn btn-secondary">Block Reference</a>
-        <a href="https://github.com/defenwycke/ghost-labs-ladder-script" class="btn btn-ghost" target="_blank">
-          <svg style="width:16px;height:16px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          View on GitHub
-        </a>
-      </div>
-    </div>
-  </header>
+</div>
 
-  <!-- 00: What Is Ladder Script -->
-  <section id="what-is">
-    <div class="container">
-      <div class="section-num">// 00</div>
-      <h2 class="section-title">What Is Ladder Script</h2>
-      <div class="section-content">
-        <p><strong>Ladder Script</strong> introduces <strong>transaction version 4</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">RUNG_TX</code>). Spending conditions are declared as named, typed blocks organised into rungs &mdash; a model borrowed from industrial PLC ladder diagrams used in safety-critical factory control. Every byte in every block has a declared type with enforced size constraints. Evaluation is deterministic with bounded execution time. There are 61 block types (59 active + 2 deprecated) across 10 families covering signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance, and legacy Bitcoin transaction types.</p>
-        <p><strong>Anti-spam hardened.</strong> Three coordinated defenses close all practical data embedding surfaces. <strong>merkle_pub_key</strong>: public keys are not stored in condition fields at all &mdash; they are folded into the Merkle leaf hash at fund time and verified positionally at spend time. There is no writable pubkey slot in conditions for an attacker to fill with arbitrary data. <strong>Selective inversion</strong>: key-consuming blocks (SIG, MULTISIG, HTLC, and 14 others) cannot be inverted. This prevents the garbage-pubkey attack where an attacker uses a junk key, lets the signature fail, inverts the result to SATISFIED, and lands arbitrary data in the block witness. <strong>Hash lock deprecation</strong>: HASH_PREIMAGE and HASH160_PREIMAGE are removed. These were invertible non-key blocks with writable hash fields &mdash; an inverted hash lock with a garbage hash and arbitrary preimage data could embed up to 32 bytes per block. All legitimate hash-lock use cases are covered by HTLC and HASH_SIG compound blocks (which combine hash verification with a mandatory signature) or HASH_GUARDED (a non-invertible standalone hash check). With MLSC (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>), the on-chain output is a fixed 33-byte scriptPubKey regardless of how many spending paths or conditions exist.</p>
-        <p><strong>Post-quantum ready.</strong> FALCON-512, FALCON-1024, Dilithium3, and SPHINCS+ are native signature schemes. A single SCHEME field on any signature block routes verification to classical Schnorr or any post-quantum algorithm without changing the wire format or condition structure. With merkle_pub_key, condition size is constant regardless of key size &mdash; a 33-byte Schnorr key and a 1,952-byte Dilithium3 key produce the same Merkle leaf. The full key is provided only in the witness at spend time, where its hash is verified against the committed leaf. COSIGN lets a single PQ-secured UTXO serve as a co-spending guardian for unlimited classical UTXOs (theoretical max depth ~4.3 billion spends) &mdash; incremental PQ migration without a flag day.</p>
-        <p><strong>Programmable money.</strong> Covenants, recursive conditions, rate limiters, state machines, sequenced approvals, fee-band gating, adaptor signatures, and protocol anchoring &mdash; all as composable typed blocks within the same wire format. The PLC family alone brings 14 block types drawn from decades of proven industrial automation patterns. Legacy Bitcoin transaction types (P2PKH through P2TR script-path) are wrapped as typed blocks, significantly reducing data-embedding surfaces including the taproot inscription vector.</p>
-      </div>
-    </div>
-  </section>
+<footer class="site-footer">
+  GHOST LABS &middot; LADDER SCRIPT (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">source</a>
+</footer>
 
-  <!-- 01: How It Works — visual explainer -->
-  <section id="how-it-works">
-    <div class="container">
-      <div class="section-num">// 01</div>
-      <h2 class="section-title">How It Works</h2>
-      <div class="section-content">
-        <p>Ladder Script organizes spending conditions as <strong>blocks</strong> within <strong>rungs</strong>. All blocks in a rung must pass (AND logic). The first rung that passes wins (OR logic). This comes from industrial PLC ladder diagrams &mdash; the same model used to wire safety-critical factory control systems.</p>
-      </div>
-
-      <!-- Visual: Simple 2-of-3 multisig as a ladder -->
-      <div class="explainer">
-        <div>
-          <div class="ladder-diagram">
-            <div class="ladder-diagram-label">Example: Hot/Cold Vault</div>
-
-            <!-- Rung 0: Hot key + CSV timelock (daily spend) -->
-            <div class="rung">
-              <div class="rung-label">R000</div>
-              <div class="rail energized"></div>
-              <div class="wire short energized"></div>
-              <div class="contact energized">
-                <span class="contact-bracket">&#x23A1;</span>
-                <div class="contact-body">
-                  <div class="contact-type">SIG</div>
-                  <div class="contact-value">hot_key</div>
-                </div>
-                <span class="contact-bracket">&#x23A4;</span>
-              </div>
-              <div class="wire energized"></div>
-              <div class="contact energized">
-                <span class="contact-bracket">&#x23A1;</span>
-                <div class="contact-body">
-                  <div class="contact-type">CSV</div>
-                  <div class="contact-value">144 blocks</div>
-                </div>
-                <span class="contact-bracket">&#x23A4;</span>
-              </div>
-              <div class="wire energized"></div>
-              <div class="coil energized">
-                <span class="coil-paren">(</span>
-                <div class="coil-body"><div class="coil-type">UNLOCK</div></div>
-                <span class="coil-paren">)</span>
-              </div>
-              <div class="wire short energized"></div>
-              <div class="rail energized"></div>
-            </div>
-
-            <!-- Rung 1: Cold key (recovery) -->
-            <div class="rung">
-              <div class="rung-label">R001</div>
-              <div class="rail"></div>
-              <div class="wire short"></div>
-              <div class="contact">
-                <span class="contact-bracket">&#x23A1;</span>
-                <div class="contact-body">
-                  <div class="contact-type">MULTISIG</div>
-                  <div class="contact-value">2-of-3 cold</div>
-                </div>
-                <span class="contact-bracket">&#x23A4;</span>
-              </div>
-              <div class="wire"></div>
-              <div class="coil">
-                <span class="coil-paren">(</span>
-                <div class="coil-body"><div class="coil-type">UNLOCK</div></div>
-                <span class="coil-paren">)</span>
-              </div>
-              <div class="wire short"></div>
-              <div class="rail"></div>
-            </div>
-          </div>
-        </div>
-        <div class="explainer-text">
-          <h4>Rungs = OR, Blocks = AND</h4>
-          <p>This vault has two spending paths. <strong>Rung 0</strong> requires both a hot key signature <span class="tag tag-and">AND</span> a 144-block CSV timelock. <strong>Rung 1</strong> is a cold recovery path with 2-of-3 multisig.</p>
-          <p>The evaluator tries rungs top to bottom. The first rung where every block passes wins &mdash; <span class="tag tag-or">OR</span> across rungs. Power flows left to right through each rung, just like current through a relay circuit.</p>
-          <p>The amber glow shows which rung is energized (satisfied). Blocks that pass light up. Blocks that fail break the circuit.</p>
-        </div>
-      </div>
-
-      <!-- JSON for same example -->
-      <div class="json-panel">
-        <div class="json-panel-header">
-          <div class="json-panel-dot green"></div>
-          <div class="json-panel-tab">createrungtx output</div>
-        </div>
-        <div class="json-body">
-<pre><span class="jp">{</span>
-  <span class="jk">"version"</span><span class="jp">:</span> <span class="jn">4</span><span class="jp">,</span>
-  <span class="jk">"outputs"</span><span class="jp">: [</span>
-    <span class="jp">{</span>
-      <span class="jk">"amount"</span><span class="jp">:</span> <span class="jn">0.001</span><span class="jp">,</span>
-      <span class="jk">"conditions"</span><span class="jp">: [</span>
-        <span class="jp">{</span>                                     <span class="jc">// Rung 0: hot spend</span>
-          <span class="jk">"blocks"</span><span class="jp">: [</span>
-            <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"SIG"</span><span class="jp">,</span> <span class="jk">"fields"</span><span class="jp">: [{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"PUBKEY"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"02a1b2..."</span> <span class="jp">}] },</span>
-            <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"CSV"</span><span class="jp">,</span> <span class="jk">"fields"</span><span class="jp">: [{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"NUMERIC"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"9000"</span> <span class="jp">}] }</span>
-          <span class="jp">]</span>
-        <span class="jp">},</span>
-        <span class="jp">{</span>                                     <span class="jc">// Rung 1: cold recovery</span>
-          <span class="jk">"blocks"</span><span class="jp">: [</span>
-            <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"MULTISIG"</span><span class="jp">,</span> <span class="jk">"fields"</span><span class="jp">: [</span>
-              <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"NUMERIC"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"02"</span> <span class="jp">},</span>   <span class="jc">// threshold</span>
-              <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"PUBKEY"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"02c3..."</span> <span class="jp">},</span>
-              <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"PUBKEY"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"03d4..."</span> <span class="jp">},</span>
-              <span class="jp">{</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"PUBKEY"</span><span class="jp">,</span> <span class="jk">"hex"</span><span class="jp">:</span> <span class="js">"02e5..."</span> <span class="jp">}</span>
-            <span class="jp">] }</span>
-          <span class="jp">]</span>
-        <span class="jp">}</span>
-      <span class="jp">]</span>
-    <span class="jp">}</span>
-  <span class="jp">]</span>
-<span class="jp">}</span></pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 02: Typed Data Model -->
-  <section id="typed-data">
-    <div class="container">
-      <div class="section-num">// 02</div>
-      <h2 class="section-title">Every Byte Is Typed</h2>
-
-      <div class="explainer">
-        <div class="explainer-text">
-          <h4>Typed Fields, No Free-Form Data</h4>
-          <p>Ladder Script restricts conditions to typed fields: HASH256, HASH160, NUMERIC, SCHEME, and SPEND_INDEX &mdash; all fixed-size hashes or bounded integers with enforced size constraints. SCHEME routes signatures to classical (Schnorr, ECDSA) or post-quantum (FALCON-512, FALCON-1024, Dilithium3, SPHINCS+) verification. Public keys are not stored in conditions &mdash; they are folded into the Merkle leaf hash via merkle_pub_key.</p>
-          <p>PUBKEY, PUBKEY_COMMIT, SIGNATURE, PREIMAGE, and SCRIPT_BODY are not valid in conditions &mdash; consensus rejects them at deserialization. With MLSC (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>), conditions never enter the UTXO set at all &mdash; only a 32-byte Merkle root. There is no writable slot in conditions that an attacker can fill with arbitrary data.</p>
-          <p>Static analysis requires only parsing, not execution simulation. Every field in a Ladder Script output can be identified, validated, and displayed without running any code.</p>
-        </div>
-        <div>
-          <div class="json-panel">
-            <div class="json-panel-header">
-              <div class="json-panel-dot green"></div>
-              <div class="json-panel-tab">Data Types</div>
-            </div>
-            <div class="json-body">
-<pre><span class="jc">// Condition fields (stored on-chain)</span>
-<span class="jk">HASH256</span>      <span class="jc">// 32 bytes       (SHA-256 digest)</span>
-<span class="jk">HASH160</span>      <span class="jc">// 20 bytes       (RIPEMD160(SHA256))</span>
-<span class="jk">SPEND_INDEX</span>  <span class="jc">// 4 bytes        (uint32 LE)</span>
-<span class="jk">NUMERIC</span>      <span class="jc">// 1-4 bytes      (uint32 LE)</span>
-<span class="jk">SCHEME</span>       <span class="jc">// 1 byte         (sig scheme: 01=Schnorr, 02=ECDSA,</span>
-             <span class="jc">//                  10=FALCON-512, 11=FALCON-1024,</span>
-             <span class="jc">//                  12=Dilithium3, 13=SPHINCS+)</span>
-
-<span class="jc">// Witness fields (revealed at spend time)</span>
-<span class="jk">PUBKEY</span>       <span class="jc">// 1-2,048 bytes  (bound by Merkle leaf)</span>
-<span class="jk">SIGNATURE</span>    <span class="jc">// 1-50,000 bytes</span>
-<span class="jk">PREIMAGE</span>     <span class="jc">// exactly 32 bytes</span>
-<span class="jk">SCRIPT_BODY</span>  <span class="jc">// exactly 32 bytes    (inner conditions)</span>
-<span class="jk">DATA</span>         <span class="jc">// exactly 32 bytes     (DATA_RETURN block only)</span></pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 03: merkle_pub_key — Pubkeys Bound by Merkle Leaf -->
-  <section id="merkle-pub-key">
-    <div class="container">
-      <div class="section-num">// 03</div>
-      <h2 class="section-title">merkle_pub_key: Bound by Merkle, Not by Field</h2>
-
-      <div class="explainer">
-        <div class="explainer-text">
-          <h4>No Writable Pubkey Slot</h4>
-          <p>Public keys are <strong>not stored in condition fields</strong>. Instead, they are folded into the Merkle leaf hash at fund time: <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">TaggedHash("LadderLeaf", rung_blocks || pk1 || pk2 || ... || pkN)</code>. The RPC accepts raw public keys, validates them, and computes the leaf. There is no PUBKEY_COMMIT field in conditions &mdash; and therefore no writable slot for an attacker to fill with arbitrary data.</p>
-          <p>At spend time, pubkeys are provided in the witness. The evaluator walks the rung's blocks left-to-right using <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">PubkeyCountForBlock()</code> to assign pubkeys positionally. The Merkle proof verification guarantees these are the same pubkeys committed at fund time &mdash; only then does signature verification proceed.</p>
-        </div>
-        <div>
-          <div class="json-panel">
-            <div class="json-panel-header">
-              <div class="json-panel-dot green"></div>
-              <div class="json-panel-tab">merkle_pub_key Flow</div>
-            </div>
-            <div class="json-body">
-<pre><span class="jc">// Build time — RPC validates + folds into leaf</span>
-<span class="jn">1.</span> Validate PUBKEY (size bounds, prefix)
-<span class="jn">2.</span> Walk blocks: <span class="jk">PubkeyCountForBlock()</span> per block
-<span class="jn">3.</span> <span class="jk">leaf</span> = <span class="js">TaggedHash("LadderLeaf",</span>
-         <span class="js">  rung_blocks || pk1 || pk2 || ... || pkN)</span>
-<span class="jc">// No pubkey data in condition fields</span>
-
-<span class="jc">// Spend time — witness reveals full keys</span>
-<span class="jk">PUBKEY</span> = <span class="js">full_pubkey</span>  <span class="jc">// 32B SPHINCS+</span>
-                       <span class="jc">// 33B Schnorr / ECDSA</span>
-                       <span class="jc">// 897B FALCON-512</span>
-                       <span class="jc">// 1,793B FALCON-1024</span>
-                       <span class="jc">// 1,952B Dilithium3</span>
-
-<span class="jc">// Evaluator checks:</span>
-<span class="jn">4.</span> Recompute leaf from witness pubkeys
-<span class="jn">5.</span> Merkle proof verifies leaf == committed root
-<span class="jn">6.</span> Verify(witness.SIGNATURE, witness.PUBKEY, sighash)</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="callout">
-        <div class="callout-title">Why This Matters</div>
-        <div class="callout-content">
-          <strong>Zero writable pubkey surface</strong> &mdash; There is no PUBKEY_COMMIT field in conditions. Public keys exist only in the Merkle leaf computation and the witness. An attacker cannot write arbitrary data into a pubkey slot because no such slot exists.<br><br>
-          <strong>Uniform leaf size</strong> &mdash; Whether the key is 33 bytes (Schnorr) or 1,952 bytes (Dilithium3), the condition fields are identical. The leaf hash absorbs the key bytes during tree construction. The full key only appears in the witness at spend time.<br><br>
-          <strong>Positional binding</strong> &mdash; Pubkeys are assigned to blocks by walking left-to-right across key-consuming blocks. A SIG consumes 1 pubkey, MULTISIG consumes N (from its threshold field), HTLC consumes 2. Wrong order &rarr; Merkle proof fails.
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 04: Evaluation — visual walkthrough -->
-  <section id="evaluation">
-    <div class="container">
-      <div class="section-num">// 04</div>
-      <h2 class="section-title">Evaluation &amp; Relay Logic</h2>
-      <div class="section-content">
-        <p>Verification dispatches through three levels. The ladder tries rungs top to bottom (OR). Each rung checks all its blocks (AND). Each block runs its own type-specific logic.</p>
-      </div>
-
-      <div class="ladder-diagram">
-        <div class="ladder-diagram-label">Atomic Swap with Compound HTLC + Timelock Fallback</div>
-
-        <!-- Rung 0: HTLC compound block (hash + timelock + sig) -->
-        <div class="rung">
-          <div class="rung-label">R000</div>
-          <div class="rail energized"></div>
-          <div class="wire short energized"></div>
-          <div class="contact energized">
-            <span class="contact-bracket">&#x23A1;</span>
-            <div class="contact-body">
-              <div class="contact-type">HTLC</div>
-              <div class="contact-value">hash+sig+csv</div>
-            </div>
-            <span class="contact-bracket">&#x23A4;</span>
-          </div>
-          <div class="wire energized"></div>
-          <div class="coil energized">
-            <span class="coil-paren">(</span>
-            <div class="coil-body"><div class="coil-type">UNLOCK</div></div>
-            <span class="coil-paren">)</span>
-          </div>
-          <div class="wire short energized"></div>
-          <div class="rail energized"></div>
-        </div>
-
-        <!-- Rung 1: Timeout refund -->
-        <div class="rung">
-          <div class="rung-label">R001</div>
-          <div class="rail"></div>
-          <div class="wire short"></div>
-          <div class="contact">
-            <span class="contact-bracket">&#x23A1;</span>
-            <div class="contact-body">
-              <div class="contact-type">SIG</div>
-              <div class="contact-value">my_key</div>
-            </div>
-            <span class="contact-bracket">&#x23A4;</span>
-          </div>
-          <div class="wire"></div>
-          <div class="contact">
-            <span class="contact-bracket">&#x23A1;</span>
-            <div class="contact-body">
-              <div class="contact-type">CLTV</div>
-              <div class="contact-value">height 900000</div>
-            </div>
-            <span class="contact-bracket">&#x23A4;</span>
-          </div>
-          <div class="wire"></div>
-          <div class="coil">
-            <span class="coil-paren">(</span>
-            <div class="coil-body"><div class="coil-type">UNLOCK</div></div>
-            <span class="coil-paren">)</span>
-          </div>
-          <div class="wire short"></div>
-          <div class="rail"></div>
-        </div>
-      </div>
-
-      <div class="callout">
-        <div class="callout-title">Evaluation Order</div>
-        <div class="callout-content"><strong>EvalLadder</strong> iterates rungs (OR). <strong>EvalRung</strong> iterates blocks within a rung (AND). <strong>EvalBlock</strong> dispatches to the type-specific evaluator (SIG_verify, CSV_check, HASH_compare, etc.). First rung where all blocks return SATISFIED wins. If no rung passes, the transaction is invalid.</div>
-      </div>
-
-      <div style="margin-top: 48px;">
-        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--white);">Coils, Relays &amp; Cross-Rung Logic</h3>
-        <div class="section-content">
-          <p>Each rung terminates in a <strong>coil</strong> that determines its effect. <strong>Relays</strong> are a separate mechanism &mdash; shared condition blocks that rungs reference via <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">relay_refs</code> for cross-rung AND composition.</p>
-        </div>
-
-        <div class="explainer" style="margin-top: 24px;">
-          <div>
-            <div class="json-panel">
-              <div class="json-panel-header">
-                <div class="json-panel-dot green"></div>
-                <div class="json-panel-tab">Coil Types</div>
-              </div>
-              <div class="json-body">
-<pre><span class="jk">UNLOCK</span>      <span class="jc">// 0x01 — Standard spend authorization</span>
-<span class="jk">UNLOCK_TO</span>   <span class="jc">// 0x02 — Spend to specific address, recipient</span>
-            <span class="jc">//         must also satisfy coil conditions</span>
-<span class="jk">COVENANT</span>    <span class="jc">// 0x03 — Constrains the spending transaction</span>
-            <span class="jc">//         structure via coil conditions</span>
-
-<span class="jc">// Relays (separate from coils)</span>
-<span class="jc">// Shared condition blocks referenced by rungs</span>
-<span class="jc">// Forward-only: relay N can only require relays 0..N-1</span></pre>
-              </div>
-            </div>
-          </div>
-          <div class="explainer-text">
-            <h4>Cross-Rung Composition</h4>
-            <p><strong>Relays</strong> are shared condition blocks that multiple rungs can reference. A rung lists the relay indices it depends on &mdash; all referenced relays must be satisfied (AND) for that rung to pass. This enables cross-rung AND composition beyond simple per-rung logic.</p>
-            <p>Example: Relay 0 checks a signature. Rung 0 references relay 0 and adds a timelock &mdash; it only passes if both the relay's signature AND the timelock are satisfied. Rung 1 references the same relay 0 with a different spending path. The relay condition is defined once and reused.</p>
-            <p>Relays use forward-only indexing: relay N can only require relays 0..N-1, preventing circular dependencies.</p>
-          </div>
-        </div>
-
-        <div class="ladder-diagram" style="margin-top: 24px;">
-          <div class="ladder-diagram-label">Example: Relay-Gated Approval</div>
-
-          <!-- Relay 0: shared SIG condition -->
-          <div class="rung">
-            <div class="rung-label" style="color:var(--cyan);">RLY0</div>
-            <div class="rail energized"></div>
-            <div class="wire short energized"></div>
-            <div class="contact energized">
-              <span class="contact-bracket">&#x23A1;</span>
-              <div class="contact-body">
-                <div class="contact-type">SIG</div>
-                <div class="contact-value">approver</div>
-              </div>
-              <span class="contact-bracket">&#x23A4;</span>
-            </div>
-            <div class="wire energized"></div>
-            <div class="coil energized">
-              <span class="coil-paren">(</span>
-              <div class="coil-body"><div class="coil-type" style="color:var(--cyan);">RELAY</div></div>
-              <span class="coil-paren">)</span>
-            </div>
-            <div class="wire short energized"></div>
-            <div class="rail energized"></div>
-          </div>
-
-          <!-- Rung 0: refs relay 0 + CSV + SIG → UNLOCK -->
-          <div class="rung">
-            <div class="rung-label">R000</div>
-            <div class="rail energized"></div>
-            <div class="wire short energized"></div>
-            <div class="contact energized">
-              <span class="contact-bracket">&#x23A1;</span>
-              <div class="contact-body">
-                <div class="contact-type" style="color:var(--cyan);">REF</div>
-                <div class="contact-value">relay 0</div>
-              </div>
-              <span class="contact-bracket">&#x23A4;</span>
-            </div>
-            <div class="wire energized"></div>
-            <div class="contact energized">
-              <span class="contact-bracket">&#x23A1;</span>
-              <div class="contact-body">
-                <div class="contact-type">CSV</div>
-                <div class="contact-value">144 blocks</div>
-              </div>
-              <span class="contact-bracket">&#x23A4;</span>
-            </div>
-            <div class="wire energized"></div>
-            <div class="contact energized">
-              <span class="contact-bracket">&#x23A1;</span>
-              <div class="contact-body">
-                <div class="contact-type">SIG</div>
-                <div class="contact-value">spender</div>
-              </div>
-              <span class="contact-bracket">&#x23A4;</span>
-            </div>
-            <div class="wire energized"></div>
-            <div class="coil energized">
-              <span class="coil-paren">(</span>
-              <div class="coil-body"><div class="coil-type">UNLOCK</div></div>
-              <span class="coil-paren">)</span>
-            </div>
-            <div class="wire short energized"></div>
-            <div class="rail energized"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 05: Block Type Families -->
-  <section id="blocks">
-    <div class="container">
-      <div class="section-num">// 05</div>
-      <h2 class="section-title">Block Type Families</h2>
-      <div class="section-content">
-        <p>61 block types (59 active + 2 deprecated) organized into ten numbered families. New block types are added within families, not as opcodes. See the <a href="docs/#BLOCKS" style="color:var(--orange);text-decoration:none;">Block Reference</a> for deep-dive documentation on each type.</p>
-      </div>
-
-      <div class="family-grid">
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#ff1744;">Signature</div>
-            <div class="family-range">0x0001-0x00FF</div>
-          </div>
-          <div class="family-desc">Identity verification with native post-quantum support via SCHEME field routing to FALCON-512/1024, Dilithium3, or SPHINCS+.</div>
-          <div class="family-blocks">
-            <span class="family-block">SIG</span>
-            <span class="family-block">MULTISIG</span>
-            <span class="family-block">ADAPTOR_SIG</span>
-            <span class="family-block">MUSIG_THRESHOLD</span>
-            <span class="family-block">KEY_REF_SIG</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#ff6d00;">Timelock</div>
-            <div class="family-range">0x0100-0x01FF</div>
-          </div>
-          <div class="family-desc">Temporal constraints using both relative (BIP-68) and absolute timelocks in blocks or seconds.</div>
-          <div class="family-blocks">
-            <span class="family-block">CSV</span>
-            <span class="family-block">CSV_TIME</span>
-            <span class="family-block">CLTV</span>
-            <span class="family-block">CLTV_TIME</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#00e676;">Hash</div>
-            <div class="family-range">0x0200-0x02FF</div>
-          </div>
-          <div class="family-desc">BIP-340 domain-separated hash verification and guarded preimage checks. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated &mdash; use HTLC, HASH_SIG, or HASH_GUARDED for hash-lock use cases.</div>
-          <div class="family-blocks">
-            <span class="family-block">TAGGED_HASH</span>
-            <span class="family-block">HASH_GUARDED</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#2979ff;">Covenant</div>
-            <div class="family-range">0x0300-0x03FF</div>
-          </div>
-          <div class="family-desc">Output constraints. Template verification (BIP-119), timelocked vaults, and amount range enforcement.</div>
-          <div class="family-blocks">
-            <span class="family-block">CTV</span>
-            <span class="family-block">VAULT_LOCK</span>
-            <span class="family-block">AMOUNT_LOCK</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#aa00ff;">Recursion</div>
-            <div class="family-range">0x0400-0x04FF</div>
-          </div>
-          <div class="family-desc">Self-referential conditions for perpetual covenants, state machines, countdowns, UTXO tree splitting, and progressive relaxation.</div>
-          <div class="family-blocks">
-            <span class="family-block">RECURSE_SAME</span>
-            <span class="family-block">RECURSE_MODIFIED</span>
-            <span class="family-block">RECURSE_UNTIL</span>
-            <span class="family-block">RECURSE_COUNT</span>
-            <span class="family-block">RECURSE_SPLIT</span>
-            <span class="family-block">RECURSE_DECAY</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#ffea00;">Anchor</div>
-            <div class="family-range">0x0500-0x05FF</div>
-          </div>
-          <div class="family-desc">Typed L2 metadata. Tag UTXOs with protocol roles for channels, pools, reserves, sealed commitments, and oracle attestations.</div>
-          <div class="family-blocks">
-            <span class="family-block">ANCHOR</span>
-            <span class="family-block">ANCHOR_CHANNEL</span>
-            <span class="family-block">ANCHOR_POOL</span>
-            <span class="family-block">ANCHOR_RESERVE</span>
-            <span class="family-block">ANCHOR_SEAL</span>
-            <span class="family-block">ANCHOR_ORACLE</span>
-            <span class="family-block">DATA_RETURN</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#ff4081;">PLC</div>
-            <div class="family-range">0x0600-0x06FF</div>
-          </div>
-          <div class="family-desc">Programmable Logic Controllers. Industrial automation patterns for stateful, rate-governed, and sequenced transaction logic.</div>
-          <div class="family-blocks">
-            <span class="family-block">HYSTERESIS_FEE</span>
-            <span class="family-block">HYSTERESIS_VALUE</span>
-            <span class="family-block">TIMER_CONTINUOUS</span>
-            <span class="family-block">TIMER_OFF_DELAY</span>
-            <span class="family-block">LATCH_SET</span>
-            <span class="family-block">LATCH_RESET</span>
-            <span class="family-block">COUNTER_DOWN</span>
-            <span class="family-block">COUNTER_PRESET</span>
-            <span class="family-block">COUNTER_UP</span>
-            <span class="family-block">COMPARE</span>
-            <span class="family-block">SEQUENCER</span>
-            <span class="family-block">ONE_SHOT</span>
-            <span class="family-block">RATE_LIMIT</span>
-            <span class="family-block">COSIGN</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#ffffff;">Compound</div>
-            <div class="family-range">0x0700-0x07FF</div>
-          </div>
-          <div class="family-desc">Multi-block patterns collapsed into single blocks. Eliminates per-block headers and field counts for merged conditions.</div>
-          <div class="family-blocks">
-            <span class="family-block">TIMELOCKED_SIG</span>
-            <span class="family-block">HTLC</span>
-            <span class="family-block">HASH_SIG</span>
-            <span class="family-block">PTLC</span>
-            <span class="family-block">CLTV_SIG</span>
-            <span class="family-block">TIMELOCKED_MULTISIG</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#9e9e9e;">Governance</div>
-            <div class="family-range">0x0800-0x08FF</div>
-          </div>
-          <div class="family-desc">Transaction-level constraints with no Tapscript equivalent. Enforce weight limits, I/O counts, value ratios, spending windows, and set membership proofs.</div>
-          <div class="family-blocks">
-            <span class="family-block">EPOCH_GATE</span>
-            <span class="family-block">WEIGHT_LIMIT</span>
-            <span class="family-block">INPUT_COUNT</span>
-            <span class="family-block">OUTPUT_COUNT</span>
-            <span class="family-block">RELATIVE_VALUE</span>
-            <span class="family-block">ACCUMULATOR</span>
-          </div>
-        </div>
-        <div class="family-card">
-          <div class="family-header">
-            <div class="family-name" style="color:#00e5ff;">Legacy</div>
-            <div class="family-range">0x0900-0x09FF</div>
-          </div>
-          <div class="family-desc">Wraps legacy Bitcoin transaction types (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR key-path, P2TR script-path) as typed Ladder Script blocks. Same spending semantics, significantly reducing arbitrary data surfaces. Designed to close inscription and data-embedding vectors while giving legacy users access to full Ladder Script composability.</div>
-          <div class="family-blocks">
-            <span class="family-block">P2PK_LEGACY</span>
-            <span class="family-block">P2PKH_LEGACY</span>
-            <span class="family-block">P2SH_LEGACY</span>
-            <span class="family-block">P2WPKH_LEGACY</span>
-            <span class="family-block">P2WSH_LEGACY</span>
-            <span class="family-block">P2TR_LEGACY</span>
-            <span class="family-block">P2TR_SCRIPT_LEGACY</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 06: Wire Format -->
-  <section id="wire-format">
-    <div class="container">
-      <div class="section-num">// 06</div>
-      <h2 class="section-title">Wire Format</h2>
-
-      <div class="explainer">
-        <div class="explainer-text">
-          <h4>Output Formats &amp; Wire Encoding</h4>
-          <p>Ladder Script supports two output formats. <strong>Inline</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC1</code>) stores full serialised conditions in the output. <strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) stores only a 32-byte Merkle root &mdash; conditions are revealed at spend time in the witness.</p>
-          <p>Blocks use <strong>micro-headers</strong> &mdash; a 1-byte lookup table (0x00&ndash;0x3C) that encodes the block type, inversion flag, and implicit field layout in a single byte. Known block types with standard field layouts skip the 2-byte type code, field count, and type bytes entirely. Escape codes (0x80/0x81) fall back to the full header for unknown or non-standard blocks. Inversion is only permitted for non-key-consuming block types (timelocks, covenants, PLC, governance, anchors, recursion) &mdash; key-consuming blocks cannot be inverted.</p>
-          <p>Sighash uses a tagged hash <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">"LadderSighash"</code> that commits to the conditions hash (or Merkle root for MLSC outputs), binding each signature to the exact conditions it satisfies.</p>
-        </div>
-        <div>
-          <div class="json-panel">
-            <div class="json-panel-header">
-              <div class="json-panel-dot green"></div>
-              <div class="json-panel-tab">Wire Layout</div>
-            </div>
-            <div class="json-body">
-<pre><span class="jc">// MLSC output (0xC2) &mdash; 33-byte scriptPubKey</span>
-<span class="jn">0xC2</span> <span class="jp">||</span> <span class="js">conditions_root (32 bytes)</span>
-
-<span class="jc">// Witness (v4 wire format)</span>
-<span class="jp">[</span><span class="jk">n_rungs</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>
-  <span class="jp">[</span><span class="jk">n_blocks</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>
-    <span class="jp">[</span><span class="jk">micro_header</span><span class="jp">:</span> <span class="js">uint8</span><span class="jp">]</span>   <span class="jc">// 0x00-0x3C lookup</span>
-                              <span class="jc">// 0x80/0x81 escape</span>
-    <span class="jc">// if escape:</span>
-    <span class="jp">[</span><span class="jk">block_type</span><span class="jp">:</span> <span class="js">uint16 LE</span><span class="jp">]</span>
-    <span class="jp">[</span><span class="jk">n_fields</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>
-      <span class="jp">[</span><span class="jk">data_type</span><span class="jp">:</span> <span class="js">uint8</span><span class="jp">]</span>
-      <span class="jp">[</span><span class="jk">data_len</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>
-      <span class="jp">[</span><span class="jk">data</span><span class="jp">:</span> <span class="js">bytes</span><span class="jp">]</span>
-<span class="jp">[</span><span class="jk">coil_type</span><span class="jp">:</span> <span class="js">uint8</span><span class="jp">]</span>
-<span class="jp">[</span><span class="jk">attestation</span><span class="jp">:</span> <span class="js">uint8</span><span class="jp">]</span>
-<span class="jp">[</span><span class="jk">scheme</span><span class="jp">:</span> <span class="js">uint8</span><span class="jp">]</span>
-<span class="jp">[</span><span class="jk">address_hash_len</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>  <span class="jc">// 0 = none, 32 = SHA256</span>
-<span class="jp">[</span><span class="jk">address_hash</span><span class="jp">:</span> <span class="js">bytes</span><span class="jp">]</span>     <span class="jc">// SHA256(destination spk), raw address never on-chain</span>
-<span class="jp">[</span><span class="jk">n_coil_conditions</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>
-<span class="jp">[</span><span class="jk">n_relays</span><span class="jp">:</span> <span class="js">varint</span><span class="jp">]</span>           <span class="jc">// relay blocks</span>
-<span class="jp">[</span><span class="jk">rung_relay_refs</span><span class="jp">:</span> <span class="js">varint[]</span><span class="jp">]</span> <span class="jc">// per-rung refs</span></pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 07: MLSC -->
-  <section id="mlsc" style="border-bottom: 1px solid var(--gray-800);">
-    <div class="container">
-      <div class="section-num">// 07</div>
-      <h2 class="section-title">Merkelised Ladder Script Conditions</h2>
-      <div class="section-content">
-        <p><strong>MLSC</strong> (<code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">0xC2</code>) replaces full inline conditions with a single 32-byte Merkle root. The complete conditions are never stored on-chain at creation &mdash; only the root appears in the output and UTXO set. At spend time, the spender reveals only the exercised rung plus a Merkle proof in the witness. Unused spending paths stay permanently hidden.</p>
-      </div>
-
-      <div class="explainer" style="margin-top: 32px;">
-        <div class="explainer-text">
-          <h4>How It Works</h4>
-          <p>Each rung is hashed into a leaf using <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">TaggedHash("LadderLeaf", rung_blocks || pk1 || ... || pkN)</code>, then combined into a binary Merkle tree using <code style="color:var(--amber);background:#2a2a2a;padding:1px 6px;border-radius:3px;font-family:var(--font-engine);">TaggedHash("LadderInternal", ...)</code> for interior nodes. Public keys are folded into the leaf hash via merkle_pub_key &mdash; they do not appear in condition fields. This follows BIP-341 (Taproot) convention for domain separation, preventing second preimage attacks between tree layers.</p>
-          <h4 style="margin-top: 20px;">MAST Privacy</h4>
-          <p>Only the satisfied rung is revealed. A 2-rung script reveals 1 rung + 1 proof hash (32 bytes). An 8-rung script reveals 1 rung + 3 proof hashes (96 bytes). Unused paths remain opaque &mdash; observers cannot determine the number, type, or structure of alternative spending conditions.</p>
-          <h4 style="margin-top: 20px;">Data Embedding Resistance</h4>
-          <p>MLSC closes all practical data embedding vectors. Condition fields contain only fixed-size hashes, bounded integers, and scheme bytes &mdash; no writable pubkey slot exists (merkle_pub_key). Key-consuming blocks cannot be inverted (selective inversion). Pure hash locks are deprecated (hash lock deprecation). Consensus rejects witness-only types (PUBKEY, PUBKEY_COMMIT, SIGNATURE, PREIMAGE) in conditions at deserialization. The only value stored on-chain is a 32-byte Merkle root.</p>
-        </div>
-        <div>
-          <div class="json-panel">
-            <div class="json-panel-header">
-              <div class="json-panel-dot green"></div>
-              <div class="json-panel-tab">MLSC Merkle Tree</div>
-            </div>
-            <div class="json-body">
-<pre><span class="jc">// 2-rung multisig + recovery vault</span>
-
-<span class="jk">         conditions_root</span>
-<span class="jp">            /          \</span>
-<span class="jk">       H(R0,R1)</span>     <span class="jk">H(COIL,EMPTY)</span>
-<span class="jp">       /      \       /        \</span>
-<span class="js">   rung_0  rung_1  coil_leaf  EMPTY</span>
-
-<span class="jc">// Leaf hash (merkle_pub_key):</span>
-<span class="jc">// TaggedHash("LadderLeaf",</span>
-<span class="jc">//   rung_blocks || pk1 || pk2 || ...)</span>
-
-<span class="jc">// scriptPubKey: 0xC2 + root = 33 bytes (fixed)</span>
-<span class="jc">// tx output: value(8) + len(1) + spk(33) = 42 bytes</span>
-<span class="jc">// leaf order: [rungs..., relays..., coil]</span>
-
-<span class="jc">// Spending: reveal rung 0 + pubkeys in witness</span>
-<span class="jc">// Proof: rung_leaf[1] (32 bytes)</span>
-<span class="jc">// Rung 1 structure stays hidden</span></pre>
-            </div>
-          </div>
-
-          <div class="json-panel" style="margin-top: 16px;">
-            <div class="json-panel-header">
-              <div class="json-panel-dot green"></div>
-              <div class="json-panel-tab">Weight Savings</div>
-            </div>
-            <div class="json-body">
-<pre><span class="jc">// MLSC scriptPubKey is always 33 bytes</span>
-<span class="jc">// 0xC2 (1) + Merkle root (32) = 33 bytes</span>
-<span class="jc">// Inline scriptPubKey scales with complexity:</span>
-
-<span class="jk">Single SIG:</span>      <span class="jp">Inline ~42 B → </span><span class="jn">MLSC 33 B</span>
-<span class="jk">2-of-3 MULTISIG:</span> <span class="jp">Inline ~105 B → </span><span class="jn">MLSC 33 B</span>
-<span class="jk">Complex covenant:</span> <span class="jp">Inline scales → </span><span class="jn">MLSC 33 B</span>
-
-<span class="jc">// Inline is useful for debugging</span>
-<span class="jc">// MLSC is the production format</span></pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 08: Use Cases -->
-  <section id="use-cases">
-    <div class="container">
-      <div class="section-num">// 08</div>
-      <h2 class="section-title">Use Cases</h2>
-      <div class="section-content">
-        <p>61 block types (59 active + 2 deprecated) across 10 families enable a wide range of transaction patterns, from single-sig to complex stateful contracts.</p>
-      </div>
-
-      <div class="use-case-grid">
-        <div class="use-case">
-          <div class="use-case-title">HYSTERESIS_FEE</div>
-          <div class="use-case-desc">Fee-band gated spending. A UTXO that can only be spent when the transaction fee rate falls within a specified range, preventing overpayment during fee spikes.</div>
-          <div class="use-case-tag" style="color:#ff4081;background:rgba(255,64,129,0.1)">PLC Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">AMOUNT_LOCK</div>
-          <div class="use-case-desc">Output amount range enforcement. Ensure the spending transaction creates outputs within a minimum and maximum satoshi range, enabling deposit/withdrawal bounds.</div>
-          <div class="use-case-tag" style="color:#2979ff;background:rgba(41,121,255,0.1)">Covenant Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Post-Quantum Migration</div>
-          <div class="use-case-desc">merkle_pub_key folds PQ keys (32&ndash;1,952 bytes) into the Merkle leaf &mdash; condition fields are constant-size regardless of key algorithm. COSIGN lets a single PQ-secured UTXO co-sign for unlimited classical UTXOs (theoretical max depth ~4.3 billion spends). Four PQ schemes: FALCON-512, FALCON-1024, Dilithium3, SPHINCS+.</div>
-          <div class="use-case-tag" style="color:#ff1744;background:rgba(255,23,68,0.1)">Signature Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Recursive Covenants</div>
-          <div class="use-case-desc">Six recursion types: RECURSE_SAME (perpetual re-encumbrance), RECURSE_MODIFIED (single mutation per spend), RECURSE_COUNT (countdown), RECURSE_SPLIT (output splitting), RECURSE_DECAY (progressive parameter relaxation), RECURSE_UNTIL (height-bounded). All with provable termination.</div>
-          <div class="use-case-tag" style="color:#aa00ff;background:rgba(170,0,255,0.1)">Recursion Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Rate-Limited Vaults</div>
-          <div class="use-case-desc">RATE_LIMIT + VAULT_LOCK for time-gated withdrawal limits. ONE_SHOT for single-use emergency keys. SEQUENCER for multi-step approval flows.</div>
-          <div class="use-case-tag" style="color:#ff4081;background:rgba(255,64,129,0.1)">PLC</div> <div class="use-case-tag" style="color:#2979ff;background:rgba(41,121,255,0.1)">Covenant</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Adaptor Signatures</div>
-          <div class="use-case-desc">ADAPTOR_SIG enables atomic swaps and payment channel protocols with a single typed block. The adaptor point and signing key are folded into the Merkle leaf via merkle_pub_key.</div>
-          <div class="use-case-tag" style="color:#ff1744;background:rgba(255,23,68,0.1)">Signature Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Aggregate Threshold Signatures</div>
-          <div class="use-case-desc">MUSIG_THRESHOLD enables M-of-N multisig via MuSig2/FROST where the on-chain footprint is identical to single-sig (~131 bytes). A 3-of-5 treasury is indistinguishable from a solo wallet on-chain.</div>
-          <div class="use-case-tag" style="color:#ff1744;background:rgba(255,23,68,0.1)">Signature Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Protocol Anchoring</div>
-          <div class="use-case-desc">Seven typed anchor blocks for Lightning channels, mining pools, reserve sets, sealed commitments, oracle attestations, and prunable data outputs. All typed and validated at consensus.</div>
-          <div class="use-case-tag" style="color:#ffea00;background:rgba(255,234,0,0.1)">Anchor Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Structural Spam Resistance</div>
-          <div class="use-case-desc">Three coordinated defenses: merkle_pub_key eliminates writable pubkey fields from conditions. Selective inversion prevents key-consuming blocks from being inverted (closes garbage-pubkey attack). Hash lock deprecation removes HASH_PREIMAGE and HASH160_PREIMAGE (closes invertible-preimage attack); HASH_GUARDED provides a safe non-invertible replacement. MLSC outputs store only a 33-byte scriptPubKey (0xC2 + 32-byte Merkle root).</div>
-          <div class="use-case-tag">Core Design</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Compound Wire Savings</div>
-          <div class="use-case-desc">HTLC collapses hash + timelock + signature into one block, eliminating redundant headers. TIMELOCKED_SIG, HASH_SIG, CLTV_SIG each merge two blocks into one. PTLC collapses adaptor sig + CSV for payment channels. TIMELOCKED_MULTISIG collapses M-of-N + CSV for penalty branches and vault recovery.</div>
-          <div class="use-case-tag" style="color:#ffffff;background:rgba(255,255,255,0.1)">Compound Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Transaction Governance</div>
-          <div class="use-case-desc">EPOCH_GATE restricts spending to periodic windows. WEIGHT_LIMIT caps transaction size. INPUT_COUNT and OUTPUT_COUNT bound I/O fanout. RELATIVE_VALUE prevents fee siphoning. ACCUMULATOR proves Merkle set membership.</div>
-          <div class="use-case-tag" style="color:#9e9e9e;background:rgba(158,158,158,0.1)">Governance Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Timer-Controlled Access</div>
-          <div class="use-case-desc">TIMER_CONTINUOUS requires N consecutive blocks of activity before authorization. TIMER_OFF_DELAY holds spending rights for a grace period after a trigger expires. Together they implement watchdog patterns and supervised custody.</div>
-          <div class="use-case-tag" style="color:#ff4081;background:rgba(255,64,129,0.1)">PLC Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Approval Accumulators</div>
-          <div class="use-case-desc">COUNTER_PRESET accumulates approvals from independent parties. Each approval increments via RECURSE_MODIFIED. Once the preset count is reached, funds release. Unlike MULTISIG, approvals can arrive in separate transactions.</div>
-          <div class="use-case-tag" style="color:#ff4081;background:rgba(255,64,129,0.1)">PLC Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Value-Band Spending</div>
-          <div class="use-case-desc">HYSTERESIS_VALUE constrains output values to a band [low, high]. Prevents both dust outputs and excessive single-spend withdrawals. Useful for corporate disbursement policies and regulated fund flows.</div>
-          <div class="use-case-tag" style="color:#ff4081;background:rgba(255,64,129,0.1)">PLC Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Calendar-Dated Unlocks</div>
-          <div class="use-case-desc">CLTV_TIME locks funds until a specific Unix timestamp rather than a block height. Ideal for grant agreements, employment vesting, and financial contracts with real-world calendar deadlines.</div>
-          <div class="use-case-tag" style="color:#ff6d00;background:rgba(255,109,0,0.1)">Timelock Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">Tagged Hash Attestation</div>
-          <div class="use-case-desc">TAGGED_HASH enables BIP-340 domain-separated hash verification. Oracles, price feeds, and external data sources commit using tagged hashes, ensuring domain isolation and preventing cross-protocol replay.</div>
-          <div class="use-case-tag" style="color:#00e676;background:rgba(0,230,118,0.1)">Hash Family</div>
-        </div>
-        <div class="use-case">
-          <div class="use-case-title">UTXO Tree Splitting</div>
-          <div class="use-case-desc">RECURSE_SPLIT enables a single UTXO to split into multiple outputs, each re-encumbered with the same conditions. Enables binary tree distribution patterns for airdrops, batch payouts, and scalable covenant propagation.</div>
-          <div class="use-case-tag" style="color:#aa00ff;background:rgba(170,0,255,0.1)">Recursion Family</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 09: Try the Builder -->
-  <section id="builder">
-    <div class="container">
-      <div class="section-num">// 09</div>
-      <h2 class="section-title">Try the Builder</h2>
-      <div class="section-content">
-        <p>The Ladder Script Builder is a visual tool for constructing ladder transactions. Drag blocks onto rungs, configure typed fields, and see the resulting wire format in real time.</p>
-      </div>
-
-      <div class="engine-preview" id="engine-preview">
-        <div class="engine-preview-header">
-          <div class="engine-preview-dot r"></div>
-          <div class="engine-preview-dot y"></div>
-          <div class="engine-preview-dot g"></div>
-          <span class="engine-preview-title">ladder-engine — 2-of-3 Multisig Vault</span>
-        </div>
-        <div class="engine-preview-body">
-          <div class="engine-preview-ladder">
-            <div class="engine-preview-label">Ladder Diagram</div>
-            <!-- Rung 0: label row -->
-            <div class="ep-rung" style="opacity:1;animation:none;">
-              <span style="font-size:8px;color:#555;font-family:var(--font-engine);letter-spacing:1px;">RUNG 0 — AUTH</span>
-            </div>
-            <!-- Rung 1: SIG block -->
-            <div class="ep-rung">
-              <div class="ep-rail"></div>
-              <div class="ep-wire"></div>
-              <div class="ep-block">SIG</div>
-              <div class="ep-wire"></div>
-              <div class="ep-block">MULTISIG</div>
-              <div class="ep-wire"></div>
-              <div class="ep-coil">( )</div>
-              <div class="ep-rail"></div>
-            </div>
-            <!-- Rung 2: TIMELOCK -->
-            <div class="ep-rung">
-              <div class="ep-rail"></div>
-              <div class="ep-wire"></div>
-              <div class="ep-block">CLTV</div>
-              <div class="ep-wire"></div>
-              <div class="ep-block">SIG</div>
-              <div class="ep-wire"></div>
-              <div class="ep-coil">( )</div>
-              <div class="ep-rail"></div>
-            </div>
-            <!-- Rung 3: FEE guard -->
-            <div class="ep-rung">
-              <div class="ep-rail"></div>
-              <div class="ep-wire"></div>
-              <div class="ep-block">HYSTERESIS_FEE</div>
-              <div class="ep-wire"></div>
-              <div class="ep-coil">( )</div>
-              <div class="ep-rail"></div>
-            </div>
-          </div>
-          <div class="engine-preview-json">
-            <div class="engine-preview-label">Wire Format (JSON)</div>
-            <div class="ep-json-line"><span class="ej-brace">{</span></div>
-            <div class="ep-json-line">  <span class="ej-key">"version"</span>: <span class="ej-num">4</span>,</div>
-            <div class="ep-json-line">  <span class="ej-key">"rungs"</span>: <span class="ej-bracket">[</span></div>
-            <div class="ep-json-line">    <span class="ej-brace">{</span> <span class="ej-key">"blocks"</span>: <span class="ej-bracket">[</span></div>
-            <div class="ep-json-line">      <span class="ej-brace">{</span> <span class="ej-key">"type"</span>: <span class="ej-str">"SIG"</span>, <span class="ej-key">"code"</span>: <span class="ej-str">"0x0001"</span> <span class="ej-brace">}</span>,</div>
-            <div class="ep-json-line">      <span class="ej-brace">{</span> <span class="ej-key">"type"</span>: <span class="ej-str">"MULTISIG"</span>, <span class="ej-key">"m"</span>: <span class="ej-num">2</span>, <span class="ej-key">"n"</span>: <span class="ej-num">3</span> <span class="ej-brace">}</span></div>
-            <div class="ep-json-line">    <span class="ej-bracket">]</span> <span class="ej-brace">}</span>,</div>
-            <div class="ep-json-line">    <span class="ej-brace">{</span> <span class="ej-key">"blocks"</span>: <span class="ej-bracket">[</span></div>
-            <div class="ep-json-line">      <span class="ej-brace">{</span> <span class="ej-key">"type"</span>: <span class="ej-str">"CLTV"</span>, <span class="ej-key">"height"</span>: <span class="ej-num">52560</span> <span class="ej-brace">}</span>,</div>
-            <div class="ep-json-line">      <span class="ej-brace">{</span> <span class="ej-key">"type"</span>: <span class="ej-str">"SIG"</span>, <span class="ej-key">"code"</span>: <span class="ej-str">"0x0001"</span> <span class="ej-brace">}</span></div>
-            <div class="ep-json-line">    <span class="ej-bracket">]</span> <span class="ej-brace">}</span>,</div>
-            <div class="ep-json-line">    <span class="ej-brace">{</span> <span class="ej-key">"blocks"</span>: <span class="ej-bracket">[</span></div>
-            <div class="ep-json-line">      <span class="ej-brace">{</span> <span class="ej-key">"type"</span>: <span class="ej-str">"HYSTERESIS_FEE"</span>,</div>
-            <div class="ep-json-line">        <span class="ej-key">"low"</span>: <span class="ej-num">5</span>, <span class="ej-key">"high"</span>: <span class="ej-num">50</span> <span class="ej-brace">}</span></div>
-            <div class="ep-json-line">    <span class="ej-bracket">]</span> <span class="ej-brace">}</span></div>
-            <div class="ep-json-line">  <span class="ej-bracket">]</span>,</div>
-            <div class="ep-json-line">  <span class="ej-key">"wire_bytes"</span>: <span class="ej-num">142</span></div>
-            <div class="ep-json-line"><span class="ej-brace">}</span></div>
-          </div>
-        </div>
-        <button class="engine-preview-replay" onclick="replayPreview()">↻ Replay</button>
-      </div>
-
-      <div style="text-align: center; margin-top: 32px;">
-        <a href="ladder-engine.html" class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;">Launch Builder</a>
-      </div>
-
-      <script>
-      (function() {
-        const preview = document.getElementById('engine-preview');
-        // Auto-play when scrolled into view
-        const observer = new IntersectionObserver(function(entries) {
-          entries.forEach(function(entry) {
-            if (entry.isIntersecting) {
-              preview.classList.add('playing');
-              observer.unobserve(preview);
-            }
-          });
-        }, { threshold: 0.3 });
-        observer.observe(preview);
-
-        // Replay: remove .playing, force reflow, re-add
-        window.replayPreview = function() {
-          preview.classList.remove('playing');
-          // Reset all animated elements by cloning inner content
-          const body = preview.querySelector('.engine-preview-body');
-          const clone = body.cloneNode(true);
-          body.parentNode.replaceChild(clone, body);
-          void preview.offsetWidth; // force reflow
-          preview.classList.add('playing');
-        };
-      })();
-      </script>
-    </div>
-  </section>
-
-  <!-- 10: Examples -->
-  <section id="examples">
-    <div class="container">
-      <div class="section-num">// 10</div>
-      <h2 class="section-title">Examples</h2>
-      <div class="section-content">
-        <p>Pre-built programs from the Ladder Script Builder. Click any example to load it in the engine.</p>
-      </div>
-
-      <div class="example-grid">
-
-        <a href="ladder-engine.html?example=0" class="example-card">
-          <div class="example-title">2-OF-3 MULTISIG VAULT</div>
-          <div class="example-desc">Corporate treasury with 2-of-3 multisig spending and a time-locked recovery path using a single backup key after 1 year.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">RECOVER</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=1" class="example-card">
-          <div class="example-title">ATOMIC SWAP (HTLC)</div>
-          <div class="example-desc">Cross-chain atomic swap via compound HTLC block. Hash + timelock + signature in a single block. Refund via CSV + SIG.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">CLAIM</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block compound">HTLC</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">REFUND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=2" class="example-card">
-          <div class="example-title">ADAPTOR SIG SWAP</div>
-          <div class="example-desc">Schnorr adaptor signature atomic swap. On-chain adapted sig reveals the adaptor secret for the counterparty.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">EXECUTE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">ADAPTOR_SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CANCEL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=3" class="example-card">
-          <div class="example-title">DCA COVENANT CHAIN</div>
-          <div class="example-desc">Dollar-cost averaging covenant. Splits UTXO into a buy output each spend, counting down 12 purchases with recursive state.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">BUY</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_DN</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">SWEEP</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_DN</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=4" class="example-card">
-          <div class="example-title">VAULT WITH UNVAULT + CLAWBACK</div>
-          <div class="example-desc">Bitcoin vault pattern: normal spend requires unvault delay (24h). Emergency clawback to cold key at any time.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">UNVAULT</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block cov">VAULT</div><div class="example-wire"></div>
-              <div class="example-block time">CSV_TIME</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CLAWBACK</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=5" class="example-card">
-          <div class="example-title">RATE-LIMITED WALLET</div>
-          <div class="example-desc">Daily spending cap of 50,000 sats with accumulator. Refills over 144 blocks. Two-key override for full sweep.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">DAY</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">RATE_LIM</div><div class="example-wire"></div>
-              <div class="example-block rec">RECURSE</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">OVERRIDE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=6" class="example-card">
-          <div class="example-title">DEAD MAN'S SWITCH (INHERITANCE)</div>
-          <div class="example-desc">Owner must sign within ~6 months to keep funds. On timeout, heir can claim. Resets each spend via latch.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">ALIVE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">LATCH_S</div><div class="example-wire"></div>
-              <div class="example-block rec">RECURSE</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">INHERIT</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=7" class="example-card">
-          <div class="example-title">ESCROW WITH ORACLE</div>
-          <div class="example-desc">Buyer/seller escrow. Either party + oracle can release. Joint buyer+seller can settle directly without oracle.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">RELEASE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">ORACLE</div><div class="example-wire"></div>
-              <div class="example-block plc">COSIGN</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">DISPUTE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">ORACLE</div><div class="example-wire"></div>
-              <div class="example-block plc">COSIGN</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">SETTLE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=8" class="example-card">
-          <div class="example-title">PAYMENT CHANNEL</div>
-          <div class="example-desc">Lightning-style payment channel. Cooperative close with both sigs, or unilateral close after 1-day CSV timeout.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">COOP</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">FORCE_A</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block time">CSV_TIME</div><div class="example-wire"></div>
-              <div class="example-block cov">CTV</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">FORCE_B</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block time">CSV_TIME</div><div class="example-wire"></div>
-              <div class="example-block cov">CTV</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=9" class="example-card">
-          <div class="example-title">SEQUENCED PAYOUT</div>
-          <div class="example-desc">Multi-stage project payout. Funds release in 5 sequential milestones. Each milestone requires oracle + recipient sig.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">MILE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">SEQ</div><div class="example-wire"></div>
-              <div class="example-block cov">ORACLE</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CANCEL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=10" class="example-card">
-          <div class="example-title">FEE-GATED COVENANT</div>
-          <div class="example-desc">Covenant that only allows spending when fees are 5-50 sat/vB. Prevents panic-spending during fee spikes.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">HYST_FEE</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EMERG</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=11" class="example-card">
-          <div class="example-title">ONE-SHOT TRIGGER + LATCH</div>
-          <div class="example-desc">Single-use authorization: ONE_SHOT fires once, latching the output. The latch can only be reset by a separate key.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">FIRE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">ONE_SHOT</div><div class="example-wire"></div>
-              <div class="example-coil">( LATCH )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EXEC</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">RESET</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">LATCH_R</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLATCH )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=12" class="example-card">
-          <div class="example-title">RECURSIVE SPLIT (TREE)</div>
-          <div class="example-desc">Binary split covenant: UTXO splits into 2 equal children on each spend, up to 4 levels deep.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPLIT</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_SPLIT</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_DECAY</div><div class="example-wire"></div>
-              <div class="example-block cov">CTV</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">LEAF</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_CNT</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=13" class="example-card">
-          <div class="example-title">BLOCK-HEIGHT TIMELOCK + COMPARE</div>
-          <div class="example-desc">Funds locked until block 900,000. After unlock, output amount must exceed 10,000 sats. CLTV + COMPARE combo.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CLTV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">COMPARE</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=14" class="example-card">
-          <div class="example-title">COUNTER-UP SUBSCRIPTION</div>
-          <div class="example-desc">Recurring subscription: counter increments each payment (max 24). Amount-locked to fixed payment size. Auto-renews via recursion.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">PAY</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_UP</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CANCEL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EXPIRE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_UP</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=15" class="example-card">
-          <div class="example-title">QUANTUM-SAFE VAULT</div>
-          <div class="example-desc">Post-quantum vault using FALCON-512 hot spend and Dilithium3 cold recovery after 1-year CSV. Hybrid classical+PQ path.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">PQ_SPEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">FALCON</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">PQ_COLD</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">DILITHIUM</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">HYBRID</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">FALCON</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=16" class="example-card">
-          <div class="example-title">QUANTUM VAULT + CHILDREN</div>
-          <div class="example-desc">PQ-secured parent vault that splits into child UTXOs via RECURSE_SPLIT. Each child inherits Falcon-512 protection.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPLIT</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">FALCON</div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_DN</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_SPLIT</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_DECAY</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CHILD</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">FALCON</div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_DN</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EMERG</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">SWEEP</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">DILITHIUM</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=17" class="example-card">
-          <div class="example-title">MULTI-INPUT CONSOLIDATION</div>
-          <div class="example-desc">Consolidates 3 UTXOs into a single output. Demonstrates multi-input rung assignment with CTV template commitment.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">MERGE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-block cov">CTV</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=18" class="example-card">
-          <div class="example-title">MUSIG_THRESHOLD TREASURY</div>
-          <div class="example-desc">3-of-5 corporate treasury using MuSig2/FROST. On-chain looks identical to single-sig. Time-locked backup key for recovery.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SPEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MUSIG_THR</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">RECOVER</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=19" class="example-card">
-          <div class="example-title">PTLC PAYMENT CHANNEL</div>
-          <div class="example-desc">Scriptless payment channel. Cooperative close via MuSig, unilateral close with PTLC adaptor sig + CSV timeout.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">COOP</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MUSIG_THR</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">FORCE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">PTLC</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=20" class="example-card">
-          <div class="example-title">CLTV_SIG VESTING SCHEDULE</div>
-          <div class="example-desc">Quarterly vesting unlocks at specific block heights using CLTV_SIG compound blocks with amount locks.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">Q1</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">CLTV_SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">FULL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">CLTV_SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=21" class="example-card">
-          <div class="example-title">TIMELOCKED_MULTISIG VAULT</div>
-          <div class="example-desc">Hot wallet spend, 2-of-3 board recovery after 1-week cooling period, emergency cold key sweep.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">HOT</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">BOARD</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">TL_MULTI</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">COLD</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=22" class="example-card">
-          <div class="example-title">HTLC COMPACT SWAP</div>
-          <div class="example-desc">Atomic swap using the HTLC compound block &mdash; hash + timelock + sig in a single block. Saves 16 bytes over decomposed blocks.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">CLAIM</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block compound">HTLC</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">REFUND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block compound">TL_SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=23" class="example-card">
-          <div class="example-title">HASH_SIG ATOMIC CLAIM</div>
-          <div class="example-desc">Preimage reveal + signature in one compound block. Ideal for atomic swap claim paths with hash verification and authorization together.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">CLAIM</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block compound">HASH_SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">REFUND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=24" class="example-card">
-          <div class="example-title">GOVERNANCE-GATED TREASURY</div>
-          <div class="example-desc">Treasury restricted by governance: spending windows, I/O fanout limits, weight cap, and anti-siphon ratio enforcement.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">GOVERNED</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block gov">EPOCH</div><div class="example-wire"></div>
-              <div class="example-block gov">IN_COUNT</div><div class="example-wire"></div>
-              <div class="example-block gov">OUT_COUNT</div><div class="example-wire"></div>
-              <div class="example-block gov">WT_LIMIT</div><div class="example-wire"></div>
-              <div class="example-block gov">REL_VAL</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">OVERRIDE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=25" class="example-card">
-          <div class="example-title">ACCUMULATOR ALLOWLIST</div>
-          <div class="example-desc">Merkle set membership proof. Destination must be in a pre-committed allowlist. Combines with SIG and AMOUNT_LOCK for full access control.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">SEND</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block gov">ACCUM</div><div class="example-wire"></div>
-              <div class="example-block cov">AMT_LOCK</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">ADMIN</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=26" class="example-card">
-          <div class="example-title">CLTV_TIME CALENDAR LOCK</div>
-          <div class="example-desc">Date-locked payment using absolute Unix timestamp. Funds locked until January 1, 2027. TAGGED_HASH adds domain-separated attestation gate.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">UNLOCK</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CLTV_TIME</div><div class="example-wire"></div>
-              <div class="example-block hash">TAGGED</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CANCEL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=27" class="example-card">
-          <div class="example-title">TIMER WATCHDOG</div>
-          <div class="example-desc">Continuous timer requires N consecutive blocks of activity. Off-delay holds authorization after trigger. Tagged hash proves attestation.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">ACTIVE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">TMR_CONT</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block hash">TAGGED</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">HELD</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">TMR_OFF</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EMERG</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CSV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=28" class="example-card">
-          <div class="example-title">PRESET COUNTER BOARD VOTE</div>
-          <div class="example-desc">Multi-party approval accumulator. Counter tracks board approvals; once preset reached, funds release. Value band limits payout size.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">APPROVE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_PRE</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block plc">HYST_VAL</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EXECUTE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block plc">CTR_PRE</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">CANCEL</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MULTISIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-        <a href="ladder-engine.html?example=29" class="example-card">
-          <div class="example-title">ANCHORED CHANNEL + RECURSE_UNTIL</div>
-          <div class="example-desc">Lightning channel with anchor binding and recursive state until target block height. Bounds protocol lifetime on-chain.</div>
-          <div class="example-rungs">
-            <div class="example-rung">
-              <div class="example-rung-label">COOP</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">MUSIG_THR</div><div class="example-wire"></div>
-              <div class="example-block anchor">A_CHAN</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">UPDATE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-block anchor">A_CHAN</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_UNTIL</div><div class="example-wire"></div>
-              <div class="example-block rec">REC_MOD</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-            <div class="example-rung">
-              <div class="example-rung-label">EXPIRE</div>
-              <div class="example-rail"></div><div class="example-wire"></div>
-              <div class="example-block time">CLTV</div><div class="example-wire"></div>
-              <div class="example-block sig">SIG</div><div class="example-wire"></div>
-              <div class="example-coil">( UNLOCK )</div>
-              <div class="example-wire"></div><div class="example-rail"></div>
-            </div>
-          </div>
-        </a>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- 10: Documentation -->
-  <section id="docs" style="border-bottom: none;">
-    <div class="container">
-      <div class="section-num">// 10</div>
-      <h2 class="section-title">Documentation</h2>
-      <div class="section-content">
-        <p>Full documentation covering the BIP proposal, technical specification, MLSC Merkle specification, block library, integration guide, examples, and more.</p>
-      </div>
-
-      <div style="margin-top: 24px; display: flex; gap: 16px; flex-wrap: wrap;">
-        <a href="docs/#SUMMARY" class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;">Read the Documentation</a>
-        <a href="docs/#MERKLE-UTXO-SPEC" class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;">MLSC Specification</a>
-        <a href="docs/#BLOCKS" class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;">Block Reference</a>
-        <a href="ladder-engine.html" class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;">Open Builder</a>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-left">
-        <a href="../index.html" class="logo">
-          <div class="logo-icon"><img src="../logo.png" alt="Bitcoin Ghost"></div>
-          <div class="logo-text">Bitcoin<span>Ghost</span></div>
-        </a>
-        <div class="footer-links">
-          <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">GitHub</a>
-          <a href="../docs/index.html">Docs</a>
-          <a href="../economics.html">Economics</a>
-        </div>
-      </div>
-      <div class="footer-right">
-        &copy; 2026 Bitcoin Ghost. Open source under MIT License.
-      </div>
-    </div>
-  </footer>
-<script>(function(){var a=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8801':'https://bitcoinghost.org';fetch(a+'/api/ladder/analytics/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:location.pathname,referrer:document.referrer})}).catch(function(){});})()</script>
 </body>
 </html>
