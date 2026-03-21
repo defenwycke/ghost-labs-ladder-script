@@ -22,11 +22,9 @@ bool IsCovenantBlockType(uint16_t block_type);
 bool IsStatefulBlockType(uint16_t block_type);
 
 /** Check whether a v4 RUNG_TX transaction conforms to mempool policy.
- *  Validates:
- *    - Max 16 rungs per input witness
- *    - Max 8 blocks per rung
- *    - All data types known and correctly sized
- *    - All known block types
+ *  Thin deserialize-only check — delegates to the consensus deserializer which
+ *  enforces all structural limits (MAX_RUNGS=16, MAX_BLOCKS_PER_RUNG=8,
+ *  known block types, deprecated block rejection, field size ranges, etc.).
  *  Returns false with reason populated on policy violation. */
 bool IsStandardRungTx(const CTransaction& tx, std::string& reason);
 

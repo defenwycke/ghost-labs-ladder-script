@@ -46,17 +46,27 @@ bool SignatureHashLadder(const PrecomputedTransactionData& cache,
 {
     assert(nIn < tx.vin.size());
 
-    // Validate hash_type (same range as BIP341)
-    if (!(hash_type <= 0x03 || (hash_type >= 0x81 && hash_type <= 0x83))) {
+    // Validate hash_type: BIP341 base range + ANYPREVOUT (0x40) + ANYPREVOUTANYSCRIPT (0xC0)
+    // Valid: {0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}
+    const bool valid_hash_type =
+        (hash_type <= 0x03) ||                                    // DEFAULT/ALL/NONE/SINGLE
+        (hash_type >= 0x40 && hash_type <= 0x43) ||               // ANYPREVOUT variants
+        (hash_type >= 0x81 && hash_type <= 0x83) ||               // ANYONECANPAY variants
+        (hash_type >= 0xC0 && hash_type <= 0xC3);                 // ANYPREVOUTANYSCRIPT variants
+    if (!valid_hash_type) {
         return false;
     }
+
+    const bool anyprevout = (hash_type & LADDER_SIGHASH_ANYPREVOUT) != 0;
+    const bool anyprevoutanyscript = (hash_type & LADDER_SIGHASH_ANYPREVOUTANYSCRIPT) == LADDER_SIGHASH_ANYPREVOUTANYSCRIPT;
 
     // Require ladder caches to be initialized
     if (!cache.m_ladder_ready || !cache.m_spent_outputs_ready) {
         return false;
     }
 
-    const uint8_t output_type = (hash_type == SIGHASH_DEFAULT) ? SIGHASH_ALL : (hash_type & SIGHASH_OUTPUT_MASK);
+    const uint8_t base_hash_type = hash_type & 0x03; // strip APO/ACP flags
+    const uint8_t output_type = (hash_type == SIGHASH_DEFAULT || base_hash_type == 0) ? SIGHASH_ALL : base_hash_type;
     const uint8_t input_type = hash_type & SIGHASH_INPUT_MASK;
 
     HashWriter ss{HASHER_LADDERSIGHASH};
@@ -73,7 +83,9 @@ bool SignatureHashLadder(const PrecomputedTransactionData& cache,
     ss << tx.nLockTime;
 
     if (input_type != SIGHASH_ANYONECANPAY) {
-        ss << cache.m_prevouts_single_hash;
+        if (!anyprevout) {
+            ss << cache.m_prevouts_single_hash;
+        }
         ss << cache.m_spent_amounts_single_hash;
         ss << cache.m_sequences_single_hash;
     }
@@ -87,7 +99,9 @@ bool SignatureHashLadder(const PrecomputedTransactionData& cache,
 
     // Input-specific data
     if (input_type == SIGHASH_ANYONECANPAY) {
-        ss << tx.vin[nIn].prevout;
+        if (!anyprevout) {
+            ss << tx.vin[nIn].prevout;
+        }
         ss << cache.m_spent_outputs[nIn];
         ss << tx.vin[nIn].nSequence;
     } else {
@@ -103,7 +117,10 @@ bool SignatureHashLadder(const PrecomputedTransactionData& cache,
     }
 
     // Conditions hash — commit to the locking conditions from the spent output
-    ss << HashRungConditions(conditions);
+    // ANYPREVOUTANYSCRIPT: skip conditions commitment (allows rebinding across scripts)
+    if (!anyprevoutanyscript) {
+        ss << HashRungConditions(conditions);
+    }
 
     hash_out = ss.GetSHA256();
     return true;

@@ -96,7 +96,7 @@ inline bool IsConditionFieldType(RungDataType type) { return IsConditionDataType
 // ============================================================================
 
 /** Check if scriptPubKey is an MLSC output (0xC2 + 32-byte root + optional DATA_RETURN payload).
- *  Valid sizes: 33 bytes (standard) or 34-65 bytes (with DATA_RETURN, max 32 bytes data). */
+ *  Valid sizes: 33 bytes (standard) or 34-73 bytes (with DATA_RETURN, max 40 bytes data). */
 bool IsMLSCScript(const CScript& scriptPubKey);
 
 /** Check if scriptPubKey is a Ladder Script output (MLSC 0xC2). */

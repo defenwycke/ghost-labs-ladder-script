@@ -16,8 +16,11 @@
 
 namespace rung {
 
-/** Maximum number of rungs per ladder witness. */
-static constexpr size_t MAX_RUNGS = 8;
+/** Maximum number of rungs per ladder witness.
+ *  16 rungs provides sufficient spending-path diversity for institutional custody
+ *  (multisig tiers, PQ fallbacks, timelocked recovery, inheritance paths, governance
+ *  overrides) with only 1 additional Merkle proof hash vs 8 rungs. */
+static constexpr size_t MAX_RUNGS = 16;
 /** Maximum number of blocks per rung. */
 static constexpr size_t MAX_BLOCKS_PER_RUNG = 8;
 /** Maximum number of fields per block. */

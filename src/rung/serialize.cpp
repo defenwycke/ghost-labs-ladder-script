@@ -9,6 +9,7 @@
 #include <util/strencodings.h>
 
 #include <ios>
+#include <set>
 
 namespace rung {
 
@@ -490,6 +491,29 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
                 return false;
             }
 
+            // Read per-rung destinations (0 = none, backward compatible)
+            if (!ss.empty()) {
+                uint64_t n_rung_dests = ReadCompactSize(ss);
+                if (n_rung_dests > MAX_RUNGS) {
+                    error = "too many rung_destinations: " + std::to_string(n_rung_dests);
+                    return false;
+                }
+                ladder_out.coil.rung_destinations.resize(n_rung_dests);
+                std::set<uint16_t> seen_indices;
+                for (uint64_t rd = 0; rd < n_rung_dests; ++rd) {
+                    uint8_t lo, hi;
+                    ss >> lo >> hi;
+                    uint16_t rung_idx = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
+                    if (!seen_indices.insert(rung_idx).second) {
+                        error = "duplicate rung_destination index: " + std::to_string(rung_idx);
+                        return false;
+                    }
+                    ladder_out.coil.rung_destinations[rd].first = rung_idx;
+                    ladder_out.coil.rung_destinations[rd].second.resize(32);
+                    ss.read(MakeWritableByteSpan(ladder_out.coil.rung_destinations[rd].second));
+                }
+            }
+
             // No relays section — inherited from source
 
             if (!ss.empty()) {
@@ -561,6 +585,31 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
         if (n_coil_rungs > MAX_COIL_CONDITION_RUNGS) {
             error = "coil conditions are reserved: n_coil_conditions must be 0, got " + std::to_string(n_coil_rungs);
             return false;
+        }
+
+        // Read per-rung destinations (0 = none, backward compatible)
+        if (!ss.empty()) {
+            uint64_t n_rung_dests = ReadCompactSize(ss);
+            if (n_rung_dests > MAX_RUNGS) {
+                error = "too many rung_destinations: " + std::to_string(n_rung_dests);
+                return false;
+            }
+            if (n_rung_dests > 0) {
+                ladder_out.coil.rung_destinations.resize(n_rung_dests);
+                std::set<uint16_t> seen_indices;
+                for (uint64_t rd = 0; rd < n_rung_dests; ++rd) {
+                    uint8_t lo, hi;
+                    ss >> lo >> hi;
+                    uint16_t rung_idx = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
+                    if (!seen_indices.insert(rung_idx).second) {
+                        error = "duplicate rung_destination index: " + std::to_string(rung_idx);
+                        return false;
+                    }
+                    ladder_out.coil.rung_destinations[rd].first = rung_idx;
+                    ladder_out.coil.rung_destinations[rd].second.resize(32);
+                    ss.read(MakeWritableByteSpan(ladder_out.coil.rung_destinations[rd].second));
+                }
+            }
         }
 
         // Read relays (optional — backward compatible, 0 relays if EOF)
@@ -726,6 +775,14 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
                 SerializeBlock(ss, cblock, static_cast<uint8_t>(SerializationContext::CONDITIONS));
             }
         }
+        // Write per-rung destinations
+        WriteCompactSize(ss, ladder.coil.rung_destinations.size());
+        for (const auto& [rung_idx, addr_hash] : ladder.coil.rung_destinations) {
+            ss << static_cast<uint8_t>(rung_idx & 0xFF);
+            ss << static_cast<uint8_t>((rung_idx >> 8) & 0xFF);
+            ss.write(MakeByteSpan(addr_hash));
+        }
+
         // No relays section — inherited from source
 
         std::vector<uint8_t> result(ss.size());
@@ -759,6 +816,14 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
         for (const auto& cblock : crung.blocks) {
             SerializeBlock(ss, cblock, static_cast<uint8_t>(SerializationContext::CONDITIONS));
         }
+    }
+
+    // Write per-rung destinations
+    WriteCompactSize(ss, ladder.coil.rung_destinations.size());
+    for (const auto& [rung_idx, addr_hash] : ladder.coil.rung_destinations) {
+        ss << static_cast<uint8_t>(rung_idx & 0xFF);
+        ss << static_cast<uint8_t>((rung_idx >> 8) & 0xFF);
+        ss.write(MakeByteSpan(addr_hash));
     }
 
     // Write relays (only if any relays or rung relay_refs exist)
@@ -840,6 +905,14 @@ std::vector<uint8_t> SerializeCoilData(const RungCoil& coil)
         for (const auto& cblock : crung.blocks) {
             SerializeBlock(ss, cblock, static_cast<uint8_t>(SerializationContext::CONDITIONS));
         }
+    }
+
+    // Per-rung destinations (0 = none, backward compatible)
+    WriteCompactSize(ss, coil.rung_destinations.size());
+    for (const auto& [rung_idx, addr_hash] : coil.rung_destinations) {
+        ss << static_cast<uint8_t>(rung_idx & 0xFF);
+        ss << static_cast<uint8_t>((rung_idx >> 8) & 0xFF);
+        ss.write(MakeByteSpan(addr_hash));
     }
 
     std::vector<uint8_t> result(ss.size());

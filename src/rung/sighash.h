@@ -16,6 +16,14 @@ class uint256;
 
 namespace rung {
 
+/** ANYPREVOUT sighash flag: skip prevout commitment (BIP-118 analogue).
+ *  Enables LN-Symmetry/eltoo. Still commits to amounts, sequences, and conditions. */
+static constexpr uint8_t LADDER_SIGHASH_ANYPREVOUT = 0x40;
+
+/** ANYPREVOUTANYSCRIPT sighash flag: skip prevout + conditions commitment.
+ *  Enables rebindable signatures across different scripts. */
+static constexpr uint8_t LADDER_SIGHASH_ANYPREVOUTANYSCRIPT = 0xC0;
+
 /** Tagged hash writer for LadderSighash, pre-fed with the tag. */
 extern const HashWriter HASHER_LADDERSIGHASH;
 

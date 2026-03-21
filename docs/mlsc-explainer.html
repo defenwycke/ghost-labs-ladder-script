@@ -292,7 +292,7 @@ const S = [
 <div class="card blue">
 <div class="card-t">Checks</div>
 <div class="chk ok"><span class="ic">✓</span> ParseBlockType("SIG") → RungBlockType::SIG (0x0001)</div>
-<div class="chk ok"><span class="ic">✓</span> IsKnownBlockType(0x0001) = true — one of 59 known types</div>
+<div class="chk ok"><span class="ic">✓</span> IsKnownBlockType(0x0001) = true — one of 60 known types</div>
 <div class="chk ok"><span class="ic">✓</span> No "inverted" flag — default false</div>
 <div class="chk ok"><span class="ic">✓</span> IsKeyConsumingBlockType(SIG) = true — SIG consumes 1 pubkey</div>
 <div class="chk ok"><span class="ic">✓</span> IsInvertibleBlockType(SIG) = false — key-consuming blocks can NEVER be inverted</div>
@@ -619,7 +619,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
   <div class="wt">UTXO Set</div>
   <div class="wv" style="color:var(--ngreen)">40 bytes</div>
   <div class="ws">value (8 bytes int64) + conditions_root (32 bytes)</div>
-  <div class="ws" style="margin-top:.3rem;color:#555">Same size for single-sig or 15-of-15 multisig with 8 rungs</div>
+  <div class="ws" style="margin-top:.3rem;color:#555">Same size for single-sig or 15-of-15 multisig with 16 rungs</div>
 </div>
 <div class="where-box" style="border-color:rgba(0,212,255,.2)">
   <div class="wt">Blockchain (in block)</div>
@@ -662,7 +662,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 <div class="stg-h"><div class="stg-n" style="background:rgba(255,136,0,.1);color:var(--norange)">1</div><div class="stg-t">DeserializeLadderWitness — size & structure</div></div>
 <div class="chk ok"><span class="ic">✓</span> Not empty</div>
 <div class="chk ok"><span class="ic">✓</span> Size ≤ MAX_LADDER_WITNESS_SIZE (100,000 bytes)</div>
-<div class="chk ok"><span class="ic">✓</span> n_rungs = ReadCompactSize = 1 (not 0 = not diff witness, ≤ MAX_RUNGS = 8)</div>
+<div class="chk ok"><span class="ic">✓</span> n_rungs = ReadCompactSize = 1 (not 0 = not diff witness, ≤ MAX_RUNGS = 16)</div>
 <div class="chk ok"><span class="ic">✓</span> n_blocks = ReadCompactSize = 1 (> 0 = not compact rung, ≤ MAX_BLOCKS_PER_RUNG = 8)</div>
 </div>
 `},
@@ -692,7 +692,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(255,136,0,.1);color:var(--norange)">3</div><div class="stg-t">Anti-spam gates</div></div>
 <div class="chk ok"><span class="ic">✓</span> IsDataEmbeddingType — blocks PUBKEY_COMMIT, HASH256, HASH160, DATA in witness for non-implicit blocks</div>
-<div class="chk ok"><span class="ic">✓</span> PREIMAGE/SCRIPT_BODY field count: 0 ≤ MAX_PREIMAGE_FIELDS_PER_WITNESS (1)</div>
+<div class="chk ok"><span class="ic">✓</span> PREIMAGE/SCRIPT_BODY field count: 0 ≤ MAX_PREIMAGE_FIELDS_PER_WITNESS (2)</div>
 <div class="chk ok"><span class="ic">✓</span> Relay chain depth: 0 ≤ MAX_RELAY_DEPTH (4)</div>
 <div class="chk ok"><span class="ic">✓</span> ss.empty() = true — no trailing bytes</div>
 </div>
@@ -711,7 +711,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 {act:2,t:"MLSC PROOF — HEADER",s:"total_rungs · total_relays · rung_index",h:`
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(179,102,255,.1);color:var(--npurple)">5</div><div class="stg-t">DeserializeMLSCProof — header</div></div>
-<div class="chk ok"><span class="ic">✓</span> total_rungs = 2 — within [1, MAX_RUNGS=8]</div>
+<div class="chk ok"><span class="ic">✓</span> total_rungs = 2 — within [1, MAX_RUNGS=16]</div>
 <div class="chk ok"><span class="ic">✓</span> total_relays = 0 — within [0, MAX_RELAYS=8]</div>
 <div class="chk ok"><span class="ic">✓</span> rung_index = 0 — less than total_rungs (2)</div>
 </div>

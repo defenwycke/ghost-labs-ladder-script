@@ -16,7 +16,7 @@ namespace rung {
  *  Each block evaluates a single spending condition within a rung.
  *  Encoded as uint16_t in the wire format (little-endian 2 bytes).
  *
- *  Ranges (10 families, 59 block types):
+ *  Ranges (10 families, 61 block types):
  *    0x0001-0x00FF  Signature family (SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG)
  *    0x0100-0x01FF  Timelock family (CSV, CSV_TIME, CLTV, CLTV_TIME)
  *    0x0200-0x02FF  Hash family (TAGGED_HASH) — HASH_PREIMAGE, HASH160_PREIMAGE deprecated
@@ -24,6 +24,7 @@ namespace rung {
  *    0x0400-0x04FF  Recursion family (RECURSE_SAME, _MODIFIED, _UNTIL, _COUNT, _SPLIT, _DECAY)
  *    0x0500-0x05FF  Anchor family (ANCHOR, _CHANNEL, _POOL, _RESERVE, _SEAL, _ORACLE, DATA_RETURN)
  *    0x0600-0x06FF  PLC family (HYSTERESIS_*, TIMER_*, LATCH_*, COUNTER_*, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN)
+ *                   Note: COSIGN (0x0681) is in the PLC range but functionally is a cross-input signature constraint
  *    0x0700-0x07FF  Compound family (TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG)
  *    0x0800-0x08FF  Governance family (EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR)
  *    0x0900-0x09FF  Legacy family (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT) */
@@ -45,6 +46,7 @@ enum class RungBlockType : uint16_t {
     HASH_PREIMAGE    = 0x0201, //!< SHA-256 hash preimage reveal
     HASH160_PREIMAGE = 0x0202, //!< HASH160 preimage reveal
     TAGGED_HASH      = 0x0203, //!< BIP-340 tagged hash verification
+    HASH_GUARDED     = 0x0204, //!< Raw SHA256 preimage verification (non-invertible, replaces deprecated HASH_PREIMAGE)
 
     // Covenant family
     CTV              = 0x0301, //!< OP_CHECKTEMPLATEVERIFY covenant
@@ -83,6 +85,7 @@ enum class RungBlockType : uint16_t {
     OUTPUT_COUNT     = 0x0804, //!< Output count bounds (min/max outputs in spending tx)
     RELATIVE_VALUE   = 0x0805, //!< Output value as ratio of input (numerator/denominator)
     ACCUMULATOR      = 0x0806, //!< Merkle accumulator: set membership proof with root update
+    OUTPUT_CHECK     = 0x0807, //!< Per-output value and script constraint
 
     // Legacy family (wrapped Bitcoin transaction types)
     P2PK_LEGACY          = 0x0901, //!< P2PK wrapped: PUBKEY_COMMIT + SCHEME → PUBKEY + SIGNATURE
@@ -146,8 +149,9 @@ inline bool IsKnownBlockType(uint16_t b)
     case RungBlockType::CSV_TIME:
     case RungBlockType::CLTV:
     case RungBlockType::CLTV_TIME:
-    // Hash (HASH_PREIMAGE/HASH160_PREIMAGE deprecated — use HTLC or HASH_SIG)
+    // Hash (HASH_PREIMAGE/HASH160_PREIMAGE deprecated — use HTLC, HASH_SIG, or HASH_GUARDED)
     case RungBlockType::TAGGED_HASH:
+    case RungBlockType::HASH_GUARDED:
     // Covenant
     case RungBlockType::CTV:
     case RungBlockType::VAULT_LOCK:
@@ -196,6 +200,7 @@ inline bool IsKnownBlockType(uint16_t b)
     case RungBlockType::OUTPUT_COUNT:
     case RungBlockType::RELATIVE_VALUE:
     case RungBlockType::ACCUMULATOR:
+    case RungBlockType::OUTPUT_CHECK:
     // Legacy family
     case RungBlockType::P2PK_LEGACY:
     case RungBlockType::P2PKH_LEGACY:
@@ -273,7 +278,7 @@ inline size_t FieldMaxSize(RungDataType type)
     case RungDataType::SPEND_INDEX:   return 4;
     case RungDataType::NUMERIC:       return 4;
     case RungDataType::SCHEME:        return 1;
-    case RungDataType::DATA:          return 32;
+    case RungDataType::DATA:          return 40;  // hash (32) + protocol metadata (8)
     }
     return 0;
 }
@@ -294,6 +299,7 @@ inline std::string BlockTypeName(RungBlockType type)
     case RungBlockType::HASH_PREIMAGE:    return "HASH_PREIMAGE";
     case RungBlockType::HASH160_PREIMAGE: return "HASH160_PREIMAGE";
     case RungBlockType::TAGGED_HASH:      return "TAGGED_HASH";
+    case RungBlockType::HASH_GUARDED:     return "HASH_GUARDED";
     case RungBlockType::CTV:              return "CTV";
     case RungBlockType::VAULT_LOCK:       return "VAULT_LOCK";
     case RungBlockType::AMOUNT_LOCK:      return "AMOUNT_LOCK";
@@ -336,6 +342,7 @@ inline std::string BlockTypeName(RungBlockType type)
     case RungBlockType::OUTPUT_COUNT:     return "OUTPUT_COUNT";
     case RungBlockType::RELATIVE_VALUE:   return "RELATIVE_VALUE";
     case RungBlockType::ACCUMULATOR:      return "ACCUMULATOR";
+    case RungBlockType::OUTPUT_CHECK:     return "OUTPUT_CHECK";
     case RungBlockType::P2PK_LEGACY:      return "P2PK_LEGACY";
     case RungBlockType::P2PKH_LEGACY:     return "P2PKH_LEGACY";
     case RungBlockType::P2SH_LEGACY:      return "P2SH_LEGACY";
@@ -427,6 +434,7 @@ inline bool IsInvertibleBlockType(RungBlockType type)
     case RungBlockType::WEIGHT_LIMIT:
     case RungBlockType::INPUT_COUNT:
     case RungBlockType::OUTPUT_COUNT:
+    case RungBlockType::ACCUMULATOR:  // Inverted ACCUMULATOR = blocklist ("NOT in set")
     // Anchor
     case RungBlockType::ANCHOR:
     case RungBlockType::ANCHOR_CHANNEL:
@@ -546,6 +554,7 @@ struct RungCoil {
     RungScheme scheme{RungScheme::SCHNORR};
     std::vector<uint8_t> address_hash;         //!< SHA256(destination address) — raw address never on-chain. Empty if none.
     std::vector<struct Rung> conditions;        //!< Reserved — must be empty (MAX_COIL_CONDITION_RUNGS = 0)
+    std::vector<std::pair<uint16_t, std::vector<uint8_t>>> rung_destinations; //!< Per-rung destination overrides: (rung_index, address_hash). Bounded by MAX_RUNGS.
 };
 
 /** A single typed field within a block. Type constrains the allowed data size. */
@@ -754,8 +763,11 @@ inline constexpr uint16_t MICRO_HEADER_TABLE[MICRO_HEADER_SLOTS] = {
     0x0907, // 0x3B: P2TR_SCRIPT_LEGACY
     // Slot 60: Anchor family (late-added)
     0x0507, // 0x3C: DATA_RETURN
-    // Remaining slots unused
-    0xFFFF, 0xFFFF, 0xFFFF, // 0x3D-0x3F
+    // Slot 61: Hash family (late-added)
+    0x0204, // 0x3D: HASH_GUARDED
+    // Slot 62: Governance family (late-added)
+    0x0807, // 0x3E: OUTPUT_CHECK
+    0xFFFF, // 0x3F
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x40-0x47
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x48-0x4F
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // 0x50-0x57
@@ -825,6 +837,11 @@ inline constexpr ImplicitFieldLayout CLTV_TIME_CONDITIONS = CSV_CONDITIONS;
 /** TAGGED_HASH conditions: [HASH256(32), HASH256(32)] */
 inline constexpr ImplicitFieldLayout TAGGED_HASH_CONDITIONS = {2, {
     {RungDataType::HASH256, 32},
+    {RungDataType::HASH256, 32},
+}};
+
+/** HASH_GUARDED conditions: [HASH256(32)] — raw SHA256 hash commitment */
+inline constexpr ImplicitFieldLayout HASH_GUARDED_CONDITIONS = {1, {
     {RungDataType::HASH256, 32},
 }};
 
@@ -1039,6 +1056,14 @@ inline constexpr ImplicitFieldLayout ACCUMULATOR_CONDITIONS = {1, {
     {RungDataType::HASH256, 32},
 }};
 
+/** OUTPUT_CHECK conditions: [NUMERIC(output_index), NUMERIC(min_sats), NUMERIC(max_sats), HASH256(script_hash)] */
+inline constexpr ImplicitFieldLayout OUTPUT_CHECK_CONDITIONS = {4, {
+    {RungDataType::NUMERIC, 0},
+    {RungDataType::NUMERIC, 0},
+    {RungDataType::NUMERIC, 0},
+    {RungDataType::HASH256, 32},
+}};
+
 // -- Previously variable-length blocks, now capped --
 
 // RECURSE_MODIFIED/RECURSE_DECAY: variable field count (2+4*N mutations).
@@ -1073,6 +1098,11 @@ inline constexpr ImplicitFieldLayout CSV_WITNESS = CSV_CONDITIONS;
 inline constexpr ImplicitFieldLayout TAGGED_HASH_WITNESS = {3, {
     {RungDataType::HASH256, 32},
     {RungDataType::HASH256, 32},
+    {RungDataType::PREIMAGE, 0},
+}};
+
+/** HASH_GUARDED witness: [PREIMAGE(var)] — raw SHA256 preimage */
+inline constexpr ImplicitFieldLayout HASH_GUARDED_WITNESS = {1, {
     {RungDataType::PREIMAGE, 0},
 }};
 
@@ -1127,6 +1157,7 @@ inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t 
         case RungBlockType::CLTV_TIME:        return CLTV_TIME_CONDITIONS;
         // HASH_PREIMAGE/HASH160_PREIMAGE: deprecated (removed from GetImplicitLayout)
         case RungBlockType::TAGGED_HASH:      return TAGGED_HASH_CONDITIONS;
+        case RungBlockType::HASH_GUARDED:     return HASH_GUARDED_CONDITIONS;
         case RungBlockType::CTV:              return CTV_CONDITIONS;
         case RungBlockType::AMOUNT_LOCK:      return AMOUNT_LOCK_CONDITIONS;
         case RungBlockType::COSIGN:           return COSIGN_CONDITIONS;
@@ -1177,6 +1208,7 @@ inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t 
         case RungBlockType::OUTPUT_COUNT:     return OUTPUT_COUNT_CONDITIONS;
         case RungBlockType::RELATIVE_VALUE:   return RELATIVE_VALUE_CONDITIONS;
         case RungBlockType::ACCUMULATOR:      return ACCUMULATOR_CONDITIONS;
+        case RungBlockType::OUTPUT_CHECK:     return OUTPUT_CHECK_CONDITIONS;
         case RungBlockType::COMPARE:          return COMPARE_CONDITIONS;
         // Legacy family
         case RungBlockType::P2PK_LEGACY:      return SIG_CONDITIONS;
@@ -1199,6 +1231,7 @@ inline const ImplicitFieldLayout& GetImplicitLayout(RungBlockType type, uint8_t 
         case RungBlockType::CLTV_TIME:        return CSV_WITNESS;
         // HASH_PREIMAGE/HASH160_PREIMAGE: deprecated (removed from GetImplicitLayout)
         case RungBlockType::TAGGED_HASH:      return TAGGED_HASH_WITNESS;
+        case RungBlockType::HASH_GUARDED:     return HASH_GUARDED_WITNESS;
         case RungBlockType::CTV:              return CTV_WITNESS;
         case RungBlockType::COSIGN:           return COSIGN_WITNESS;
         case RungBlockType::TIMELOCKED_SIG:   return TIMELOCKED_SIG_WITNESS;
@@ -1226,6 +1259,107 @@ inline bool MatchesImplicitLayout(const RungBlock& block, const ImplicitFieldLay
         if (block.fields[i].type != layout.fields[i].type) return false;
     }
     return true;
+}
+
+// ============================================================================
+// Block Descriptor Table (single source of truth for all block type metadata)
+// ============================================================================
+
+/** Compile-time descriptor for a block type. */
+struct BlockDescriptor {
+    RungBlockType type;
+    const char* name;
+    bool known;
+    bool invertible;
+    bool key_consuming;
+    uint8_t pubkey_count;  //!< Fixed pubkey count; 255 = variable (count PUBKEY fields)
+    const ImplicitFieldLayout* conditions_layout;
+    const ImplicitFieldLayout* witness_layout;
+    bool conditions_only;  //!< Has conditions layout but no witness layout
+};
+
+/** Lookup a block descriptor by type. Returns nullptr if not found. */
+inline const BlockDescriptor* LookupBlockDescriptor(RungBlockType type)
+{
+    // Static table of all block descriptors
+    static const BlockDescriptor BLOCK_DESCRIPTORS[] = {
+        // Signature family
+        {RungBlockType::SIG, "SIG", true, false, true, 1, &SIG_CONDITIONS, &SIG_WITNESS, false},
+        {RungBlockType::MULTISIG, "MULTISIG", true, false, true, 255, &MULTISIG_CONDITIONS, nullptr, true},
+        {RungBlockType::ADAPTOR_SIG, "ADAPTOR_SIG", true, false, true, 2, nullptr, nullptr, false},
+        {RungBlockType::MUSIG_THRESHOLD, "MUSIG_THRESHOLD", true, false, true, 1, &MUSIG_THRESHOLD_CONDITIONS, &MUSIG_THRESHOLD_WITNESS, false},
+        {RungBlockType::KEY_REF_SIG, "KEY_REF_SIG", true, false, true, 0, &KEY_REF_SIG_CONDITIONS, nullptr, true},
+        // Timelock family
+        {RungBlockType::CSV, "CSV", true, true, false, 0, &CSV_CONDITIONS, &CSV_WITNESS, false},
+        {RungBlockType::CSV_TIME, "CSV_TIME", true, true, false, 0, &CSV_TIME_CONDITIONS, &CSV_WITNESS, false},
+        {RungBlockType::CLTV, "CLTV", true, true, false, 0, &CLTV_CONDITIONS, &CSV_WITNESS, false},
+        {RungBlockType::CLTV_TIME, "CLTV_TIME", true, true, false, 0, &CLTV_TIME_CONDITIONS, &CSV_WITNESS, false},
+        // Hash family
+        {RungBlockType::TAGGED_HASH, "TAGGED_HASH", true, true, false, 0, &TAGGED_HASH_CONDITIONS, &TAGGED_HASH_WITNESS, false},
+        {RungBlockType::HASH_GUARDED, "HASH_GUARDED", true, false, false, 0, &HASH_GUARDED_CONDITIONS, &HASH_GUARDED_WITNESS, false},
+        // Covenant family
+        {RungBlockType::CTV, "CTV", true, true, false, 0, &CTV_CONDITIONS, &CTV_WITNESS, true},
+        {RungBlockType::VAULT_LOCK, "VAULT_LOCK", true, true, true, 2, &VAULT_LOCK_CONDITIONS, nullptr, true},
+        {RungBlockType::AMOUNT_LOCK, "AMOUNT_LOCK", true, true, false, 0, &AMOUNT_LOCK_CONDITIONS, nullptr, true},
+        // Recursion family
+        {RungBlockType::RECURSE_SAME, "RECURSE_SAME", true, true, false, 0, &RECURSE_SAME_CONDITIONS, nullptr, true},
+        {RungBlockType::RECURSE_MODIFIED, "RECURSE_MODIFIED", true, true, false, 0, nullptr, nullptr, false},
+        {RungBlockType::RECURSE_UNTIL, "RECURSE_UNTIL", true, true, false, 0, &RECURSE_UNTIL_CONDITIONS, nullptr, true},
+        {RungBlockType::RECURSE_COUNT, "RECURSE_COUNT", true, true, false, 0, &RECURSE_COUNT_CONDITIONS, nullptr, true},
+        {RungBlockType::RECURSE_SPLIT, "RECURSE_SPLIT", true, true, false, 0, &RECURSE_SPLIT_CONDITIONS, nullptr, true},
+        {RungBlockType::RECURSE_DECAY, "RECURSE_DECAY", true, true, false, 0, nullptr, nullptr, false},
+        // Anchor family
+        {RungBlockType::ANCHOR, "ANCHOR", true, true, false, 0, &ANCHOR_CONDITIONS, nullptr, true},
+        {RungBlockType::ANCHOR_CHANNEL, "ANCHOR_CHANNEL", true, true, true, 2, &ANCHOR_CHANNEL_CONDITIONS, nullptr, true},
+        {RungBlockType::ANCHOR_POOL, "ANCHOR_POOL", true, true, false, 0, &ANCHOR_POOL_CONDITIONS, nullptr, true},
+        {RungBlockType::ANCHOR_RESERVE, "ANCHOR_RESERVE", true, true, false, 0, &ANCHOR_RESERVE_CONDITIONS, nullptr, true},
+        {RungBlockType::ANCHOR_SEAL, "ANCHOR_SEAL", true, true, false, 0, &ANCHOR_SEAL_CONDITIONS, nullptr, true},
+        {RungBlockType::ANCHOR_ORACLE, "ANCHOR_ORACLE", true, true, true, 1, &ANCHOR_ORACLE_CONDITIONS, nullptr, true},
+        {RungBlockType::DATA_RETURN, "DATA_RETURN", true, true, false, 0, &DATA_RETURN_CONDITIONS, nullptr, true},
+        // PLC family
+        {RungBlockType::HYSTERESIS_FEE, "HYSTERESIS_FEE", true, true, false, 0, &HYSTERESIS_FEE_CONDITIONS, nullptr, true},
+        {RungBlockType::HYSTERESIS_VALUE, "HYSTERESIS_VALUE", true, true, false, 0, &HYSTERESIS_VALUE_CONDITIONS, nullptr, true},
+        {RungBlockType::TIMER_CONTINUOUS, "TIMER_CONTINUOUS", true, true, false, 0, &TIMER_CONTINUOUS_CONDITIONS, nullptr, true},
+        {RungBlockType::TIMER_OFF_DELAY, "TIMER_OFF_DELAY", true, true, false, 0, &TIMER_OFF_DELAY_CONDITIONS, nullptr, true},
+        {RungBlockType::LATCH_SET, "LATCH_SET", true, true, true, 1, &LATCH_SET_CONDITIONS, nullptr, true},
+        {RungBlockType::LATCH_RESET, "LATCH_RESET", true, true, true, 1, &LATCH_RESET_CONDITIONS, nullptr, true},
+        {RungBlockType::COUNTER_DOWN, "COUNTER_DOWN", true, true, true, 1, &COUNTER_DOWN_CONDITIONS, nullptr, true},
+        {RungBlockType::COUNTER_PRESET, "COUNTER_PRESET", true, true, false, 0, &COUNTER_PRESET_CONDITIONS, nullptr, true},
+        {RungBlockType::COUNTER_UP, "COUNTER_UP", true, true, true, 1, &COUNTER_UP_CONDITIONS, nullptr, true},
+        {RungBlockType::COMPARE, "COMPARE", true, true, false, 0, &COMPARE_CONDITIONS, nullptr, true},
+        {RungBlockType::SEQUENCER, "SEQUENCER", true, true, false, 0, &SEQUENCER_CONDITIONS, nullptr, true},
+        {RungBlockType::ONE_SHOT, "ONE_SHOT", true, true, false, 0, &ONE_SHOT_CONDITIONS, nullptr, true},
+        {RungBlockType::RATE_LIMIT, "RATE_LIMIT", true, true, false, 0, &RATE_LIMIT_CONDITIONS, nullptr, true},
+        {RungBlockType::COSIGN, "COSIGN", true, false, true, 0, &COSIGN_CONDITIONS, &COSIGN_WITNESS, false},
+        // Compound family
+        {RungBlockType::TIMELOCKED_SIG, "TIMELOCKED_SIG", true, false, true, 1, &TIMELOCKED_SIG_CONDITIONS, &TIMELOCKED_SIG_WITNESS, false},
+        {RungBlockType::HTLC, "HTLC", true, false, true, 2, &HTLC_CONDITIONS, &HTLC_WITNESS, false},
+        {RungBlockType::HASH_SIG, "HASH_SIG", true, false, true, 1, &HASH_SIG_CONDITIONS, &HASH_SIG_WITNESS, false},
+        {RungBlockType::PTLC, "PTLC", true, false, true, 2, &PTLC_CONDITIONS, nullptr, true},
+        {RungBlockType::CLTV_SIG, "CLTV_SIG", true, false, true, 1, &CLTV_SIG_CONDITIONS, &CLTV_SIG_WITNESS, false},
+        {RungBlockType::TIMELOCKED_MULTISIG, "TIMELOCKED_MULTISIG", true, false, true, 255, &TIMELOCKED_MULTISIG_CONDITIONS, nullptr, true},
+        // Governance family
+        {RungBlockType::EPOCH_GATE, "EPOCH_GATE", true, false, false, 0, &EPOCH_GATE_CONDITIONS, nullptr, true},
+        {RungBlockType::WEIGHT_LIMIT, "WEIGHT_LIMIT", true, true, false, 0, &WEIGHT_LIMIT_CONDITIONS, nullptr, true},
+        {RungBlockType::INPUT_COUNT, "INPUT_COUNT", true, true, false, 0, &INPUT_COUNT_CONDITIONS, nullptr, true},
+        {RungBlockType::OUTPUT_COUNT, "OUTPUT_COUNT", true, true, false, 0, &OUTPUT_COUNT_CONDITIONS, nullptr, true},
+        {RungBlockType::RELATIVE_VALUE, "RELATIVE_VALUE", true, false, false, 0, &RELATIVE_VALUE_CONDITIONS, nullptr, true},
+        {RungBlockType::ACCUMULATOR, "ACCUMULATOR", true, true, false, 0, &ACCUMULATOR_CONDITIONS, nullptr, true},
+        {RungBlockType::OUTPUT_CHECK, "OUTPUT_CHECK", true, false, false, 0, &OUTPUT_CHECK_CONDITIONS, nullptr, true},
+        // Legacy family
+        {RungBlockType::P2PK_LEGACY, "P2PK_LEGACY", true, false, true, 1, &SIG_CONDITIONS, &SIG_WITNESS, false},
+        {RungBlockType::P2PKH_LEGACY, "P2PKH_LEGACY", true, false, true, 0, &P2PKH_LEGACY_CONDITIONS, &SIG_WITNESS, false},
+        {RungBlockType::P2SH_LEGACY, "P2SH_LEGACY", true, true, false, 0, &P2PKH_LEGACY_CONDITIONS, nullptr, true},
+        {RungBlockType::P2WPKH_LEGACY, "P2WPKH_LEGACY", true, false, true, 0, &P2PKH_LEGACY_CONDITIONS, &SIG_WITNESS, false},
+        {RungBlockType::P2WSH_LEGACY, "P2WSH_LEGACY", true, true, false, 0, &P2WSH_LEGACY_CONDITIONS, nullptr, true},
+        {RungBlockType::P2TR_LEGACY, "P2TR_LEGACY", true, false, true, 1, &SIG_CONDITIONS, &SIG_WITNESS, false},
+        {RungBlockType::P2TR_SCRIPT_LEGACY, "P2TR_SCRIPT_LEGACY", true, false, true, 1, &P2TR_SCRIPT_LEGACY_CONDITIONS, nullptr, true},
+    };
+    static const size_t N_DESCRIPTORS = sizeof(BLOCK_DESCRIPTORS) / sizeof(BLOCK_DESCRIPTORS[0]);
+    for (size_t i = 0; i < N_DESCRIPTORS; ++i) {
+        if (BLOCK_DESCRIPTORS[i].type == type) return &BLOCK_DESCRIPTORS[i];
+    }
+    return nullptr;
 }
 
 /** Runtime check that every block type with a CONDITIONS implicit layout also
@@ -1262,6 +1396,7 @@ inline bool VerifyImplicitLayoutPairing()
         RungBlockType::OUTPUT_COUNT, RungBlockType::RELATIVE_VALUE,
         RungBlockType::ACCUMULATOR,
         RungBlockType::ANCHOR, RungBlockType::COMPARE,
+        RungBlockType::OUTPUT_CHECK,
     };
 
     for (uint32_t code = 0; code <= 0x0FFF; ++code) {

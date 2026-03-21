@@ -10,7 +10,7 @@ Created: 2026-03-06
 
 ## Abstract
 
-Ladder Script introduces transaction version 4 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organised as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type with enforced size constraints. No arbitrary data pushes are possible. The system provides 59 block types across 10 families covering signatures, timelocks, hashes, covenants, anchors, recursion, programmable logic controllers, compound patterns, governance constraints, and legacy Bitcoin wrappers. All block types activate as a single deployment.
+Ladder Script introduces transaction version 4 (`RUNG_TX`) with typed, structured spending conditions that replace opcode-based Script for participating outputs. Conditions are organised as named function blocks within rungs, evaluated with AND-within-rung, OR-across-rungs, first-match semantics. Every byte in a Ladder Script witness belongs to a declared data type with enforced size constraints. No arbitrary data pushes are possible. The system provides 60 block types across 10 families covering signatures, timelocks, hashes, covenants, anchors, recursion, programmable logic controllers, compound patterns, governance constraints, and legacy Bitcoin wrappers. All block types activate as a single deployment.
 
 ## Motivation
 
@@ -47,9 +47,9 @@ A Ladder Script transaction is identified by `nVersion = 4` (constant `CTransact
 2. **MLSC: Merkelised Ladder Script Conditions (`0xC2`).** A 32-byte Merkle root with an optional DATA_RETURN payload:
    ```
    0xC2 || conditions_root                    (33 bytes, standard)
-   0xC2 || conditions_root || data            (34-65 bytes, DATA_RETURN)
+   0xC2 || conditions_root || data            (34-73 bytes, DATA_RETURN)
    ```
-   This is the required output format for mainnet. If the scriptPubKey is longer than 33 bytes, the bytes after the root are a DATA_RETURN payload (max 32 bytes). Outputs with a DATA_RETURN payload must be zero-value. Max one DATA_RETURN output per transaction. The data is visible on-chain in the scriptPubKey and sits on the conditions side at 4 WU per byte.
+   This is the required output format for mainnet. If the scriptPubKey is longer than 33 bytes, the bytes after the root are a DATA_RETURN payload (max 40 bytes). Outputs with a DATA_RETURN payload must be zero-value. Max one DATA_RETURN output per transaction. The data is visible on-chain in the scriptPubKey and sits on the conditions side at 4 WU per byte.
 
 MLSC outputs store no condition data in the UTXO set. All conditions are revealed at spend time in the witness. This eliminates data embedding via fake conditions (unspendable outputs are never spent), reduces the UTXO footprint to 40 bytes per entry regardless of script complexity, and provides MAST-style privacy where unused spending paths are never revealed.
 
@@ -63,7 +63,7 @@ The first element of the segregated witness stack for each v4 input is a seriali
 
 **Evaluation entry point:**
 
-The function `VerifyRungTx` is called for each input of a v4 transaction. For `0xC1` inputs, it deserializes conditions from the spent output's `scriptPubKey` and the witness from the spending input. For `0xC2` inputs, it deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 59 block evaluators are identical for both output formats.
+The function `VerifyRungTx` is called for each input of a v4 transaction. For `0xC1` inputs, it deserializes conditions from the spent output's `scriptPubKey` and the witness from the spending input. For `0xC2` inputs, it deserializes the revealed conditions and Merkle proof from the witness, verifies the proof against the UTXO root, then evaluates the ladder. All 60 block evaluators are identical for both output formats.
 
 ### Wire Format
 
@@ -82,8 +82,8 @@ LADDER WITNESS / RUNG CONDITIONS:
 [coil_type: uint8_t]                      RungCoilType enum
 [attestation: uint8_t]                    RungAttestationMode enum
 [scheme: uint8_t]                         RungScheme enum
-[address_len: varint]                     length of destination address (0 = none)
-[address: bytes]                          raw scriptPubKey bytes
+[address_hash_len: varint]                length of address hash (0 = none, 32 = SHA256)
+[address_hash: bytes]                     SHA256(destination scriptPubKey). Fixed 32 bytes when present. Raw address never on-chain.
 [n_coil_conditions: varint]               number of coil condition rungs (0 = none)
   for each coil condition rung:
     [n_blocks: varint]
@@ -114,7 +114,7 @@ Each block begins with a single byte that determines the encoding mode:
 | `0x80` | Escape | Followed by `type(uint16_t LE)`; inverted = false |
 | `0x81` | Escape + inverted | Followed by `type(uint16_t LE)`; inverted = true |
 
-The micro-header lookup table maps 128 slot indices to block type values. All 59 active block types have assigned slots. Slots `0x07` and `0x08` are reserved (formerly HASH_PREIMAGE and HASH160_PREIMAGE, now deprecated). Deprecated slots are rejected during deserialization.
+The micro-header lookup table maps 128 slot indices to block type values. All 60 active block types have assigned slots. Slots `0x07` and `0x08` are reserved (formerly HASH_PREIMAGE and HASH160_PREIMAGE, now deprecated). Deprecated slots are rejected during deserialization.
 
 | Slot | Block Type | Slot | Block Type | Slot | Block Type |
 |------|------------|------|------------|------|------------|
@@ -137,10 +137,10 @@ The micro-header lookup table maps 128 slot indices to block type values. All 59
 | 0x10 | RECURSE_COUNT | 0x25 | RATE_LIMIT | 0x3A | P2TR_LEGACY |
 | 0x11 | RECURSE_SPLIT | 0x26 | COSIGN | 0x3B | P2TR_SCRIPT_LEGACY |
 | 0x12 | RECURSE_DECAY | 0x27 | TIMELOCKED_SIG | 0x3C | DATA_RETURN |
-| 0x13 | ANCHOR | 0x28 | HTLC | | |
+| 0x13 | ANCHOR | 0x28 | HTLC | 0x3D | HASH_GUARDED |
 | 0x14 | ANCHOR_CHANNEL | 0x29 | HASH_SIG | | |
 
-Slots `0x3D`-`0x7F` are reserved for future block types. Unknown micro-header slots are rejected during deserialization.
+Slots `0x3E`-`0x7F` are reserved for future block types. Unknown micro-header slots are rejected during deserialization.
 
 A micro-header is used when all three conditions are met:
 1. The block type has an assigned micro-header slot.
@@ -176,7 +176,7 @@ data_type bytes are omitted (types known from layout)
 | NUMERIC | `CompactSize(value)`. The numeric value itself, not a length prefix. Values 0-252 use 1 byte; 253-65535 use 3 bytes; 65536-2^32-1 use 5 bytes. After deserialization, always stored as 4-byte LE internally. |
 | Fixed-size (HASH256, HASH160, SPEND_INDEX, SCHEME) | Implicit: raw data only (size known from layout). Explicit: `CompactSize(len) + data`. |
 | Variable-size (PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY) | `CompactSize(len) + data` (always length-prefixed). |
-| DATA | `CompactSize(len) + data` (always length-prefixed, max 32 bytes). |
+| DATA | `CompactSize(len) + data` (always length-prefixed, max 40 bytes). |
 
 #### Implicit Field Layouts
 
@@ -194,6 +194,7 @@ Public keys are not stored in condition fields. They are folded into the Merkle 
 | CLTV | NUMERIC(varint) |
 | CLTV_TIME | NUMERIC(varint) |
 | TAGGED_HASH | HASH256(fixed 32) + HASH256(fixed 32) |
+| HASH_GUARDED | HASH256(fixed 32) |
 | CTV | HASH256(fixed 32) |
 | AMOUNT_LOCK | NUMERIC(varint) + NUMERIC(varint) |
 | COSIGN | HASH256(fixed 32) |
@@ -204,7 +205,7 @@ Public keys are not stored in condition fields. They are folded into the Merkle 
 | MUSIG_THRESHOLD | NUMERIC(varint) + NUMERIC(varint) |
 | EPOCH_GATE | NUMERIC(varint) + NUMERIC(varint) |
 | ANCHOR_SEAL | HASH256(fixed 32) + HASH256(fixed 32) |
-| DATA_RETURN | DATA(variable, max 80) |
+| DATA_RETURN | DATA(variable, max 40) |
 | P2PK_LEGACY | SCHEME(fixed 1) |
 | P2PKH_LEGACY | HASH160(fixed 20) |
 | P2SH_LEGACY | HASH160(fixed 20) |
@@ -223,15 +224,23 @@ Public keys are not stored in condition fields. They are folded into the Merkle 
 | CLTV | NUMERIC(varint) |
 | CLTV_TIME | NUMERIC(varint) |
 | TAGGED_HASH | HASH256(fixed 32) + HASH256(fixed 32) + PREIMAGE(variable) |
+| HASH_GUARDED | PREIMAGE(variable) |
 | CTV | HASH256(fixed 32) |
 | COSIGN | HASH256(fixed 32) |
 | TIMELOCKED_SIG | PUBKEY(variable) + SIGNATURE(variable) + NUMERIC(varint) |
-| HTLC | PUBKEY(variable) + SIGNATURE(variable) + PREIMAGE(variable) + NUMERIC(varint) |
+| HTLC | PUBKEY(variable) + SIGNATURE(variable) + PUBKEY(variable) + PREIMAGE(variable) + NUMERIC(varint) |
 | HASH_SIG | PUBKEY(variable) + SIGNATURE(variable) + PREIMAGE(variable) |
 | CLTV_SIG | PUBKEY(variable) + SIGNATURE(variable) + NUMERIC(varint) |
 | MUSIG_THRESHOLD | PUBKEY(variable) + SIGNATURE(variable) |
+| CSV_TIME | NUMERIC(varint) |
+| CLTV | NUMERIC(varint) |
+| CLTV_TIME | NUMERIC(varint) |
+| P2PK_LEGACY | PUBKEY(variable) + SIGNATURE(variable) |
+| P2PKH_LEGACY | PUBKEY(variable) + SIGNATURE(variable) |
+| P2WPKH_LEGACY | PUBKEY(variable) + SIGNATURE(variable) |
+| P2TR_LEGACY | PUBKEY(variable) + SIGNATURE(variable) |
 
-Block types with variable field counts (e.g., MULTISIG with N pubkeys) have no implicit layout. They use micro-headers for the header byte saving but encode fields explicitly.
+Most block types have implicit layouts. Block types with variable witness field counts (e.g., MULTISIG with N pubkeys) use implicit layouts for conditions (MULTISIG conditions: NUMERIC threshold only, since pubkeys are in the Merkle leaf) but encode witness fields explicitly. The tables above show the most commonly referenced layouts; the full set of 50+ implicit layouts is defined in `types.h`.
 
 #### Template Inheritance
 
@@ -302,8 +311,8 @@ Every field in a Ladder Script witness or conditions structure has one of the fo
 | `0x07` | SPEND_INDEX | 4 | 4 | Both | Index reference (uint32 LE) for aggregate attestation. |
 | `0x08` | NUMERIC | 1 | 4 | Both | Unsigned 32-bit integer. Encoded on wire as CompactSize(value); stored internally as 4-byte LE. |
 | `0x09` | SCHEME | 1 | 1 | Both | Signature scheme selector byte. |
-| `0x0A` | SCRIPT_BODY | 1 | 32 | Witness only | Serialised inner conditions (P2SH/P2WSH/P2TR_SCRIPT inner scripts). 80-byte cap limits data embedding (legacy blocks on deprecation path). |
-| `0x0B` | DATA | 1 | 32 | Both | Opaque data payload (DATA_RETURN block only). Maximum 32 bytes. |
+| `0x0A` | SCRIPT_BODY | 1 | 80 | Witness only | Serialised inner conditions (P2SH/P2WSH/P2TR_SCRIPT inner scripts). 80-byte cap limits data embedding (legacy blocks on deprecation path). |
+| `0x0B` | DATA | 1 | 40 | Both | Opaque data payload (DATA_RETURN block only). Maximum 40 bytes. |
 
 The SIGNATURE maximum of 50,000 bytes accommodates all post-quantum signature schemes including SPHINCS_SHA (~7,856 bytes) and Dilithium3 (3,293 bytes) with headroom. The PUBKEY maximum of 2,048 bytes accommodates FALCON-1024 public keys (1,793 bytes). The SCRIPT_BODY type supports inner conditions in legacy wrapping blocks, capped at 80 bytes. Legacy blocks are on the deprecation path.
 
@@ -336,11 +345,12 @@ Block types are organised into numbered families. Each block type evaluates a si
 
 | Code | Name | Fields | Description |
 |------|------|--------|-------------|
-| `0x0201` | ~~HASH_PREIMAGE~~ | | **Deprecated.** Rejected at deserialization. Use HTLC or HASH_SIG compound blocks instead. |
-| `0x0202` | ~~HASH160_PREIMAGE~~ | | **Deprecated.** Rejected at deserialization. Use HTLC or HASH_SIG compound blocks instead. |
+| `0x0201` | ~~HASH_PREIMAGE~~ | | **Deprecated.** Rejected at deserialization. Use HTLC, HASH_SIG, or HASH_GUARDED instead. |
+| `0x0202` | ~~HASH160_PREIMAGE~~ | | **Deprecated.** Rejected at deserialization. Use HTLC, HASH_SIG, or HASH_GUARDED instead. |
 | `0x0203` | TAGGED_HASH | HASH256(tag) + HASH256(expected) + PREIMAGE | BIP-340 tagged hash verification. SATISFIED when TaggedHash(tag, preimage) equals the expected hash. |
+| `0x0204` | HASH_GUARDED | HASH256(committed_hash) + PREIMAGE | Raw SHA-256 preimage verification. SATISFIED when SHA256(preimage) equals the committed hash. Non-invertible, fail-closed. Safe replacement for deprecated HASH_PREIMAGE. |
 
-HASH_PREIMAGE and HASH160_PREIMAGE are deprecated as part of the anti-spam hardening (see Anti-Spam Hardening). Standalone hash preimage blocks with invertible, writable hash fields created a data embedding surface. All legitimate hash-lock use cases are covered by the compound blocks HTLC (hash + signature + timelock) and HASH_SIG (hash + signature), which always require a signature and therefore cannot be satisfied with arbitrary data.
+HASH_PREIMAGE and HASH160_PREIMAGE are deprecated as part of the anti-spam hardening (see Anti-Spam Hardening). Standalone hash preimage blocks with invertible, writable hash fields created a data embedding surface. HASH_GUARDED provides a safe, non-invertible alternative for raw SHA-256 preimage verification. All hash-lock use cases are also covered by the compound blocks HTLC (hash + signature + timelock) and HASH_SIG (hash + signature), which always require a signature and therefore cannot be satisfied with arbitrary data.
 
 #### Covenant Family (0x0300-0x03FF)
 
@@ -371,7 +381,7 @@ HASH_PREIMAGE and HASH160_PREIMAGE are deprecated as part of the anti-spam harde
 | `0x0504` | ANCHOR_RESERVE | NUMERIC(threshold_n) + NUMERIC(group_m) + HASH256(group_id) | Reserve anchor with N-of-M guardian set. Requires N <= M and a group identifier hash. |
 | `0x0505` | ANCHOR_SEAL | HASH256(asset_id) + HASH256(state_transition) | Seal anchor. Permanently binds a UTXO to an asset identifier and state transition commitment. |
 | `0x0506` | ANCHOR_ORACLE | PUBKEY(oracle) + NUMERIC(quorum) | Oracle anchor. Requires an oracle public key and a non-zero quorum count. |
-| `0x0507` | DATA_RETURN | DATA(payload) | Unspendable data output (typed OP_RETURN replacement). Max 32 bytes. Output must be zero-value. Max one per transaction. The data payload is appended to the MLSC scriptPubKey after the 32-byte root (`0xC2 || root || data`), making it visible on-chain at 4 WU per byte. |
+| `0x0507` | DATA_RETURN | DATA(payload) | Unspendable data output (typed OP_RETURN replacement). Max 40 bytes. Output must be zero-value. Max one per transaction. The data payload is appended to the MLSC scriptPubKey after the 32-byte root (`0xC2 || root || data`), making it visible on-chain at 4 WU per byte. |
 
 #### PLC Family (0x0600-0x06FF)
 
@@ -401,7 +411,7 @@ The Compound family combines multiple conditions into single blocks for wire eff
 | Code | Name | Condition Fields | Witness Fields | Description |
 |------|------|-----------------|----------------|-------------|
 | `0x0701` | TIMELOCKED_SIG | SCHEME + NUMERIC(sequence) | PUBKEY + SIGNATURE + NUMERIC | Signature with CSV relative timelock in one block. Equivalent to SIG + CSV on the same rung. Pubkey bound via Merkle leaf. |
-| `0x0702` | HTLC | HASH256(payment_hash) + NUMERIC(timeout) | PUBKEY + SIGNATURE + PREIMAGE + NUMERIC | Hash Time-Locked Contract. SATISFIED when the PREIMAGE hashes to payment_hash AND the signature verifies AND the timelock has not expired. Pubkeys for both parties bound via Merkle leaf. |
+| `0x0702` | HTLC | HASH256(payment_hash) + NUMERIC(timeout) | PUBKEY + SIGNATURE + PUBKEY + PREIMAGE + NUMERIC | Hash Time-Locked Contract. SATISFIED when the PREIMAGE hashes to payment_hash AND the signature verifies AND the timelock has not expired. Two pubkeys (claim and refund) bound via Merkle leaf. 5-field witness layout. |
 | `0x0703` | HASH_SIG | HASH256(hash) + SCHEME | PUBKEY + SIGNATURE + PREIMAGE | Hash preimage combined with signature. SATISFIED when the PREIMAGE hashes to hash AND the signature verifies. Pubkey bound via Merkle leaf. |
 | `0x0704` | PTLC | (explicit) | PUBKEY + SIGNATURE | Point Time-Locked Contract. Adaptor signature with CSV relative timelock for point-locked payments. |
 | `0x0705` | CLTV_SIG | SCHEME + NUMERIC(locktime) | PUBKEY + SIGNATURE + NUMERIC | Signature with CLTV absolute timelock in one block. Pubkey bound via Merkle leaf. |
@@ -418,7 +428,7 @@ The Governance family provides transaction-level constraints that restrict how a
 | `0x0803` | INPUT_COUNT | NUMERIC(min_inputs) + NUMERIC(max_inputs) | Input count bounds. SATISFIED when the spending transaction has between min_inputs and max_inputs inputs (inclusive). |
 | `0x0804` | OUTPUT_COUNT | NUMERIC(min_outputs) + NUMERIC(max_outputs) | Output count bounds. SATISFIED when the spending transaction has between min_outputs and max_outputs outputs (inclusive). |
 | `0x0805` | RELATIVE_VALUE | NUMERIC(numerator) + NUMERIC(denominator) | Output-to-input value ratio. SATISFIED when the ratio of the output value to the input value is at least numerator/denominator. Ensures a minimum proportion of value is preserved. |
-| `0x0806` | ACCUMULATOR | HASH256(merkle_root) + HASH256(leaf). Witness: PREIMAGE (Merkle proof) | Merkle set membership proof. SATISFIED when the witness Merkle proof demonstrates that leaf is a member of the set committed to by merkle_root. Enables whitelist/blacklist patterns. |
+| `0x0806` | ACCUMULATOR | HASH256(merkle_root) + HASH256(leaf). Witness: PREIMAGE (Merkle proof). Max 10 HASH256 fields (root + 8 proof nodes + leaf). | Merkle set membership proof. SATISFIED when the witness Merkle proof demonstrates that leaf is a member of the set committed to by merkle_root. Enables whitelist/blacklist patterns. |
 
 #### Legacy Family (0x0900-0x09FF)
 
@@ -460,14 +470,30 @@ Where `pk1...pkN` are the raw public keys consumed by blocks in the rung, extrac
 
 | Block Type | Pubkeys |
 |------------|---------|
-| SIG, TIMELOCKED_SIG, HASH_SIG, CLTV_SIG, ADAPTOR_SIG, KEY_REF_SIG, COSIGN, MUSIG_THRESHOLD, P2PK_LEGACY, P2TR_LEGACY | 1 |
-| HTLC | 2 |
-| MULTISIG, TIMELOCKED_MULTISIG | N (read from NUMERIC field) |
-| P2PKH_LEGACY, P2WPKH_LEGACY | 1 (uses HASH160, still counted for leaf) |
-| P2TR_SCRIPT_LEGACY | 1 (internal key) |
-| All non-key blocks | 0 |
+| SIG, TIMELOCKED_SIG, HASH_SIG, CLTV_SIG, MUSIG_THRESHOLD, P2PK_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY | 1 |
+| ANCHOR_ORACLE, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_UP | 1 (PLC/anchor blocks with single key) |
+| HTLC, ADAPTOR_SIG, PTLC, ANCHOR_CHANNEL, VAULT_LOCK | 2 |
+| MULTISIG, TIMELOCKED_MULTISIG | N (count of PUBKEY fields) |
+| KEY_REF_SIG, COSIGN, P2PKH_LEGACY, P2WPKH_LEGACY | 0 (KEY_REF_SIG resolves key from relay; COSIGN has no key; P2PKH/P2WPKH use HASH160, key in witness only) |
+| All other non-key blocks | 0 |
 
 **Relay leaf computation** follows the same pattern for relay blocks containing key-consuming types.
+
+### Cross-Rung Mutation Targets (`revealed_mutation_targets`)
+
+When a RECURSE_MODIFIED or RECURSE_DECAY block targets a rung different from the one being exercised, the verifier needs the target rung's condition blocks to validate the mutation. The `revealed_mutation_targets` field in the MLSC proof provides these:
+
+```
+MLSC PROOF (extended):
+
+[...standard proof fields...]
+[n_mutation_targets: varint]              number of cross-rung mutation targets (0 = none)
+  for each target:
+    [rung_index: uint16_t LE]             index of the target rung in the original leaf array
+    [serialised_rung: bytes]              full condition blocks for the target rung
+```
+
+The verifier computes the leaf hash for each revealed mutation target and confirms it appears in the Merkle tree (via the proof hashes). This enables cross-rung mutation verification without revealing the entire ladder. Only the exercised rung and the mutation target rungs are disclosed.
 
 **Spend-time verification (MLSC):**
 
@@ -478,15 +504,40 @@ Where `pk1...pkN` are the raw public keys consumed by blocks in the rung, extrac
 
 The positional binding is critical: if pubkeys are provided in the wrong order, the leaf hash will not match, and the Merkle proof will fail. This means the pubkey-to-block assignment is consensus-enforced without storing pubkeys in conditions.
 
+### Leaf-Centric Covenant Verification (`MLSCVerifiedLeaves`)
+
+Covenant verification (RECURSE_SAME, RECURSE_MODIFIED, RECURSE_DECAY, etc.) for MLSC outputs uses a leaf-centric algorithm rather than full-conditions comparison. The `MLSCVerifiedLeaves` structure caches the verified leaf hashes from the Merkle proof:
+
+```cpp
+struct MLSCVerifiedLeaves {
+    uint256 conditions_root;          // The committed Merkle root
+    std::vector<uint256> leaf_hashes; // Verified leaf hashes (rung + relay + coil)
+    size_t n_rungs;                   // Number of rung leaves
+    size_t n_relays;                  // Number of relay leaves
+};
+```
+
+**Covenant algorithm (MLSC):**
+
+1. The evaluator verifies the exercised rung's Merkle proof, populating `MLSCVerifiedLeaves` with all verified leaf hashes.
+2. When a RECURSE_* block fires, it computes the expected output conditions root:
+   a. Copy the verified leaf hashes from the input.
+   b. For the mutated rung, recompute the leaf hash with the mutation applied.
+   c. For cross-rung mutations, use `revealed_mutation_targets` to obtain the target rung's blocks, apply the mutation, and recompute the leaf hash.
+   d. Rebuild the Merkle root from the modified leaf array.
+3. Compare the recomputed root against the spending transaction's output `scriptPubKey` root.
+
+This approach avoids deserializing the full input conditions for covenant verification. Only the exercised rung and any mutation targets are fully deserialized; all other rungs are represented by their opaque leaf hashes.
+
 ### Anti-Spam Hardening
 
 Three coordinated defenses close all practical data embedding surfaces in Ladder Script:
 
 **1. merkle_pub_key.** Public keys are folded into the Merkle leaf hash. There is no writable pubkey field in conditions. An attacker constructing a raw transaction cannot write arbitrary data into a PUBKEY_COMMIT field because the field does not exist. The only way to produce a valid Merkle proof is to provide the actual public keys that were committed at fund time.
 
-**2. Selective inversion.** Key-consuming blocks cannot be inverted. Without this restriction, an attacker could invert a SIG block with a garbage pubkey: the signature check fails, returning UNSATISFIED, which inversion flips to SATISFIED. The garbage pubkey data lands in the block witness permanently. The function `IsInvertibleBlockType()` is a fail-closed allowlist. New block types default to non-invertible. The 17 key-consuming block types (SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG, TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG, COSIGN, P2PK_LEGACY, P2PKH_LEGACY, P2WPKH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY) are all non-invertible. Non-key blocks (timelocks, covenants, anchors, recursion, PLC, governance, P2SH_LEGACY, P2WSH_LEGACY) remain invertible.
+**2. Selective inversion.** Key-consuming blocks cannot be inverted. Without this restriction, an attacker could invert a SIG block with a garbage pubkey: the signature check fails, returning UNSATISFIED, which inversion flips to SATISFIED. The garbage pubkey data lands in the block witness permanently. The function `IsInvertibleBlockType()` is a fail-closed allowlist. New block types default to non-invertible. The 24 key-consuming block types (SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG, TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG, COSIGN, P2PK_LEGACY, P2PKH_LEGACY, P2WPKH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY, ANCHOR_CHANNEL, ANCHOR_ORACLE, VAULT_LOCK, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_UP) are all non-invertible. Among non-key blocks, most are invertible (timelocks, covenants, most anchors, recursion, most PLC, ACCUMULATOR, P2SH_LEGACY, P2WSH_LEGACY). EPOCH_GATE and RELATIVE_VALUE are the only non-key blocks that are non-invertible. An inverted ACCUMULATOR enables blocklist patterns ("spend only if NOT in this set").
 
-**3. Hash lock deprecation.** HASH_PREIMAGE and HASH160_PREIMAGE are removed. These were invertible non-key blocks with writable hash fields. An inverted HASH_PREIMAGE with a garbage hash and arbitrary preimage data could land up to 32 bytes in the block. Removing standalone hash locks and requiring the compound blocks HTLC and HASH_SIG (which always require a signature) closes this vector entirely.
+**3. Hash lock deprecation.** HASH_PREIMAGE and HASH160_PREIMAGE are removed. These were invertible non-key blocks with writable hash fields. An inverted HASH_PREIMAGE with a garbage hash and arbitrary preimage data could land up to 32 bytes in the block. Removing standalone hash locks and requiring the compound blocks HTLC, HASH_SIG (which always require a signature), or HASH_GUARDED (which is non-invertible and fail-closed) closes this vector entirely.
 
 The combined effect is that every byte in a Ladder Script transaction must conform to its declared type. There is no field in any active block type where an attacker can write arbitrary data without also providing a valid cryptographic proof.
 
@@ -497,7 +548,7 @@ The coil determines the output semantics of a ladder-locked UTXO. It is serialis
 | Code | Name | Description |
 |------|------|-------------|
 | `0x01` | UNLOCK | Standard unlock. The UTXO can be spent to any destination. |
-| `0x02` | UNLOCK_TO | Unlock to a specific destination. The coil's `address` field contains the required destination `scriptPubKey`. The recipient must also satisfy any coil conditions. |
+| `0x02` | UNLOCK_TO | Unlock to a specific destination. The coil's `address_hash` field contains `SHA256(destination scriptPubKey)`. The raw address is never stored on-chain. The recipient must also satisfy any coil conditions. |
 | `0x03` | COVENANT | Covenant. Constrains the structure of the spending transaction via coil conditions. |
 
 ### Attestation Modes
@@ -553,12 +604,13 @@ Ladder Script uses a tagged hash `TaggedHash("LadderSighash")` for signature com
 
 ```
 epoch              = 0x00 (uint8)
-hash_type          = uint8 (SIGHASH_DEFAULT=0, ALL=1, NONE=2, SINGLE=3, ANYONECANPAY=0x80)
+hash_type          = uint8 (SIGHASH_DEFAULT=0, ALL=1, NONE=2, SINGLE=3,
+                           ANYPREVOUT=0x40, ANYPREVOUTANYSCRIPT=0xC0, ANYONECANPAY=0x80)
 tx_version         = int32
 tx_locktime        = uint32
 
 Unless ANYONECANPAY:
-prevouts_hash      = SHA256(all input prevouts)
+prevouts_hash      = SHA256(all input prevouts) — skipped if ANYPREVOUT
 amounts_hash       = SHA256(all spent output amounts)
 sequences_hash     = SHA256(all input sequences)
 
@@ -568,35 +620,39 @@ outputs_hash       = SHA256(all outputs)
 spend_type         = 0x00 (uint8, always 0 for ladder)
 
 Input-specific:
-  If ANYONECANPAY: prevout + spent_output + sequence
+  If ANYONECANPAY: prevout (skipped if ANYPREVOUT) + spent_output + sequence
   Else: input_index (uint32)
 
 If SIGHASH_SINGLE:
 output_hash        = SHA256(output at input_index)
 
-conditions_hash    = SHA256(serialised rung conditions from spent output)
+conditions_hash    = SHA256(serialised rung conditions from spent output) — skipped if ANYPREVOUTANYSCRIPT
 ```
 
 The `conditions_hash` commitment binds the signature to the specific locking conditions, preventing signature replay across different ladder-locked outputs even if they use the same key.
 
-Valid `hash_type` values: `0x00` (DEFAULT/ALL), `0x01` (ALL), `0x02` (NONE), `0x03` (SINGLE), `0x81` (ALL|ANYONECANPAY), `0x82` (NONE|ANYONECANPAY), `0x83` (SINGLE|ANYONECANPAY). All other values are rejected.
+Valid `hash_type` values: `0x00` (DEFAULT/ALL), `0x01` (ALL), `0x02` (NONE), `0x03` (SINGLE), `0x40`-`0x43` (ANYPREVOUT variants), `0x81` (ALL|ANYONECANPAY), `0x82` (NONE|ANYONECANPAY), `0x83` (SINGLE|ANYONECANPAY), `0xC0`-`0xC3` (ANYPREVOUTANYSCRIPT variants). All other values are rejected.
 
-### Policy Limits
+ANYPREVOUT (`0x40`): Skips the prevouts hash commitment, enabling LN-Symmetry/eltoo. Still commits to amounts, sequences, and conditions.
 
-The following limits are enforced at the policy (mempool) layer. Consensus enforcement uses the same limits unless noted.
+ANYPREVOUTANYSCRIPT (`0xC0`): Skips both prevouts and conditions commitments. Enables signatures rebindable across different scripts.
 
-| Limit | Value | Rationale |
-|-------|-------|-----------|
-| MAX_RUNGS | 8 | Maximum rungs per ladder witness. Prevents combinatorial explosion in evaluation. |
-| MAX_BLOCKS_PER_RUNG | 8 | Maximum blocks per rung. Limits AND-condition depth. |
-| MAX_FIELDS_PER_BLOCK | 16 | Maximum typed fields per block. |
-| MAX_LADDER_WITNESS_SIZE | 100,000 bytes | Maximum total serialised witness size. Accommodates post-quantum signatures with headroom for multi-block rungs. |
-| MAX_PREIMAGE_FIELDS_PER_WITNESS | 1 | Maximum PREIMAGE/SCRIPT_BODY fields per witness. Limits user-chosen data to ~32 bytes (1 x 32 bytes). |
-| MAX_RELAYS | 8 | Maximum relay definitions per ladder witness. |
-| MAX_REQUIRES | 8 | Maximum relay requirements (co-spend input indices) per rung or relay. |
-| MAX_RELAY_DEPTH | 4 | Maximum transitive relay chain depth. Prevents unbounded recursive relay evaluation. |
+### Consensus Limits
 
-Policy additionally restricts:
+All structural limits are enforced at the consensus layer. Policy (`IsStandardRungTx`) performs a thin deserialize-only check plus MLSC output validation via `ValidateRungOutputs`. There is no separate `IsStandardRungOutput` function — output validation is consensus.
+
+| Limit | Value | Layer | Rationale |
+|-------|-------|-------|-----------|
+| MAX_RUNGS | 16 | Consensus | Maximum rungs per ladder witness. 16 rungs provides sufficient path diversity for institutional custody with only 1 extra Merkle proof hash vs 8. |
+| MAX_BLOCKS_PER_RUNG | 8 | Consensus | Maximum blocks per rung. Limits AND-condition depth. |
+| MAX_FIELDS_PER_BLOCK | 16 | Consensus | Maximum typed fields per block. |
+| MAX_LADDER_WITNESS_SIZE | 100,000 bytes | Consensus | Maximum total serialised witness size. Accommodates post-quantum signatures with headroom for multi-block rungs. |
+| MAX_PREIMAGE_FIELDS_PER_WITNESS | 2 | Consensus | Maximum PREIMAGE/SCRIPT_BODY fields per witness. Limits user-chosen data to ~64 bytes (2 x 32 bytes). |
+| MAX_RELAYS | 8 | Consensus | Maximum relay definitions per ladder witness. |
+| MAX_REQUIRES | 8 | Consensus | Maximum relay requirements (co-spend input indices) per rung or relay. |
+| MAX_RELAY_DEPTH | 4 | Consensus | Maximum transitive relay chain depth. Prevents unbounded recursive relay evaluation. |
+
+All limits are enforced during deserialization:
 - All block types must be known (`IsKnownBlockType` returns true; deprecated types return false).
 - All data types must be known (`IsKnownDataType` returns true).
 - All field sizes must conform to type constraints (`FieldMinSize` through `FieldMaxSize`).
@@ -642,7 +698,7 @@ The following RPCs are provided for wallet and application integration:
 
 **Selective inversion.** The `inverted` flag provides NOT logic without a separate opcode. The restriction to non-key blocks prevents the garbage-pubkey attack where an inverted SIG block with a garbage key evaluates as SATISFIED. The `IsInvertibleBlockType()` allowlist is fail-closed: new block types default to non-invertible and must be explicitly added.
 
-**Hash lock deprecation.** Standalone HASH_PREIMAGE and HASH160_PREIMAGE blocks were invertible and had writable hash fields, creating a data embedding surface. Compound blocks (HTLC, HASH_SIG) serve all legitimate hash-lock use cases while requiring a signature, which makes inversion attacks infeasible.
+**Hash lock deprecation.** Standalone HASH_PREIMAGE and HASH160_PREIMAGE blocks were invertible and had writable hash fields, creating a data embedding surface. Compound blocks (HTLC, HASH_SIG) serve all legitimate hash-lock use cases while requiring a signature, which makes inversion attacks infeasible. HASH_GUARDED provides a safe non-invertible alternative for raw SHA-256 preimage verification without requiring a signature.
 
 **Fail-closed unknown type handling.** Unknown block types return UNSATISFIED when not inverted and ERROR when inverted. This prevents an attacker from crafting conditions with fabricated block types that pass validation via inversion.
 
@@ -842,7 +898,7 @@ Activation uses BIP-9 version bits signaling with Speedy Trial parameters, follo
 | Threshold | 90% (1,815 of 2,016 blocks per retarget period) |
 | Minimum activation height | (to be determined) |
 
-All 59 block types activate simultaneously as a single deployment. Upon activation, all block types across all ten families are consensus-enforced and policy-standard. Partial activation of individual block types is not supported; the evaluation engine, wire format, and sighash computation form an interdependent whole.
+All 60 block types activate simultaneously as a single deployment. Upon activation, all block types across all ten families are consensus-enforced and policy-standard. Partial activation of individual block types is not supported; the evaluation engine, wire format, and sighash computation form an interdependent whole.
 
 Nodes that have not upgraded treat version 4 transactions as anyone-can-spend, consistent with the soft fork upgrade path established by BIP-141 and BIP-341.
 
@@ -855,9 +911,9 @@ The reference implementation is located in the `src/rung/` directory. A step-by-
 | `types.h` / `types.cpp` | Core type definitions: `RungBlockType`, `RungDataType`, `RungCoilType`, `RungAttestationMode`, `RungScheme`, helper functions (`IsKnownBlockType`, `IsKeyConsumingBlockType`, `IsInvertibleBlockType`, `PubkeyCountForBlock`), and all struct definitions. |
 | `conditions.h` / `conditions.cpp` | Conditions (locking side): `RungConditions`, serialization to/from `CScript` with `0xC1` prefix, `ComputeRungLeaf` with pubkey folding, `ComputeConditionsRoot`, template inheritance resolution. |
 | `serialize.h` / `serialize.cpp` | Wire format serialization/deserialization with micro-headers, implicit fields, varint NUMERIC, context-aware encoding, and policy limit constants. |
-| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 59 block types. Rung AND logic, ladder OR logic, selective inversion enforcement. `VerifyRungTx` entry point. `LadderSignatureChecker` for Schnorr/PQ signature verification. |
+| `evaluator.h` / `evaluator.cpp` | Block evaluators for all 60 block types. Rung AND logic, ladder OR logic, selective inversion enforcement. `VerifyRungTx` entry point. `ValidateRungOutputs` (consensus-level output validation). `LadderSignatureChecker` for Schnorr/PQ signature verification. |
 | `sighash.h` / `sighash.cpp` | `SignatureHashLadder` tagged hash computation. |
-| `policy.h` / `policy.cpp` | Mempool policy enforcement: `IsStandardRungTx`, `IsStandardRungOutput`. |
+| `policy.h` / `policy.cpp` | Mempool policy enforcement: `IsStandardRungTx` (thin deserialize-only check). `IsStandardRungOutput` removed — output validation is consensus via `ValidateRungOutputs`. |
 | `aggregate.h` / `aggregate.cpp` | Block-level signature aggregation and deferred attestation. |
 | `adaptor.h` / `adaptor.cpp` | Adaptor signature creation, verification, and secret extraction. |
 | `pq_verify.h` / `pq_verify.cpp` | Post-quantum signature verification via liboqs (FALCON-512/1024, Dilithium3, SPHINCS_SHA). |
@@ -865,7 +921,7 @@ The reference implementation is located in the `src/rung/` directory. A step-by-
 
 ### Implementation Footprint
 
-Despite activating 59 block types across 10 families, Ladder Script's consensus footprint is smaller and more contained than previous soft forks:
+Despite activating 60 block types across 10 families, Ladder Script's consensus footprint is smaller and more contained than previous soft forks:
 
 | Metric | SegWit (BIP 141/143/144) | Taproot (BIP 340/341/342) | Ladder Script |
 |--------|--------------------------|---------------------------|---------------|
@@ -888,10 +944,10 @@ The implementation includes comprehensive test coverage across two layers:
 
 **Unit tests** (`src/test/rung_tests.cpp`): 440+ test cases covering:
 - Field validation for all 10 active data types with boundary conditions
-- Serialization round-trips for all 59 active block types
+- Serialization round-trips for all 60 active block types
 - Deserialization rejection of deprecated types (HASH_PREIMAGE, HASH160_PREIMAGE)
 - Deserialization rejection of malformed inputs (empty, truncated, trailing bytes, oversized, unknown types)
-- Block evaluation for all 59 block types
+- Block evaluation for all 60 block types
 - Inversion logic including ERROR non-inversion and selective inversion enforcement
 - Rung AND logic and ladder OR logic
 - Policy enforcement (standard/non-standard classification)
@@ -948,15 +1004,15 @@ Ladder Script's typed field system eliminates all known data embedding vectors p
 
 2. **No writable pubkey fields.** The merkle_pub_key design removes PUBKEY_COMMIT from condition layouts. An attacker constructing a raw transaction cannot write arbitrary data into a commitment field because the field does not exist in any block's condition layout.
 
-3. **No invertible key blocks.** Selective inversion prevents the garbage-pubkey attack on all 17 key-consuming block types. Attempting to set the inverted flag on a SIG, MULTISIG, or any other key block is rejected at deserialization.
+3. **No invertible key blocks.** Selective inversion prevents the garbage-pubkey attack on all 24 key-consuming block types. Attempting to set the inverted flag on a SIG, MULTISIG, or any other key block is rejected at deserialization.
 
-4. **No standalone hash locks.** HASH_PREIMAGE and HASH160_PREIMAGE are deprecated and rejected at deserialization. The compound blocks HTLC and HASH_SIG require a valid signature alongside the hash preimage, preventing inversion attacks.
+4. **No standalone hash locks.** HASH_PREIMAGE and HASH160_PREIMAGE are deprecated and rejected at deserialization. The compound blocks HTLC and HASH_SIG require a valid signature alongside the hash preimage, preventing inversion attacks. HASH_GUARDED provides safe standalone hash verification by being non-invertible (fail-closed).
 
 5. **Typed inner conditions.** The SCRIPT_BODY field in legacy wrapper blocks (P2SH_LEGACY, P2WSH_LEGACY, P2TR_SCRIPT_LEGACY) must deserialize as valid Ladder Script conditions. Arbitrary byte sequences are rejected.
 
-6. **DATA_RETURN cap.** The DATA field type has a maximum of 80 bytes. DATA_RETURN data is appended to the MLSC scriptPubKey after the Merkle root (`0xC2 || root || data`), making it visible on-chain. The output must be zero-value. The data sits in `scriptPubKey` at 4 WU per byte, making 80 bytes cost 320 WU. This is significantly tighter than OP_RETURN's current default limit and more expensive per byte.
+6. **DATA_RETURN cap.** The DATA field type has a maximum of 40 bytes. DATA_RETURN data is appended to the MLSC scriptPubKey after the Merkle root (`0xC2 || root || data`), making it visible on-chain at 34-73 bytes total. The output must be zero-value. The data sits in `scriptPubKey` at 4 WU per byte, making 40 bytes cost 160 WU. This is significantly tighter than OP_RETURN's current default limit and more expensive per byte.
 
-The combined effect is that every byte in a RUNG_TX must conform to its declared type. The only explicitly permitted data embedding is DATA_RETURN: 80 bytes maximum, zero-value, appended to the MLSC output, and economically disincentivised by the 4x weight multiplier on conditions-side data.
+The combined effect is that every byte in a RUNG_TX must conform to its declared type. The only explicitly permitted data embedding is DATA_RETURN: 40 bytes maximum, zero-value, appended to the MLSC output, and economically disincentivised by the 4x weight multiplier on conditions-side data.
 
 ### COSIGN Mempool Griefing
 

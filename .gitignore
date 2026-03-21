@@ -32,3 +32,8 @@ docs/LADDER_SCRIPT_SCENARIOS.md
 docs/SUMMARY.md
 tools/generate-tx-docs.py
 tools/test-presets.py
+ghost-core/
+spec/jdk-*/
+spec/*.tar.gz
+spec/tla2tools.jar
+spec/states/

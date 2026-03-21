@@ -4,6 +4,7 @@
 
 #include <rung/adaptor.h>
 #include <rung/conditions.h>
+#include <rung/descriptor.h>
 #include <rung/evaluator.h>
 #include <rung/policy.h>
 #include <rung/pq_verify.h>
@@ -203,6 +204,7 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
             "HASH_PREIMAGE/HASH160_PREIMAGE are deprecated. Use HTLC (hash+timelock+sig) or HASH_SIG (hash+sig) instead");
     }
     if (name == "TAGGED_HASH")      { out = RungBlockType::TAGGED_HASH; return true; }
+    if (name == "HASH_GUARDED")     { out = RungBlockType::HASH_GUARDED; return true; }
     // Compound family
     if (name == "TIMELOCKED_SIG")   { out = RungBlockType::TIMELOCKED_SIG; return true; }
     if (name == "HTLC")             { out = RungBlockType::HTLC; return true; }
@@ -228,6 +230,7 @@ static bool ParseBlockType(const std::string& name, RungBlockType& out)
     if (name == "OUTPUT_COUNT")     { out = RungBlockType::OUTPUT_COUNT; return true; }
     if (name == "RELATIVE_VALUE")   { out = RungBlockType::RELATIVE_VALUE; return true; }
     if (name == "ACCUMULATOR")      { out = RungBlockType::ACCUMULATOR; return true; }
+    if (name == "OUTPUT_CHECK")     { out = RungBlockType::OUTPUT_CHECK; return true; }
     // Recursion family
     if (name == "RECURSE_SAME")     { out = RungBlockType::RECURSE_SAME; return true; }
     if (name == "RECURSE_MODIFIED") { out = RungBlockType::RECURSE_MODIFIED; return true; }
@@ -344,7 +347,8 @@ static RungBlock ParseBlockSpec(const UniValue& block_obj, bool conditions_only,
                 if (block.type != RungBlockType::CTV &&
                     block.type != RungBlockType::TAGGED_HASH &&
                     block.type != RungBlockType::ACCUMULATOR &&
-                    block.type != RungBlockType::COSIGN) {
+                    block.type != RungBlockType::COSIGN &&
+                    block.type != RungBlockType::OUTPUT_CHECK) {
                     throw JSONRPCError(RPC_INVALID_PARAMETER,
                         "Use PREIMAGE instead of HASH256 for " + type_str +
                         "; the node computes the hash commitment automatically");
@@ -1647,15 +1651,16 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         break;
     }
     case RungBlockType::P2SH_LEGACY: {
-        // Witness: PREIMAGE (serialized inner conditions) + inner witness fields
-        // The preimage is the serialized Ladder conditions that hash to the committed HASH160.
-        // Inner SIG witness fields (PUBKEY + SIGNATURE) are also needed.
+        // Witness: SCRIPT_BODY (serialized inner conditions) + inner witness fields
+        // The SCRIPT_BODY is the serialized Ladder conditions that hash to the committed HASH160.
+        // Use SCRIPT_BODY (1-80 bytes) instead of PREIMAGE (fixed 32 bytes) since inner
+        // conditions can be any size.
         if (block_spec.exists("preimage")) {
             auto preimage_data = ParseHex(block_spec["preimage"].get_str());
             if (preimage_data.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "P2SH_LEGACY requires non-empty preimage hex");
             }
-            block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
+            block.fields.push_back({RungDataType::SCRIPT_BODY, preimage_data});
         }
         if (block_spec.exists("privkey")) {
             SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "P2SH_LEGACY");
@@ -1663,14 +1668,13 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         break;
     }
     case RungBlockType::P2WSH_LEGACY: {
-        // Witness: PREIMAGE (serialized inner conditions) + inner witness fields
-        // The preimage is the serialized Ladder conditions that hash to the committed SHA256.
+        // Witness: SCRIPT_BODY (serialized inner conditions) + inner witness fields
         if (block_spec.exists("preimage")) {
             auto preimage_data = ParseHex(block_spec["preimage"].get_str());
             if (preimage_data.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "P2WSH_LEGACY requires non-empty preimage hex");
             }
-            block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
+            block.fields.push_back({RungDataType::SCRIPT_BODY, preimage_data});
         }
         if (block_spec.exists("privkey")) {
             SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "P2WSH_LEGACY");
@@ -1678,14 +1682,13 @@ static RungBlock BuildWitnessBlock(const UniValue& block_spec,
         break;
     }
     case RungBlockType::P2TR_SCRIPT_LEGACY: {
-        // Witness: PREIMAGE (revealed script leaf) + inner witness fields
-        // The preimage is the serialized Ladder conditions that hash to the committed SHA256 Merkle root.
+        // Witness: SCRIPT_BODY (revealed script leaf) + inner witness fields
         if (block_spec.exists("preimage")) {
             auto preimage_data = ParseHex(block_spec["preimage"].get_str());
             if (preimage_data.empty()) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "P2TR_SCRIPT_LEGACY requires non-empty preimage hex");
             }
-            block.fields.push_back({RungDataType::PREIMAGE, preimage_data});
+            block.fields.push_back({RungDataType::SCRIPT_BODY, preimage_data});
         }
         if (block_spec.exists("privkey")) {
             SignSingleKey(block_spec, block, mtx, input_idx, txdata, conditions, "P2TR_SCRIPT_LEGACY");
@@ -2483,6 +2486,103 @@ static RPCHelpMan verifyadaptorpresig()
     };
 }
 
+static RPCHelpMan parseladder()
+{
+    return RPCHelpMan{"parseladder",
+        "Parse a Ladder Script descriptor into conditions hex and MLSC root.\n",
+        {
+            {"descriptor", RPCArg::Type::STR, RPCArg::Optional::NO, "The Ladder Script descriptor string"},
+            {"keys", RPCArg::Type::STR, RPCArg::Optional::OMITTED, "Key alias map as JSON: {\"alias\": \"pubkey_hex\", ...}"},
+        },
+        RPCResult{RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::STR_HEX, "conditions_hex", "Serialized conditions"},
+                {RPCResult::Type::STR_HEX, "mlsc_root", "MLSC Merkle root"},
+                {RPCResult::Type::NUM, "n_rungs", "Number of rungs"},
+            },
+        },
+        RPCExamples{
+            HelpExampleCli("parseladder", "\"ladder(sig(@alice))\" '{\"alice\": \"02...\"}'")
+        },
+    [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+    {
+        std::string desc = request.params[0].get_str();
+
+        std::map<std::string, std::vector<uint8_t>> keys;
+        if (!request.params[1].isNull()) {
+            UniValue keys_obj(UniValue::VOBJ);
+            if (request.params[1].isObject()) {
+                keys_obj = request.params[1];
+            } else {
+                keys_obj.read(request.params[1].get_str());
+            }
+            for (const auto& key : keys_obj.getKeys()) {
+                keys[key] = ParseHex(keys_obj[key].get_str());
+            }
+        }
+
+        rung::RungConditions conditions;
+        std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+        std::string error;
+        if (!rung::ParseDescriptor(desc, keys, conditions, pubkeys, error)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "descriptor parse error: " + error);
+        }
+
+        // Serialize conditions
+        rung::LadderWitness ladder;
+        ladder.rungs = conditions.rungs;
+        auto bytes = rung::SerializeLadderWitness(ladder, rung::SerializationContext::CONDITIONS);
+
+        // Compute MLSC root
+        uint256 root = rung::ComputeConditionsRoot(conditions, pubkeys, {});
+
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("conditions_hex", HexStr(bytes));
+        result.pushKV("mlsc_root", root.GetHex());
+        result.pushKV("n_rungs", static_cast<int>(conditions.rungs.size()));
+        return result;
+    },
+    };
+}
+
+static RPCHelpMan formatladder()
+{
+    return RPCHelpMan{"formatladder",
+        "Format serialized conditions as a descriptor string.\n",
+        {
+            {"conditions_hex", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "Serialized conditions hex"},
+        },
+        RPCResult{RPCResult::Type::OBJ, "", "",
+            {
+                {RPCResult::Type::STR, "descriptor", "The descriptor string"},
+            },
+        },
+        RPCExamples{
+            HelpExampleCli("formatladder", "\"01...\"")
+        },
+    [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+    {
+        auto bytes = ParseHex(request.params[0].get_str());
+        rung::LadderWitness ladder;
+        std::string error;
+        if (!rung::DeserializeLadderWitness(bytes, ladder, error, rung::SerializationContext::CONDITIONS)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "deserialization error: " + error);
+        }
+
+        rung::RungConditions conditions;
+        conditions.rungs = ladder.rungs;
+        conditions.relays = ladder.relays;
+        conditions.coil = ladder.coil;
+
+        std::string desc = rung::FormatDescriptor(conditions);
+
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("descriptor", desc);
+        return result;
+    },
+    };
+}
+
 void RegisterRungRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
@@ -2496,6 +2596,8 @@ void RegisterRungRPCCommands(CRPCTable& t)
         {"rung", &pqpubkeycommit},
         {"rung", &extractadaptorsecret},
         {"rung", &verifyadaptorpresig},
+        {"rung", &parseladder},
+        {"rung", &formatladder},
     };
     for (const auto& c : commands) {
         t.appendCommand(c.name, &c);

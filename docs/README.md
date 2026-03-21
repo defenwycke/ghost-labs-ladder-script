@@ -24,7 +24,7 @@ The format is a single soft fork that subsumes OP_CTV, OP_VAULT, OP_CAT, and eve
 
 **Human readable.** A CFO can audit a ladder diagram. A PLC engineer can read it immediately. No stack simulation required.
 
-## 59 Block Types
+## 60 Block Types
 
 | Category | Blocks |
 |----------|--------|
@@ -58,7 +58,7 @@ proxy/             FastAPI signet proxy for live testing
 
 ## Documentation
 
-- [Block Library](docs/BLOCK_LIBRARY.md) -- all 59 blocks with fields and semantics
+- [Block Library](docs/BLOCK_LIBRARY.md) -- all 60 blocks with fields and semantics
 - [BIP Draft](docs/BIP-XXXX.md) -- formal Bitcoin Improvement Proposal
 - [Examples](docs/EXAMPLES.md) -- 8 worked scenarios with JSON
 - [Implementation Notes](docs/IMPLEMENTATION_NOTES.md) -- spec deviations and why

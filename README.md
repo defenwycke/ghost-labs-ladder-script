@@ -32,7 +32,7 @@ Transaction version 4 (`RUNG_TX`). Soft fork activation -- non-upgraded nodes se
 
 **Legacy migration.** Seven legacy block types wrap P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR key-path, and P2TR script-path as typed Ladder Script blocks. Identical spending semantics, fully typed fields. Designed for a three-phase migration: coexistence, legacy-in-blocks, then sunset of raw legacy formats.
 
-## 59 Block Types
+## 60 Block Types
 
 | Family | Blocks |
 |--------|--------|
@@ -53,7 +53,7 @@ The [Ladder Engine](https://bitcoinghost.org/labs/ladder-engine.html) is a brows
 
 ## Tests
 
-- **437 unit tests** (`src/test/rung_tests.cpp`) -- serialization, evaluation, all 59 block types, inversion, anti-spam, PQ signatures, legacy blocks
+- **437 unit tests** (`src/test/rung_tests.cpp`) -- serialization, evaluation, all 60 block types, inversion, anti-spam, PQ signatures, legacy blocks
 - **229 functional tests** across 6 test suites -- end-to-end RPC flows, P2P relay, MLSC Merkle proofs, PQ block stress tests, signet integration
 
 ```bash
@@ -83,7 +83,7 @@ proxy/                 FastAPI signet proxy for live testing
 ## Documentation
 
 - [BIP Draft](docs/BIP-XXXX.md) -- formal Bitcoin Improvement Proposal
-- [Block Library](docs/BLOCK_LIBRARY.md) -- all 59 blocks with fields and semantics
+- [Block Library](docs/BLOCK_LIBRARY.md) -- all 60 blocks with fields and semantics
 - [Examples](docs/EXAMPLES.md) -- worked scenarios with RPC JSON
 - [Review Guide](docs/REVIEW_GUIDE.md) -- recommended reading order for the C++
 - [Engine Guide](docs/ENGINE_GUIDE.md) -- how to use the visual builder
@@ -97,7 +97,7 @@ proxy/                 FastAPI signet proxy for live testing
 | File | Purpose |
 |------|---------|
 | `src/rung/types.h` | Core types: block types, data types, schemes, structs |
-| `src/rung/evaluator.cpp` | Block evaluators for all 59 types, rung/ladder logic |
+| `src/rung/evaluator.cpp` | Block evaluators for all 60 types, rung/ladder logic |
 | `src/rung/serialize.cpp` | Wire format with micro-headers and implicit fields |
 | `src/rung/conditions.cpp` | MLSC Merkle tree, `merkle_pub_key` leaf computation |
 | `src/rung/sighash.cpp` | Tagged sighash computation |

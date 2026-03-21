@@ -176,8 +176,8 @@ const uint256 MLSC_EMPTY_LEAF = ComputeEmptyLeaf();
 bool IsMLSCScript(const CScript& scriptPubKey)
 {
     // 33 bytes = standard MLSC (0xC2 + 32-byte root)
-    // 34-65 bytes = MLSC with DATA_RETURN payload (max 32 bytes data)
-    return scriptPubKey.size() >= 33 && scriptPubKey.size() <= 65 &&
+    // 34-73 bytes = MLSC with DATA_RETURN payload (max 40 bytes data)
+    return scriptPubKey.size() >= 33 && scriptPubKey.size() <= 73 &&
            scriptPubKey[0] == RUNG_MLSC_PREFIX;
 }
 

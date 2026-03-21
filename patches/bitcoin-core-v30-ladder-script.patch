@@ -6,7 +6,7 @@ index de53561..65da757 100644
  # Ghost Haze: stripped block format, exorcism (strip-before-write), exorcist (archive conversion)
  add_subdirectory(haze)
  
-+# Ghost Ladder Script: typed transaction format (v3 RUNG_TX)
++# Ghost Ladder Script: typed transaction format (v4 RUNG_TX)
 +add_subdirectory(rung)
 +
  # Ghost Tor mode: embedded Tor subprocess management
@@ -206,7 +206,7 @@ index 3da6cb7..f785bbd 100644
          return false;
      }
  
-+    // LADDER SCRIPT: v3 transactions must pass rung policy validation
++    // LADDER SCRIPT: v4 transactions must pass rung policy validation
 +    if (tx.version == CTransaction::RUNG_TX_VERSION) {
 +        return rung::IsStandardRungTx(tx, reason);
 +    }
@@ -246,9 +246,9 @@ index 295bce6..cfa5798 100644
      // Default transaction version.
      static const uint32_t CURRENT_VERSION{2};
  
-+    // LADDER SCRIPT: Version 3 transactions use typed ladder witnesses
++    // LADDER SCRIPT: Version 4 transactions use typed ladder witnesses
 +    // instead of raw script. Every witness byte must conform to a typed field.
-+    static const uint32_t RUNG_TX_VERSION{3};
++    static const uint32_t RUNG_TX_VERSION{4};
 +
      // The local variables are made const to prevent unintended modification
      // without updating the cached hash value. However, CTransaction is not
@@ -318,7 +318,7 @@ index 07fda48..b5f864a 100644
          m_spent_outputs_ready = true;
      }
  
-+    // LADDER SCRIPT: v3 RUNG_TX transactions use ladder sighash caches.
++    // LADDER SCRIPT: v4 RUNG_TX transactions use ladder sighash caches.
 +    // They reuse the same precomputed hashes (prevouts, sequences, outputs, spent amounts)
 +    // but with a different tagged hash (LadderSighash instead of TapSighash).
 +    if (txTo.version == CTransaction::RUNG_TX_VERSION && m_spent_outputs_ready) {
@@ -341,7 +341,7 @@ index 2108e39..74a448e 100644
      //! Whether the 3 fields above are initialized.
      bool m_bip143_segwit_ready = false;
  
-+    // Ladder (v3 RUNG_TX) precomputed data.
++    // Ladder (v4 RUNG_TX) precomputed data.
 +    //! Whether the ladder-specific hashes are initialized.
 +    bool m_ladder_ready = false;
 +
@@ -352,7 +352,7 @@ index 2108e39..74a448e 100644
      WITNESS_V0 = 1,  //!< Witness v0 (P2WPKH and P2WSH); see BIP 141
      TAPROOT = 2,     //!< Witness v1 with 32-byte program, not BIP16 P2SH-wrapped, key path spending; see BIP 341
      TAPSCRIPT = 3,   //!< Witness v1 with 32-byte program, not BIP16 P2SH-wrapped, script path spending, leaf version 0xc0; see BIP 342
-+    LADDER = 4,      //!< LADDER SCRIPT: Version 3 RUNG_TX typed ladder witness
++    LADDER = 4,      //!< LADDER SCRIPT: Version 4 RUNG_TX typed ladder witness
  };
  
  struct ScriptExecutionData
@@ -437,7 +437,7 @@ index 8190e9c..f0fd526 100644
      const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
      ScriptError error{SCRIPT_ERR_UNKNOWN_ERROR};
 +
-+    // LADDER SCRIPT: Route v3 RUNG_TX transactions to ladder witness evaluator
++    // LADDER SCRIPT: Route v4 RUNG_TX transactions to ladder witness evaluator
 +    if (ptxTo->version == CTransaction::RUNG_TX_VERSION) {
 +        CachingTransactionSignatureChecker checker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *m_signature_cache, *txdata);
 +        if (rung::VerifyRungTx(*ptxTo, nIn, m_tx_out, nFlags, checker, *txdata, &error, m_block_height)) {

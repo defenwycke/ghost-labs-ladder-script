@@ -19,7 +19,7 @@ Both use the same wire format: rungs containing blocks containing typed fields.
 
 Three:
 
-- **Programmability.** 59 block types across 10 families -- signatures, timelocks,
+- **Programmability.** 60 block types across 10 families -- signatures, timelocks,
   hash locks, covenants, recursion, PLC state machines, governance constraints,
   and more -- that compose freely within rungs and ladders. Any combination of
   AND/OR spending logic, built declaratively.
@@ -33,7 +33,7 @@ Three:
   On the witness side, PUBKEY and SIGNATURE are cryptographically constrained,
   PREIMAGE and SCRIPT_BODY are capped (32 and 80 bytes) with a combined limit
   of 2 per witness, and data-embedding types are rejected in witness context for
-  blocks without implicit witness layouts. Maximum embeddable data: ~32 bytes.
+  blocks without implicit witness layouts. Maximum embeddable data: ~40 bytes.
 
 ### 3. What is the PLC analogy?
 
@@ -128,7 +128,7 @@ satisfied, preventing condition substitution attacks.
 Ladder Script defines two output formats:
 
 - **`0xC2` - Merkelised Ladder Script Conditions (MLSC).** A 32-byte
-  Merkle root follows the prefix byte (33 bytes standard, or 34-65 bytes
+  Merkle root follows the prefix byte (33 bytes standard, or 34-73 bytes
   with a DATA_RETURN payload appended). The actual conditions are revealed
   at spend time via a Merkle proof in the witness. This provides MAST-style
   privacy and keeps the UTXO set compact. This is the only format accepted
@@ -145,8 +145,8 @@ witness version, or Taproot annex byte.
 
 | Limit | Value | Enforcement |
 |-------|-------|-------------|
-| Max rungs per ladder | 8 | Consensus |
-| Max blocks per rung | 8 | Policy |
+| Max rungs per ladder | 16 | Consensus |
+| Max blocks per rung | 8 | Consensus |
 | Max fields per block | 16 | Deserialisation |
 | Max ladder witness size | 100,000 bytes | Deserialisation |
 | Max PUBKEY size | 2,048 bytes | Field validation |
@@ -157,7 +157,7 @@ witness version, or Taproot annex byte.
 | HASH160 size | Exactly 20 bytes | Field validation |
 | NUMERIC size | 1-4 bytes | Field validation |
 | SCHEME size | Exactly 1 byte | Field validation |
-| DATA size | exactly 32 bytes | Field validation |
+| DATA size | 1-40 bytes | Field validation |
 
 ### 11. How do coil types work?
 
@@ -452,10 +452,10 @@ layers:
 4. **Selective inversion.** Key-consuming blocks cannot be inverted, preventing
    an attacker from using a garbage pubkey with an inverted SIG to embed data.
 5. **Witness data limits.** PREIMAGE (max 32 bytes) and SCRIPT_BODY (max 80
-   bytes) share a limit of 1 field per witness
-   (`MAX_PREIMAGE_FIELDS_PER_WITNESS`). PUBKEY and SIGNATURE are cryptographically
+   bytes) share a limit of 2 fields per witness
+   (`MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`). PUBKEY and SIGNATURE are cryptographically
    constrained -- they must correspond to valid keys and signatures. Maximum
-   embeddable data per witness: ~32 bytes.
+   embeddable data per witness: ~64 bytes.
 6. **Build-time validation.** Public keys are checked for compressed key prefix
    (0x02/0x03 for 33-byte keys), SCHEME values are validated against the enum.
 7. **Economic deterrent.** Even if structurally valid data gets into a UTXO
@@ -498,7 +498,7 @@ Witness-only types are blocked from conditions at both the RPC and consensus
 layers. Key-consuming blocks cannot be inverted (selective inversion), closing
 the garbage-pubkey-with-inverted-SIG vector.
 
-MLSC outputs take this further: the UTXO stores only 33-65 bytes
+MLSC outputs take this further: the UTXO stores only 33-73 bytes
 (`0xC2` + 32-byte Merkle root, optionally with a DATA_RETURN payload). The
 conditions are never in the UTXO set at all. An attacker could create a fake
 `0xC2` output with a garbage root, but it would be unspendable -- no valid
@@ -507,16 +507,57 @@ attacker burns their funds for nothing.
 
 On the witness side, cryptographically constrained fields (PUBKEY, SIGNATURE)
 leave no room for arbitrary data. PREIMAGE is capped at 32 bytes, SCRIPT_BODY
-at 80 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 1
+at 80 bytes, and `MAX_PREIMAGE_FIELDS_PER_WITNESS` limits each witness to 2
 such fields total. Data-embedding types (HASH256, HASH160, DATA) are rejected
 in witness context for blocks without implicit witness layouts. The maximum
-embeddable data per witness is ~32 bytes -- and only as valid hash preimages
+embeddable data per witness is ~64 bytes -- and only as valid hash preimages
 or serialised Ladder Script conditions.
 
 The Legacy family (0x0900) extends this to traditional transaction types. P2SH,
 P2WSH, and taproot script-path -- the primary inscription vectors today -- are
 wrapped as typed blocks where the inner script must be valid Ladder Script
 conditions. Arbitrary bytes are rejected.
+
+### 27b. What is the coil address_hash?
+
+UNLOCK_TO coils store `SHA256(destination_scriptPubKey)` instead of the raw
+destination address. The field is `address_hash`: 0 bytes (no destination) or
+exactly 32 bytes (SHA256 hash). The raw address is never stored on-chain in
+the coil data.
+
+At evaluation time, the verifier computes `SHA256` of the spending transaction's
+output `scriptPubKey` and compares it to the committed hash. This provides
+destination binding without revealing the destination in the UTXO set.
+
+### 27c. What are the exact anti-spam byte limits?
+
+| Channel | Maximum | Enforcement |
+|---------|---------|-------------|
+| Output data (DATA_RETURN) | 40 bytes, 1/tx, zero-value | Consensus |
+| Conditions writable surface | 0 bytes (merkle_pub_key) | Consensus |
+| Witness PREIMAGE/SCRIPT_BODY | 2 fields, 32B + 80B max | Consensus |
+| ACCUMULATOR proof fields | 10 HASH256 max | Consensus |
+| Total embeddable per witness | ~64 bytes | Consensus |
+| Total per 1-input tx | ~104 bytes | Combined |
+
+For comparison, a single Bitcoin Taproot transaction can embed ~400,000 bytes
+of arbitrary data via the script-path witness.
+
+### 27d. What is leaf-centric covenant verification?
+
+For MLSC outputs, covenant blocks (RECURSE_SAME, RECURSE_MODIFIED, etc.) use
+the `MLSCVerifiedLeaves` structure rather than comparing full deserialized
+conditions. The verifier:
+
+1. Caches the input's verified leaf hashes from the Merkle proof.
+2. Applies the declared mutation to the target leaf hash.
+3. Rebuilds the Merkle root from the modified leaf array.
+4. Compares against the output's committed root.
+
+For cross-rung mutations (where the RECURSE_MODIFIED targets a different rung
+than the one being exercised), the MLSC proof includes `revealed_mutation_targets`
+with the target rung's condition blocks. This enables mutation verification
+without revealing the entire ladder.
 
 ---
 
@@ -581,7 +622,7 @@ directly on the signet.
 
 MLSC is the `0xC2` output format. Instead of storing full conditions inline,
 the scriptPubKey contains `0xC2` + a 32-byte Merkle root (33 bytes standard,
-or 34-65 bytes with a DATA_RETURN payload appended). The root is computed from
+or 34-73 bytes with a DATA_RETURN payload appended). The root is computed from
 the ladder's rungs using BIP-341-style tagged hashing:
 
 - **Leaf:** `TaggedHash("LadderLeaf", SerializeRung(rung[i]) || pk1 || ... || pkN)`
@@ -600,7 +641,7 @@ Three reasons:
 
 1. **Privacy.** Only the executed rung is revealed. Recovery paths, emergency
    keys, and alternative spending conditions stay hidden if never used.
-2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-65
+2. **UTXO set efficiency.** Every MLSC scriptPubKey is 33 bytes (or 34-73
    with DATA_RETURN) regardless of how complex the conditions are. A 16-rung
    ladder with 8 blocks each takes the same UTXO space as a single SIG block.
 3. **Spam resistance.** The UTXO set never contains conditions -- only a Merkle
@@ -615,8 +656,8 @@ ladder complexity, and the signer does not need access to unrevealed rungs.
 
 ### 34. Can data be embedded in MLSC outputs?
 
-The only data surface is DATA_RETURN: up to 32 bytes appended after the Merkle
-root, making the output 34-65 bytes. DATA_RETURN outputs must be zero-value
+The only data surface is DATA_RETURN: up to 40 bytes appended after the Merkle
+root, making the output 34-73 bytes. DATA_RETURN outputs must be zero-value
 (provably unspendable), are limited to 1 per transaction, and cost 4 WU per
 byte -- the same economics as OP_RETURN. This provides a structured, visible,
 prunable channel for protocol metadata (timestamps, commitments, anchors).
@@ -633,8 +674,8 @@ Merkle proof exists -- and the funds are permanently burned.
 ### 35. What are micro-headers?
 
 Micro-headers are a wire format optimisation. Instead of encoding a block's
-type as a 2-byte `uint16_t`, all 59 block types are assigned a 1-byte slot
-index (0x00 to 0x3C) in a compile-time lookup table. This saves 1 byte per
+type as a 2-byte `uint16_t`, all 60 block types are assigned a 1-byte slot
+index (0x00 to 0x3D) in a compile-time lookup table. This saves 1 byte per
 block.
 
 For blocks not in the table (future types), escape bytes are used: `0x80`
@@ -730,7 +771,7 @@ There are 7 anchor types:
 - **ANCHOR_RESERVE** (0x0504): N-of-M guardian reserve set commitment.
 - **ANCHOR_SEAL** (0x0505): Permanent, immutable data seal.
 - **ANCHOR_ORACLE** (0x0506): Oracle attestation key binding.
-- **DATA_RETURN** (0x0507): Prunable data carrier. Up to 32 bytes appended
+- **DATA_RETURN** (0x0507): Prunable data carrier. Up to 40 bytes appended
   after the MLSC Merkle root (`0xC2 || root || data`). Zero-value, max 1 per
   transaction. Replaces OP_RETURN for v4 transactions.
 
@@ -861,7 +902,7 @@ Several things that are either impossible or require contentious new opcodes:
 
 Taproot provides MAST (hiding unused spending paths behind a Merkle root) and
 Schnorr signatures. MLSC provides the same MAST privacy model with tagged hashing
-and sorted interior nodes, extended to 59 block types including covenants, PLC
+and sorted interior nodes, extended to 60 block types including covenants, PLC
 state machines, governance constraints, and PQ signatures.
 
 Taproot script-path spends execute Bitcoin Script inside a revealed leaf. MLSC
@@ -872,7 +913,7 @@ surface.
 
 Yes. Two optimisations stack:
 
-- **Micro-headers:** 1 byte per block type instead of 2 (all 59 types have slots).
+- **Micro-headers:** 1 byte per block type instead of 2 (all 60 types have slots).
 - **Implicit fields:** Field type bytes omitted when the layout is known from the
   block type (saves 1 byte per field). Fixed-size fields skip the length prefix.
 

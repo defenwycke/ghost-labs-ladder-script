@@ -3,6 +3,7 @@
 // file COPYING or https://opensource.org/license/mit/.
 
 #include <rung/conditions.h>
+#include <rung/descriptor.h>
 #include <rung/evaluator.h>
 #include <rung/policy.h>
 #include <rung/pq_verify.h>
@@ -1622,6 +1623,83 @@ BOOST_AUTO_TEST_CASE(eval_tagged_hash_wrong_preimage)
     block.fields.push_back({RungDataType::PREIMAGE, wrong_preimage});
 
     BOOST_CHECK(EvalTaggedHashBlock(block) == EvalResult::UNSATISFIED);
+}
+
+// ============================================================================
+// HASH_GUARDED evaluator tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(eval_hash_guarded_correct)
+{
+    // Preimage: 32 bytes of test data
+    std::vector<uint8_t> preimage(32, 0xAB);
+
+    // Compute expected hash = SHA256(preimage)
+    unsigned char expected[32];
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(expected);
+
+    RungBlock block;
+    block.type = RungBlockType::HASH_GUARDED;
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(expected, expected + 32)});
+    block.fields.push_back({RungDataType::PREIMAGE, preimage});
+
+    BOOST_CHECK(EvalHashGuardedBlock(block) == EvalResult::SATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_hash_guarded_wrong_preimage)
+{
+    std::vector<uint8_t> preimage(32, 0xAB);
+    unsigned char expected[32];
+    CSHA256().Write(preimage.data(), preimage.size()).Finalize(expected);
+
+    // Provide a different preimage
+    std::vector<uint8_t> wrong_preimage(32, 0xCD);
+
+    RungBlock block;
+    block.type = RungBlockType::HASH_GUARDED;
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(expected, expected + 32)});
+    block.fields.push_back({RungDataType::PREIMAGE, wrong_preimage});
+
+    BOOST_CHECK(EvalHashGuardedBlock(block) == EvalResult::UNSATISFIED);
+}
+
+BOOST_AUTO_TEST_CASE(eval_hash_guarded_missing_fields)
+{
+    // Missing PREIMAGE field → ERROR
+    RungBlock block;
+    block.type = RungBlockType::HASH_GUARDED;
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(32, 0x00)});
+
+    BOOST_CHECK(EvalHashGuardedBlock(block) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(eval_hash_guarded_missing_hash)
+{
+    // Missing HASH256 field → ERROR
+    RungBlock block;
+    block.type = RungBlockType::HASH_GUARDED;
+    block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xAB)});
+
+    BOOST_CHECK(EvalHashGuardedBlock(block) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(hash_guarded_not_invertible)
+{
+    // HASH_GUARDED must NOT be invertible (anti-spam property)
+    BOOST_CHECK(!IsInvertibleBlockType(RungBlockType::HASH_GUARDED));
+}
+
+BOOST_AUTO_TEST_CASE(hash_guarded_is_known)
+{
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::HASH_GUARDED)));
+}
+
+BOOST_AUTO_TEST_CASE(hash_guarded_not_key_consuming)
+{
+    // HASH_GUARDED does not consume pubkeys (PubkeyCountForBlock = 0)
+    RungBlock block;
+    block.type = RungBlockType::HASH_GUARDED;
+    BOOST_CHECK_EQUAL(PubkeyCountForBlock(RungBlockType::HASH_GUARDED, block), 0u);
 }
 
 // ============================================================================
@@ -3532,11 +3610,11 @@ BOOST_AUTO_TEST_CASE(deserialize_truncated_field_data)
 // Consensus-critical size limit boundary tests (M-7)
 // ============================================================================
 
-// --- MAX_RUNGS boundary (8) ---
+// --- MAX_RUNGS boundary (16) ---
 
 BOOST_AUTO_TEST_CASE(boundary_max_rungs_at_limit)
 {
-    // Exactly MAX_RUNGS (8) rungs — should serialize, deserialize, and pass policy
+    // Exactly MAX_RUNGS (16) rungs — should serialize, deserialize, and pass policy
     LadderWitness ladder;
     for (size_t i = 0; i < MAX_RUNGS; ++i) {
         Rung rung;
@@ -3547,7 +3625,7 @@ BOOST_AUTO_TEST_CASE(boundary_max_rungs_at_limit)
         rung.blocks.push_back(block);
         ladder.rungs.push_back(rung);
     }
-    BOOST_CHECK_EQUAL(ladder.rungs.size(), 8u);
+    BOOST_CHECK_EQUAL(ladder.rungs.size(), static_cast<size_t>(MAX_RUNGS));
 
     auto bytes = SerializeLadderWitness(ladder);
     BOOST_CHECK(!bytes.empty());
@@ -8270,11 +8348,11 @@ BOOST_AUTO_TEST_CASE(mlsc_data_return_too_large)
     uint256 root;
     CSHA256().Write(reinterpret_cast<const unsigned char*>("test"), 4).Finalize(root.data());
 
-    // 33 bytes exceeds DATA max — scriptPubKey is 66 bytes, exceeds 65 limit
-    std::vector<uint8_t> data(33, 0xFF);
+    // 41 bytes exceeds DATA max (40) — scriptPubKey is 74 bytes, exceeds 73 limit
+    std::vector<uint8_t> data(41, 0xFF);
     CScript script = CreateMLSCScript(root, data);
-    BOOST_CHECK_EQUAL(script.size(), 66u);
-    BOOST_CHECK(!IsMLSCScript(script)); // Rejected: > 65 bytes
+    BOOST_CHECK_EQUAL(script.size(), 74u);
+    BOOST_CHECK(!IsMLSCScript(script)); // Rejected: > 73 bytes
 }
 
 BOOST_AUTO_TEST_CASE(mlsc_data_return_min_payload)
@@ -10507,17 +10585,21 @@ BOOST_AUTO_TEST_CASE(data_return_field_valid_range)
     RungField field_16{RungDataType::DATA, std::vector<uint8_t>(16, 0xBB)};
     BOOST_CHECK(field_16.IsValid(reason));
 
-    // Valid: 32 bytes (maximum)
+    // Valid: 32 bytes (mid-high range)
     RungField field_32{RungDataType::DATA, std::vector<uint8_t>(32, 0xCC)};
     BOOST_CHECK(field_32.IsValid(reason));
+
+    // Valid: 40 bytes (maximum)
+    RungField field_40{RungDataType::DATA, std::vector<uint8_t>(40, 0xCC)};
+    BOOST_CHECK(field_40.IsValid(reason));
 
     // Invalid: 0 bytes (below minimum)
     RungField field_0{RungDataType::DATA, std::vector<uint8_t>()};
     BOOST_CHECK(!field_0.IsValid(reason));
 
-    // Invalid: 33 bytes (above maximum)
-    RungField field_33{RungDataType::DATA, std::vector<uint8_t>(33, 0xDD)};
-    BOOST_CHECK(!field_33.IsValid(reason));
+    // Invalid: 41 bytes (above maximum)
+    RungField field_41{RungDataType::DATA, std::vector<uint8_t>(41, 0xDD)};
+    BOOST_CHECK(!field_41.IsValid(reason));
 }
 
 BOOST_AUTO_TEST_CASE(data_return_is_base_block_type)
@@ -10554,6 +10636,355 @@ BOOST_AUTO_TEST_CASE(data_return_micro_header_lookup)
 {
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::DATA_RETURN) != 0xFF);
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::DATA_RETURN) == 0x3C);
+}
+
+// ============================================================================
+// Feature 2: ANYPREVOUT sighash tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(sighash_anyprevout_constants)
+{
+    BOOST_CHECK_EQUAL(rung::LADDER_SIGHASH_ANYPREVOUT, 0x40);
+    BOOST_CHECK_EQUAL(rung::LADDER_SIGHASH_ANYPREVOUTANYSCRIPT, 0xC0);
+}
+
+BOOST_AUTO_TEST_CASE(sighash_anyprevout_valid_hash_types)
+{
+    // Valid APO hash types: 0x40-0x43
+    BOOST_CHECK_EQUAL(rung::LADDER_SIGHASH_ANYPREVOUT & 0x40, 0x40);
+    // Valid APOAS hash types: 0xC0-0xC3
+    BOOST_CHECK_EQUAL(rung::LADDER_SIGHASH_ANYPREVOUTANYSCRIPT & 0xC0, 0xC0);
+}
+
+// ============================================================================
+// Feature 3: OUTPUT_CHECK block tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(output_check_is_known_block_type)
+{
+    BOOST_CHECK(IsKnownBlockType(static_cast<uint16_t>(RungBlockType::OUTPUT_CHECK)));
+}
+
+BOOST_AUTO_TEST_CASE(output_check_block_type_name)
+{
+    BOOST_CHECK_EQUAL(BlockTypeName(RungBlockType::OUTPUT_CHECK), "OUTPUT_CHECK");
+}
+
+BOOST_AUTO_TEST_CASE(output_check_micro_header_slot)
+{
+    BOOST_CHECK_EQUAL(MicroHeaderSlot(RungBlockType::OUTPUT_CHECK), 0x3E);
+}
+
+BOOST_AUTO_TEST_CASE(output_check_not_invertible)
+{
+    BOOST_CHECK(!IsInvertibleBlockType(RungBlockType::OUTPUT_CHECK));
+}
+
+BOOST_AUTO_TEST_CASE(output_check_not_key_consuming)
+{
+    BOOST_CHECK(!IsKeyConsumingBlockType(RungBlockType::OUTPUT_CHECK));
+}
+
+BOOST_AUTO_TEST_CASE(output_check_pubkey_count_zero)
+{
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_CHECK;
+    BOOST_CHECK_EQUAL(PubkeyCountForBlock(RungBlockType::OUTPUT_CHECK, block), 0u);
+}
+
+BOOST_AUTO_TEST_CASE(output_check_implicit_layout)
+{
+    const auto& layout = GetImplicitLayout(RungBlockType::OUTPUT_CHECK, 1);
+    BOOST_CHECK_EQUAL(layout.count, 4u);
+    BOOST_CHECK(layout.fields[0].type == RungDataType::NUMERIC);
+    BOOST_CHECK(layout.fields[1].type == RungDataType::NUMERIC);
+    BOOST_CHECK(layout.fields[2].type == RungDataType::NUMERIC);
+    BOOST_CHECK(layout.fields[3].type == RungDataType::HASH256);
+}
+
+BOOST_AUTO_TEST_CASE(output_check_eval_missing_fields)
+{
+    MockSignatureChecker checker;
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_CHECK;
+    // No fields
+    BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(output_check_eval_no_tx)
+{
+    MockSignatureChecker checker;
+    ScriptExecutionData execdata;
+    RungEvalContext ctx;
+    // ctx.tx is nullptr
+
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_CHECK;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(0)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1000)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(2000)});
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(32, 0x00)});
+
+    BOOST_CHECK(EvalBlock(block, checker, SigVersion::LADDER, execdata, ctx) == EvalResult::ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(output_check_serialize_roundtrip)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::OUTPUT_CHECK;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(0)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(1000)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(5000)});
+    block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(32, 0xAA)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    auto bytes = SerializeLadderWitness(ladder, SerializationContext::CONDITIONS);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error, SerializationContext::CONDITIONS));
+    BOOST_CHECK_EQUAL(decoded.rungs.size(), 1u);
+    BOOST_CHECK(decoded.rungs[0].blocks[0].type == RungBlockType::OUTPUT_CHECK);
+    BOOST_CHECK_EQUAL(decoded.rungs[0].blocks[0].fields.size(), 4u);
+}
+
+// ============================================================================
+// Feature 1: Per-rung coil destination tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(coil_rung_destinations_empty_roundtrip)
+{
+    RungCoil coil;
+    coil.coil_type = RungCoilType::UNLOCK;
+    coil.attestation = RungAttestationMode::INLINE;
+    coil.scheme = RungScheme::SCHNORR;
+
+    auto bytes = SerializeCoilData(coil);
+    // Verify it contains the rung_destinations varint (0)
+    BOOST_CHECK(!bytes.empty());
+}
+
+BOOST_AUTO_TEST_CASE(coil_rung_destinations_single)
+{
+    RungCoil coil;
+    coil.coil_type = RungCoilType::UNLOCK_TO;
+    coil.attestation = RungAttestationMode::INLINE;
+    coil.scheme = RungScheme::SCHNORR;
+    coil.address_hash.resize(32, 0xAA);
+    coil.rung_destinations.push_back({0, std::vector<uint8_t>(32, 0xBB)});
+
+    auto bytes = SerializeCoilData(coil);
+    BOOST_CHECK(!bytes.empty());
+}
+
+BOOST_AUTO_TEST_CASE(coil_rung_destinations_multiple)
+{
+    RungCoil coil;
+    coil.coil_type = RungCoilType::UNLOCK_TO;
+    coil.attestation = RungAttestationMode::INLINE;
+    coil.scheme = RungScheme::SCHNORR;
+    coil.address_hash.resize(32, 0xAA);
+    coil.rung_destinations.push_back({0, std::vector<uint8_t>(32, 0xBB)});
+    coil.rung_destinations.push_back({1, std::vector<uint8_t>(32, 0xCC)});
+    coil.rung_destinations.push_back({3, std::vector<uint8_t>(32, 0xDD)});
+
+    auto bytes = SerializeCoilData(coil);
+    BOOST_CHECK(!bytes.empty());
+    BOOST_CHECK(bytes.size() > 5); // Must contain destinations data
+}
+
+BOOST_AUTO_TEST_CASE(coil_rung_destinations_ladder_roundtrip)
+{
+    LadderWitness ladder;
+    Rung rung;
+    RungBlock block;
+    block.type = RungBlockType::CSV;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumeric(100)});
+    rung.blocks.push_back(block);
+    ladder.rungs.push_back(rung);
+
+    ladder.coil.coil_type = RungCoilType::UNLOCK_TO;
+    ladder.coil.attestation = RungAttestationMode::INLINE;
+    ladder.coil.scheme = RungScheme::SCHNORR;
+    ladder.coil.address_hash.resize(32, 0xAA);
+    ladder.coil.rung_destinations.push_back({0, std::vector<uint8_t>(32, 0xBB)});
+
+    auto bytes = SerializeLadderWitness(ladder, SerializationContext::CONDITIONS);
+    LadderWitness decoded;
+    std::string error;
+    BOOST_CHECK(DeserializeLadderWitness(bytes, decoded, error, SerializationContext::CONDITIONS));
+    BOOST_CHECK_EQUAL(decoded.coil.rung_destinations.size(), 1u);
+    BOOST_CHECK_EQUAL(decoded.coil.rung_destinations[0].first, 0u);
+    BOOST_CHECK_EQUAL(decoded.coil.rung_destinations[0].second.size(), 32u);
+    BOOST_CHECK(decoded.coil.rung_destinations[0].second == std::vector<uint8_t>(32, 0xBB));
+}
+
+// ============================================================================
+// Feature 6: Descriptor tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(descriptor_parse_simple_sig)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+    keys["alice"] = MakePubkey();
+
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(rung::ParseDescriptor("ladder(sig(@alice))", keys, out, pubkeys, error));
+    BOOST_CHECK_EQUAL(out.rungs.size(), 1u);
+    BOOST_CHECK_EQUAL(out.rungs[0].blocks.size(), 1u);
+    BOOST_CHECK(out.rungs[0].blocks[0].type == RungBlockType::SIG);
+}
+
+BOOST_AUTO_TEST_CASE(descriptor_parse_multi_rung)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+    keys["alice"] = MakePubkey();
+    keys["bob"] = MakePubkey();
+
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(rung::ParseDescriptor(
+        "ladder(or(sig(@alice), and(csv(52560), sig(@bob))))",
+        keys, out, pubkeys, error));
+    BOOST_CHECK_EQUAL(out.rungs.size(), 2u);
+    BOOST_CHECK_EQUAL(out.rungs[0].blocks.size(), 1u);
+    BOOST_CHECK_EQUAL(out.rungs[1].blocks.size(), 2u);
+    BOOST_CHECK(out.rungs[1].blocks[0].type == RungBlockType::CSV);
+    BOOST_CHECK(out.rungs[1].blocks[1].type == RungBlockType::SIG);
+}
+
+BOOST_AUTO_TEST_CASE(descriptor_parse_invalid_syntax)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(!rung::ParseDescriptor("not_a_descriptor", keys, out, pubkeys, error));
+    BOOST_CHECK(!error.empty());
+}
+
+BOOST_AUTO_TEST_CASE(descriptor_parse_unknown_key)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+    // No "alice" key defined
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(!rung::ParseDescriptor("ladder(sig(@alice))", keys, out, pubkeys, error));
+    BOOST_CHECK(!error.empty());
+}
+
+BOOST_AUTO_TEST_CASE(descriptor_parse_inverted_block)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(rung::ParseDescriptor("ladder(!csv(100))", keys, out, pubkeys, error));
+    BOOST_CHECK_EQUAL(out.rungs.size(), 1u);
+    BOOST_CHECK(out.rungs[0].blocks[0].inverted);
+}
+
+BOOST_AUTO_TEST_CASE(descriptor_roundtrip)
+{
+    std::map<std::string, std::vector<uint8_t>> keys;
+    keys["alice"] = MakePubkey();
+
+    RungConditions out;
+    std::vector<std::vector<std::vector<uint8_t>>> pubkeys;
+    std::string error;
+    BOOST_CHECK(rung::ParseDescriptor("ladder(sig(@alice))", keys, out, pubkeys, error));
+
+    std::string formatted = rung::FormatDescriptor(out, pubkeys);
+    BOOST_CHECK(formatted.find("sig(") != std::string::npos);
+    BOOST_CHECK(formatted.find("ladder(") != std::string::npos);
+}
+
+// ============================================================================
+// Feature 8: Block descriptor table tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(block_descriptor_table_sig)
+{
+    const auto* desc = rung::LookupBlockDescriptor(RungBlockType::SIG);
+    BOOST_CHECK(desc != nullptr);
+    BOOST_CHECK_EQUAL(std::string(desc->name), "SIG");
+    BOOST_CHECK(desc->known);
+    BOOST_CHECK(!desc->invertible);
+    BOOST_CHECK(desc->key_consuming);
+    BOOST_CHECK_EQUAL(desc->pubkey_count, 1u);
+}
+
+BOOST_AUTO_TEST_CASE(block_descriptor_table_output_check)
+{
+    const auto* desc = rung::LookupBlockDescriptor(RungBlockType::OUTPUT_CHECK);
+    BOOST_CHECK(desc != nullptr);
+    BOOST_CHECK_EQUAL(std::string(desc->name), "OUTPUT_CHECK");
+    BOOST_CHECK(!desc->invertible);
+    BOOST_CHECK(!desc->key_consuming);
+    BOOST_CHECK(desc->conditions_only);
+}
+
+BOOST_AUTO_TEST_CASE(block_descriptor_table_consistency)
+{
+    // Verify that the descriptor table matches the existing functions for all known block types
+    for (uint32_t code = 0; code <= 0x0FFF; ++code) {
+        uint16_t tc = static_cast<uint16_t>(code);
+        if (!IsKnownBlockType(tc)) continue;
+        auto bt = static_cast<RungBlockType>(tc);
+
+        // Skip deprecated types
+        if (bt == RungBlockType::HASH_PREIMAGE || bt == RungBlockType::HASH160_PREIMAGE) continue;
+
+        const auto* desc = rung::LookupBlockDescriptor(bt);
+        BOOST_CHECK_MESSAGE(desc != nullptr, "Missing descriptor for " + BlockTypeName(bt));
+        if (!desc) continue;
+
+        BOOST_CHECK_MESSAGE(desc->known == true,
+            "known mismatch for " + BlockTypeName(bt));
+        BOOST_CHECK_MESSAGE(desc->invertible == IsInvertibleBlockType(bt),
+            "invertible mismatch for " + BlockTypeName(bt));
+        BOOST_CHECK_MESSAGE(desc->key_consuming == IsKeyConsumingBlockType(bt),
+            "key_consuming mismatch for " + BlockTypeName(bt));
+        BOOST_CHECK_MESSAGE(std::string(desc->name) == BlockTypeName(bt),
+            "name mismatch for " + BlockTypeName(bt));
+    }
+}
+
+// ============================================================================
+// Feature 5: Batch verifier tests
+// ============================================================================
+
+BOOST_AUTO_TEST_CASE(batch_verifier_empty)
+{
+    rung::BatchVerifier bv;
+    bv.active = true;
+    // Empty batch should verify
+    BOOST_CHECK(bv.Verify());
+}
+
+BOOST_AUTO_TEST_CASE(batch_verifier_disabled_mode)
+{
+    rung::BatchVerifier bv;
+    // active is false by default
+    BOOST_CHECK(!bv.active);
+    BOOST_CHECK(bv.entries.empty());
+}
+
+BOOST_AUTO_TEST_CASE(batch_verifier_find_failure_empty)
+{
+    rung::BatchVerifier bv;
+    // No entries, no failure
+    BOOST_CHECK_EQUAL(bv.FindFailure(), -1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

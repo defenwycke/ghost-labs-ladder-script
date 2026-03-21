@@ -37,15 +37,15 @@ DEFINED  -->  STARTED  -->  LOCKED_IN  -->  ACTIVE
 - **ACTIVE:** The new consensus rules are enforced.
 - **FAILED:** The `timeout` has passed without reaching the threshold.
 
-All 59 block types across 10 families activate as a single deployment. Partial activation of individual block types is not supported - the evaluation engine, wire format, and sighash computation form an interdependent whole.
+All 60 block types across 10 families activate as a single deployment. Partial activation of individual block types is not supported - the evaluation engine, wire format, and sighash computation form an interdependent whole.
 
 ## 3. Risk by Family
 
-All 59 block types are documented in the BIP and Block Library. This section summarises the risk profile and new capabilities introduced by each family, relevant to activation review.
+All 60 block types are documented in the BIP and Block Library. This section summarises the risk profile and new capabilities introduced by each family, relevant to activation review.
 
-### Signature, Timelock, and Hash (0x0001-0x02FF) - 10 block types
+### Signature, Timelock, and Hash (0x0001-0x02FF) - 11 block types
 
-**Risk:** Low. These map directly to well-understood Script operations running on mainnet for years. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (rejected at consensus); use HTLC or HASH_SIG instead. The new risk surface is the wire format deserialisation and ladder sighash, covered by 444 unit tests and 158 functional tests.
+**Risk:** Low. These map directly to well-understood Script operations running on mainnet for years. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (rejected at consensus); use HTLC, HASH_SIG, or HASH_GUARDED instead. The new risk surface is the wire format deserialisation and ladder sighash, covered by 444 unit tests and 158 functional tests.
 
 **Enables:** Standard wallets, Lightning HTLCs, timelocked vaults, atomic swaps, post-quantum signatures via the SCHEME field.
 
@@ -242,7 +242,7 @@ The MAX_LADDER_WITNESS_SIZE limit of 100,000 bytes applies per input.
 | Reference implementation review | Code review of `src/rung/` by independent reviewers. Fuzz testing campaigns. |
 | Testnet deployment | Ladder Script activated on signet/testnet. Wallet developers begin integration testing. |
 | Signalling start | BIP-9 signalling begins on mainnet. |
-| Activation | All 59 block types become consensus-enforced and policy-standard. |
+| Activation | All 60 block types become consensus-enforced and policy-standard. |
 
 **Failure criteria:** If the deployment fails to reach the 90% threshold within its 1-year timeout, it enters FAILED state. A new BIP-9 deployment with a fresh version bit and updated parameters would be required to retry.
 

@@ -12,7 +12,7 @@ This matters because Bitcoin adoption depends on people being able to use it. No
 
 By restructuring how transactions work at the wire level, Ladder Script opens up capabilities that weren't practical before:
 
-- **59 block types across 10 families.** Signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance constraints, and legacy Bitcoin wrappers. These compose freely. A vault with fee-gated spending and a dead man's switch is three blocks on a rung.
+- **60 block types across 10 families.** Signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance constraints, and legacy Bitcoin wrappers. These compose freely. A vault with fee-gated spending and a dead man's switch is three blocks on a rung.
 
 - **MLSC (Merkelised Ladder Script Conditions).** The entire spending policy compresses to a 33-byte output regardless of complexity. Only the exercised path is revealed at spend time. Unused paths stay permanently hidden. This is better for privacy and significantly lighter on-chain.
 
@@ -28,7 +28,7 @@ As a consequence of this typed, structured design, several important properties 
 
 - **Post-quantum signatures.** FALCON-512, FALCON-1024, Dilithium3, and SPHINCS+ are native signature schemes, implemented and running on the live signet right now. A single SCHEME field on any signature block routes verification to classical Schnorr or any PQ algorithm. Any spending policy (single-sig, multisig, vaults, covenants) can use quantum-resistant keys today with zero structural changes. COSIGN lets a single PQ-secured UTXO co-sign for unlimited classical UTXOs. Incremental PQ migration without a flag day.
 
-- **Anti-spam hardening.** Three coordinated defenses close all practical data embedding surfaces. merkle_pub_key folds public keys into the Merkle leaf hash so there is no writable pubkey field in conditions. Selective inversion prevents key-consuming blocks from being inverted, closing the garbage-pubkey attack. Hash lock deprecation removes standalone hash preimage blocks, closing the invertible-preimage attack. The on-chain footprint is a typed structure where every byte must conform to its declared type.
+- **Anti-spam hardening.** Three coordinated defenses close all practical data embedding surfaces. merkle_pub_key folds public keys into the Merkle leaf hash so there is no writable pubkey field in conditions. Selective inversion prevents key-consuming blocks from being inverted, closing the garbage-pubkey attack. Hash lock deprecation removes standalone hash preimage blocks, closing the invertible-preimage attack. HASH_GUARDED provides a safe, non-invertible hash-lock alternative. The on-chain footprint is a typed structure where every byte must conform to its declared type.
 
 - **Programmable logic.** The PLC family brings 14 block types drawn from decades of industrial automation: hysteresis controllers, timers, latches, counters, comparators, sequencers, rate limiters. State machines, approval accumulators, watchdog patterns, all as composable blocks within the same wire format.
 
@@ -39,7 +39,7 @@ This site has everything you need to understand, experiment with, and build on L
 - **[Ladder Script Overview](/labs/ladder-script.html)**. How it works, block families, MLSC, use cases, and 30 example diagrams
 - **[Documentation](/labs/docs/)** . BIP spec, technical specification, block library, integration guide, glossary
 - **[Ladder Engine](/labs/ladder-engine.html)** . Visual IDE: build, simulate, and broadcast transactions on the live signet. Pick an example from the preset library or build from scratch
-- **[Block Reference](/labs/docs/#BLOCKS)** . Deep-dive documentation on all 59 block types
+- **[Block Reference](/labs/docs/#BLOCKS)** . Deep-dive documentation on all 60 block types
 
 The best way to understand Ladder Script is to play with it. Open the Engine, load an example, and see how the blocks wire together. Modify something. Break something. See what happens.
 

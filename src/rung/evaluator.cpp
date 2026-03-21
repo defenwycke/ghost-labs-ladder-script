@@ -64,12 +64,41 @@ bool LadderSignatureChecker::CheckSchnorrSignature(std::span<const unsigned char
         return false;
     }
 
+    // Batch mode: defer verification
+    if (m_batch && m_batch->active) {
+        m_batch->Add(sighash, pubkey, std::span<const unsigned char>{sig_data.data(), sig_data.size()});
+        return true; // Deferred — will be verified in batch
+    }
+
     std::span<const unsigned char> sig_span{sig_data.data(), sig_data.size()};
     if (!pubkey.VerifySchnorr(sighash, sig_span)) {
         if (serror) *serror = SCRIPT_ERR_SCHNORR_SIG;
         return false;
     }
     return true;
+}
+
+bool BatchVerifier::Verify() const
+{
+    // Fall back to individual verification (batch API not yet available in secp256k1)
+    for (const auto& entry : entries) {
+        std::span<const unsigned char> sig_span{entry.sig.data(), entry.sig.size()};
+        if (!entry.pubkey.VerifySchnorr(entry.sighash, sig_span)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int BatchVerifier::FindFailure() const
+{
+    for (size_t i = 0; i < entries.size(); ++i) {
+        std::span<const unsigned char> sig_span{entries[i].sig.data(), entries[i].sig.size()};
+        if (!entries[i].pubkey.VerifySchnorr(entries[i].sighash, sig_span)) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
 bool LadderSignatureChecker::ComputeSighash(uint8_t hash_type, uint256& hash_out) const
@@ -607,6 +636,34 @@ EvalResult EvalTaggedHashBlock(const RungBlock& block)
         .Finalize(computed);
 
     if (memcmp(computed, expected_hash->data.data(), 32) == 0) {
+        return EvalResult::SATISFIED;
+    }
+    return EvalResult::UNSATISFIED;
+}
+
+EvalResult EvalHashGuardedBlock(const RungBlock& block)
+{
+    // Raw SHA256 preimage verification (non-invertible replacement for deprecated HASH_PREIMAGE).
+    // Conditions: HASH256 (committed hash). Witness: PREIMAGE (raw preimage).
+    // SATISFIED when SHA256(preimage) == committed_hash.
+    const RungField* hash_field = FindField(block, RungDataType::HASH256);
+    const RungField* preimage_field = FindField(block, RungDataType::PREIMAGE);
+
+    if (!hash_field || !preimage_field) {
+        return EvalResult::ERROR;
+    }
+
+    if (hash_field->data.size() != 32) {
+        return EvalResult::ERROR;
+    }
+
+    // Compute SHA256(preimage) and compare to committed hash
+    unsigned char computed[CSHA256::OUTPUT_SIZE];
+    CSHA256()
+        .Write(preimage_field->data.data(), preimage_field->data.size())
+        .Finalize(computed);
+
+    if (memcmp(computed, hash_field->data.data(), 32) == 0) {
         return EvalResult::SATISFIED;
     }
     return EvalResult::UNSATISFIED;
@@ -2228,6 +2285,55 @@ EvalResult EvalAccumulatorBlock(const RungBlock& block)
 }
 
 // ============================================================================
+// OUTPUT_CHECK evaluator
+// ============================================================================
+
+EvalResult EvalOutputCheckBlock(const RungBlock& block, const RungEvalContext& ctx)
+{
+    // OUTPUT_CHECK: per-output value and script constraint
+    // Conditions fields: NUMERIC(output_index) + NUMERIC(min_sats) + NUMERIC(max_sats) + HASH256(script_hash)
+    // script_hash = all zeros means "skip script check"
+    auto numerics = FindAllFields(block, RungDataType::NUMERIC);
+    if (numerics.size() < 3) return EvalResult::ERROR;
+
+    const RungField* hash_field = FindField(block, RungDataType::HASH256);
+    if (!hash_field || hash_field->data.size() != 32) return EvalResult::ERROR;
+
+    int64_t output_index = ReadNumeric(*numerics[0]);
+    int64_t min_sats = ReadNumeric(*numerics[1]);
+    int64_t max_sats = ReadNumeric(*numerics[2]);
+
+    if (output_index < 0 || min_sats < 0 || max_sats < 0) return EvalResult::ERROR;
+    if (min_sats > max_sats) return EvalResult::ERROR;
+
+    if (!ctx.tx) return EvalResult::ERROR;
+
+    // Bounds check
+    if (static_cast<size_t>(output_index) >= ctx.tx->vout.size()) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    const auto& vout = ctx.tx->vout[static_cast<size_t>(output_index)];
+
+    // Value check
+    if (vout.nValue < min_sats || vout.nValue > max_sats) {
+        return EvalResult::UNSATISFIED;
+    }
+
+    // Script check (skip if hash is all zeros)
+    static const std::vector<uint8_t> zero_hash(32, 0x00);
+    if (hash_field->data != zero_hash) {
+        unsigned char computed[CSHA256::OUTPUT_SIZE];
+        CSHA256().Write(vout.scriptPubKey.data(), vout.scriptPubKey.size()).Finalize(computed);
+        if (memcmp(computed, hash_field->data.data(), 32) != 0) {
+            return EvalResult::UNSATISFIED;
+        }
+    }
+
+    return EvalResult::SATISFIED;
+}
+
+// ============================================================================
 // KEY_REF_SIG evaluator
 // ============================================================================
 
@@ -2664,6 +2770,9 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::TAGGED_HASH:
         raw = EvalTaggedHashBlock(block);
         break;
+    case RungBlockType::HASH_GUARDED:
+        raw = EvalHashGuardedBlock(block);
+        break;
     // Covenant
     case RungBlockType::CTV:
         raw = EvalCTVBlock(block, ctx);
@@ -2793,6 +2902,9 @@ EvalResult EvalBlock(const RungBlock& block,
     case RungBlockType::ACCUMULATOR:
         raw = EvalAccumulatorBlock(block);
         break;
+    case RungBlockType::OUTPUT_CHECK:
+        raw = EvalOutputCheckBlock(block, ctx);
+        break;
     // Legacy
     case RungBlockType::P2PK_LEGACY:
         raw = EvalP2PKLegacyBlock(block, checker, sigversion, execdata);
@@ -2915,7 +3027,8 @@ bool EvalLadder(const LadderWitness& ladder,
                 const BaseSignatureChecker& checker,
                 SigVersion sigversion,
                 ScriptExecutionData& execdata,
-                const RungEvalContext& ctx)
+                const RungEvalContext& ctx,
+                size_t* satisfied_rung_out)
 {
     if (ladder.IsEmpty()) {
         return false;
@@ -2935,10 +3048,12 @@ bool EvalLadder(const LadderWitness& ladder,
     if (!ladder.relays.empty()) {
         rung_ctx.relays = &ladder.relays;
     }
-    for (const auto& rung : ladder.rungs) {
+    for (size_t r = 0; r < ladder.rungs.size(); ++r) {
+        const auto& rung = ladder.rungs[r];
         rung_ctx.rung_relay_refs = rung.relay_refs.empty() ? nullptr : &rung.relay_refs;
         EvalResult result = EvalRung(rung, checker, sigversion, execdata, rung_ctx, relay_ptr);
         if (result == EvalResult::SATISFIED) {
+            if (satisfied_rung_out) *satisfied_rung_out = r;
             return true;
         }
     }

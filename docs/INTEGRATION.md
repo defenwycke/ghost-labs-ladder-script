@@ -32,7 +32,7 @@ A Ladder Script transaction uses version 4 (`CTransaction::RUNG_TX_VERSION = 4`)
 
 Diff fields support either `"hex"` (raw replacement data) or `"privkey"` (auto-sign for SIGNATURE fields, auto-derive for PUBKEY fields). The RPC constructs a `LadderWitness` with `witness_ref` set and serializes it.
 
-5. **Broadcast.** Submit via `sendrawtransaction`. The mempool validates the transaction through `IsStandardRungTx()` before acceptance.
+5. **Broadcast.** Submit via `sendrawtransaction`. The mempool validates the transaction through `IsStandardRungTx()` (thin deserialize-only check) before acceptance. Output validation is handled by `ValidateRungOutputs()` at the consensus layer.
 
 ### 1.2 Witness Construction
 
@@ -108,7 +108,7 @@ A v4 rung conditions output has the following `scriptPubKey` format:
 
 Two output formats are supported:
 
-- **MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 32 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 65 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only accepted format on mainnet.
+- **MLSC (`0xC2`):** `RUNG_MLSC_PREFIX`. A 32-byte Merkle root, optionally followed by up to 40 bytes of DATA_RETURN payload. Detected by `IsMLSCScript()`: `scriptPubKey.size() >= 33 && scriptPubKey.size() <= 73 && scriptPubKey[0] == 0xc2`. Conditions are revealed at spend time in the witness. This is the only accepted format on mainnet.
 - **Inline (`0xC1`):** `RUNG_CONDITIONS_PREFIX`. Full conditions in the scriptPubKey. Detected by `IsRungConditionsScript()`: `scriptPubKey.size() >= 2 && scriptPubKey[0] == 0xc1`. Rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`); regtest/signet testing only.
 
 The helper `IsRungScript()` returns true for either format.
@@ -134,7 +134,7 @@ The helper `IsRungScript()` returns true for either format.
 
 ### 3.3 Output Restrictions
 
-All outputs in a v4 transaction must be rung conditions outputs (`0xC1` or `0xC2`). Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected by `ValidateRungOutputs()`.
+All outputs in a v4 transaction must be rung conditions outputs (`0xC1` or `0xC2`). Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected by `ValidateRungOutputs()`, which is a consensus-level function (not policy).
 
 - **DATA_RETURN** is handled by appending data to an MLSC output (`0xC2 || root || data`), not via OP_RETURN.
 - **`0xC1` inline** is rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`).
@@ -206,43 +206,34 @@ It also exposes `ComputeSighash()` for PQ signature verification, which needs th
 
 ### 6.1 IsStandardRungTx()
 
-The mempool policy function `IsStandardRungTx()` validates v4 transactions before acceptance. It is called from `policy.cpp` when `tx.version == CTransaction::RUNG_TX_VERSION`.
+The mempool policy function `IsStandardRungTx()` is a thin deserialize-only check called from `policy.cpp` when `tx.version == CTransaction::RUNG_TX_VERSION`.
 
-**Output validation:**
+**What policy does:**
 
-- MLSC outputs (`0xC2`) are always standard. DATA_RETURN payloads (appended to MLSC) are validated by `ValidateRungOutputs()`.
-- Inline outputs (`0xC1`) must pass `IsStandardRungOutput()` but are rejected on mainnet.
-- Non-rung outputs are rejected in v4 transactions.
+- Deserializes each input's witness to confirm it is well-formed.
+- Enforces structural limits (MAX_RUNGS, MAX_BLOCKS_PER_RUNG, etc.) — these are also consensus limits.
+- Validates field types and sizes via `RungField::IsValid()`.
 
-**Input witness validation:**
+**What policy does NOT do:**
 
-- Each input must have a non-empty witness stack.
-- `stack[0]` must deserialize as a valid `LadderWitness`.
-- Maximum 8 rungs per witness.
-- Maximum 8 blocks per rung.
-- All block types must be known (`IsKnownBlockType()`).
-- All fields must pass `RungField::IsValid()` size/content checks.
+- Output validation is handled by `ValidateRungOutputs()` at the consensus layer, not by policy.
+- `IsStandardRungOutput()` has been removed — output validation is entirely consensus.
 
-Diff witnesses pass mempool standardness checks. The `IsStandardRungTx()` function validates deserialization (which enforces field type restrictions and size limits) and then skips rung/relay validation since those structures are inherited at evaluation time.
+Diff witnesses pass mempool standardness checks. The function validates deserialization (which enforces field type restrictions and size limits) and then skips rung/relay validation since those structures are inherited at evaluation time.
 
-### 6.2 IsStandardRungOutput()
+### 6.2 ValidateRungOutputs() (Consensus)
 
-Validates rung condition outputs:
+All outputs in a v4 transaction are validated by `ValidateRungOutputs()`, which is a consensus function in `evaluator.cpp`:
 
-**Inline (`0xC1`):**
-- Must deserialize as valid `RungConditions`.
-- Maximum 8 rungs, 8 blocks per rung.
-- All block types must be known.
-- All fields must be condition-allowed data types (no SIGNATURE, no PREIMAGE, no PUBKEY, no SCRIPT_BODY).
-- All fields must pass size validation.
-
-**MLSC (`0xC2`):**
-- Must be 33-65 bytes (`0xC2` + 32-byte root + optional 1-80 byte DATA_RETURN payload).
-- Always standard. The root is opaque and requires no further validation at the output level.
+- All outputs must be rung conditions (`0xC1` or `0xC2`).
+- MLSC outputs (`0xC2`) must be 33-73 bytes.
+- Inline outputs (`0xC1`) are rejected on mainnet (`RUNG_VERIFY_MLSC_ONLY`).
+- DATA_RETURN payloads are validated (max 40 bytes, zero-value output, max 1 per tx).
+- Non-rung outputs (OP_RETURN, P2TR, P2WSH, etc.) are rejected.
 
 ### 6.3 Block Type Standardness
 
-All known block types are standard upon activation. The policy implementation accepts all block types across all 10 families (Signature, Timelock, Hash, Covenant, Anchor, Recursion, PLC, Compound, Governance, and Legacy).
+All known block types are standard upon activation. All block types across all 10 families (Signature, Timelock, Hash, Covenant, Anchor, Recursion, PLC, Compound, Governance, and Legacy) are accepted.
 
 ---
 
@@ -284,7 +275,7 @@ A time-bounded covenant. Before `until_height`, the output must be re-encumbered
 
 ### 7.8 Comparison Functions
 
-The helper `FullConditionsEqual()` performs a deep structural comparison of two `RungConditions` objects. For mutated blocks, `VerifyMutatedConditions()` allows declared parameters to differ by the specified delta while requiring all other fields to match exactly.
+For MLSC outputs, covenant verification uses the leaf-centric algorithm via `MLSCVerifiedLeaves`. Instead of full-conditions comparison, the verifier copies the input's verified leaf hashes, applies the declared mutation to the target leaf, recomputes the Merkle root, and compares against the output root. For cross-rung mutations, the `revealed_mutation_targets` in the MLSC proof provide the target rung's condition blocks.
 
 Only condition data types are compared (HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA). Witness-only types are excluded from comparison since they are never present in conditions.
 
@@ -432,4 +423,4 @@ The current wallet does not natively construct v4 transactions. The `SigVersion:
 
 ### 10.6 P2P Relay
 
-v4 transactions are relayed through the standard P2P transaction relay mechanism. The mempool's `IsStandard()` check delegates to `IsStandardRungTx()` for v4 transactions. Nodes without Ladder Script support would reject v4 transactions as non-standard but would accept blocks containing them (consensus-valid).
+v4 transactions are relayed through the standard P2P transaction relay mechanism. The mempool's `IsStandard()` check delegates to `IsStandardRungTx()` (thin deserialize-only check) for v4 transactions. Output validation is performed by `ValidateRungOutputs()` at the consensus layer. Nodes without Ladder Script support would reject v4 transactions as non-standard but would accept blocks containing them (consensus-valid).

@@ -132,17 +132,17 @@ the palette onto a rung slot or the "+ ADD RUNG" drop area.
 |--------|--------|
 | **Signature** | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG |
 | **Timelock** | CSV, CSV_TIME, CLTV, CLTV_TIME |
-| **Hash** | TAGGED_HASH |
+| **Hash** | TAGGED_HASH, HASH_GUARDED |
 | **Covenant** | CTV, VAULT_LOCK, AMOUNT_LOCK |
 | **Recursion** | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY |
 | **Anchor** | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN |
-| **PLC** | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN |
+| **PLC** | HYSTERESIS_FEE, HYSTERESIS_VALUE, TIMER_CONTINUOUS, TIMER_OFF_DELAY, LATCH_SET, LATCH_RESET, COUNTER_DOWN, COUNTER_PRESET, COUNTER_UP, COMPARE, SEQUENCER, ONE_SHOT, RATE_LIMIT, COSIGN (functionally cross-input) |
 | **Compound** | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG |
-| **Governance** | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR |
+| **Governance** | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK |
 | **Legacy** | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY |
 
-59 block types total (HASH_PREIMAGE and HASH160_PREIMAGE are deprecated -- use HTLC
-or HASH_SIG instead). For detailed documentation on each, see
+61 block types total (HASH_PREIMAGE and HASH160_PREIMAGE are deprecated -- use HTLC,
+HASH_SIG, or HASH_GUARDED instead). For detailed documentation on each, see
 [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) or the [Block Reference](../tools/block-docs/).
 
 ---
@@ -152,7 +152,7 @@ or HASH_SIG instead). For detailed documentation on each, see
 ### 4.1 Adding Rungs
 
 Click **+ RUNG** in the toolbar or drag a block to the empty area below existing rungs.
-Maximum 16 rungs per ladder. Rungs are evaluated with OR logic: first satisfied rung
+Maximum 16 rungs per ladder (MAX_RUNGS = 16). Rungs are evaluated with OR logic: first satisfied rung
 wins.
 
 ### 4.2 Adding Blocks

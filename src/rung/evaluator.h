@@ -7,6 +7,7 @@
 
 #include <rung/conditions.h>
 #include <rung/types.h>
+#include <pubkey.h>
 #include <script/interpreter.h>
 #include <script/script_error.h>
 
@@ -20,6 +21,38 @@ class CTxOut;
 
 namespace rung {
 
+struct TxAggregateContext;
+
+/** Batch Schnorr signature verifier.
+ *  Collects (sighash, pubkey, signature) tuples during evaluation and verifies
+ *  them all in a single batch after all inputs pass. Falls back to individual
+ *  verification if batch verification is not available. */
+struct BatchVerifier {
+    struct Entry {
+        uint256 sighash;
+        XOnlyPubKey pubkey;
+        std::vector<unsigned char> sig;
+    };
+    std::vector<Entry> entries;
+    bool active{false};
+
+    /** Add a verification entry to the batch. */
+    void Add(const uint256& sighash, const XOnlyPubKey& pk, std::span<const unsigned char> sig) {
+        Entry e;
+        e.sighash = sighash;
+        e.pubkey = pk;
+        e.sig.assign(sig.begin(), sig.end());
+        entries.push_back(std::move(e));
+    }
+
+    /** Batch verify all entries. Returns true if all signatures are valid. */
+    bool Verify() const;
+
+    /** On batch failure, find the index of the first invalid entry.
+     *  Returns -1 if all entries are individually valid (shouldn't happen). */
+    int FindFailure() const;
+};
+
 /** Signature checker that wraps an existing checker and adds rung conditions context.
  *  When CheckSchnorrSignature is called with SigVersion::LADDER, it computes
  *  SignatureHashLadder instead of SignatureHashSchnorr. */
@@ -30,18 +63,21 @@ private:
     const PrecomputedTransactionData& m_txdata;
     const CTransaction& m_tx;
     unsigned int m_nIn;
+    BatchVerifier* m_batch{nullptr}; //!< If non-null, defer verification to batch
 
 public:
     LadderSignatureChecker(const BaseSignatureChecker& checker,
                            const RungConditions& conditions,
                            const PrecomputedTransactionData& txdata,
                            const CTransaction& tx,
-                           unsigned int nIn)
+                           unsigned int nIn,
+                           BatchVerifier* batch = nullptr)
         : DeferringSignatureChecker(checker),
           m_conditions(conditions),
           m_txdata(txdata),
           m_tx(tx),
-          m_nIn(nIn) {}
+          m_nIn(nIn),
+          m_batch(batch) {}
 
     bool CheckSchnorrSignature(std::span<const unsigned char> sig,
                                std::span<const unsigned char> pubkey,
@@ -73,6 +109,7 @@ struct RungEvalContext {
     const std::vector<std::vector<std::vector<uint8_t>>>* rung_pubkeys{nullptr}; //!< Per-rung pubkey lists for Merkle leaf (merkle_pub_key)
     const MLSCVerifiedLeaves* verified_leaves{nullptr}; //!< Verified leaf array from VerifyMLSCProof (leaf-centric covenant checks)
     const MLSCProof* mlsc_proof{nullptr}; //!< MLSC proof (for cross-rung mutation target access)
+    struct TxAggregateContext* aggregate_ctx{nullptr}; //!< Per-tx aggregate context (for AGGREGATE attestation)
 };
 
 /** Result of evaluating a single block or rung. */
@@ -99,6 +136,7 @@ EvalResult EvalCLTVTimeBlock(const RungBlock& block, const BaseSignatureChecker&
 EvalResult EvalAdaptorSigBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalMusigThresholdBlock(const RungBlock& block, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata);
 EvalResult EvalTaggedHashBlock(const RungBlock& block);
+EvalResult EvalHashGuardedBlock(const RungBlock& block);
 
 // Covenant evaluators
 EvalResult EvalCTVBlock(const RungBlock& block, const RungEvalContext& ctx);
@@ -159,6 +197,7 @@ EvalResult EvalInputCountBlock(const RungBlock& block, const RungEvalContext& ct
 EvalResult EvalOutputCountBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalRelativeValueBlock(const RungBlock& block, const RungEvalContext& ctx);
 EvalResult EvalAccumulatorBlock(const RungBlock& block);
+EvalResult EvalOutputCheckBlock(const RungBlock& block, const RungEvalContext& ctx);
 
 /** Evaluate a single block by dispatching to the appropriate evaluator. */
 EvalResult EvalBlock(const RungBlock& block,
@@ -188,12 +227,14 @@ EvalResult EvalRung(const Rung& rung,
                     const std::vector<EvalResult>* relay_results = nullptr);
 
 /** Evaluate a complete ladder: first satisfied rung wins (OR logic).
- *  Evaluates relays first, then passes results to each rung. */
+ *  Evaluates relays first, then passes results to each rung.
+ *  @param[out] satisfied_rung_out  If non-null and a rung is satisfied, set to the rung index. */
 bool EvalLadder(const LadderWitness& ladder,
                 const BaseSignatureChecker& checker,
                 SigVersion sigversion,
                 ScriptExecutionData& execdata,
-                const RungEvalContext& ctx = {});
+                const RungEvalContext& ctx = {},
+                size_t* satisfied_rung_out = nullptr);
 
 /** Compute the BIP-119 CTV template hash for a transaction at a given input index. */
 uint256 ComputeCTVHash(const CTransaction& tx, uint32_t input_index);

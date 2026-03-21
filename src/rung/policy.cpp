@@ -67,6 +67,7 @@ bool IsCovenantBlockType(uint16_t block_type)
     case RungBlockType::OUTPUT_COUNT:
     case RungBlockType::RELATIVE_VALUE:
     case RungBlockType::ACCUMULATOR:
+    case RungBlockType::OUTPUT_CHECK:
         return true;
     default:
         return false;

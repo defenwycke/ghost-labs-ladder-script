@@ -1,6 +1,6 @@
 # Ladder Script Block Library
 
-59 block types across 10 families. Each block evaluates a single spending condition within a rung. Blocks are combined with AND logic within a rung and OR logic across rungs (first satisfied rung wins).
+60 block types across 10 families. Each block evaluates a single spending condition within a rung. Blocks are combined with AND logic within a rung and OR logic across rungs (first satisfied rung wins).
 
 Full reference with field tables, evaluation logic, and ladder diagrams: [Block Reference](/labs/block-docs/)
 
@@ -33,13 +33,14 @@ Block-height and time-based spending constraints.
 
 ## Hash Family (0x02xx)
 
-Hash verification for tagged commitments. Pure hash locks (HASH_PREIMAGE, HASH160_PREIMAGE) are deprecated. Use HTLC or HASH_SIG instead.
+Hash verification for tagged commitments and guarded preimage checks. Pure hash locks (HASH_PREIMAGE, HASH160_PREIMAGE) are deprecated. Use HTLC, HASH_SIG, or HASH_GUARDED instead.
 
 | Code | Block | Description |
 |------|-------|-------------|
-| ~~0x0201~~ | ~~HASH_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC or HASH_SIG. |
-| ~~0x0202~~ | ~~HASH160_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC or HASH_SIG. |
+| ~~0x0201~~ | ~~HASH_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC, HASH_SIG, or HASH_GUARDED. |
+| ~~0x0202~~ | ~~HASH160_PREIMAGE~~ | **Deprecated.** Rejected at consensus. Use HTLC, HASH_SIG, or HASH_GUARDED. |
 | 0x0203 | TAGGED_HASH | Tagged hash preimage (BIP-340 style) |
+| 0x0204 | HASH_GUARDED | Raw SHA-256 preimage verification (non-invertible) |
 
 ## Covenant Family (0x03xx)
 
@@ -76,7 +77,7 @@ Protocol-tagged UTXOs with semantic meaning.
 | 0x0504 | ANCHOR_RESERVE | Reserve proof anchor |
 | 0x0505 | ANCHOR_SEAL | Sealed state commitment (asset ID + state transition) |
 | 0x0506 | ANCHOR_ORACLE | Oracle data attestation anchor |
-| 0x0507 | DATA_RETURN | On-chain data (max 32 bytes) appended to MLSC output, replaces OP_RETURN |
+| 0x0507 | DATA_RETURN | On-chain data (max 40 bytes) appended to MLSC output, replaces OP_RETURN |
 
 ## PLC Family (0x06xx)
 

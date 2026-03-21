@@ -22,6 +22,16 @@ struct AggregateProof {
     bool verified{false}; //!< Set true after aggregate sig is verified at block level
 };
 
+/** Per-transaction aggregate context for AGGREGATE attestation mode.
+ *  Collects sighashes and pubkeys from all AGGREGATE-mode inputs.
+ *  After all inputs pass evaluation, VerifyTxAggregate verifies the
+ *  aggregate signature over the entire batch. */
+struct TxAggregateContext {
+    RungScheme scheme{RungScheme::SCHNORR};  //!< All inputs must use same scheme
+    std::vector<uint256> sighashes;           //!< One per AGGREGATE input
+    std::vector<std::vector<uint8_t>> pubkeys; //!< One per AGGREGATE input
+};
+
 /** Verify that a spend_index + pubkey_commit pair is covered by the aggregate proof.
  *  @param proof       The block-level aggregate proof
  *  @param spend_index Index of this spend within the proof

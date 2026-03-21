@@ -274,7 +274,7 @@ evaluator processes.
 The set of sibling hashes needed to reconstruct the conditions root from a revealed leaf.
 For a tree with M leaves (padded to the next power of 2), the proof contains at most
 `ceil(log2(M))` hashes -- e.g., 0 hashes for a single-rung condition, 1 hash for 2 rungs,
-4 hashes for 16 rungs. Each proof hash is 32 bytes. The verifier reconstructs the root
+5 hashes for 16 rungs + coil (17 leaves, padded to 32). Each proof hash is 32 bytes. The verifier reconstructs the root
 bottom-up using `TaggedHash("LadderInternal", min(A,B) || max(A,B))` at each level and
 checks the result against the UTXO's conditions root.
 
@@ -289,10 +289,10 @@ codes, 0x81 for extended) followed by the full type code. The lookup table is de
 ### MLSC (Merkelised Ladder Script Conditions)
 
 An output format (`0xC2` prefix) that stores a 32-byte Merkle root (33 bytes standard,
-or 34-65 bytes with a DATA_RETURN payload appended). The complete conditions are
+or 34-73 bytes with a DATA_RETURN payload appended). The complete conditions are
 revealed at spend time in the witness, along with a Merkle proof. Key properties:
 
-- **Compact UTXO size:** 33-65 bytes per scriptPubKey regardless of condition complexity
+- **Compact UTXO size:** 33-73 bytes per scriptPubKey regardless of condition complexity
 - **Data embedding resistance:** Fake conditions produce unspendable outputs; since they
   are never spent, the fake data is never published on-chain
 - **MAST privacy:** Only the exercised spending path (one rung) is revealed; unused paths
@@ -458,7 +458,7 @@ single spending condition. Represented by the `RungBlock` struct containing:
 ### RungBlockType
 
 An enum (`uint16_t`) identifying the type of a block. Encoded as 2 bytes (little-endian)
-in the wire format. 59 block types are defined across 10 families. The numeric ranges
+in the wire format. 60 block types are defined across 10 families. The numeric ranges
 partition the type space by family:
 
 | Range | Family |
@@ -507,7 +507,7 @@ Nine types are defined:
 | 0x08 | NUMERIC | 1-4 B | Both | Numeric value (little-endian) |
 | 0x09 | SCHEME | 1 B | Both | Signature scheme selector |
 | 0x0A | SCRIPT_BODY | 1-80 B | Witness | Serialised inner conditions |
-| 0x0B | DATA | 32 B | Both | Opaque data (DATA_RETURN payloads) |
+| 0x0B | DATA | 40 B | Both | Opaque data (DATA_RETURN payloads) |
 
 Code 0x02 (formerly PUBKEY_COMMIT) is reserved. Public keys are bound to conditions
 via merkle_pub_key (folded into the Merkle leaf hash) rather than stored as condition
