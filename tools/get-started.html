@@ -4,93 +4,99 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Get Started -- Ladder Script</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0a0a0a;
-  --bg-panel: #111111;
-  --border: #222222;
-  --text: #b0b0b0;
-  --text-dim: #555555;
-  --amber: #d4a017;
-  --green: #4ec94e;
-  --red: #e05555;
-  --cyan: #5cb8c4;
-  --font: 'IBM Plex Mono', monospace;
+  --bg: #ffffff;
+  --bg-alt: #f5f5f5;
+  --bg-code: #f0f0f0;
+  --text: #1a1a1a;
+  --text-body: #333333;
+  --text-dim: #666666;
+  --text-light: #999999;
+  --accent: #e67e22;
+  --accent-dark: #d35400;
+  --green: #27ae60;
+  --red: #c0392b;
+  --blue: #2980b9;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
 }
 html { scroll-behavior: smooth; }
-body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 12px; }
-::selection { background: var(--amber); color: var(--bg); }
-a { color: var(--amber); text-decoration: none; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+::selection { background: var(--accent); color: #fff; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ── HEADER ── */
-.site-header { border-bottom: 1px solid var(--border); padding: 16px 0 0; }
-.site-header-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.header-title { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
-.header-title:hover { text-decoration: none; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.header-right a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
-.header-right a:hover { color: var(--text); }
-.header-right .gh-icon { display: flex; align-items: center; }
-.header-rule { border: none; border-top: 1px solid var(--border); margin: 0 0 8px; }
-.header-nav { display: flex; gap: 24px; padding-bottom: 12px; }
-.header-nav a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-decoration: none; }
-.header-nav a:hover { color: var(--text); }
-.header-nav a.active { color: var(--amber); border-bottom: 1px solid var(--amber); padding-bottom: 2px; }
+/* -- HEADER -- */
+.site-header { background: #fff; border-bottom: 1px solid var(--border); padding: 0; }
+.site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+.header-title:hover { text-decoration: none; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; }
+.header-right a:hover { color: var(--accent); }
+.header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
+.header-right .gh-icon:hover { color: var(--accent); }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding-top: 10px; padding-bottom: 10px; }
+.header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
+.header-nav a:hover { color: var(--accent); text-decoration: none; }
+.header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-/* ── MAIN ── */
-.main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
-.page-title { font-size: 16px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
-.page-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 48px; }
+/* -- MAIN -- */
+.main { max-width: 1100px; margin: 0 auto; padding: 48px 32px 80px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 15px; margin-bottom: 48px; }
 
-/* ── SECTIONS ── */
+/* -- SECTIONS -- */
 .section { margin-bottom: 56px; }
-.section-head { font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+.section-head { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
 .section p { margin-bottom: 12px; }
 
-/* ── CODE BLOCK ── */
-.code-block { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; margin: 16px 0; font-size: 12px; overflow-x: auto; white-space: pre; line-height: 1.6; }
-.code-block .comment { color: var(--text-dim); }
-.code-block .cmd { color: var(--green); }
-.code-block .output { color: var(--cyan); }
-.code-block .key { color: var(--cyan); }
-.code-block .val { color: var(--text); }
+/* -- CODE BLOCK -- */
+.code-block { background: var(--bg-code); border: 1px solid #ddd; border-radius: 4px; padding: 16px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; line-height: 1.6; color: var(--text-body); }
+.code-block .comment { color: var(--text-light); }
+.code-block .cmd { color: var(--text-body); }
+.code-block .output { color: var(--blue); }
+.code-block .key { color: var(--blue); }
+.code-block .val { color: var(--text-body); }
 
-/* ── DOWNLOAD ── */
-.download { background: var(--bg-panel); border: 1px solid var(--border); padding: 24px; margin: 16px 0; }
-.download-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.download-meta { font-size: 11px; color: var(--text-dim); margin-bottom: 12px; }
-.download-stats { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; font-size: 11px; }
+/* -- DOWNLOAD -- */
+.download { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 28px; margin: 16px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.download-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.download-meta { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+.download-stats { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; font-size: 14px; }
 .download-stats .s-key { color: var(--text-dim); }
-.download-stats .s-val { color: var(--amber); font-weight: 600; }
-.download-btn { display: inline-block; background: var(--amber); color: var(--bg); font-family: var(--font); font-size: 11px; font-weight: 700; padding: 8px 20px; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; }
-.download-btn:hover { background: #e6b422; text-decoration: none; }
+.download-stats .s-val { color: var(--accent); font-weight: 600; }
+.download-btn { display: inline-block; background: var(--accent); color: #fff; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 10px 24px; border-radius: 4px; text-decoration: none; }
+.download-btn:hover { background: var(--accent-dark); text-decoration: none; }
 
-/* ── NOTE ── */
-.note { background: var(--bg-panel); border-left: 2px solid var(--amber); padding: 12px 16px; margin: 16px 0; font-size: 11px; color: var(--text-dim); }
+/* -- NOTE -- */
+.note { background: var(--bg-alt); border-left: 3px solid var(--accent); padding: 14px 18px; margin: 16px 0; font-size: 14px; color: var(--text-dim); border-radius: 0 4px 4px 0; }
 
-/* ── OPTION GRID ── */
-.option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
-.option { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; display: block; text-decoration: none; }
-.option:hover { border-color: var(--amber); text-decoration: none; }
-.option-badge { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+/* -- OPTION GRID -- */
+.option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.option { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 20px; display: block; text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.option:hover { border-color: var(--accent); text-decoration: none; }
+.option-badge { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
 .option-badge.quick { color: var(--green); }
-.option-badge.dev { color: var(--cyan); }
-.option-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.option-desc { font-size: 11px; color: var(--text-dim); }
+.option-badge.dev { color: var(--blue); }
+.option-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.option-desc { font-size: 13px; color: var(--text-dim); }
 
-/* ── FOOTER ── */
-.site-footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 11px; color: var(--text-dim); }
-.site-footer a { color: var(--text-dim); }
-.site-footer a:hover { color: var(--amber); }
+/* -- FOOTER -- */
+.site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
+.site-footer a { color: var(--text-light); }
+.site-footer a:hover { color: var(--accent); }
 
 @media (max-width: 600px) {
-  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
   .header-nav { flex-wrap: wrap; }
   .option-grid { grid-template-columns: 1fr; }
+  .main { padding: 32px 16px 60px; }
+  .site-header-inner { padding: 0 16px; }
 }
 </style>
 </head>
@@ -99,22 +105,21 @@ a:hover { text-decoration: underline; }
 <header class="site-header">
   <div class="site-header-inner">
     <div class="header-top">
-      <a href="../ghost-labs.html" class="header-title">Ghost Labs / Ladder Script</a>
+      <a href="../ghost-labs.html" class="header-title">Ghost Labs</a>
       <div class="header-right">
         <a href="ladder-engine.html">Engine</a>
         <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
       </div>
     </div>
-    <hr class="header-rule">
     <nav class="header-nav">
-      <a href="ladder-script.html">ladder-script</a>
-      <a href="get-started.html" class="active">get-started</a>
-      <a href="patch-overview.html">patch</a>
-      <a href="block-docs/">blocks</a>
-      <a href="rung-tx-anatomy.html">docs</a>
-      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">code</a>
+      <a href="ladder-script.html">Ladder Script</a>
+      <a href="get-started.html" class="active">Get Started</a>
+      <a href="patch-overview.html">Patch</a>
+      <a href="block-docs/">Blocks</a>
+      <a href="rung-tx-anatomy.html">Anatomy</a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Code</a>
     </nav>
   </div>
 </header>
@@ -122,7 +127,7 @@ a:hover { text-decoration: underline; }
 <div class="main">
 
   <h1 class="page-title">Get Started</h1>
-  <p class="page-sub">// run a ladder script node or try the engine in your browser</p>
+  <p class="page-sub">Run a Ladder Script node or try the engine in your browser</p>
 
   <div class="option-grid">
     <a href="ladder-engine.html" class="option">
@@ -137,9 +142,9 @@ a:hover { text-decoration: underline; }
     </a>
   </div>
 
-  <!-- ── DOWNLOAD ── -->
+  <!-- -- DOWNLOAD -- -->
   <div class="section" id="download">
-    <div class="section-head">// download</div>
+    <div class="section-head">Download</div>
 
     <div class="download">
       <div class="download-title">Ghost Core + Ladder Script</div>
@@ -150,23 +155,23 @@ a:hover { text-decoration: underline; }
         <span><span class="s-key">FUNC_TESTS=</span><span class="s-val">60</span></span>
         <span><span class="s-key">PATCH_LINES=</span><span class="s-val">197</span></span>
       </div>
-      <a href="download/ghost-ladder-signet-linux-x86_64.tar.gz" class="download-btn">download .tar.gz</a>
+      <a href="download/ghost-ladder-signet-linux-x86_64.tar.gz" class="download-btn">Download .tar.gz</a>
     </div>
 
     <div class="note">Bitcoin Core v30.1 with 197 lines of integration code and the 11,318-line Ladder Script library. Connects to the Ghost Labs signet where you can create and spend rung transactions.</div>
   </div>
 
-  <!-- ── QUICK START ── -->
+  <!-- -- QUICK START -- -->
   <div class="section">
-    <div class="section-head">// quick start</div>
+    <div class="section-head">Quick Start</div>
 
-    <p>$ extract and configure</p>
+    <p>Extract and configure:</p>
     <div class="code-block"><span class="cmd">tar xzf ghost-ladder-signet-linux-x86_64.tar.gz</span>
 <span class="cmd">mkdir -p ~/.bitcoin</span>
 <span class="cmd">cp ladder-signet.conf ~/.bitcoin/bitcoin.conf</span>
 <span class="comment"># edit ~/.bitcoin/bitcoin.conf and change rpcpassword</span></div>
 
-    <p>$ start the node</p>
+    <p>Start the node:</p>
     <div class="code-block"><span class="cmd">./ghostd -daemon</span>
 <span class="output">Ghost Core starting</span>
 
@@ -174,12 +179,12 @@ a:hover { text-decoration: underline; }
 <span class="cmd">./ghost-cli -signet getblockcount</span>
 <span class="output">533</span></div>
 
-    <p>$ create a wallet</p>
+    <p>Create a wallet:</p>
     <div class="code-block"><span class="cmd">./ghost-cli -signet createwallet test</span>
 <span class="cmd">./ghost-cli -signet -rpcwallet=test getnewaddress "" legacy</span>
 <span class="output">mibryXkbkCBrLMkVZik8UkLKfcjEH3Mstu</span></div>
 
-    <p>$ create a ladder script transaction</p>
+    <p>Create a Ladder Script transaction:</p>
     <div class="code-block"><span class="comment"># parse a descriptor</span>
 <span class="cmd">./ghost-cli -signet parseladder "ladder(sig(@alice))" \</span>
 <span class="cmd">  '{"alice":"0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"}'</span>
@@ -196,9 +201,9 @@ a:hover { text-decoration: underline; }
 }</span></div>
   </div>
 
-  <!-- ── SIGNET CONFIG ── -->
+  <!-- -- SIGNET CONFIG -- -->
   <div class="section">
-    <div class="section-head">// signet configuration</div>
+    <div class="section-head">Signet Configuration</div>
     <div class="code-block"><span class="comment"># Ladder Script Signet</span>
 <span class="key">signet</span>=<span class="val">1</span>
 
@@ -218,9 +223,9 @@ a:hover { text-decoration: underline; }
 <span class="key">rpcpassword</span>=<span class="val">changeme</span></div>
   </div>
 
-  <!-- ── BUILD FROM SOURCE ── -->
+  <!-- -- BUILD FROM SOURCE -- -->
   <div class="section">
-    <div class="section-head">// build from source</div>
+    <div class="section-head">Build from Source</div>
     <p>Apply the patch to your own Bitcoin Core checkout:</p>
     <div class="code-block"><span class="cmd">git clone https://github.com/bitcoin/bitcoin.git</span>
 <span class="cmd">cd bitcoin && git checkout v30.1</span>
@@ -238,9 +243,9 @@ a:hover { text-decoration: underline; }
     <div class="note">Tested against Bitcoin Core v30.1. Applying to Knots or other forks that track Core closely should work with minimal or no conflicts.</div>
   </div>
 
-  <!-- ── RPC COMMANDS ── -->
+  <!-- -- RPC COMMANDS -- -->
   <div class="section">
-    <div class="section-head">// rpc commands</div>
+    <div class="section-head">RPC Commands</div>
     <div class="code-block"><span class="comment"># transaction building</span>
 createrung         <span class="comment">build a ladder witness from JSON</span>
 createrungtx       <span class="comment">create an unsigned v4 RUNG_TX</span>
@@ -258,9 +263,9 @@ computectvhash     <span class="comment">compute BIP-119 CTV template hash</span
 generatepqkeypair  <span class="comment">generate a post-quantum keypair (FALCON/Dilithium/SPHINCS+)</span></div>
   </div>
 
-  <!-- ── LINKS ── -->
+  <!-- -- LINKS -- -->
   <div class="section">
-    <div class="section-head">// links</div>
+    <div class="section-head">Links</div>
     <p><a href="ladder-engine.html">Engine</a> -- visual builder with live signet connection</p>
     <p><a href="block-docs/">Block Reference</a> -- documentation for all 61 block types</p>
     <p><a href="patch-overview.html">Patch Overview</a> -- what changes and how much code</p>
@@ -270,7 +275,7 @@ generatepqkeypair  <span class="comment">generate a post-quantum keypair (FALCON
 </div>
 
 <footer class="site-footer">
-  GHOST LABS &middot; LADDER SCRIPT (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">source</a>
+  Ghost Labs &middot; Ladder Script (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
 </footer>
 
 </body>

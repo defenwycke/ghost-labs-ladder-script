@@ -4,103 +4,109 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ladder Script -- Ghost Labs</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0a0a0a;
-  --bg-panel: #111111;
-  --border: #222222;
-  --text: #b0b0b0;
-  --text-dim: #555555;
-  --amber: #d4a017;
-  --green: #4ec94e;
-  --red: #e05555;
-  --cyan: #5cb8c4;
-  --font: 'IBM Plex Mono', monospace;
+  --bg: #ffffff;
+  --bg-alt: #f5f5f5;
+  --bg-code: #f0f0f0;
+  --text: #1a1a1a;
+  --text-body: #333333;
+  --text-dim: #666666;
+  --text-light: #999999;
+  --accent: #e67e22;
+  --accent-dark: #d35400;
+  --green: #27ae60;
+  --red: #c0392b;
+  --blue: #2980b9;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
 }
 html { scroll-behavior: smooth; }
-body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 12px; }
-::selection { background: var(--amber); color: var(--bg); }
-a { color: var(--amber); text-decoration: none; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+::selection { background: var(--accent); color: #fff; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ── HEADER ── */
-.site-header { border-bottom: 1px solid var(--border); padding: 16px 0 0; }
-.site-header-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.header-title { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
-.header-title:hover { text-decoration: none; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.header-right a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
-.header-right a:hover { color: var(--text); }
-.header-right .gh-icon { display: flex; align-items: center; }
-.header-rule { border: none; border-top: 1px solid var(--border); margin: 0 0 8px; }
-.header-nav { display: flex; gap: 24px; padding-bottom: 12px; }
-.header-nav a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-decoration: none; }
-.header-nav a:hover { color: var(--text); }
-.header-nav a.active { color: var(--amber); border-bottom: 1px solid var(--amber); padding-bottom: 2px; }
+/* -- HEADER -- */
+.site-header { background: #fff; border-bottom: 1px solid var(--border); padding: 0; }
+.site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+.header-title:hover { text-decoration: none; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; }
+.header-right a:hover { color: var(--accent); }
+.header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
+.header-right .gh-icon:hover { color: var(--accent); }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding-top: 10px; padding-bottom: 10px; }
+.header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
+.header-nav a:hover { color: var(--accent); text-decoration: none; }
+.header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-/* ── MAIN ── */
-.main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
-.page-title { font-size: 16px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
-.page-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 48px; }
+/* -- MAIN -- */
+.main { max-width: 1100px; margin: 0 auto; padding: 48px 32px 80px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 15px; margin-bottom: 48px; }
 
-/* ── SECTIONS ── */
+/* -- SECTIONS -- */
 .section { margin-bottom: 56px; }
-.section-head { font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+.section-head { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
 .section p { margin-bottom: 12px; }
 
-/* ── STATS ── */
-.stats-row { display: flex; gap: 32px; flex-wrap: wrap; margin: 24px 0; }
+/* -- STATS -- */
+.stats-row { display: flex; gap: 40px; flex-wrap: wrap; margin: 24px 0; }
 .stat { text-align: center; }
-.stat-val { font-size: 20px; font-weight: 700; color: var(--amber); display: block; }
-.stat-key { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.stat-val { font-size: 28px; font-weight: 700; color: var(--accent); display: block; }
+.stat-key { font-size: 12px; color: var(--text-light); letter-spacing: 0.5px; text-transform: uppercase; }
 
-/* ── ENV VARS ── */
+/* -- ENV VARS -- */
 .env { margin: 16px 0; }
-.env-line { display: flex; gap: 4px; margin-bottom: 4px; }
-.env-key { color: var(--text-dim); }
-.env-val { color: var(--text); }
-.env-val.highlight { color: var(--amber); }
+.env-line { display: flex; gap: 4px; margin-bottom: 4px; font-size: 14px; }
+.env-key { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+.env-val { color: var(--text-body); }
+.env-val.highlight { color: var(--accent-dark); }
 
-/* ── CODE BLOCK ── */
-.code-block { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; margin: 16px 0; font-size: 12px; overflow-x: auto; white-space: pre; line-height: 1.6; }
-.code-block .comment { color: var(--text-dim); }
-.code-block .keyword { color: var(--cyan); }
-.code-block .value { color: var(--amber); }
+/* -- CODE BLOCK -- */
+.code-block { background: var(--bg-code); border: 1px solid #ddd; border-radius: 4px; padding: 16px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; white-space: pre; line-height: 1.6; color: var(--text-body); }
+.code-block .comment { color: var(--text-light); }
+.code-block .keyword { color: var(--blue); }
+.code-block .value { color: var(--accent); }
 
-/* ── PANEL ── */
-.panel { background: var(--bg-panel); border: 1px solid var(--border); padding: 20px; margin: 16px 0; }
-.panel-title { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+/* -- PANEL -- */
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 20px; margin: 16px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.panel-title { font-size: 13px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
-/* ── FAMILY GRID ── */
+/* -- FAMILY GRID -- */
 .families { margin-top: 24px; }
-.family { background: var(--bg-panel); border: 1px solid var(--border); padding: 16px; margin-bottom: 8px; }
+.family { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 20px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .family-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
-.family-name { font-size: 12px; font-weight: 600; }
-.family-range { font-size: 10px; color: var(--text-dim); }
-.family-desc { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
-.family-blocks { display: flex; flex-wrap: wrap; gap: 4px; }
-.family-block { font-size: 10px; padding: 2px 6px; background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+.family-name { font-size: 15px; font-weight: 600; }
+.family-range { font-size: 12px; color: var(--text-light); font-family: 'JetBrains Mono', monospace; }
+.family-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 10px; }
+.family-blocks { display: flex; flex-wrap: wrap; gap: 6px; }
+.family-block { font-size: 12px; padding: 3px 8px; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 3px; color: var(--text-body); font-family: 'JetBrains Mono', monospace; }
 
-/* ── LINKS ── */
-.link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
-.link-item { background: var(--bg-panel); border: 1px solid var(--border); padding: 12px 16px; display: block; text-decoration: none; }
-.link-item:hover { border-color: var(--amber); text-decoration: none; }
-.link-label { font-size: 12px; color: var(--amber); }
-.link-desc { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+/* -- LINKS -- */
+.link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.link-item { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px; display: block; text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.link-item:hover { border-color: var(--accent); text-decoration: none; }
+.link-label { font-size: 15px; color: var(--accent); font-weight: 600; }
+.link-desc { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
 
-/* ── FOOTER ── */
-.site-footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 11px; color: var(--text-dim); }
-.site-footer a { color: var(--text-dim); }
-.site-footer a:hover { color: var(--amber); }
+/* -- FOOTER -- */
+.site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
+.site-footer a { color: var(--text-light); }
+.site-footer a:hover { color: var(--accent); }
 
 @media (max-width: 600px) {
-  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
   .header-nav { flex-wrap: wrap; }
-  .stats-row { gap: 16px; }
+  .stats-row { gap: 20px; }
   .link-grid { grid-template-columns: 1fr; }
+  .main { padding: 32px 16px 60px; }
+  .site-header-inner { padding: 0 16px; }
 }
 </style>
 </head>
@@ -109,22 +115,21 @@ a:hover { text-decoration: underline; }
 <header class="site-header">
   <div class="site-header-inner">
     <div class="header-top">
-      <a href="../ghost-labs.html" class="header-title">Ghost Labs / Ladder Script</a>
+      <a href="../ghost-labs.html" class="header-title">Ghost Labs</a>
       <div class="header-right">
         <a href="ladder-engine.html">Engine</a>
         <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
       </div>
     </div>
-    <hr class="header-rule">
     <nav class="header-nav">
-      <a href="ladder-script.html" class="active">ladder-script</a>
-      <a href="get-started.html">get-started</a>
-      <a href="patch-overview.html">patch</a>
-      <a href="block-docs/">blocks</a>
-      <a href="rung-tx-anatomy.html">docs</a>
-      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">code</a>
+      <a href="ladder-script.html" class="active">Ladder Script</a>
+      <a href="get-started.html">Get Started</a>
+      <a href="patch-overview.html">Patch</a>
+      <a href="block-docs/">Blocks</a>
+      <a href="rung-tx-anatomy.html">Anatomy</a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Code</a>
     </nav>
   </div>
 </header>
@@ -132,7 +137,7 @@ a:hover { text-decoration: underline; }
 <div class="main">
 
   <h1 class="page-title">Ladder Script</h1>
-  <p class="page-sub">// typed structured transaction conditions for bitcoin</p>
+  <p class="page-sub">Typed structured transaction conditions for Bitcoin</p>
 
   <div class="stats-row">
     <div class="stat"><span class="stat-val">4</span><span class="stat-key">TX Version</span></div>
@@ -143,16 +148,16 @@ a:hover { text-decoration: underline; }
     <div class="stat"><span class="stat-val">80</span><span class="stat-key">TLA+ Props</span></div>
   </div>
 
-  <!-- ── OVERVIEW ── -->
+  <!-- -- OVERVIEW -- -->
   <div class="section">
-    <div class="section-head">// overview</div>
+    <div class="section-head">Overview</div>
     <p>Ladder Script introduces transaction version 4 (RUNG_TX). Spending conditions are declared as named, typed blocks organised into rungs -- a model borrowed from industrial PLC ladder diagrams. Every byte in every block has a declared type with enforced size constraints. Evaluation is deterministic with bounded execution time.</p>
     <p>61 block types (59 active + 2 deprecated) across 10 families: signatures, timelocks, hash verification, covenants, recursion, anchors, programmable logic, compound patterns, governance, and legacy Bitcoin transaction types.</p>
   </div>
 
-  <!-- ── HOW IT WORKS ── -->
+  <!-- -- HOW IT WORKS -- -->
   <div class="section">
-    <div class="section-head">// evaluation model</div>
+    <div class="section-head">Evaluation Model</div>
     <p>Rungs = OR. Blocks within a rung = AND. First rung where every block returns SATISFIED wins. If no rung passes, the transaction is invalid.</p>
     <div class="code-block"><span class="comment">// EvalLadder iterates rungs (OR)</span>
 <span class="comment">//   EvalRung iterates blocks (AND)</span>
@@ -166,9 +171,9 @@ a:hover { text-decoration: underline; }
     <p>Each rung terminates in a coil: UNLOCK (standard spend), UNLOCK_TO (spend to specific address), or COVENANT (constrain spending tx structure). Relays provide shared condition blocks that multiple rungs reference via relay_refs for cross-rung AND composition.</p>
   </div>
 
-  <!-- ── ANTI-SPAM ── -->
+  <!-- -- ANTI-SPAM -- -->
   <div class="section">
-    <div class="section-head">// anti-spam hardening</div>
+    <div class="section-head">Anti-Spam Hardening</div>
     <p>Three coordinated defences close all practical data-embedding surfaces:</p>
     <div class="env">
       <div class="env-line"><span class="env-key">merkle_pub_key=</span><span class="env-val highlight">pubkeys folded into Merkle leaf hash, no writable pubkey slot in conditions</span></div>
@@ -178,16 +183,16 @@ a:hover { text-decoration: underline; }
     <p>With MLSC (0xC2), the on-chain output is a fixed 33-byte scriptPubKey regardless of condition complexity. Conditions are never stored on-chain -- only a 32-byte Merkle root appears in the UTXO set.</p>
   </div>
 
-  <!-- ── POST-QUANTUM ── -->
+  <!-- -- POST-QUANTUM -- -->
   <div class="section">
-    <div class="section-head">// post-quantum</div>
+    <div class="section-head">Post-Quantum</div>
     <p>Four native PQ signature schemes: FALCON-512, FALCON-1024, Dilithium3, SPHINCS+. A single SCHEME field routes any signature block to classical or PQ verification without changing wire format. With merkle_pub_key, condition size is constant regardless of key size -- a 33-byte Schnorr key and a 1,952-byte Dilithium3 key produce the same Merkle leaf.</p>
     <p>COSIGN lets a single PQ-secured UTXO serve as a co-spending guardian for unlimited classical UTXOs -- incremental migration without a flag day.</p>
   </div>
 
-  <!-- ── TYPED DATA ── -->
+  <!-- -- TYPED DATA -- -->
   <div class="section">
-    <div class="section-head">// typed data model</div>
+    <div class="section-head">Typed Data Model</div>
     <div class="code-block"><span class="comment">// Condition fields (stored on-chain)</span>
 <span class="keyword">HASH256</span>      <span class="comment">// 32 bytes       SHA-256 digest</span>
 <span class="keyword">HASH160</span>      <span class="comment">// 20 bytes       RIPEMD160(SHA256)</span>
@@ -202,9 +207,9 @@ a:hover { text-decoration: underline; }
     <p>Static analysis requires only parsing, not execution simulation. Every field can be identified, validated, and displayed without running any code.</p>
   </div>
 
-  <!-- ── WIRE FORMAT ── -->
+  <!-- -- WIRE FORMAT -- -->
   <div class="section">
-    <div class="section-head">// wire format</div>
+    <div class="section-head">Wire Format</div>
     <p>Two output formats. Inline (0xC1) stores full serialised conditions. MLSC (0xC2) stores only a 32-byte Merkle root -- conditions revealed at spend time in the witness.</p>
     <p>Blocks use micro-headers -- a 1-byte lookup table (0x00-0x3C) that encodes block type, inversion flag, and implicit field layout in a single byte. Known blocks skip the 2-byte type code and field metadata entirely. Escape codes (0x80/0x81) fall back to full headers.</p>
     <div class="code-block"><span class="comment">// MLSC output: 33-byte scriptPubKey</span>
@@ -220,77 +225,77 @@ a:hover { text-decoration: underline; }
   [<span class="keyword">n_relays</span>: varint]</div>
   </div>
 
-  <!-- ── BLOCK FAMILIES ── -->
+  <!-- -- BLOCK FAMILIES -- -->
   <div class="section">
-    <div class="section-head">// block type families</div>
+    <div class="section-head">Block Type Families</div>
     <p>61 block types across 10 numbered families. See the <a href="block-docs/">block reference</a> for deep-dive documentation on each type.</p>
 
     <div class="families">
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#ff1744;">Signature</span><span class="family-range">0x0001-0x00FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#c0392b;">Signature</span><span class="family-range">0x0001-0x00FF</span></div>
         <div class="family-desc">Identity verification with native PQ support via SCHEME field.</div>
         <div class="family-blocks">
           <span class="family-block">SIG</span><span class="family-block">MULTISIG</span><span class="family-block">ADAPTOR_SIG</span><span class="family-block">MUSIG_THRESHOLD</span><span class="family-block">KEY_REF_SIG</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#ff6d00;">Timelock</span><span class="family-range">0x0100-0x01FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#e67e22;">Timelock</span><span class="family-range">0x0100-0x01FF</span></div>
         <div class="family-desc">Relative (BIP-68) and absolute timelocks in blocks or seconds.</div>
         <div class="family-blocks">
           <span class="family-block">CSV</span><span class="family-block">CSV_TIME</span><span class="family-block">CLTV</span><span class="family-block">CLTV_TIME</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#b070b0;">Hash</span><span class="family-range">0x0200-0x02FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#8e44ad;">Hash</span><span class="family-range">0x0200-0x02FF</span></div>
         <div class="family-desc">Domain-separated hash verification. HASH_PREIMAGE/HASH160_PREIMAGE deprecated.</div>
         <div class="family-blocks">
           <span class="family-block">TAGGED_HASH</span><span class="family-block">HASH_GUARDED</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#e06c75;">Covenant</span><span class="family-range">0x0300-0x03FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#c0392b;">Covenant</span><span class="family-range">0x0300-0x03FF</span></div>
         <div class="family-desc">Output constraints. Template verification (BIP-119), vaults, amount bounds.</div>
         <div class="family-blocks">
           <span class="family-block">CTV</span><span class="family-block">VAULT_LOCK</span><span class="family-block">AMOUNT_LOCK</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#e5c07b;">Recursion</span><span class="family-range">0x0400-0x04FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#d35400;">Recursion</span><span class="family-range">0x0400-0x04FF</span></div>
         <div class="family-desc">Self-referential conditions for perpetual covenants and state machines.</div>
         <div class="family-blocks">
           <span class="family-block">RECURSE_SAME</span><span class="family-block">RECURSE_MODIFIED</span><span class="family-block">RECURSE_UNTIL</span><span class="family-block">RECURSE_COUNT</span><span class="family-block">RECURSE_SPLIT</span><span class="family-block">RECURSE_DECAY</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#56b6c2;">Anchor</span><span class="family-range">0x0500-0x05FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#2980b9;">Anchor</span><span class="family-range">0x0500-0x05FF</span></div>
         <div class="family-desc">Typed L2 metadata for channels, pools, reserves, seals, oracles.</div>
         <div class="family-blocks">
           <span class="family-block">ANCHOR</span><span class="family-block">ANCHOR_CHANNEL</span><span class="family-block">ANCHOR_POOL</span><span class="family-block">ANCHOR_RESERVE</span><span class="family-block">ANCHOR_SEAL</span><span class="family-block">ANCHOR_ORACLE</span><span class="family-block">DATA_RETURN</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#98c379;">PLC</span><span class="family-range">0x0600-0x06FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#27ae60;">PLC</span><span class="family-range">0x0600-0x06FF</span></div>
         <div class="family-desc">Industrial automation patterns for stateful, rate-governed, sequenced tx logic.</div>
         <div class="family-blocks">
           <span class="family-block">HYSTERESIS_FEE</span><span class="family-block">HYSTERESIS_VALUE</span><span class="family-block">TIMER_CONTINUOUS</span><span class="family-block">TIMER_OFF_DELAY</span><span class="family-block">LATCH_SET</span><span class="family-block">LATCH_RESET</span><span class="family-block">COUNTER_DOWN</span><span class="family-block">COUNTER_PRESET</span><span class="family-block">COUNTER_UP</span><span class="family-block">COMPARE</span><span class="family-block">SEQUENCER</span><span class="family-block">ONE_SHOT</span><span class="family-block">RATE_LIMIT</span><span class="family-block">COSIGN</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#ffffff;">Compound</span><span class="family-range">0x0700-0x07FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#555;">Compound</span><span class="family-range">0x0700-0x07FF</span></div>
         <div class="family-desc">Multi-block patterns collapsed into single blocks for wire savings.</div>
         <div class="family-blocks">
           <span class="family-block">TIMELOCKED_SIG</span><span class="family-block">HTLC</span><span class="family-block">HASH_SIG</span><span class="family-block">PTLC</span><span class="family-block">CLTV_SIG</span><span class="family-block">TIMELOCKED_MULTISIG</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#9e9e9e;">Governance</span><span class="family-range">0x0800-0x08FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#7f8c8d;">Governance</span><span class="family-range">0x0800-0x08FF</span></div>
         <div class="family-desc">Transaction-level constraints: weight, I/O counts, value ratios, spending windows.</div>
         <div class="family-blocks">
           <span class="family-block">EPOCH_GATE</span><span class="family-block">WEIGHT_LIMIT</span><span class="family-block">INPUT_COUNT</span><span class="family-block">OUTPUT_COUNT</span><span class="family-block">RELATIVE_VALUE</span><span class="family-block">ACCUMULATOR</span>
         </div>
       </div>
       <div class="family">
-        <div class="family-header"><span class="family-name" style="color:#00e5ff;">Legacy</span><span class="family-range">0x0900-0x09FF</span></div>
+        <div class="family-header"><span class="family-name" style="color:#2980b9;">Legacy</span><span class="family-range">0x0900-0x09FF</span></div>
         <div class="family-desc">Wraps P2PK through P2TR script-path as typed blocks. Closes inscription vectors.</div>
         <div class="family-blocks">
           <span class="family-block">P2PK_LEGACY</span><span class="family-block">P2PKH_LEGACY</span><span class="family-block">P2SH_LEGACY</span><span class="family-block">P2WPKH_LEGACY</span><span class="family-block">P2WSH_LEGACY</span><span class="family-block">P2TR_LEGACY</span><span class="family-block">P2TR_SCRIPT_LEGACY</span>
@@ -299,9 +304,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── LINKS ── -->
+  <!-- -- LINKS -- -->
   <div class="section">
-    <div class="section-head">// links</div>
+    <div class="section-head">Links</div>
     <div class="link-grid">
       <a href="ladder-engine.html" class="link-item">
         <div class="link-label">Engine</div>
@@ -333,7 +338,7 @@ a:hover { text-decoration: underline; }
 </div>
 
 <footer class="site-footer">
-  GHOST LABS &middot; LADDER SCRIPT (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">source</a>
+  Ghost Labs &middot; Ladder Script (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
 </footer>
 
 </body>

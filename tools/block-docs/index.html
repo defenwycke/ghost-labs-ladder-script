@@ -4,70 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Block Reference -- Ladder Script</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0a0a0a;
-  --bg-panel: #111111;
-  --border: #222222;
-  --text: #b0b0b0;
-  --text-dim: #555555;
-  --amber: #d4a017;
-  --green: #4ec94e;
-  --red: #e05555;
-  --cyan: #5cb8c4;
-  --font: 'IBM Plex Mono', monospace;
+  --bg: #ffffff;
+  --bg-alt: #f5f5f5;
+  --bg-code: #f0f0f0;
+  --text: #1a1a1a;
+  --text-body: #333333;
+  --text-dim: #666666;
+  --text-light: #999999;
+  --accent: #e67e22;
+  --accent-dark: #d35400;
+  --green: #27ae60;
+  --red: #c0392b;
+  --blue: #2980b9;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
 }
 html { scroll-behavior: smooth; }
-body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 12px; }
-::selection { background: var(--amber); color: var(--bg); }
-a { color: var(--amber); text-decoration: none; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-body); line-height: 1.8; font-size: 15px; }
+::selection { background: var(--accent); color: #fff; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ── HEADER ── */
-.site-header { border-bottom: 1px solid var(--border); padding: 16px 0 0; }
-.site-header-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.header-title { font-size: 14px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
-.header-title:hover { text-decoration: none; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.header-right a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; }
-.header-right a:hover { color: var(--text); }
-.header-right .gh-icon { display: flex; align-items: center; }
-.header-rule { border: none; border-top: 1px solid var(--border); margin: 0 0 8px; }
-.header-nav { display: flex; gap: 24px; padding-bottom: 12px; }
-.header-nav a { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; text-decoration: none; }
-.header-nav a:hover { color: var(--text); }
-.header-nav a.active { color: var(--amber); border-bottom: 1px solid var(--amber); padding-bottom: 2px; }
+/* -- HEADER -- */
+.site-header { background: #fff; border-bottom: 1px solid var(--border); padding: 0; }
+.site-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+.header-title:hover { text-decoration: none; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; }
+.header-right a:hover { color: var(--accent); }
+.header-right .gh-icon { display: flex; align-items: center; color: var(--text-dim); }
+.header-right .gh-icon:hover { color: var(--accent); }
+.header-nav { display: flex; gap: 28px; border-top: 1px solid var(--border-light); padding-top: 10px; padding-bottom: 10px; }
+.header-nav a { color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; padding-bottom: 8px; }
+.header-nav a:hover { color: var(--accent); text-decoration: none; }
+.header-nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
 
-/* ── MAIN ── */
-.main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
-.page-title { font-size: 16px; font-weight: 700; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
-.page-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 48px; }
+/* -- MAIN -- */
+.main { max-width: 1100px; margin: 0 auto; padding: 48px 32px 80px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.page-sub { color: var(--text-dim); font-size: 15px; margin-bottom: 48px; }
 
-/* ── FAMILY SECTION ── */
+/* -- FAMILY SECTION -- */
 .family { margin-bottom: 48px; }
-.family-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-.family-intro { color: var(--text-dim); font-size: 11px; margin-bottom: 16px; max-width: 640px; }
+.family-title { font-size: 18px; font-weight: 600; padding-bottom: 10px; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+.family-intro { color: var(--text-dim); font-size: 14px; margin-bottom: 16px; max-width: 720px; }
 
-/* ── BLOCK GRID ── */
-.block-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.block-card { display: block; background: var(--bg-panel); border: 1px solid var(--border); padding: 14px 16px; text-decoration: none; }
-.block-card:hover { border-color: var(--amber); text-decoration: none; }
-.block-code { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; margin-bottom: 2px; }
-.block-name { font-size: 13px; font-weight: 600; color: var(--amber); letter-spacing: 1px; margin-bottom: 6px; }
-.block-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+/* -- BLOCK GRID -- */
+.block-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.block-card { display: block; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px; text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.block-card:hover { border-color: var(--accent); text-decoration: none; }
+.block-code { font-size: 11px; color: var(--text-light); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; margin-bottom: 2px; }
+.block-name { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.block-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
 
-/* ── FOOTER ── */
-.site-footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 11px; color: var(--text-dim); }
-.site-footer a { color: var(--text-dim); }
-.site-footer a:hover { color: var(--amber); }
+/* -- FOOTER -- */
+.site-footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-light); }
+.site-footer a { color: var(--text-light); }
+.site-footer a:hover { color: var(--accent); }
 
 @media (max-width: 600px) {
-  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 8px; height: auto; padding: 12px 0; }
   .header-nav { flex-wrap: wrap; }
   .block-grid { grid-template-columns: 1fr; }
+  .main { padding: 32px 16px 60px; }
+  .site-header-inner { padding: 0 16px; }
 }
 </style>
 </head>
@@ -76,22 +82,21 @@ a:hover { text-decoration: underline; }
 <header class="site-header">
   <div class="site-header-inner">
     <div class="header-top">
-      <a href="../../ghost-labs.html" class="header-title">Ghost Labs / Ladder Script</a>
+      <a href="../../ghost-labs.html" class="header-title">Ghost Labs</a>
       <div class="header-right">
         <a href="../ladder-engine.html">Engine</a>
         <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank" class="gh-icon">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
       </div>
     </div>
-    <hr class="header-rule">
     <nav class="header-nav">
-      <a href="../ladder-script.html">ladder-script</a>
-      <a href="../get-started.html">get-started</a>
-      <a href="../patch-overview.html">patch</a>
-      <a href="./" class="active">blocks</a>
-      <a href="../rung-tx-anatomy.html">docs</a>
-      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">code</a>
+      <a href="../ladder-script.html">Ladder Script</a>
+      <a href="../get-started.html">Get Started</a>
+      <a href="../patch-overview.html">Patch</a>
+      <a href="./" class="active">Blocks</a>
+      <a href="../rung-tx-anatomy.html">Anatomy</a>
+      <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Code</a>
     </nav>
   </div>
 </header>
@@ -99,11 +104,11 @@ a:hover { text-decoration: underline; }
 <div class="main">
 
   <h1 class="page-title">Block Reference</h1>
-  <p class="page-sub">// documentation for each block type in the ladder script evaluation engine</p>
+  <p class="page-sub">Documentation for each block type in the Ladder Script evaluation engine</p>
 
-  <!-- ── SIGNATURE ── -->
+  <!-- -- SIGNATURE -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#ff1744;">Signature Family -- 0x0001</h2>
+    <h2 class="family-title" style="color:#c0392b;">Signature Family -- 0x0001</h2>
     <p class="family-intro">Signature blocks verify cryptographic signatures against committed public keys. The foundation of UTXO authorization.</p>
     <div class="block-grid">
       <a href="sig.html" class="block-card"><div class="block-code">0x0001</div><div class="block-name">SIG</div><div class="block-desc">Single Schnorr signature verification against a committed public key. Equivalent to OP_CHECKSIG in Tapscript.</div></a>
@@ -114,9 +119,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── TIMELOCK ── -->
+  <!-- -- TIMELOCK -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#ff6d00;">Timelock Family -- 0x0100</h2>
+    <h2 class="family-title" style="color:#e67e22;">Timelock Family -- 0x0100</h2>
     <p class="family-intro">Temporal constraints on spending -- relative to confirmation (CSV) or absolute block height / timestamp (CLTV).</p>
     <div class="block-grid">
       <a href="csv.html" class="block-card"><div class="block-code">0x0101</div><div class="block-name">CSV</div><div class="block-desc">Relative timelock by block count. UTXO cannot be spent until N blocks after confirmation.</div></a>
@@ -126,9 +131,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── HASH ── -->
+  <!-- -- HASH -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#b070b0;">Hash Family -- 0x0200</h2>
+    <h2 class="family-title" style="color:#8e44ad;">Hash Family -- 0x0200</h2>
     <p class="family-intro">Hash preimage verification. HASH_PREIMAGE and HASH160_PREIMAGE are deprecated; use HTLC, HASH_SIG, or HASH_GUARDED.</p>
     <div class="block-grid">
       <a href="hash-preimage.html" class="block-card"><div class="block-code">0x0201</div><div class="block-name">HASH_PREIMAGE</div><div class="block-desc">SHA-256 hash preimage verification. DEPRECATED.</div></a>
@@ -138,9 +143,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── COVENANT ── -->
+  <!-- -- COVENANT -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#e06c75;">Covenant Family -- 0x0300</h2>
+    <h2 class="family-title" style="color:#c0392b;">Covenant Family -- 0x0300</h2>
     <p class="family-intro">Enforce constraints on how a UTXO can be spent by inspecting the spending transaction. No direct Tapscript equivalent.</p>
     <div class="block-grid">
       <a href="ctv.html" class="block-card"><div class="block-code">0x0301</div><div class="block-name">CTV</div><div class="block-desc">CheckTemplateVerify (BIP-119). Verifies spending transaction matches a committed template hash.</div></a>
@@ -149,9 +154,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── RECURSION ── -->
+  <!-- -- RECURSION -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#e5c07b;">Recursion Family -- 0x0400</h2>
+    <h2 class="family-title" style="color:#d35400;">Recursion Family -- 0x0400</h2>
     <p class="family-intro">Self-referencing covenants -- outputs that enforce spending back into the same or modified covenant structure.</p>
     <div class="block-grid">
       <a href="recurse-same.html" class="block-card"><div class="block-code">0x0401</div><div class="block-name">RECURSE_SAME</div><div class="block-desc">Enforces output recreates the identical covenant. Perpetual re-encumbrance.</div></a>
@@ -163,9 +168,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── ANCHOR ── -->
+  <!-- -- ANCHOR -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#56b6c2;">Anchor Family -- 0x0500</h2>
+    <h2 class="family-title" style="color:#2980b9;">Anchor Family -- 0x0500</h2>
     <p class="family-intro">Commit to external state references -- channel IDs, pool IDs, reserve requirements, oracle attestations, tamper-evident seals.</p>
     <div class="block-grid">
       <a href="anchor.html" class="block-card"><div class="block-code">0x0501</div><div class="block-name">ANCHOR</div><div class="block-desc">Generic anchor point. 32-byte anchor hash identifying an off-chain structure.</div></a>
@@ -178,9 +183,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── PLC ── -->
+  <!-- -- PLC -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#98c379;">PLC Family -- 0x0600</h2>
+    <h2 class="family-title" style="color:#27ae60;">PLC Family -- 0x0600</h2>
     <p class="family-intro">Industrial automation primitives for Bitcoin script. Hysteresis, timers, latches, counters, comparators, sequencers, rate limiters.</p>
     <div class="block-grid">
       <a href="hysteresis-fee.html" class="block-card"><div class="block-code">0x0601</div><div class="block-name">HYSTERESIS_FEE</div><div class="block-desc">Fee-rate hysteresis controller with deadband.</div></a>
@@ -200,9 +205,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── COMPOUND ── -->
+  <!-- -- COMPOUND -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#ffffff;">Compound Family -- 0x0700</h2>
+    <h2 class="family-title" style="color:#555;">Compound Family -- 0x0700</h2>
     <p class="family-intro">Common multi-block patterns collapsed into single blocks, reducing wire overhead.</p>
     <div class="block-grid">
       <a href="timelocked-sig.html" class="block-card"><div class="block-code">0x0701</div><div class="block-name">TIMELOCKED_SIG</div><div class="block-desc">SIG + CSV in one block. Saves 8 bytes on wire.</div></a>
@@ -214,9 +219,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── GOVERNANCE ── -->
+  <!-- -- GOVERNANCE -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#9e9e9e;">Governance Family -- 0x0800</h2>
+    <h2 class="family-title" style="color:#7f8c8d;">Governance Family -- 0x0800</h2>
     <p class="family-intro">Transaction-level constraints with no Tapscript equivalent. Inspect structure, weight, I/O counts, value ratios.</p>
     <div class="block-grid">
       <a href="epoch-gate.html" class="block-card"><div class="block-code">0x0801</div><div class="block-name">EPOCH_GATE</div><div class="block-desc">Periodic spending windows using block height modular arithmetic.</div></a>
@@ -228,9 +233,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── LEGACY ── -->
+  <!-- -- LEGACY -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#00e5ff;">Legacy Family -- 0x0900</h2>
+    <h2 class="family-title" style="color:#2980b9;">Legacy Family -- 0x0900</h2>
     <p class="family-intro">Wraps Bitcoin's original transaction types as typed Ladder Script blocks. Same spending semantics, all fields typed. Closes inscription and data-embedding vectors.</p>
     <div class="block-grid">
       <a href="p2pk-legacy.html" class="block-card"><div class="block-code">0x0901</div><div class="block-name">P2PK_LEGACY</div><div class="block-desc">Pay-to-Public-Key. Delegates to EvalSigBlock.</div></a>
@@ -243,9 +248,9 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <!-- ── COMPACT ── -->
+  <!-- -- COMPACT -- -->
   <div class="family">
-    <h2 class="family-title" style="color:#98c379;">Compact Encodings</h2>
+    <h2 class="family-title" style="color:#27ae60;">Compact Encodings</h2>
     <p class="family-intro">Wire format optimisations using n_blocks == 0 sentinel within a rung. Not counted as separate block types.</p>
     <div class="block-grid">
       <a href="compact-sig.html" class="block-card"><div class="block-code">COMPACT 0x01</div><div class="block-name">COMPACT_SIG</div><div class="block-desc">Compact single-key signature rung. SCHEME (1B) inline, public key folded into Merkle leaf. Resolves to SIG at evaluation.</div></a>
@@ -255,7 +260,7 @@ a:hover { text-decoration: underline; }
 </div>
 
 <footer class="site-footer">
-  GHOST LABS &middot; LADDER SCRIPT (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">source</a>
+  Ghost Labs &middot; Ladder Script (BIP-110) &middot; <a href="https://github.com/defenwycke/ghost-labs-ladder-script" target="_blank">Source</a>
 </footer>
 
 </body>
