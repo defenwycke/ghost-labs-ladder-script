@@ -110,31 +110,13 @@ bool IsStandardRungTx(const CTransaction& tx, std::string& reason)
     // verify the witness deserializes — rejecting garbage early before consensus
     // spends CPU on Merkle proof verification and block evaluation.
 
-    for (size_t i = 0; i < tx.vin.size(); ++i) {
-        const auto& witness = tx.vin[i].scriptWitness;
-        if (witness.stack.empty()) {
-            reason = "rung-missing-witness";
-            return false;
-        }
-
-        // MLSC ladder witnesses have exactly 2 stack elements (LadderWitness + MLSCProof).
-        // Standard inputs (P2WPKH/P2TR bootstrap) have different stack sizes — skip them.
-        if (witness.stack.size() != 2) {
-            continue;
-        }
-
-        // Deserialize witness — this enforces all structural limits at the
-        // consensus deserializer level: MAX_RUNGS, MAX_BLOCKS_PER_RUNG,
-        // known block types, deprecated block rejection, non-invertible
-        // inversion, implicit layout enforcement, IsDataEmbeddingType,
-        // PREIMAGE field count, relay chain depth, field size ranges.
-        LadderWitness ladder;
-        std::string deser_error;
-        if (!DeserializeLadderWitness(witness.stack[0], ladder, deser_error)) {
-            reason = "rung-invalid-witness: " + deser_error;
-            return false;
-        }
-    }
+    // Note: per-input witness deserialization is NOT checked here.
+    // V4 txs can have mixed inputs (standard P2WPKH bootstrap + MLSC ladder).
+    // Standard P2WPKH witnesses have 2 stack elements (sig + pubkey), same as
+    // ladder witnesses (LadderWitness + MLSCProof), so they cannot be
+    // distinguished without access to spent outputs.
+    // Full witness validation is done at consensus level in VerifyRungTx,
+    // which has access to spent outputs and only validates MLSC inputs.
 
     // Output validation is consensus (ValidateRungOutputs in VerifyRungTx).
     // Run it here too for early mempool rejection.
