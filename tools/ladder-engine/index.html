@@ -10269,15 +10269,15 @@ function SpendPanel() {
       addLog('Signing with ' + signerBlocks.length + ' block(s), ' + scheme + ' scheme...');
       const signerEntry = { input: 0, blocks: signerBlocks };
       // MLSC inputs require conditions for Merkle proof computation.
-      // Ensure scheme is set on each block's values so exportBlockFields includes it.
+      // Ensure scheme is always set on signature blocks so the MLSC root matches.
       if (voutRungs.length > 0) {
+        const sigTypes = new Set(['SIG','MULTISIG','TIMELOCKED_SIG','HASH_SIG','CLTV_SIG','TIMELOCKED_MULTISIG','P2PK_LEGACY','P2TR_LEGACY','MUSIG_THRESHOLD']);
         signerEntry.conditions = voutRungs.map(r => ({
           blocks: (r.blocks || []).filter(b => b.type !== 'OUTPUT_REF').map(b => {
-            if (scheme && scheme !== 'SCHNORR' && !b.values?.scheme &&
-                (b.type === 'SIG' || b.type === 'MULTISIG' || b.type === 'TIMELOCKED_SIG' ||
-                 b.type === 'HASH_SIG' || b.type === 'CLTV_SIG' || b.type === 'TIMELOCKED_MULTISIG' ||
-                 b.type === 'P2PK_LEGACY' || b.type === 'P2TR_LEGACY')) {
-              const patched = { ...b, values: { ...b.values, scheme } };
+            // Always ensure scheme is set for sig-family blocks
+            if (sigTypes.has(b.type)) {
+              const blockScheme = b.values?.scheme || scheme || 'SCHNORR';
+              const patched = { ...b, values: { ...b.values, scheme: blockScheme } };
               return exportBlockFields(patched);
             }
             return exportBlockFields(b);
