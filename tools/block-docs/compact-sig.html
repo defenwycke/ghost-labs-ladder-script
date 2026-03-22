@@ -58,32 +58,32 @@
   <div class="ladder-diagram">
     <svg width="620" height="190" viewBox="0 0 620 190">
       <!-- Power rails -->
-      <line x1="20" y1="10" x2="20" y2="180" stroke="#4a4a4a" stroke-width="3"/>
-      <line x1="600" y1="10" x2="600" y2="180" stroke="#4a4a4a" stroke-width="3"/>
+      <line x1="20" y1="10" x2="20" y2="180" stroke="#cccccc" stroke-width="3"/>
+      <line x1="600" y1="10" x2="600" y2="180" stroke="#cccccc" stroke-width="3"/>
 
       <!-- Normal SIG rung (top, greyed) -->
-      <line x1="20" y1="40" x2="140" y2="40" stroke="#555" stroke-width="1" stroke-dasharray="4"/>
-      <line x1="480" y1="40" x2="600" y2="40" stroke="#555" stroke-width="1" stroke-dasharray="4"/>
-      <rect x="140" y="22" width="340" height="36" rx="2" fill="#1e1e1e" stroke="#444" stroke-width="1" stroke-dasharray="3"/>
-      <text x="180" y="44" fill="#555" font-family="IBM Plex Mono" font-size="9">n_blocks=1</text>
-      <rect x="250" y="28" width="100" height="24" rx="2" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-      <text x="300" y="44" text-anchor="middle" fill="#555" font-family="Share Tech Mono" font-size="10" letter-spacing="1">SIG</text>
-      <text x="390" y="44" fill="#555" font-family="IBM Plex Mono" font-size="9">38 B</text>
+      <line x1="20" y1="40" x2="140" y2="40" stroke="#bbbbbb" stroke-width="1" stroke-dasharray="4"/>
+      <line x1="480" y1="40" x2="600" y2="40" stroke="#bbbbbb" stroke-width="1" stroke-dasharray="4"/>
+      <rect x="140" y="22" width="340" height="36" rx="2" fill="#333333" stroke="#cccccc" stroke-width="1" stroke-dasharray="3"/>
+      <text x="180" y="44" fill="#999999" font-family="IBM Plex Mono" font-size="9">n_blocks=1</text>
+      <rect x="250" y="28" width="100" height="24" rx="2" fill="#f0f0f0" stroke="#cccccc" stroke-width="1"/>
+      <text x="300" y="44" text-anchor="middle" fill="#999999" font-family="Share Tech Mono" font-size="10" letter-spacing="1">SIG</text>
+      <text x="390" y="44" fill="#999999" font-family="IBM Plex Mono" font-size="9">38 B</text>
 
       <!-- Arrow -->
-      <text x="310" y="80" text-anchor="middle" fill="#98c379" font-family="IBM Plex Mono" font-size="11" font-weight="700">&darr; COMPACT</text>
+      <text x="310" y="80" text-anchor="middle" fill="#27ae60" font-family="IBM Plex Mono" font-size="11" font-weight="700">&darr; COMPACT</text>
 
       <!-- Compact SIG rung (bottom, green) -->
-      <line x1="20" y1="110" x2="140" y2="110" stroke="#98c379" stroke-width="2"/>
-      <line x1="480" y1="110" x2="600" y2="110" stroke="#98c379" stroke-width="2"/>
-      <rect x="140" y="92" width="340" height="36" rx="2" fill="#2a2a2a" stroke="#98c379" stroke-width="1.5"/>
-      <text x="180" y="114" fill="#98c379" font-family="IBM Plex Mono" font-size="9">n_blocks=0</text>
-      <text x="280" y="114" fill="#98c379" font-family="Share Tech Mono" font-size="11" letter-spacing="1">COMPACT_SIG</text>
-      <text x="420" y="114" fill="#98c379" font-family="IBM Plex Mono" font-size="9">35 B</text>
+      <line x1="20" y1="110" x2="140" y2="110" stroke="#27ae60" stroke-width="2"/>
+      <line x1="480" y1="110" x2="600" y2="110" stroke="#27ae60" stroke-width="2"/>
+      <rect x="140" y="92" width="340" height="36" rx="2" fill="#f5f5f5" stroke="#27ae60" stroke-width="1.5"/>
+      <text x="180" y="114" fill="#27ae60" font-family="IBM Plex Mono" font-size="9">n_blocks=0</text>
+      <text x="280" y="114" fill="#27ae60" font-family="Share Tech Mono" font-size="11" letter-spacing="1">COMPACT_SIG</text>
+      <text x="420" y="114" fill="#27ae60" font-family="IBM Plex Mono" font-size="9">35 B</text>
 
       <!-- Annotation -->
-      <text x="310" y="155" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">n_blocks == 0 sentinel &rarr; compact type byte &rarr; inline data</text>
-      <text x="310" y="170" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">Resolves to SIG block at evaluation time</text>
+      <text x="310" y="155" text-anchor="middle" fill="#999999" font-family="IBM Plex Mono" font-size="9">n_blocks == 0 sentinel &rarr; compact type byte &rarr; inline data</text>
+      <text x="310" y="170" text-anchor="middle" fill="#999999" font-family="IBM Plex Mono" font-size="9">Resolves to SIG block at evaluation time</text>
     </svg>
   </div>
 </div>

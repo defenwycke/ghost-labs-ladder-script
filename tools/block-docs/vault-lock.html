@@ -56,27 +56,27 @@
   <div class="section-label">Ladder Diagram</div>
   <div class="ladder-diagram">
     <svg width="620" height="210" viewBox="0 0 620 210">
-      <line x1="20" y1="10" x2="20" y2="200" stroke="#4a4a4a" stroke-width="3"/>
-      <line x1="600" y1="10" x2="600" y2="200" stroke="#4a4a4a" stroke-width="3"/>
-      <line x1="20" y1..32" x2="140" y2="80" stroke="#ff1744" stroke-width="2"/>
-      <line x1="460" y1..32" x2="600" y2="80" stroke="#ff1744" stroke-width="2"/>
-      <rect x="140" y="16" width="320" height="130" rx="2" fill="#2a2a2a" stroke="#e06c75" stroke-width="1.5"/>
-      <text x="300" y="34" text-anchor="middle" fill="#e06c75" font-family="Share Tech Mono" font-size="13" letter-spacing="2">VAULT_LOCK</text>
+      <line x1="20" y1="10" x2="20" y2="200" stroke="#cccccc" stroke-width="3"/>
+      <line x1="600" y1="10" x2="600" y2="200" stroke="#cccccc" stroke-width="3"/>
+      <line x1="20" y1..32" x2="140" y2="80" stroke="#e74c3c" stroke-width="2"/>
+      <line x1="460" y1..32" x2="600" y2="80" stroke="#e74c3c" stroke-width="2"/>
+      <rect x="140" y="16" width="320" height="130" rx="2" fill="#f5f5f5" stroke="#e74c3c" stroke-width="1.5"/>
+      <text x="300" y="34" text-anchor="middle" fill="#e74c3c" font-family="Share Tech Mono" font-size="13" letter-spacing="2">VAULT_LOCK</text>
       <!-- Recovery path -->
-      <rect x="165" y="46" width="130" height="40" rx="1" fill="#1a5c28" stroke="#2979ff" stroke-width="1"/>
-      <text x="230" y="62" text-anchor="middle" fill="#3fb950" font-family="IBM Plex Mono" font-size="9">RECOVERY KEY</text>
-      <text x="230" y="78" text-anchor="middle" fill="#3fb950" font-family="IBM Plex Mono" font-size="8">immediate spend</text>
+      <rect x="165" y="46" width="130" height="40" rx="1" fill="#c8e6c9" stroke="#2980b9" stroke-width="1"/>
+      <text x="230" y="62" text-anchor="middle" fill="#2ecc71" font-family="IBM Plex Mono" font-size="9">RECOVERY KEY</text>
+      <text x="230" y="78" text-anchor="middle" fill="#2ecc71" font-family="IBM Plex Mono" font-size="8">immediate spend</text>
       <!-- Hot path -->
-      <rect x="310" y="46" width="130" height="40" rx="1" fill="#6e1a1a" stroke="#ff4081" stroke-width="1"/>
-      <text x="375" y="62" text-anchor="middle" fill="#f85149" font-family="IBM Plex Mono" font-size="9">HOT KEY</text>
-      <text x="375" y="78" text-anchor="middle" fill="#f85149" font-family="IBM Plex Mono" font-size="8">CSV delay required</text>
+      <rect x="310" y="46" width="130" height="40" rx="1" fill="#ffcdd2" stroke="#e91e63" stroke-width="1"/>
+      <text x="375" y="62" text-anchor="middle" fill="#e74c3c" font-family="IBM Plex Mono" font-size="9">HOT KEY</text>
+      <text x="375" y="78" text-anchor="middle" fill="#e74c3c" font-family="IBM Plex Mono" font-size="8">CSV delay required</text>
       <!-- Divider -->
-      <text x="300" y="68" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="10">|</text>
+      <text x="300" y="68" text-anchor="middle" fill="#999999" font-family="IBM Plex Mono" font-size="10">|</text>
       <!-- Delay label -->
-      <rect x="210" y="100" width="180" height="20" rx="1" fill="#1a2a2a" stroke="#3a5a5a" stroke-width="1"/>
-      <text x="300" y="114" text-anchor="middle" fill="#ff6d00" font-family="IBM Plex Mono" font-size="8">hot_delay (NUMERIC) blocks</text>
+      <rect x="210" y="100" width="180" height="20" rx="1" fill="#e8f5e9" stroke="#b2dfdb" stroke-width="1"/>
+      <text x="300" y="114" text-anchor="middle" fill="#e67e22" font-family="IBM Plex Mono" font-size="8">hot_delay (NUMERIC) blocks</text>
       <!-- Label -->
-      <text x="300" y="180" text-anchor="middle" fill="#555555" font-family="IBM Plex Mono" font-size="9">recovery_sig &rarr; instant | hot_sig + CSV(delay) &rarr; delayed</text>
+      <text x="300" y="180" text-anchor="middle" fill="#999999" font-family="IBM Plex Mono" font-size="9">recovery_sig &rarr; instant | hot_sig + CSV(delay) &rarr; delayed</text>
     </svg>
   </div>
 </div>
