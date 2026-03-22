@@ -102,7 +102,7 @@ Inline conditions (prefix `0xC1`) are removed and always rejected.
 
 ### 4.c Block Type Families
 
-Ladder Script defines 61 block types across 10 families (59 active, 2
+Ladder Script defines 63 block types across 10 families (61 active, 2
 deprecated). Each block type is encoded as a `uint16_t` (little-endian).
 
 #### Signature Family (0x0001 - 0x00FF)
@@ -792,7 +792,7 @@ compare the computed root against the output's MLSC root.
 | COUNTER_DOWN     | Decrement counter; SATISFIED when counter reaches zero. |
 | COUNTER_PRESET   | Approval accumulator; SATISFIED when current reaches preset. |
 | COUNTER_UP       | Increment counter; SATISFIED when current reaches target. |
-| COMPARE          | Comparator with operator, value_b, value_c NUMERICs. |
+| COMPARE          | Comparator: compares input amount against thresholds using operator byte (1=EQ, 2=NEQ, 3=GT, 4=LT, 5=GTE, 6=LTE, 7=IN_RANGE). |
 | SEQUENCER        | Step through sequence; SATISFIED at final step. |
 | ONE_SHOT         | One-time activation window with hash commitment. |
 | RATE_LIMIT       | SATISFIED if spending rate within limits (max_per_block, accumulation_cap, refill_blocks). |
@@ -943,7 +943,7 @@ ladder(or(
 
 ## Activation
 
-All 61 block types (59 active, 2 deprecated) activate together as a single
+All 63 block types (61 active, 2 deprecated) activate together as a single
 soft fork. On mainnet, only MLSC (0xC2) outputs are accepted. Inline
 conditions (0xC1) are removed and always rejected.
 

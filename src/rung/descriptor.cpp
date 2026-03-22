@@ -4,6 +4,7 @@
 
 #include <rung/descriptor.h>
 
+#include <crypto/sha256.h>
 #include <util/strencodings.h>
 
 #include <algorithm>
@@ -321,6 +322,514 @@ bool ParseOutputCheck(ParseContext& ctx, RungBlock& block)
     return Expect(ctx, ')');
 }
 
+// ── Signature family (new) ──────────────────────────────────────────────
+
+bool ParseAdaptorSig(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // adaptor_sig(@signer, @adaptor_point) or adaptor_sig(@signer, @adaptor_point, scheme)
+    if (!Expect(ctx, '(')) return false;
+    std::string alias1 = ReadAlias(ctx);
+    if (alias1.empty()) return false;
+    std::vector<uint8_t> pk1;
+    if (!LookupKey(ctx, alias1, pk1)) return false;
+    rung_pks.push_back(pk1);
+
+    if (!Expect(ctx, ',')) return false;
+    std::string alias2 = ReadAlias(ctx);
+    if (alias2.empty()) return false;
+    std::vector<uint8_t> pk2;
+    if (!LookupKey(ctx, alias2, pk2)) return false;
+    rung_pks.push_back(pk2);
+
+    block.type = RungBlockType::ADAPTOR_SIG;
+    RungScheme scheme = RungScheme::SCHNORR;
+    SkipWhitespace(ctx);
+    if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == ',') {
+        ++ctx.pos;
+        scheme = ParseScheme(ReadIdentifier(ctx));
+    }
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(scheme)}});
+    return Expect(ctx, ')');
+}
+
+bool ParseMusigThreshold(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // musig_threshold(M, @pk1, @pk2, ...) — same pattern as multisig
+    if (!Expect(ctx, '(')) return false;
+    uint32_t threshold;
+    if (!ReadUint32(ctx, threshold)) return false;
+    block.type = RungBlockType::MUSIG_THRESHOLD;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(threshold)});
+    while (true) {
+        SkipWhitespace(ctx);
+        if (ctx.pos >= ctx.desc.size() || ctx.desc[ctx.pos] == ')') break;
+        if (!Expect(ctx, ',')) return false;
+        SkipWhitespace(ctx);
+        if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == '@') {
+            std::string alias = ReadAlias(ctx);
+            if (alias.empty()) return false;
+            std::vector<uint8_t> pk;
+            if (!LookupKey(ctx, alias, pk)) return false;
+            rung_pks.push_back(pk);
+        } else break;
+    }
+    return Expect(ctx, ')');
+}
+
+bool ParseKeyRefSig(ParseContext& ctx, RungBlock& block)
+{
+    // key_ref_sig(relay_idx, block_idx)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t relay_idx, block_idx;
+    if (!ReadUint32(ctx, relay_idx)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, block_idx)) return false;
+    block.type = RungBlockType::KEY_REF_SIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(relay_idx)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(block_idx)});
+    return Expect(ctx, ')');
+}
+
+// ── Hash family (new) ──────────────────────────────────────────────────
+
+bool ParseTaggedHash(ParseContext& ctx, RungBlock& block)
+{
+    // tagged_hash(tag_hex, expected_hex)
+    if (!Expect(ctx, '(')) return false;
+    auto tag = ParseHex(ReadHex(ctx));
+    if (tag.size() != 32) { ctx.error = "tagged_hash tag must be 32 bytes"; return false; }
+    if (!Expect(ctx, ',')) return false;
+    auto expected = ParseHex(ReadHex(ctx));
+    if (expected.size() != 32) { ctx.error = "tagged_hash expected must be 32 bytes"; return false; }
+    block.type = RungBlockType::TAGGED_HASH;
+    block.fields.push_back({RungDataType::HASH256, tag});
+    block.fields.push_back({RungDataType::HASH256, expected});
+    return Expect(ctx, ')');
+}
+
+// ── Covenant family (new) ──────────────────────────────────────────────
+
+bool ParseVaultLock(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // vault_lock(@recovery, @hot, delay)
+    if (!Expect(ctx, '(')) return false;
+    std::string r_alias = ReadAlias(ctx);
+    if (r_alias.empty()) return false;
+    std::vector<uint8_t> r_pk;
+    if (!LookupKey(ctx, r_alias, r_pk)) return false;
+    rung_pks.push_back(r_pk);
+
+    if (!Expect(ctx, ',')) return false;
+    std::string h_alias = ReadAlias(ctx);
+    if (h_alias.empty()) return false;
+    std::vector<uint8_t> h_pk;
+    if (!LookupKey(ctx, h_alias, h_pk)) return false;
+    rung_pks.push_back(h_pk);
+
+    if (!Expect(ctx, ',')) return false;
+    uint32_t delay;
+    if (!ReadUint32(ctx, delay)) return false;
+    block.type = RungBlockType::VAULT_LOCK;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(delay)});
+    return Expect(ctx, ')');
+}
+
+// ── Recursion family ───────────────────────────────────────────────────
+
+bool ParseRecurseSame(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_same(max_depth)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t depth;
+    if (!ReadUint32(ctx, depth)) return false;
+    block.type = RungBlockType::RECURSE_SAME;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(depth)});
+    return Expect(ctx, ')');
+}
+
+bool ParseRecurseModified(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_modified(max_depth, block_idx, param_idx, delta)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t depth, blk, param, delta;
+    if (!ReadUint32(ctx, depth)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, blk)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, param)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, delta)) return false;
+    block.type = RungBlockType::RECURSE_MODIFIED;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(depth)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(blk)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(param)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(delta)});
+    return Expect(ctx, ')');
+}
+
+bool ParseRecurseUntil(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_until(height)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t height;
+    if (!ReadUint32(ctx, height)) return false;
+    block.type = RungBlockType::RECURSE_UNTIL;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(height)});
+    return Expect(ctx, ')');
+}
+
+bool ParseRecurseCount(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_count(count)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t count;
+    if (!ReadUint32(ctx, count)) return false;
+    block.type = RungBlockType::RECURSE_COUNT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(count)});
+    return Expect(ctx, ')');
+}
+
+bool ParseRecurseSplit(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_split(max_splits, min_sats)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t splits, min_sats;
+    if (!ReadUint32(ctx, splits)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, min_sats)) return false;
+    block.type = RungBlockType::RECURSE_SPLIT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(splits)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(min_sats)});
+    return Expect(ctx, ')');
+}
+
+bool ParseRecurseDecay(ParseContext& ctx, RungBlock& block)
+{
+    // recurse_decay(max_depth, block_idx, param_idx, decay_per_step)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t depth, blk, param, decay;
+    if (!ReadUint32(ctx, depth)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, blk)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, param)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, decay)) return false;
+    block.type = RungBlockType::RECURSE_DECAY;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(depth)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(blk)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(param)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(decay)});
+    return Expect(ctx, ')');
+}
+
+// ── Anchor family ──────────────────────────────────────────────────────
+
+bool ParseDataReturn(ParseContext& ctx, RungBlock& block)
+{
+    // data_return(hex)
+    if (!Expect(ctx, '(')) return false;
+    auto bytes = ParseHex(ReadHex(ctx));
+    if (bytes.empty() || bytes.size() > 32) {
+        ctx.error = "data_return requires 1-32 byte payload";
+        return false;
+    }
+    block.type = RungBlockType::DATA_RETURN;
+    block.fields.push_back({RungDataType::DATA, bytes});
+    return Expect(ctx, ')');
+}
+
+// ── PLC family ─────────────────────────────────────────────────────────
+
+bool ParseTwoNumericBlock(ParseContext& ctx, RungBlock& block, RungBlockType type)
+{
+    // Generic: type(N, N) — hysteresis_fee, hysteresis_value, input_count, output_count, etc.
+    if (!Expect(ctx, '(')) return false;
+    uint32_t a, b;
+    if (!ReadUint32(ctx, a)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, b)) return false;
+    block.type = type;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(a)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(b)});
+    return Expect(ctx, ')');
+}
+
+bool ParseOneNumericBlock(ParseContext& ctx, RungBlock& block, RungBlockType type)
+{
+    // Generic: type(N) — weight_limit, timer_continuous, etc.
+    if (!Expect(ctx, '(')) return false;
+    uint32_t val;
+    if (!ReadUint32(ctx, val)) return false;
+    block.type = type;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(val)});
+    return Expect(ctx, ')');
+}
+
+bool ParsePubkeyNumericBlock(ParseContext& ctx, RungBlock& block, RungBlockType type,
+                              std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // type(@pk, N) — latch_set, latch_reset, counter_down, counter_preset, counter_up, one_shot
+    if (!Expect(ctx, '(')) return false;
+    std::string alias = ReadAlias(ctx);
+    if (alias.empty()) return false;
+    std::vector<uint8_t> pk;
+    if (!LookupKey(ctx, alias, pk)) return false;
+    rung_pks.push_back(pk);
+    if (!Expect(ctx, ',')) return false;
+    uint32_t val;
+    if (!ReadUint32(ctx, val)) return false;
+    block.type = type;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(val)});
+    return Expect(ctx, ')');
+}
+
+bool ParseCompare(ParseContext& ctx, RungBlock& block)
+{
+    // compare(op, value_b) or compare(op, value_b, value_c)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t op, vb;
+    if (!ReadUint32(ctx, op)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, vb)) return false;
+    block.type = RungBlockType::COMPARE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(op)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(vb)});
+    SkipWhitespace(ctx);
+    if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == ',') {
+        ++ctx.pos;
+        uint32_t vc;
+        if (!ReadUint32(ctx, vc)) return false;
+        block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(vc)});
+    }
+    return Expect(ctx, ')');
+}
+
+bool ParseRateLimit(ParseContext& ctx, RungBlock& block)
+{
+    // rate_limit(max_per_block, accumulation_cap, refill_blocks)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t a, b, c;
+    if (!ReadUint32(ctx, a)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, b)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, c)) return false;
+    block.type = RungBlockType::RATE_LIMIT;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(a)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(b)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(c)});
+    return Expect(ctx, ')');
+}
+
+bool ParseCosign(ParseContext& ctx, RungBlock& block)
+{
+    // cosign(conditions_hash_hex)
+    if (!Expect(ctx, '(')) return false;
+    auto bytes = ParseHex(ReadHex(ctx));
+    if (bytes.size() != 32) { ctx.error = "cosign requires 32-byte conditions hash"; return false; }
+    block.type = RungBlockType::COSIGN;
+    block.fields.push_back({RungDataType::HASH256, bytes});
+    return Expect(ctx, ')');
+}
+
+// ── Compound family (new) ──────────────────────────────────────────────
+
+bool ParseCltvSig(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // cltv_sig(@pk, height)
+    if (!Expect(ctx, '(')) return false;
+    std::string alias = ReadAlias(ctx);
+    if (alias.empty()) return false;
+    std::vector<uint8_t> pk;
+    if (!LookupKey(ctx, alias, pk)) return false;
+    rung_pks.push_back(pk);
+    if (!Expect(ctx, ',')) return false;
+    uint32_t height;
+    if (!ReadUint32(ctx, height)) return false;
+    block.type = RungBlockType::CLTV_SIG;
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(height)});
+    return Expect(ctx, ')');
+}
+
+bool ParseHtlc(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // htlc(@sender, @receiver, preimage_hex, csv_blocks)
+    if (!Expect(ctx, '(')) return false;
+    std::string a1 = ReadAlias(ctx);
+    if (a1.empty()) return false;
+    std::vector<uint8_t> pk1;
+    if (!LookupKey(ctx, a1, pk1)) return false;
+    rung_pks.push_back(pk1);
+
+    if (!Expect(ctx, ',')) return false;
+    std::string a2 = ReadAlias(ctx);
+    if (a2.empty()) return false;
+    std::vector<uint8_t> pk2;
+    if (!LookupKey(ctx, a2, pk2)) return false;
+    rung_pks.push_back(pk2);
+
+    if (!Expect(ctx, ',')) return false;
+    auto preimage = ParseHex(ReadHex(ctx));
+    if (preimage.empty()) { ctx.error = "htlc requires preimage hex"; return false; }
+
+    if (!Expect(ctx, ',')) return false;
+    uint32_t csv_val;
+    if (!ReadUint32(ctx, csv_val)) return false;
+
+    block.type = RungBlockType::HTLC;
+    // Conditions: HASH256(sha256(preimage)), NUMERIC(csv), SCHEME
+    CSHA256 hasher;
+    std::vector<uint8_t> hash(CSHA256::OUTPUT_SIZE);
+    hasher.Write(preimage.data(), preimage.size()).Finalize(hash.data());
+    block.fields.push_back({RungDataType::HASH256, hash});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(csv_val)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    return Expect(ctx, ')');
+}
+
+bool ParseHashSig(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // hash_sig(@pk, preimage_hex)
+    if (!Expect(ctx, '(')) return false;
+    std::string alias = ReadAlias(ctx);
+    if (alias.empty()) return false;
+    std::vector<uint8_t> pk;
+    if (!LookupKey(ctx, alias, pk)) return false;
+    rung_pks.push_back(pk);
+
+    if (!Expect(ctx, ',')) return false;
+    auto preimage = ParseHex(ReadHex(ctx));
+    if (preimage.empty()) { ctx.error = "hash_sig requires preimage hex"; return false; }
+
+    block.type = RungBlockType::HASH_SIG;
+    CSHA256 hasher;
+    std::vector<uint8_t> hash(CSHA256::OUTPUT_SIZE);
+    hasher.Write(preimage.data(), preimage.size()).Finalize(hash.data());
+    block.fields.push_back({RungDataType::HASH256, hash});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    return Expect(ctx, ')');
+}
+
+bool ParsePtlc(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // ptlc(@pk, @adaptor_point, csv_blocks)
+    if (!Expect(ctx, '(')) return false;
+    std::string a1 = ReadAlias(ctx);
+    if (a1.empty()) return false;
+    std::vector<uint8_t> pk1;
+    if (!LookupKey(ctx, a1, pk1)) return false;
+    rung_pks.push_back(pk1);
+
+    if (!Expect(ctx, ',')) return false;
+    std::string a2 = ReadAlias(ctx);
+    if (a2.empty()) return false;
+    std::vector<uint8_t> pk2;
+    if (!LookupKey(ctx, a2, pk2)) return false;
+    rung_pks.push_back(pk2);
+
+    if (!Expect(ctx, ',')) return false;
+    uint32_t csv_val;
+    if (!ReadUint32(ctx, csv_val)) return false;
+
+    block.type = RungBlockType::PTLC;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(csv_val)});
+    return Expect(ctx, ')');
+}
+
+bool ParseTimelockedMultisig(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // timelocked_multisig(M, @pk1, @pk2, ..., csv_blocks)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t threshold;
+    if (!ReadUint32(ctx, threshold)) return false;
+
+    block.type = RungBlockType::TIMELOCKED_MULTISIG;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(threshold)});
+
+    // Read pubkeys until we hit a bare number (the csv_blocks)
+    uint32_t csv_val = 0;
+    while (true) {
+        SkipWhitespace(ctx);
+        if (ctx.pos >= ctx.desc.size() || ctx.desc[ctx.pos] == ')') break;
+        if (!Expect(ctx, ',')) return false;
+        SkipWhitespace(ctx);
+        if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == '@') {
+            std::string alias = ReadAlias(ctx);
+            if (alias.empty()) return false;
+            std::vector<uint8_t> pk;
+            if (!LookupKey(ctx, alias, pk)) return false;
+            rung_pks.push_back(pk);
+        } else {
+            // Must be csv_blocks (last numeric argument)
+            if (!ReadUint32(ctx, csv_val)) return false;
+            break;
+        }
+    }
+
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(csv_val)});
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    return Expect(ctx, ')');
+}
+
+// ── Governance family (new) ────────────────────────────────────────────
+
+bool ParseAccumulator(ParseContext& ctx, RungBlock& block)
+{
+    // accumulator(root_hex)
+    if (!Expect(ctx, '(')) return false;
+    auto bytes = ParseHex(ReadHex(ctx));
+    if (bytes.size() != 32) { ctx.error = "accumulator requires 32-byte root"; return false; }
+    block.type = RungBlockType::ACCUMULATOR;
+    block.fields.push_back({RungDataType::HASH256, bytes});
+    return Expect(ctx, ')');
+}
+
+bool ParseRelativeValue(ParseContext& ctx, RungBlock& block)
+{
+    // relative_value(numerator, denominator)
+    if (!Expect(ctx, '(')) return false;
+    uint32_t num, den;
+    if (!ReadUint32(ctx, num)) return false;
+    if (!Expect(ctx, ',')) return false;
+    if (!ReadUint32(ctx, den)) return false;
+    block.type = RungBlockType::RELATIVE_VALUE;
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(num)});
+    block.fields.push_back({RungDataType::NUMERIC, MakeNumericField(den)});
+    return Expect(ctx, ')');
+}
+
+// ── Legacy family ──────────────────────────────────────────────────────
+
+bool ParseLegacySingleKey(ParseContext& ctx, RungBlock& block, RungBlockType type,
+                           std::vector<std::vector<uint8_t>>& rung_pks)
+{
+    // p2pk(@pk) | p2pkh(@pk) | p2wpkh(@pk) | p2tr(@pk)
+    if (!Expect(ctx, '(')) return false;
+    std::string alias = ReadAlias(ctx);
+    if (alias.empty()) return false;
+    std::vector<uint8_t> pk;
+    if (!LookupKey(ctx, alias, pk)) return false;
+    rung_pks.push_back(pk);
+    block.type = type;
+    block.fields.push_back({RungDataType::SCHEME, {static_cast<uint8_t>(RungScheme::SCHNORR)}});
+    return Expect(ctx, ')');
+}
+
+bool ParseLegacyScript(ParseContext& ctx, RungBlock& block, RungBlockType type)
+{
+    // p2sh(inner_hex) | p2wsh(inner_hex) | p2tr_script(inner_hex)
+    if (!Expect(ctx, '(')) return false;
+    auto bytes = ParseHex(ReadHex(ctx));
+    if (bytes.empty()) { ctx.error = "legacy script block requires inner conditions hex"; return false; }
+    block.type = type;
+    block.fields.push_back({RungDataType::SCRIPT_BODY, bytes});
+    return Expect(ctx, ')');
+}
+
+// ── Block dispatcher ───────────────────────────────────────────────────
+
 bool ParseBlock(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uint8_t>>& rung_pks)
 {
     SkipWhitespace(ctx);
@@ -336,17 +845,77 @@ bool ParseBlock(ParseContext& ctx, RungBlock& block, std::vector<std::vector<uin
     std::string name = ReadIdentifier(ctx);
 
     bool ok = false;
+    // Signature family
     if (name == "sig") ok = ParseSig(ctx, block, rung_pks);
+    else if (name == "multisig") ok = ParseMultisig(ctx, block, rung_pks);
+    else if (name == "adaptor_sig") ok = ParseAdaptorSig(ctx, block, rung_pks);
+    else if (name == "musig_threshold") ok = ParseMusigThreshold(ctx, block, rung_pks);
+    else if (name == "key_ref_sig") ok = ParseKeyRefSig(ctx, block);
+    // Timelock family
     else if (name == "csv") ok = ParseCsv(ctx, block, RungBlockType::CSV);
     else if (name == "csv_time") ok = ParseCsv(ctx, block, RungBlockType::CSV_TIME);
     else if (name == "cltv") ok = ParseCsv(ctx, block, RungBlockType::CLTV);
     else if (name == "cltv_time") ok = ParseCsv(ctx, block, RungBlockType::CLTV_TIME);
-    else if (name == "multisig") ok = ParseMultisig(ctx, block, rung_pks);
+    // Hash family
+    else if (name == "tagged_hash") ok = ParseTaggedHash(ctx, block);
     else if (name == "hash_guarded") ok = ParseHashGuarded(ctx, block);
+    // Covenant family
     else if (name == "ctv") ok = ParseCtv(ctx, block);
+    else if (name == "vault_lock") ok = ParseVaultLock(ctx, block, rung_pks);
     else if (name == "amount_lock") ok = ParseAmountLock(ctx, block);
+    // Recursion family
+    else if (name == "recurse_same") ok = ParseRecurseSame(ctx, block);
+    else if (name == "recurse_modified") ok = ParseRecurseModified(ctx, block);
+    else if (name == "recurse_until") ok = ParseRecurseUntil(ctx, block);
+    else if (name == "recurse_count") ok = ParseRecurseCount(ctx, block);
+    else if (name == "recurse_split") ok = ParseRecurseSplit(ctx, block);
+    else if (name == "recurse_decay") ok = ParseRecurseDecay(ctx, block);
+    // Anchor family
+    else if (name == "anchor") { block.type = RungBlockType::ANCHOR; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "anchor_channel") { block.type = RungBlockType::ANCHOR_CHANNEL; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "anchor_pool") { block.type = RungBlockType::ANCHOR_POOL; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "anchor_reserve") { block.type = RungBlockType::ANCHOR_RESERVE; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "anchor_seal") { block.type = RungBlockType::ANCHOR_SEAL; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "anchor_oracle") { block.type = RungBlockType::ANCHOR_ORACLE; ok = Expect(ctx, '(') && Expect(ctx, ')'); }
+    else if (name == "data_return") ok = ParseDataReturn(ctx, block);
+    // PLC family
+    else if (name == "hysteresis_fee") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::HYSTERESIS_FEE);
+    else if (name == "hysteresis_value") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::HYSTERESIS_VALUE);
+    else if (name == "timer_continuous") ok = ParseOneNumericBlock(ctx, block, RungBlockType::TIMER_CONTINUOUS);
+    else if (name == "timer_off_delay") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::TIMER_OFF_DELAY);
+    else if (name == "latch_set") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::LATCH_SET, rung_pks);
+    else if (name == "latch_reset") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::LATCH_RESET, rung_pks);
+    else if (name == "counter_down") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::COUNTER_DOWN, rung_pks);
+    else if (name == "counter_preset") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::COUNTER_PRESET, rung_pks);
+    else if (name == "counter_up") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::COUNTER_UP, rung_pks);
+    else if (name == "compare") ok = ParseCompare(ctx, block);
+    else if (name == "sequencer") ok = ParseOneNumericBlock(ctx, block, RungBlockType::SEQUENCER);
+    else if (name == "one_shot") ok = ParsePubkeyNumericBlock(ctx, block, RungBlockType::ONE_SHOT, rung_pks);
+    else if (name == "rate_limit") ok = ParseRateLimit(ctx, block);
+    else if (name == "cosign") ok = ParseCosign(ctx, block);
+    // Compound family
     else if (name == "timelocked_sig") ok = ParseTimelockedSig(ctx, block, rung_pks);
+    else if (name == "cltv_sig") ok = ParseCltvSig(ctx, block, rung_pks);
+    else if (name == "htlc") ok = ParseHtlc(ctx, block, rung_pks);
+    else if (name == "hash_sig") ok = ParseHashSig(ctx, block, rung_pks);
+    else if (name == "ptlc") ok = ParsePtlc(ctx, block, rung_pks);
+    else if (name == "timelocked_multisig") ok = ParseTimelockedMultisig(ctx, block, rung_pks);
+    // Governance family
+    else if (name == "epoch_gate") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::EPOCH_GATE);
+    else if (name == "weight_limit") ok = ParseOneNumericBlock(ctx, block, RungBlockType::WEIGHT_LIMIT);
+    else if (name == "input_count") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::INPUT_COUNT);
+    else if (name == "output_count") ok = ParseTwoNumericBlock(ctx, block, RungBlockType::OUTPUT_COUNT);
+    else if (name == "relative_value") ok = ParseRelativeValue(ctx, block);
+    else if (name == "accumulator") ok = ParseAccumulator(ctx, block);
     else if (name == "output_check") ok = ParseOutputCheck(ctx, block);
+    // Legacy family
+    else if (name == "p2pk") ok = ParseLegacySingleKey(ctx, block, RungBlockType::P2PK_LEGACY, rung_pks);
+    else if (name == "p2pkh") ok = ParseLegacySingleKey(ctx, block, RungBlockType::P2PKH_LEGACY, rung_pks);
+    else if (name == "p2sh") ok = ParseLegacyScript(ctx, block, RungBlockType::P2SH_LEGACY);
+    else if (name == "p2wpkh") ok = ParseLegacySingleKey(ctx, block, RungBlockType::P2WPKH_LEGACY, rung_pks);
+    else if (name == "p2wsh") ok = ParseLegacyScript(ctx, block, RungBlockType::P2WSH_LEGACY);
+    else if (name == "p2tr") ok = ParseLegacySingleKey(ctx, block, RungBlockType::P2TR_LEGACY, rung_pks);
+    else if (name == "p2tr_script") ok = ParseLegacyScript(ctx, block, RungBlockType::P2TR_SCRIPT_LEGACY);
     else {
         ctx.error = "unknown block type: " + name;
         return false;
@@ -528,6 +1097,319 @@ std::string FormatDescriptor(const RungConditions& conditions,
             for (size_t i = 0; i < n_pks; ++i) {
                 result += ", " + get_alias(rung_idx);
             }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::ADAPTOR_SIG: {
+            result += "adaptor_sig(" + get_alias(rung_idx) + ", " + get_alias(rung_idx);
+            if (!block.fields.empty() && block.fields[0].type == RungDataType::SCHEME) {
+                auto s = static_cast<RungScheme>(block.fields[0].data[0]);
+                if (s != RungScheme::SCHNORR) result += ", " + SchemeToString(s);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::MUSIG_THRESHOLD: {
+            uint32_t threshold = 0;
+            if (!block.fields.empty())
+                for (size_t i = 0; i < block.fields[0].data.size() && i < 4; ++i)
+                    threshold |= static_cast<uint32_t>(block.fields[0].data[i]) << (8 * i);
+            result += "musig_threshold(" + std::to_string(threshold);
+            size_t n = PubkeyCountForBlock(block.type, block);
+            for (size_t i = 0; i < n; ++i) result += ", " + get_alias(rung_idx);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::KEY_REF_SIG: {
+            result += "key_ref_sig(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                uint32_t val = 0;
+                for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                    val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::TAGGED_HASH: {
+            result += "tagged_hash(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                result += HexStr(block.fields[i].data);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::HASH_GUARDED: {
+            result += "hash_guarded(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::CTV: {
+            result += "ctv(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::VAULT_LOCK: {
+            result += "vault_lock(" + get_alias(rung_idx) + ", " + get_alias(rung_idx) + ", ";
+            if (!block.fields.empty()) {
+                uint32_t val = 0;
+                for (size_t i = 0; i < block.fields[0].data.size() && i < 4; ++i)
+                    val |= static_cast<uint32_t>(block.fields[0].data[i]) << (8 * i);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::AMOUNT_LOCK:
+        case RungBlockType::HYSTERESIS_FEE:
+        case RungBlockType::HYSTERESIS_VALUE:
+        case RungBlockType::TIMER_OFF_DELAY:
+        case RungBlockType::INPUT_COUNT:
+        case RungBlockType::OUTPUT_COUNT:
+        case RungBlockType::EPOCH_GATE:
+        case RungBlockType::RELATIVE_VALUE:
+        case RungBlockType::RECURSE_SPLIT: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                uint32_t val = 0;
+                for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                    val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::RECURSE_SAME:
+        case RungBlockType::RECURSE_UNTIL:
+        case RungBlockType::RECURSE_COUNT:
+        case RungBlockType::WEIGHT_LIMIT:
+        case RungBlockType::TIMER_CONTINUOUS:
+        case RungBlockType::SEQUENCER: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "(";
+            if (!block.fields.empty()) {
+                uint32_t val = 0;
+                for (size_t i = 0; i < block.fields[0].data.size() && i < 4; ++i)
+                    val |= static_cast<uint32_t>(block.fields[0].data[i]) << (8 * i);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::RECURSE_MODIFIED:
+        case RungBlockType::RECURSE_DECAY: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                uint32_t val = 0;
+                for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                    val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::TIMELOCKED_SIG:
+        case RungBlockType::CLTV_SIG: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "(" + get_alias(rung_idx) + ", ";
+            // Skip SCHEME field, find NUMERIC
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::NUMERIC) {
+                    uint32_t val = 0;
+                    for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                        val |= static_cast<uint32_t>(f.data[i]) << (8 * i);
+                    result += std::to_string(val);
+                    break;
+                }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::HTLC: {
+            result += "htlc(" + get_alias(rung_idx) + ", " + get_alias(rung_idx) + ", ";
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::HASH256) { result += HexStr(f.data) + ", "; break; }
+            }
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::NUMERIC) {
+                    uint32_t val = 0;
+                    for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                        val |= static_cast<uint32_t>(f.data[i]) << (8 * i);
+                    result += std::to_string(val);
+                    break;
+                }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::HASH_SIG: {
+            result += "hash_sig(" + get_alias(rung_idx) + ", ";
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::HASH256) { result += HexStr(f.data); break; }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::PTLC: {
+            result += "ptlc(" + get_alias(rung_idx) + ", " + get_alias(rung_idx) + ", ";
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::NUMERIC) {
+                    uint32_t val = 0;
+                    for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                        val |= static_cast<uint32_t>(f.data[i]) << (8 * i);
+                    result += std::to_string(val);
+                    break;
+                }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::TIMELOCKED_MULTISIG: {
+            uint32_t threshold = 0;
+            if (!block.fields.empty())
+                for (size_t i = 0; i < block.fields[0].data.size() && i < 4; ++i)
+                    threshold |= static_cast<uint32_t>(block.fields[0].data[i]) << (8 * i);
+            result += "timelocked_multisig(" + std::to_string(threshold);
+            size_t n = PubkeyCountForBlock(block.type, block);
+            for (size_t i = 0; i < n; ++i) result += ", " + get_alias(rung_idx);
+            for (const auto& f : block.fields) {
+                if (f.type == RungDataType::NUMERIC && &f != &block.fields[0]) {
+                    uint32_t val = 0;
+                    for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                        val |= static_cast<uint32_t>(f.data[i]) << (8 * i);
+                    result += ", " + std::to_string(val);
+                    break;
+                }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::COMPARE: {
+            result += "compare(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                uint32_t val = 0;
+                for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                    val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::RATE_LIMIT: {
+            result += "rate_limit(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                uint32_t val = 0;
+                for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                    val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::COSIGN: {
+            result += "cosign(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::ACCUMULATOR: {
+            result += "accumulator(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::OUTPUT_CHECK: {
+            result += "output_check(";
+            for (size_t i = 0; i < block.fields.size(); ++i) {
+                if (i > 0) result += ", ";
+                if (block.fields[i].type == RungDataType::HASH256) {
+                    result += HexStr(block.fields[i].data);
+                } else {
+                    uint32_t val = 0;
+                    for (size_t j = 0; j < block.fields[i].data.size() && j < 4; ++j)
+                        val |= static_cast<uint32_t>(block.fields[i].data[j]) << (8 * j);
+                    result += std::to_string(val);
+                }
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::LATCH_SET:
+        case RungBlockType::LATCH_RESET:
+        case RungBlockType::COUNTER_DOWN:
+        case RungBlockType::COUNTER_PRESET:
+        case RungBlockType::COUNTER_UP:
+        case RungBlockType::ONE_SHOT: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "(" + get_alias(rung_idx) + ", ";
+            if (!block.fields.empty()) {
+                uint32_t val = 0;
+                for (size_t i = 0; i < block.fields[0].data.size() && i < 4; ++i)
+                    val |= static_cast<uint32_t>(block.fields[0].data[i]) << (8 * i);
+                result += std::to_string(val);
+            }
+            result += ")";
+            return result;
+        }
+        case RungBlockType::ANCHOR:
+        case RungBlockType::ANCHOR_CHANNEL:
+        case RungBlockType::ANCHOR_POOL:
+        case RungBlockType::ANCHOR_RESERVE:
+        case RungBlockType::ANCHOR_SEAL:
+        case RungBlockType::ANCHOR_ORACLE: {
+            std::string name = BlockTypeName(block.type);
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            result += name + "()";
+            return result;
+        }
+        case RungBlockType::DATA_RETURN: {
+            result += "data_return(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
+            result += ")";
+            return result;
+        }
+        case RungBlockType::P2PK_LEGACY:
+        case RungBlockType::P2PKH_LEGACY:
+        case RungBlockType::P2WPKH_LEGACY:
+        case RungBlockType::P2TR_LEGACY: {
+            std::string name;
+            switch (block.type) {
+            case RungBlockType::P2PK_LEGACY: name = "p2pk"; break;
+            case RungBlockType::P2PKH_LEGACY: name = "p2pkh"; break;
+            case RungBlockType::P2WPKH_LEGACY: name = "p2wpkh"; break;
+            case RungBlockType::P2TR_LEGACY: name = "p2tr"; break;
+            default: break;
+            }
+            result += name + "(" + get_alias(rung_idx) + ")";
+            return result;
+        }
+        case RungBlockType::P2SH_LEGACY:
+        case RungBlockType::P2WSH_LEGACY:
+        case RungBlockType::P2TR_SCRIPT_LEGACY: {
+            std::string name;
+            switch (block.type) {
+            case RungBlockType::P2SH_LEGACY: name = "p2sh"; break;
+            case RungBlockType::P2WSH_LEGACY: name = "p2wsh"; break;
+            case RungBlockType::P2TR_SCRIPT_LEGACY: name = "p2tr_script"; break;
+            default: break;
+            }
+            result += name + "(";
+            if (!block.fields.empty()) result += HexStr(block.fields[0].data);
             result += ")";
             return result;
         }

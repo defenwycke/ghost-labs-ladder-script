@@ -1,7 +1,7 @@
 # Ladder Script Review Guide
 
 This guide walks code reviewers through the Ladder Script implementation. The system
-comprises 61 block types (59 active, 2 deprecated) across 10 families, implemented in
+comprises 61 block types (61 active, 2 deprecated) across 10 families, implemented in
 22 source files under `src/rung/`.
 
 ## File-by-File Walkthrough
@@ -10,7 +10,7 @@ comprises 61 block types (59 active, 2 deprecated) across 10 families, implement
 The largest header. Defines all block types (`RungBlockType` enum), all data types
 (`RungDataType` enum), structural types (`RungCoil`, `RungField`, `RungBlock`, `Rung`,
 `Relay`, `LadderWitness`, `WitnessReference`), and metadata functions:
-- `IsKnownBlockType()` — allowlist of 59 active types; HASH_PREIMAGE and HASH160_PREIMAGE explicitly return false
+- `IsKnownBlockType()` — allowlist of 61 active types; HASH_PREIMAGE and HASH160_PREIMAGE explicitly return false
 - `IsInvertibleBlockType()` — explicit allowlist; key-consuming blocks excluded
 - `IsKeyConsumingBlockType()` — blocks whose pubkeys fold into Merkle leaves
 - `PubkeyCountForBlock()` — fixed or variable pubkey count per block type

@@ -17,18 +17,66 @@ namespace rung {
 
 /** Parse a Ladder Script descriptor into conditions and pubkeys.
  *
- *  Grammar:
+ *  Grammar (all 61 active block types):
  *    ladder(or(rung1, rung2, ...))
  *    rung = block | and(block, block, ...)
- *    block = sig(@alias) | sig(@alias, scheme)
- *           | csv(N) | csv_time(N) | cltv(N) | cltv_time(N)
- *           | multisig(M, @pk1, @pk2, ...) | multisig(M, @pk1, @pk2, ..., scheme)
- *           | hash_guarded(hex) | tagged_hash(hex1, hex2)
- *           | ctv(hex) | amount_lock(min, max)
- *           | timelocked_sig(@alias, N) | htlc(@alias1, @alias2, hex, N)
- *           | hash_sig(@alias, hex) | cltv_sig(@alias, N)
- *           | output_check(idx, min, max, hex)
- *           | !block  (inverted)
+ *    block = !block  (inverted)
+ *
+ *  Signature family:
+ *    sig(@alias) | sig(@alias, scheme)
+ *    multisig(M, @pk1, @pk2, ...)
+ *    adaptor_sig(@signer, @adaptor_point) | adaptor_sig(@s, @p, scheme)
+ *    musig_threshold(M, @pk1, @pk2, ...)
+ *    key_ref_sig(relay_idx, block_idx)
+ *
+ *  Timelock family:
+ *    csv(N) | csv_time(N) | cltv(N) | cltv_time(N)
+ *
+ *  Hash family:
+ *    tagged_hash(tag_hex, expected_hex)
+ *    hash_guarded(hash_hex)
+ *
+ *  Covenant family:
+ *    ctv(template_hash_hex)
+ *    vault_lock(@recovery, @hot, delay)
+ *    amount_lock(min, max)
+ *
+ *  Recursion family:
+ *    recurse_same(max_depth) | recurse_until(height) | recurse_count(count)
+ *    recurse_split(max_splits, min_sats)
+ *    recurse_modified(max_depth, block_idx, param_idx, delta)
+ *    recurse_decay(max_depth, block_idx, param_idx, decay)
+ *
+ *  Anchor family:
+ *    anchor() | anchor_channel() | anchor_pool()
+ *    anchor_reserve() | anchor_seal() | anchor_oracle()
+ *    data_return(hex)
+ *
+ *  PLC family:
+ *    hysteresis_fee(N, N) | hysteresis_value(N, N)
+ *    timer_continuous(N) | timer_off_delay(N, N)
+ *    latch_set(@pk, N) | latch_reset(@pk, N)
+ *    counter_down(@pk, N) | counter_preset(@pk, N) | counter_up(@pk, N)
+ *    compare(op, value_b) | compare(op, value_b, value_c)
+ *    sequencer(N) | one_shot(@pk, N) | rate_limit(N, N, N)
+ *    cosign(conditions_hash_hex)
+ *
+ *  Compound family:
+ *    timelocked_sig(@pk, csv_blocks) | cltv_sig(@pk, height)
+ *    htlc(@sender, @receiver, preimage_hex, csv_blocks)
+ *    hash_sig(@pk, preimage_hex)
+ *    ptlc(@pk, @adaptor_point, csv_blocks)
+ *    timelocked_multisig(M, @pk1, @pk2, ..., csv_blocks)
+ *
+ *  Governance family:
+ *    epoch_gate(epoch_size, window_size) | weight_limit(max_weight)
+ *    input_count(min, max) | output_count(min, max)
+ *    relative_value(numerator, denominator) | accumulator(root_hex)
+ *    output_check(idx, min, max, script_hash_hex)
+ *
+ *  Legacy family:
+ *    p2pk(@pk) | p2pkh(@pk) | p2wpkh(@pk) | p2tr(@pk)
+ *    p2sh(inner_hex) | p2wsh(inner_hex) | p2tr_script(inner_hex)
  *
  *  Scheme names: schnorr, ecdsa, falcon512, falcon1024, dilithium3, sphincs_sha
  *

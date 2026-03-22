@@ -45,7 +45,7 @@ The transaction version for Ladder Script transactions is **4** (`RUNG_TX_VERSIO
 
 ## Q3: What are the block type families?
 
-There are **10 families** containing **61 block types** (59 active + 2 deprecated).
+There are **10 families** containing **63 block types** (61 active + 2 deprecated).
 
 | # | Family | Range | Block types | Count |
 |---|--------|-------|-------------|-------|
@@ -245,7 +245,7 @@ via a 128-entry lookup table (`MICRO_HEADER_TABLE`):
 - `0x80`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, not inverted)
 - `0x81`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, inverted)
 
-All 59 active block types have assigned micro-header slots (slots 0x00 through
+All 61 active block types have assigned micro-header slots (slots 0x00 through
 0x3E). Slots 0x07 and 0x08 are reserved (formerly HASH_PREIMAGE and
 HASH160_PREIMAGE).
 

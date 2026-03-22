@@ -1,0 +1,173 @@
+{
+  "_comment": "Signet spend test vectors \u2014 28 block types verified.",
+  "verified": {
+    "SIG": {
+      "fund_txid": "81a13a6480011eb169764d6782d039835b4e3a69b011eb60735b15c5018af73d",
+      "spend_txid": "6e20f04c9fee3a452f005373a90555bf7aaca8c6427e0fcd2c15b0b2337f0410",
+      "status": "verified",
+      "date": "2026-03-22T20:54:45Z"
+    },
+    "CSV": {
+      "fund_txid": "5900e55b4ceb27ab24db4a5f185378c14aa69a28652a7f80686362b64d8702b3",
+      "spend_txid": "63a00b738349f0cfbeae7624ff56d038feb3939503ddd6980663c72b6e4ccb9b",
+      "status": "verified",
+      "date": "2026-03-22T21:00:41Z"
+    },
+    "CLTV": {
+      "fund_txid": "aef2e9707f8955fb62485766aa0a06334ad971c3c82184616a8aae0195388a79",
+      "spend_txid": "9d6440ef6d1977e6d2c4d0848324ccc5604972bd6d5dae4e258dafe31df59218",
+      "status": "verified",
+      "date": "2026-03-22T21:00:46Z"
+    },
+    "AMOUNT_LOCK": {
+      "fund_txid": "a2f9f12295b624c2fce5b0ed2a8c985323b58fff127e841f00ec30b2840a5334",
+      "spend_txid": "eb859ac499c173e0e63537cbc1d2abedd93c92b37c2f2a5725a9c824a761d7e2",
+      "status": "verified",
+      "date": "2026-03-22T20:54:57Z"
+    },
+    "TIMELOCKED_SIG": {
+      "fund_txid": "1815999a2e7c1c4c1121600419260fb136815455ee5ab63507a7365adb3e6294",
+      "spend_txid": "cf1b65d40edea81e1fd3a4c6b8444493d66ebf3999096470362b71a7dc56ef84",
+      "status": "verified",
+      "date": "2026-03-22T21:00:50Z"
+    },
+    "CLTV_SIG": {
+      "fund_txid": "40a6d16f38f2b652b4b2cc27c9a1ef3c8731db69cec6bf15855959f6dd33cdba",
+      "spend_txid": "99f828fba9d4d2622a86e6de3ad4bacdcf45e1efc2ebe993156292d6be6a0d6c",
+      "status": "verified",
+      "date": "2026-03-22T21:00:55Z"
+    },
+    "COMPARE": {
+      "fund_txid": "cf2f2e423bc8a585270373a02accedcd4bd5628facdcb381edbcf18275c3a2a9",
+      "spend_txid": "406a609a5f6a5f58db21a8f63661685a3f5ebf1325a0a188d64752d9c1b58f49",
+      "status": "verified",
+      "date": "2026-03-22T20:55:08Z"
+    },
+    "WEIGHT_LIMIT": {
+      "fund_txid": "644f640a195f2d3e112ac9e8c613981c22940c6bd20629eca86ab6252d39d7f5",
+      "spend_txid": "40a38c0cc41510b7b33cf9c318c6ff4573087e2bb7a3af3d51f00a560046d527",
+      "status": "verified",
+      "date": "2026-03-22T20:55:12Z"
+    },
+    "INPUT_COUNT": {
+      "fund_txid": "b7b4d91759bdcd1c018be62d97f302d06bc165573f439f1c09f0c44be93def95",
+      "spend_txid": "d513a4daa1c1f2fb6b828b354eb3137db9903a548013b1446d861dc3b2c6533c",
+      "status": "verified",
+      "date": "2026-03-22T20:55:16Z"
+    },
+    "OUTPUT_COUNT": {
+      "fund_txid": "8bbeff87e6697214628ad02b83fc486ff09ab24995ed67d902a0dacf885ddf3d",
+      "spend_txid": "525b4e57a8a89677aedc77aa714a32234cac657161dc7f314993157474391d7c",
+      "status": "verified",
+      "date": "2026-03-22T20:55:21Z"
+    },
+    "EPOCH_GATE": {
+      "fund_txid": "f3bf097847edea5d2630abd9636eeb6dbedbf873ac1e92965718e4d2f801f1bf",
+      "spend_txid": "087b5d32dbf61aa7f3733dc575b82883ad24fcb252bf3db2831d8ef3f398231b",
+      "status": "verified",
+      "date": "2026-03-22T21:49:15Z"
+    },
+    "RELATIVE_VALUE": {
+      "fund_txid": "0b9882f6bcf10be1322f1287b4ea36d52109bee06842f37ace0e71337d199777",
+      "spend_txid": "2e679379fe6053937500a9ed6d98f3b9712ae16eca16a2cea7d32bd3ff3cd3a3",
+      "status": "verified",
+      "date": "2026-03-22T20:55:34Z"
+    },
+    "MULTISIG": {
+      "fund_txid": "71abc8438a4bdb3d81d1e94acc2c2b20827d33c1b380e0ac69433cb84edd841e",
+      "spend_txid": "dfc38f7177bd65c6c7ac151a0566f47fb4f52fd25a32f056143e8de0d0138c0c",
+      "status": "verified",
+      "date": "2026-03-22T21:57:07Z"
+    },
+    "HTLC": {
+      "fund_txid": "66e6f548cda3cf2358fd0d1c130fe9486327f916cd34c000ee98626910b3d67f",
+      "spend_txid": "83d2a8eff3fa33a6f999101a9d9ad4cfc7b8866fe38ac116c0dbade0e9e6c036",
+      "status": "verified",
+      "date": "2026-03-22T22:14:34Z"
+    },
+    "HASH_SIG": {
+      "fund_txid": "4f12f2d03ab5d9fd45fbb5dabc2613c1545ac6685db3d93908a9d860a6746b0f",
+      "spend_txid": "6e838c24d84b733f52cfa269e1c5874fa3ed6aea1a2cad1b4ee03c813a081a24",
+      "status": "verified",
+      "date": "2026-03-22T21:57:23Z"
+    },
+    "TIMELOCKED_MULTISIG": {
+      "fund_txid": "807f3bfde002267223562380f07ac8b9e0fa8e4e52cabaa8043874d64321ea02",
+      "spend_txid": "8df964e7be448d5f4dffd65e59a2730d14d54490f84f92f26bf1ac7900a5b0fc",
+      "status": "verified",
+      "date": "2026-03-22T21:57:30Z"
+    },
+    "TAGGED_HASH": {
+      "fund_txid": "9c696aecab85c729599542a342e9b7b234992014144da21d67a17108172bd8b0",
+      "spend_txid": "9620cde5cabf589ce83954063e0caecce213e28815187771f6a06bbf3c8ff16c",
+      "status": "verified",
+      "date": "2026-03-22T22:22:14Z"
+    },
+    "HASH_GUARDED": {
+      "fund_txid": "3be18cb99ec09f38339c91ffbb29f6eecaacc8c7e4edc7f87b5831ed45c1761e",
+      "spend_txid": "8c109aa3a59ba00f79e5a9c2a4ec4df0927bce73d08f7797e6208be4d777e44b",
+      "status": "verified",
+      "date": "2026-03-22T21:57:43Z"
+    },
+    "RECURSE_SAME": {
+      "fund_txid": "cce729f476fb6788f26a867d04ac3eeec58472bdb7b96bf37123bb786bf64cb1",
+      "spend_txid": "2a4463d904a6d8187fa41118b2907978b4d8cfaf979566a5bdbed2cb202612bb",
+      "status": "verified",
+      "date": "2026-03-22T22:14:47Z"
+    },
+    "CTV": {
+      "fund_txid": "e415dc4ea9fe0f86c2b9258f3f1550e45c546567094c43d84562529e9fd4f705",
+      "spend_txid": "17e8312f5fbb886135689d2d7c19660117811b8053a1bc351c645ccce56cf53f",
+      "status": "verified",
+      "date": "2026-03-22T22:22:20Z"
+    },
+    "RECURSE_COUNT": {
+      "fund_txid": "44898750fdc9cfe15abb950f97a2403d7c63c5ee453d9b417777fa685751a65b",
+      "spend_txid": "7239585f116c95dc89082e077bf6c610c1e6d68101db1f5f5d20135d0b19e166",
+      "status": "verified",
+      "date": "2026-03-22T22:22:24Z"
+    },
+    "RECURSE_UNTIL": {
+      "fund_txid": "3638039669be97e6999f57fae275ce628451beab8470b34f779f50b6c8e6cfca",
+      "spend_txid": "aa748c0b0374909a618ad43d001590c32090023245cb01d1e7914bcd513394a9",
+      "status": "verified",
+      "date": "2026-03-22T22:22:28Z"
+    },
+    "RECURSE_SPLIT": {
+      "fund_txid": "6e4eed6bd940f68902081ba35fab76c486def92882ecaaec06f65b96d8fae66d",
+      "spend_txid": "de23fdbe59908925109199e5a6d018514dd37f18dd008bdd3ad9f73af8bdafcf",
+      "status": "verified",
+      "date": "2026-03-22T22:22:32Z"
+    },
+    "ACCUMULATOR": {
+      "fund_txid": "420501e610300e6117b80dc4cb1d0f2770b14588b0b016c2dfb975d19dec71a3",
+      "spend_txid": "bdf34d576e3a52fd0d1ee9e96b2aec97110570cce62e6c219acb4482a9cebcfe",
+      "status": "verified",
+      "date": "2026-03-22T22:22:41Z"
+    },
+    "OUTPUT_CHECK": {
+      "fund_txid": "331ac1fb72ca439273d159a0d5e0e591169ff0de81552ba6747ca1ad4c7ecef8",
+      "spend_txid": "61cf43af022deda6963290768e7612224e1b9fe10360b74b7ec71154c0f3edc7",
+      "status": "verified",
+      "date": "2026-03-22T22:23:00Z"
+    },
+    "CSV_TIME": {
+      "fund_txid": "299c4305bd19cc2937dbe0d480ec8368ec3f94ef081ad02bdcb6eb6570076bd2",
+      "spend_txid": "af5f0911b26d816cf5205fb25b4b802fcc19e1d0197e1e90458649efcff29051",
+      "status": "verified",
+      "date": "2026-03-22T22:33:14Z"
+    },
+    "CLTV_TIME": {
+      "fund_txid": "513f6259861d46094f0a03519bcda7dfc123f902d0ac3abff44a02476388a185",
+      "spend_txid": "3a4df2fb78a618422931eb9d62635d6e97d935f7741ecec3ddb2cf9c10dbb768",
+      "status": "verified",
+      "date": "2026-03-22T22:33:18Z"
+    },
+    "VAULT_LOCK": {
+      "fund_txid": "de056aed337e802e72c12be4e1d598043c9d95c0ca7f937699a6c9cbaf312177",
+      "spend_txid": "d9ef426f36f99e11f22b67b157db1c42c21de3133b3597d540f5f7f61f8c3231",
+      "status": "verified",
+      "date": "2026-03-22T21:17:00Z"
+    }
+  }
+}

@@ -135,24 +135,139 @@ tr:nth-child(even) td { background: #fafafa; }
 
   <!-- BLOCK TYPES -->
   <div class="section">
-    <div class="section-head">Supported block types</div>
+    <div class="section-head">All 61 block types</div>
+    <p>Every active block type has descriptor notation. Grouped by family:</p>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Signature Family</p>
     <table>
       <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
       <tbody>
         <tr><td>sig(@alias)</td><td>SIG</td><td>Key alias. Optional scheme: <code>sig(@alice, falcon512)</code></td></tr>
+        <tr><td>multisig(M, @k1, @k2, ...)</td><td>MULTISIG</td><td>Threshold M, then key aliases</td></tr>
+        <tr><td>adaptor_sig(@signer, @point)</td><td>ADAPTOR_SIG</td><td>Signing key + adaptor point. Optional scheme</td></tr>
+        <tr><td>musig_threshold(M, @k1, @k2, ...)</td><td>MUSIG_THRESHOLD</td><td>MuSig2/FROST aggregate threshold</td></tr>
+        <tr><td>key_ref_sig(relay, block)</td><td>KEY_REF_SIG</td><td>Relay index + block index (cross-rung key sharing)</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Timelock Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
         <tr><td>csv(N)</td><td>CSV</td><td>Relative timelock in blocks</td></tr>
         <tr><td>csv_time(N)</td><td>CSV_TIME</td><td>Relative timelock in seconds</td></tr>
         <tr><td>cltv(N)</td><td>CLTV</td><td>Absolute block height</td></tr>
-        <tr><td>cltv_time(N)</td><td>CLTV_TIME</td><td>Absolute time (MTP)</td></tr>
-        <tr><td>multisig(M, @k1, @k2, ...)</td><td>MULTISIG</td><td>Threshold M, then key aliases</td></tr>
+        <tr><td>cltv_time(N)</td><td>CLTV_TIME</td><td>Absolute time (MTP, &ge; 500000000)</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Hash Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>tagged_hash(tag, expected)</td><td>TAGGED_HASH</td><td>Two 32-byte hashes: BIP-340 tag + expected</td></tr>
         <tr><td>hash_guarded(hex)</td><td>HASH_GUARDED</td><td>32-byte SHA-256 hash commitment</td></tr>
-        <tr><td>ctv(hex)</td><td>CTV</td><td>32-byte template hash</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Covenant Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>ctv(hex)</td><td>CTV</td><td>32-byte BIP-119 template hash</td></tr>
+        <tr><td>vault_lock(@recovery, @hot, delay)</td><td>VAULT_LOCK</td><td>Recovery key, hot key, CSV delay</td></tr>
         <tr><td>amount_lock(min, max)</td><td>AMOUNT_LOCK</td><td>Output value range in satoshis</td></tr>
-        <tr><td>timelocked_sig(@alias, N)</td><td>TIMELOCKED_SIG</td><td>Signature + CSV compound</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Recursion Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>recurse_same(depth)</td><td>RECURSE_SAME</td><td>Max recursion depth</td></tr>
+        <tr><td>recurse_modified(depth, blk, param, delta)</td><td>RECURSE_MODIFIED</td><td>Depth, block index, param index, mutation delta</td></tr>
+        <tr><td>recurse_until(height)</td><td>RECURSE_UNTIL</td><td>Terminates at block height</td></tr>
+        <tr><td>recurse_count(count)</td><td>RECURSE_COUNT</td><td>Countdown; terminates at 0</td></tr>
+        <tr><td>recurse_split(splits, min_sats)</td><td>RECURSE_SPLIT</td><td>Max splits, minimum sats per output</td></tr>
+        <tr><td>recurse_decay(depth, blk, param, decay)</td><td>RECURSE_DECAY</td><td>Depth, block index, param index, decay per step</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Anchor Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>anchor()</td><td>ANCHOR</td><td>Generic anchor output</td></tr>
+        <tr><td>anchor_channel()</td><td>ANCHOR_CHANNEL</td><td>Lightning channel anchor</td></tr>
+        <tr><td>anchor_pool()</td><td>ANCHOR_POOL</td><td>Pool anchor</td></tr>
+        <tr><td>anchor_reserve()</td><td>ANCHOR_RESERVE</td><td>Reserve anchor (guardian set)</td></tr>
+        <tr><td>anchor_seal()</td><td>ANCHOR_SEAL</td><td>Seal anchor</td></tr>
+        <tr><td>anchor_oracle()</td><td>ANCHOR_ORACLE</td><td>Oracle anchor</td></tr>
+        <tr><td>data_return(hex)</td><td>DATA_RETURN</td><td>1&ndash;32 byte data payload (replaces OP_RETURN)</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">PLC Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>hysteresis_fee(low, high)</td><td>HYSTERESIS_FEE</td><td>Fee band thresholds</td></tr>
+        <tr><td>hysteresis_value(low, high)</td><td>HYSTERESIS_VALUE</td><td>Value band thresholds</td></tr>
+        <tr><td>timer_continuous(blocks)</td><td>TIMER_CONTINUOUS</td><td>Consecutive blocks required</td></tr>
+        <tr><td>timer_off_delay(trigger, hold)</td><td>TIMER_OFF_DELAY</td><td>Trigger + hold-off blocks</td></tr>
+        <tr><td>latch_set(@pk, state)</td><td>LATCH_SET</td><td>Key + state value</td></tr>
+        <tr><td>latch_reset(@pk, state)</td><td>LATCH_RESET</td><td>Key + state value</td></tr>
+        <tr><td>counter_down(@pk, count)</td><td>COUNTER_DOWN</td><td>Key + counter target</td></tr>
+        <tr><td>counter_preset(@pk, count)</td><td>COUNTER_PRESET</td><td>Key + preset count</td></tr>
+        <tr><td>counter_up(@pk, count)</td><td>COUNTER_UP</td><td>Key + counter target</td></tr>
+        <tr><td>compare(op, value_b)</td><td>COMPARE</td><td>Operator (1=EQ..7=IN_RANGE) + threshold. Optional value_c for IN_RANGE</td></tr>
+        <tr><td>sequencer(steps)</td><td>SEQUENCER</td><td>Number of sequence steps</td></tr>
+        <tr><td>one_shot(@pk, N)</td><td>ONE_SHOT</td><td>Key + activation window</td></tr>
+        <tr><td>rate_limit(max, cap, refill)</td><td>RATE_LIMIT</td><td>Max per block, accumulation cap, refill blocks</td></tr>
+        <tr><td>cosign(hex)</td><td>COSIGN</td><td>32-byte conditions hash of co-input</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Compound Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>timelocked_sig(@pk, csv)</td><td>TIMELOCKED_SIG</td><td>Signature + relative timelock</td></tr>
+        <tr><td>htlc(@sender, @receiver, preimage, csv)</td><td>HTLC</td><td>Two keys, preimage hex, CSV blocks</td></tr>
+        <tr><td>hash_sig(@pk, preimage)</td><td>HASH_SIG</td><td>Key + preimage hex</td></tr>
+        <tr><td>ptlc(@pk, @point, csv)</td><td>PTLC</td><td>Key, adaptor point, CSV blocks</td></tr>
+        <tr><td>cltv_sig(@pk, height)</td><td>CLTV_SIG</td><td>Signature + absolute timelock</td></tr>
+        <tr><td>timelocked_multisig(M, @k1, ..., csv)</td><td>TIMELOCKED_MULTISIG</td><td>Threshold, keys, CSV blocks</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Governance Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>epoch_gate(epoch_size, window)</td><td>EPOCH_GATE</td><td>Blocks per epoch, window size</td></tr>
+        <tr><td>weight_limit(max)</td><td>WEIGHT_LIMIT</td><td>Maximum transaction weight</td></tr>
+        <tr><td>input_count(min, max)</td><td>INPUT_COUNT</td><td>Input count bounds</td></tr>
+        <tr><td>output_count(min, max)</td><td>OUTPUT_COUNT</td><td>Output count bounds</td></tr>
+        <tr><td>relative_value(num, den)</td><td>RELATIVE_VALUE</td><td>Numerator/denominator ratio</td></tr>
+        <tr><td>accumulator(root)</td><td>ACCUMULATOR</td><td>32-byte Merkle root</td></tr>
         <tr><td>output_check(idx, min, max, hex)</td><td>OUTPUT_CHECK</td><td>Output index, value range, script hash</td></tr>
       </tbody>
     </table>
-    <div class="note">Not all 61 block types have descriptor notation. Complex types (HTLC, PTLC, recursion, PLC) are built using the JSON RPC or the engine. The descriptor language covers the most common patterns.</div>
+
+    <p style="font-weight:600; color:var(--text); margin-top:24px">Legacy Family</p>
+    <table>
+      <thead><tr><th>Notation</th><th>Block type</th><th>Arguments</th></tr></thead>
+      <tbody>
+        <tr><td>p2pk(@pk)</td><td>P2PK_LEGACY</td><td>Public key</td></tr>
+        <tr><td>p2pkh(@pk)</td><td>P2PKH_LEGACY</td><td>Public key (hashed to HASH160)</td></tr>
+        <tr><td>p2sh(hex)</td><td>P2SH_LEGACY</td><td>Inner conditions hex</td></tr>
+        <tr><td>p2wpkh(@pk)</td><td>P2WPKH_LEGACY</td><td>Public key (SegWit)</td></tr>
+        <tr><td>p2wsh(hex)</td><td>P2WSH_LEGACY</td><td>Inner conditions hex</td></tr>
+        <tr><td>p2tr(@pk)</td><td>P2TR_LEGACY</td><td>Internal key (Taproot key-path)</td></tr>
+        <tr><td>p2tr_script(hex)</td><td>P2TR_SCRIPT_LEGACY</td><td>Inner script hex (Taproot script-path)</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <!-- SCHEMES -->
@@ -221,6 +336,58 @@ tr:nth-child(even) td { background: #fafafa; }
       <div class="code-block"><span class="fn">ladder</span>(<span class="fn">and</span>(
   <span class="fn">multisig</span>(<span class="num">2</span>, <span class="alias">@dir_a</span>, <span class="alias">@dir_b</span>, <span class="alias">@dir_c</span>),
   <span class="fn">output_check</span>(<span class="num">0</span>, <span class="num">1000000</span>, <span class="num">4294967295</span>, <span class="num">0000...0000</span>)
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Atomic swap (HTLC)</div>
+      <div class="example-desc">Claim with preimage + sender sig, or refund after 144 blocks.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">htlc</span>(<span class="alias">@alice</span>, <span class="alias">@bob</span>, <span class="num">a1b2...preimage...c3d4</span>, <span class="num">144</span>),
+  <span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@alice</span>), <span class="fn">csv</span>(<span class="num">144</span>))
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Recursive covenant (DCA)</div>
+      <div class="example-desc">Dollar-cost averaging: spend N times, decrementing counter each hop.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">and</span>(
+  <span class="fn">sig</span>(<span class="alias">@owner</span>),
+  <span class="fn">amount_lock</span>(<span class="num">50000</span>, <span class="num">100000</span>),
+  <span class="fn">recurse_count</span>(<span class="num">12</span>)
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Rate-limited wallet</div>
+      <div class="example-desc">Sign to spend, but capped at 200k sats per block with 10-block refill.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">and</span>(
+  <span class="fn">sig</span>(<span class="alias">@owner</span>),
+  <span class="fn">rate_limit</span>(<span class="num">200000</span>, <span class="num">1000000</span>, <span class="num">10</span>)
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">PTLC payment channel</div>
+      <div class="example-desc">Scriptless payment: adaptor signature + 1 block CSV.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">ptlc</span>(<span class="alias">@alice</span>, <span class="alias">@adaptor</span>, <span class="num">1</span>),
+  <span class="fn">and</span>(<span class="fn">sig</span>(<span class="alias">@bob</span>), <span class="fn">cltv</span>(<span class="num">900000</span>))
+))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Vault with clawback</div>
+      <div class="example-desc">Recovery key sweeps immediately. Hot key needs 144 blocks.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">vault_lock</span>(<span class="alias">@recovery</span>, <span class="alias">@hot</span>, <span class="num">144</span>))</div>
+    </div>
+
+    <div class="example">
+      <div class="example-title">Legacy P2PKH with PQ fallback</div>
+      <div class="example-desc">Standard P2PKH spend, or FALCON-512 cold key after 1 year.</div>
+      <div class="code-block"><span class="fn">ladder</span>(<span class="fn">or</span>(
+  <span class="fn">p2pkh</span>(<span class="alias">@legacy_key</span>),
+  <span class="fn">and</span>(<span class="fn">csv</span>(<span class="num">52560</span>), <span class="fn">sig</span>(<span class="alias">@pq_cold</span>, <span class="kw">falcon512</span>))
 ))</div>
     </div>
   </div>

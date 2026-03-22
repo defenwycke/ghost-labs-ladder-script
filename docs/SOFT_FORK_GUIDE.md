@@ -1,6 +1,6 @@
 # Ladder Script Soft Fork Guide
 
-How Ladder Script activates as a soft fork. All 61 block types (59 active, 2 deprecated)
+How Ladder Script activates as a soft fork. All 61 block types (61 active, 2 deprecated)
 activate together in a single deployment. Transactions use `RUNG_TX_VERSION = 4`.
 
 ## Activation Summary
@@ -99,7 +99,7 @@ Valid hash types: `{0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}`.
 
 ## Block Types
 
-All 61 block types activate simultaneously:
+All 63 block types activate simultaneously:
 
 | Family | Types | Count |
 |--------|-------|-------|
@@ -114,7 +114,7 @@ All 61 block types activate simultaneously:
 | Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK | 7 |
 | Legacy | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT | 7 |
 
-Total: 61 (59 active + 2 deprecated)
+Total: 61 (61 active + 2 deprecated)
 
 ## Anti-Spam Hardening
 

@@ -1,7 +1,7 @@
 # Ladder Script Possibilities
 
 What Ladder Script enables that Bitcoin Script cannot. Each example uses actual block types
-from the 59 active types. All patterns compose freely within the AND/OR rung/ladder model.
+from the 61 active types. All patterns compose freely within the AND/OR rung/ladder model.
 
 ## Vaults with Clawback
 

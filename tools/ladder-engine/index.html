@@ -2658,6 +2658,12 @@ const BLOCK_FAMILIES = [
         { name: 'merkle_root', dataType: 'HASH256', label: 'Merkle Root', placeholder: '32-byte hex (auto-computed from leaves)' },
         { name: 'merkle_leaves', dataType: 'HASH256', label: 'Merkle Leaves (comma-sep)', placeholder: 'leaf1hex, leaf2hex, ...', multi: true, noWire: true }
       ]},
+      { type: 'OUTPUT_CHECK', label: 'OUT-CHK', desc: 'Per-output value and script constraint', fields: [
+        { name: 'output_index', dataType: 'NUMERIC', label: 'Output Index', placeholder: '0' },
+        { name: 'min_value', dataType: 'NUMERIC', label: 'Min Value (sats)', placeholder: '10000' },
+        { name: 'max_value', dataType: 'NUMERIC', label: 'Max Value (sats)', placeholder: '5000000' },
+        { name: 'script_hash', dataType: 'HASH256', label: 'Script Hash', placeholder: '32-byte hash of expected output script' }
+      ]},
     ]
   },
   {
@@ -2845,12 +2851,9 @@ function getCoilSymbol(type) {
 const WIRE_COIL_TYPES = [
   { value: 'UNLOCK', label: 'UNLOCK --Standard spend' },
   { value: 'UNLOCK_TO', label: 'UNLOCK_TO --Spend to address + conditions' },
-  { value: 'COVENANT', label: 'COVENANT --Constrain spending tx' },
 ];
 const ATTESTATION_TYPES = [
   { value: 'INLINE', label: 'INLINE --Sigs in witness' },
-  { value: 'AGGREGATE', label: 'AGGREGATE --Block-level aggregate' },
-  { value: 'DEFERRED', label: 'DEFERRED --Template hash' },
 ];
 const SCHEME_TYPES = [
   { value: 'SCHNORR', label: 'SCHNORR (BIP-340)' },
@@ -3315,10 +3318,11 @@ BlockRegistry.SIG.buildSigner = (block, keyLookup, preimages, opts) => {
 };
 
 BlockRegistry.MULTISIG.buildSigner = (block, keyLookup, preimages, opts) => {
-  const keys = (block.values.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
-  const privkeys = keys.map(k => { const kp = keyLookup(k); return kp ? kp.privkey : null; }).filter(Boolean);
+  const allPubkeys = (block.values.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
+  const privkeys = allPubkeys.map(k => { const kp = keyLookup(k); return kp ? kp.privkey : null; }).filter(Boolean);
   if (privkeys.length === 0) return null;
-  return { type: 'MULTISIG', privkeys, threshold: parseInt(block.values.threshold) || 0, scheme: block.values.scheme || opts.scheme || 'SCHNORR' };
+  // Include ALL N pubkeys for merkle_pub_key leaf verification (not just M signing keys)
+  return { type: 'MULTISIG', privkeys, pubkeys: allPubkeys, threshold: parseInt(block.values.threshold) || 0, scheme: block.values.scheme || opts.scheme || 'SCHNORR' };
 };
 
 BlockRegistry.ADAPTOR_SIG.buildSigner = (block, keyLookup) => {
@@ -3366,10 +3370,10 @@ BlockRegistry.CLTV_SIG.buildSigner = (block, keyLookup, preimages, opts) => {
 };
 
 BlockRegistry.TIMELOCKED_MULTISIG.buildSigner = (block, keyLookup, preimages, opts) => {
-  const keys = (block.values.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
-  const privkeys = keys.map(k => { const kp = keyLookup(k); return kp ? kp.privkey : null; }).filter(Boolean);
+  const allPubkeys = (block.values.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
+  const privkeys = allPubkeys.map(k => { const kp = keyLookup(k); return kp ? kp.privkey : null; }).filter(Boolean);
   if (privkeys.length === 0) return null;
-  return { type: 'TIMELOCKED_MULTISIG', privkeys, threshold: parseInt(block.values.threshold) || 0, scheme: block.values.scheme || opts.scheme || 'SCHNORR' };
+  return { type: 'TIMELOCKED_MULTISIG', privkeys, pubkeys: allPubkeys, threshold: parseInt(block.values.threshold) || 0, scheme: block.values.scheme || opts.scheme || 'SCHNORR' };
 };
 
 BlockRegistry.HASH_PREIMAGE.buildSigner = (block, keyLookup, preimages) => {
@@ -4212,6 +4216,108 @@ function exportConditions(rungs, txOutputs, txInputs) {
       blocks: rung.blocks.map(exportBlockFields)
     };
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DESCRIPTOR NOTATION
+// ═══════════════════════════════════════════════════════════════
+
+function rungsToDescriptor(rungs) {
+  const schemeStr = (s) => {
+    if (!s || s === 'SCHNORR') return '';
+    return ', ' + s.toLowerCase();
+  };
+  const pk = (v) => v ? '@' + v.substring(0, 8) : '@?';
+  const num = (v) => v || '0';
+  const hex = (v) => v || '00'.repeat(32);
+
+  const formatBlock = (b) => {
+    const v = b.values || {};
+    const inv = b.inverted ? '!' : '';
+    switch (b.type) {
+    case 'SIG': return inv + 'sig(' + pk(v.pubkey) + schemeStr(v.scheme) + ')';
+    case 'MULTISIG': {
+      const pks = (v.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
+      return inv + 'multisig(' + num(v.threshold) + pks.map(k => ', @' + k.substring(0, 8)).join('') + ')';
+    }
+    case 'ADAPTOR_SIG': return inv + 'adaptor_sig(' + pk(v.pubkey) + ', ' + pk(v.adaptor_point) + schemeStr(v.scheme) + ')';
+    case 'MUSIG_THRESHOLD': {
+      const pks = (v.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
+      return inv + 'musig_threshold(' + num(v.threshold) + pks.map(k => ', @' + k.substring(0, 8)).join('') + ')';
+    }
+    case 'KEY_REF_SIG': return inv + 'key_ref_sig(' + num(v.relay_index) + ', ' + num(v.block_index) + ')';
+    case 'CSV': return inv + 'csv(' + num(v.blocks) + ')';
+    case 'CSV_TIME': return inv + 'csv_time(' + num(v.seconds) + ')';
+    case 'CLTV': return inv + 'cltv(' + num(v.height) + ')';
+    case 'CLTV_TIME': return inv + 'cltv_time(' + num(v.time) + ')';
+    case 'TAGGED_HASH': return inv + 'tagged_hash(' + hex(v.tag) + ', ' + hex(v.expected) + ')';
+    case 'HASH_GUARDED': return inv + 'hash_guarded(' + hex(v.hash) + ')';
+    case 'CTV': return inv + 'ctv(' + hex(v.template_hash) + ')';
+    case 'VAULT_LOCK': return inv + 'vault_lock(' + pk(v.recovery_key) + ', ' + pk(v.hot_key) + ', ' + num(v.delay) + ')';
+    case 'AMOUNT_LOCK': return inv + 'amount_lock(' + num(v.min) + ', ' + num(v.max) + ')';
+    case 'RECURSE_SAME': return inv + 'recurse_same(' + num(v.max_depth) + ')';
+    case 'RECURSE_MODIFIED': return inv + 'recurse_modified(' + num(v.max_depth) + ', ' + num(v.block_idx) + ', ' + num(v.param_idx) + ', ' + num(v.delta) + ')';
+    case 'RECURSE_UNTIL': return inv + 'recurse_until(' + num(v.height) + ')';
+    case 'RECURSE_COUNT': return inv + 'recurse_count(' + num(v.remaining) + ')';
+    case 'RECURSE_SPLIT': return inv + 'recurse_split(' + num(v.max_splits) + ', ' + num(v.min_sats) + ')';
+    case 'RECURSE_DECAY': return inv + 'recurse_decay(' + num(v.max_depth) + ', ' + num(v.block_idx) + ', ' + num(v.param_idx) + ', ' + num(v.decay_per_step) + ')';
+    case 'DATA_RETURN': return inv + 'data_return(' + hex(v.data) + ')';
+    case 'HYSTERESIS_FEE': return inv + 'hysteresis_fee(' + num(v.low) + ', ' + num(v.high) + ')';
+    case 'HYSTERESIS_VALUE': return inv + 'hysteresis_value(' + num(v.low) + ', ' + num(v.high) + ')';
+    case 'TIMER_CONTINUOUS': return inv + 'timer_continuous(' + num(v.blocks) + ')';
+    case 'TIMER_OFF_DELAY': return inv + 'timer_off_delay(' + num(v.trigger) + ', ' + num(v.hold) + ')';
+    case 'LATCH_SET': return inv + 'latch_set(' + pk(v.pubkey) + ', ' + num(v.state) + ')';
+    case 'LATCH_RESET': return inv + 'latch_reset(' + pk(v.pubkey) + ', ' + num(v.state) + ')';
+    case 'COUNTER_DOWN': return inv + 'counter_down(' + pk(v.pubkey) + ', ' + num(v.count) + ')';
+    case 'COUNTER_PRESET': return inv + 'counter_preset(' + pk(v.pubkey) + ', ' + num(v.count) + ')';
+    case 'COUNTER_UP': return inv + 'counter_up(' + pk(v.pubkey) + ', ' + num(v.count) + ')';
+    case 'COMPARE': return inv + 'compare(' + num(v.operator) + ', ' + num(v.value_b) + (v.value_c ? ', ' + v.value_c : '') + ')';
+    case 'SEQUENCER': return inv + 'sequencer(' + num(v.steps) + ')';
+    case 'ONE_SHOT': return inv + 'one_shot(' + pk(v.pubkey) + ', ' + num(v.window) + ')';
+    case 'RATE_LIMIT': return inv + 'rate_limit(' + num(v.max_per_block) + ', ' + num(v.accumulation_cap) + ', ' + num(v.refill_blocks) + ')';
+    case 'COSIGN': return inv + 'cosign(' + hex(v.conditions_hash) + ')';
+    case 'TIMELOCKED_SIG': return inv + 'timelocked_sig(' + pk(v.pubkey) + ', ' + num(v.blocks || v.csv) + ')';
+    case 'HTLC': return inv + 'htlc(' + pk(v.sender || v.pubkey) + ', ' + pk(v.receiver) + ', ' + hex(v.preimage || v.hash) + ', ' + num(v.csv || v.blocks) + ')';
+    case 'HASH_SIG': return inv + 'hash_sig(' + pk(v.pubkey) + ', ' + hex(v.preimage || v.hash) + ')';
+    case 'PTLC': return inv + 'ptlc(' + pk(v.pubkey) + ', ' + pk(v.adaptor_point) + ', ' + num(v.csv || v.blocks) + ')';
+    case 'CLTV_SIG': return inv + 'cltv_sig(' + pk(v.pubkey) + ', ' + num(v.height) + ')';
+    case 'TIMELOCKED_MULTISIG': {
+      const pks = (v.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
+      return inv + 'timelocked_multisig(' + num(v.threshold) + pks.map(k => ', @' + k.substring(0, 8)).join('') + ', ' + num(v.csv || v.blocks) + ')';
+    }
+    case 'EPOCH_GATE': return inv + 'epoch_gate(' + num(v.epoch_size) + ', ' + num(v.window_size || v.window) + ')';
+    case 'WEIGHT_LIMIT': return inv + 'weight_limit(' + num(v.max_weight || v.max) + ')';
+    case 'INPUT_COUNT': return inv + 'input_count(' + num(v.min) + ', ' + num(v.max) + ')';
+    case 'OUTPUT_COUNT': return inv + 'output_count(' + num(v.min) + ', ' + num(v.max) + ')';
+    case 'RELATIVE_VALUE': return inv + 'relative_value(' + num(v.numerator) + ', ' + num(v.denominator) + ')';
+    case 'ACCUMULATOR': return inv + 'accumulator(' + hex(v.merkle_root) + ')';
+    case 'OUTPUT_CHECK': return inv + 'output_check(' + num(v.output_index) + ', ' + num(v.min_value) + ', ' + num(v.max_value) + ', ' + hex(v.script_hash) + ')';
+    case 'P2PK_LEGACY': return inv + 'p2pk(' + pk(v.pubkey) + ')';
+    case 'P2PKH_LEGACY': return inv + 'p2pkh(' + pk(v.pubkey) + ')';
+    case 'P2SH_LEGACY': return inv + 'p2sh(' + hex(v.script_body) + ')';
+    case 'P2WPKH_LEGACY': return inv + 'p2wpkh(' + pk(v.pubkey) + ')';
+    case 'P2WSH_LEGACY': return inv + 'p2wsh(' + hex(v.script_body) + ')';
+    case 'P2TR_LEGACY': return inv + 'p2tr(' + pk(v.pubkey) + ')';
+    case 'P2TR_SCRIPT_LEGACY': return inv + 'p2tr_script(' + hex(v.script_body) + ')';
+    default: return inv + b.type.toLowerCase() + '(...)';
+    }
+  };
+
+  // Filter to non-relay rungs with blocks
+  const activeRungs = rungs.filter(r => r.blocks.length > 0 && r.output.type !== 'relay');
+  if (activeRungs.length === 0) return 'ladder()';
+
+  const formatRung = (r) => {
+    const blocks = r.blocks.filter(b => b.type !== 'OUTPUT_REF').map(formatBlock);
+    if (blocks.length === 0) return '';
+    if (blocks.length === 1) return blocks[0];
+    return 'and(' + blocks.join(', ') + ')';
+  };
+
+  const rungStrs = activeRungs.map(formatRung).filter(Boolean);
+  if (rungStrs.length === 0) return 'ladder()';
+  if (rungStrs.length === 1) return 'ladder(' + rungStrs[0] + ')';
+  return 'ladder(or(\n  ' + rungStrs.join(',\n  ') + '\n))';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -5873,7 +5979,7 @@ function getTypeHex(type) {
     COMPARE:'0641',SEQUENCER:'0651',ONE_SHOT:'0661',
     RATE_LIMIT:'0671',COSIGN:'0681',
     TIMELOCKED_SIG:'0701',HTLC:'0702',HASH_SIG:'0703',PTLC:'0704',CLTV_SIG:'0705',TIMELOCKED_MULTISIG:'0706',
-    EPOCH_GATE:'0801',WEIGHT_LIMIT:'0802',INPUT_COUNT:'0803',OUTPUT_COUNT:'0804',RELATIVE_VALUE:'0805',ACCUMULATOR:'0806',
+    EPOCH_GATE:'0801',WEIGHT_LIMIT:'0802',INPUT_COUNT:'0803',OUTPUT_COUNT:'0804',RELATIVE_VALUE:'0805',ACCUMULATOR:'0806',OUTPUT_CHECK:'0807',
     P2PK_LEGACY:'0901',P2PKH_LEGACY:'0902',P2SH_LEGACY:'0903',P2WPKH_LEGACY:'0904',P2WSH_LEGACY:'0905',P2TR_LEGACY:'0906',P2TR_SCRIPT_LEGACY:'0907',
   };
   return map[type] || '????';
@@ -7699,6 +7805,75 @@ const EXAMPLES = [
     ],
     inputMap: [[0]], outputMap: [0],
   },
+  {
+    title: 'RECURSE_COUNT COUNTDOWN',
+    desc: 'Countdown recursion: UTXO can be spent N times before terminating. Each spend decrements the counter. When it reaches zero the UTXO is freely spendable.\n\nCOUNTDOWN: Sign + recurse with decremented counter. Terminates when remaining=0.',
+    tags: [['REC_COUNT', 'rec'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'COUNTDOWN', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'RECURSE_COUNT', values: { remaining: '5' } },
+      ], output: { name: 'NEXT_HOP', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 25000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+  {
+    title: 'RECURSE_DECAY DIMINISHING RETURNS',
+    desc: 'Parameter decay recursion: a numeric field decreases by a fixed amount each spend. Models diminishing returns, graduated release, or decaying thresholds.\n\nDECAY: Sign + recurse with parameter decayed by 1 each hop. Max 10 hops.',
+    tags: [['REC_DECAY', 'rec'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'DECAY', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'RECURSE_DECAY', values: { max_depth: '10', block_idx: '0', param_idx: '0', decay_per_step: '1' } },
+      ], output: { name: 'DECAYED', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 25000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+  {
+    title: 'KEY_REF_SIG RELAY KEY',
+    desc: 'Signature using a key commitment from a relay block. The signing key is referenced from another block in the same rung via relay index, enabling cross-block key sharing.\n\nVERIFY: SIG block commits the key in Merkle leaf. KEY_REF_SIG references it by relay index.',
+    tags: [['KEY_REF', 'sig'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'VERIFY', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+        { type: 'KEY_REF_SIG', values: { relay_index: '0', block_index: '0' } },
+      ], output: { name: 'VERIFIED', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 25000 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+  {
+    title: 'LEGACY P2WSH MULTISIG',
+    desc: 'P2WSH legacy wrapping inner Ladder Script conditions. The HASH256 of serialised conditions is committed on-chain; PREIMAGE reveals them at spend time. SegWit witness discount applies.\n\nSPEND: P2WSH_LEGACY with inner SIG block.\nFALLBACK: Native CSV + SIG recovery.',
+    tags: [['P2WSH', 'legacy'], ['CSV', 'time'], ['SIG', 'sig']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'P2WSH_LEGACY', values: { script_body: '' },
+          innerBlocks: [{ id: uid(), type: 'SIG', values: { pubkey: FAKE.pk1, scheme: 'SCHNORR' } }] },
+      ], output: { name: 'WSH_SPEND', type: 'standard' } },
+      { label: 'FALLBACK', blocks: [
+        { type: 'CSV', values: { blocks: '144' } },
+        { type: 'SIG', values: { pubkey: FAKE.pk2 } },
+      ], output: { name: 'RECOVERY', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 30000 },
+      { address: FAKE.addr2, amount: 29500 },
+    ],
+    inputMap: [[0], [0]], outputMap: [0, 1],
+  },
 ];
 
 function ExamplesModal({ onClose, onLoad }) {
@@ -8466,7 +8641,8 @@ function buildRungSnapshot(rungs, newOutputs, oldToNew, emptyKeyMap, hashReplace
       const matchedOut = newOutputs.find(o => o.id === r.output?.txOutputId);
       coilAddress = matchedOut?.address || null;
     }
-    return { label: r.label, vout: voutIdx >= 0 ? voutIdx : null, blocks: updatedBlocks, coilType, coilAddress };
+    const coilScheme = r.output?.scheme || scheme || 'SCHNORR';
+    return { label: r.label, vout: voutIdx >= 0 ? voutIdx : null, blocks: updatedBlocks, coilType, coilAddress, coilScheme };
   });
 }
 
@@ -8619,19 +8795,17 @@ function planSpend(record, options) {
           delete result.privkey;
         }
         if (isPQ && result.privkeys) {
-          // Multi-key PQ transformation
+          // Multi-key PQ transformation: ALL N pubkeys needed for merkle_pub_key leaf
           const blockPubkeys = (b.values?.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
-          const threshold = parseInt(b.values?.threshold) || result.privkeys.length;
-          const pubkeys = [];
-          for (let si = 0; si < threshold; si++) {
-            const pk = blockPubkeys[si] ? keyByPubkey.get(blockPubkeys[si]) : null;
-            pubkeys.push(pk?.pubkey || '');
-          }
+          const pubkeys = blockPubkeys.map(pk => {
+            const kp = keyByPubkey.get(pk);
+            return kp?.pubkey || pk; // use stored pubkey, fallback to block value
+          });
           result.pq_privkeys = result.privkeys;
           result.pq_pubkeys = pubkeys;
           result.scheme = scheme;
           delete result.privkeys;
-          infos.push('Detected ' + b.type + ' (threshold=' + threshold + ', providing ' + threshold + ' keys)');
+          infos.push('Detected ' + b.type + ' (N=' + blockPubkeys.length + ', providing ' + result.pq_privkeys.length + ' signing keys)');
         }
 
         // ── ADAPTOR_SIG / PTLC: include adaptor_secret if stored ──
@@ -8665,21 +8839,22 @@ function planSpend(record, options) {
       // Multi-key types
       const multiKeyTypes = ['MULTISIG', 'TIMELOCKED_MULTISIG'];
       if (multiKeyTypes.includes(b.type)) {
+        // ALL N pubkeys needed for merkle_pub_key leaf, but only M privkeys for signing
+        const allPubkeys = (b.values?.pubkeys || '').split(',').map(k => k.trim()).filter(Boolean);
         const threshold = parseInt(b.values?.threshold) || 2;
         const privkeys = [];
         const pubkeys = [];
-        for (let si = 0; si < threshold; si++) {
-          let key = conditionKeys[fallbackKeyIdx]; fallbackKeyIdx++;
-          if (!key) { errors.push(b.type + ' requires ' + threshold + ' keys but only found ' + si + '.'); break; }
-          privkeys.push(key.privkey);
-          pubkeys.push(key.pubkey);
+        for (const pk of allPubkeys) {
+          const kp = keyByPubkey.get(pk) || conditionKeys[fallbackKeyIdx++];
+          if (kp) { privkeys.push(kp.privkey); pubkeys.push(kp.pubkey || pk); }
         }
+        if (privkeys.length < threshold) { errors.push(b.type + ' requires ' + threshold + ' signing keys but only found ' + privkeys.length + '.'); continue; }
         if (isPQ) {
           signerBlocks.push({ type: b.type, scheme, pq_privkeys: privkeys, pq_pubkeys: pubkeys });
         } else {
-          signerBlocks.push({ type: b.type, privkeys });
+          signerBlocks.push({ type: b.type, privkeys, pubkeys: allPubkeys });
         }
-        infos.push('Detected ' + b.type + ' (threshold=' + threshold + ', providing ' + threshold + ' keys)');
+        infos.push('Detected ' + b.type + ' (N=' + allPubkeys.length + ', M=' + threshold + ', providing ' + privkeys.length + ' keys)');
         continue;
       }
 
@@ -8687,7 +8862,6 @@ function planSpend(record, options) {
       const preimageOnlyTypes = ['TAGGED_HASH'];
       if (preimageOnlyTypes.includes(b.type)) {
         signerBlocks.push({ type: b.type });
-        continue;
         continue;
       }
 
@@ -9173,7 +9347,7 @@ function SignetPanel() {
           console.error('Failed to decode inner conditions tx');
           continue;
         }
-        // Strip 1-byte RUNG_CONDITIONS_PREFIX (0xC1) to get raw serialised conditions
+        // Strip 1-byte RUNG_CONDITIONS_PREFIX to get raw serialised conditions
         const scriptHex = decoded.vout[0].scriptPubKey.hex;
         const preimageHex = scriptHex.substring(2); // skip prefix byte
 
@@ -10045,9 +10219,6 @@ function SpendPanel() {
         dest = targetRung.coilAddress;
         addLog('UNLOCK_TO: destination locked to ' + dest.substring(0, 20) + '...', 'info');
       }
-      if (targetRung.coilType === 'COVENANT') {
-        addLog('COVENANT coil: spending tx must satisfy coil conditions (enforced by backend)', 'info');
-      }
       if (!dest) {
         addLog('Generating destination address...');
         const addrData = await apiCall('/api/ladder/wallet/address', undefined, true);
@@ -10283,6 +10454,16 @@ function SpendPanel() {
       if (voutRungs.length > 1) {
         signerEntry.rung = rungIdx;
         addLog('Passing rung index ' + rungIdx + ' to signrungtx (condition ' + (rungIdx + 1) + ' of ' + voutRungs.length + ')', 'info');
+      }
+      // Pass coil if non-default (PQ scheme, UNLOCK_TO, etc.) — must match fund-time coil for Merkle leaf
+      const coilScheme = targetRung.coilScheme || rec.scheme || 'SCHNORR';
+      const coilType = targetRung.coilType || 'UNLOCK';
+      if (coilType !== 'UNLOCK' || coilScheme !== 'SCHNORR') {
+        signerEntry.coil = { type: coilType, attestation: 'INLINE', scheme: coilScheme };
+        if (coilType === 'UNLOCK_TO' && targetRung.coilAddress) {
+          signerEntry.coil.address = targetRung.coilAddress;
+        }
+        addLog('Coil: ' + coilType + '/' + coilScheme, 'info');
       }
       const signers = [signerEntry];
       const spent_outputs = [{ amount: utxoOutput.value, scriptPubKey: utxoOutput.scriptPubKey?.hex || '' }];
@@ -11800,6 +11981,8 @@ function App() {
     return JSON.stringify(exportCreateRungtx(rungs, txOutputs, txInputs, locktime), null, 2);
   }, [rungs, txInputs, txOutputs, locktime]);
 
+  const descriptorOutput = useMemo(() => rungsToDescriptor(rungs), [rungs]);
+
   // Compute which output names and rung numbers are energized (for OUTPUT_REF cross-referencing)
   // Use simState + forcedBlocks (can't use fullSimState here --circular dependency)
   const [energizedOutputs, energizedRungNums] = useMemo(() => {
@@ -12297,6 +12480,7 @@ ${ladderRows.map(r => `
             {!isSimMode && <button className={`panel-tab ${rightTab === 'properties' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'properties' })} title={showTooltips ? 'Edit fields for the selected block, input, or coil' : undefined}>PROPERTIES</button>}
             {!isSimMode && <button className={`panel-tab ${rightTab === 'tx' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'tx' })} title={showTooltips ? 'Configure transaction inputs, outputs, and locktime' : undefined}>TX</button>}
             {isSimMode && <button className={`panel-tab ${rightTab === 'simulate' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'simulate' })} title={showTooltips ? 'Set simulation context --amounts, heights, timestamps' : undefined}>CONTEXT</button>}
+            <button className={`panel-tab ${rightTab === 'descriptor' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'descriptor' })} title={showTooltips ? 'View the descriptor notation for the current conditions' : undefined}>DESCRIPTOR</button>
             <button className={`panel-tab ${rightTab === 'json' ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_RIGHT_TAB', value: 'json' })} title={showTooltips ? 'View the createrungtx RPC JSON for this transaction' : undefined}>RPC</button>
           </div>
           <div className="panel-content">
@@ -12312,6 +12496,17 @@ ${ladderRows.map(r => `
             )}
             {rightTab === 'simulate' && isSimMode && (
               <SimulationPanel />
+            )}
+            {rightTab === 'descriptor' && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: 9, padding: '4px 8px', background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', letterSpacing: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>DESCRIPTOR NOTATION</span>
+                  <button style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 9, padding: '1px 6px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }} onClick={() => { navigator.clipboard?.writeText(descriptorOutput); }}>COPY</button>
+                </div>
+                <div style={{ flex: 1, overflow: 'auto', padding: '12px', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: 'var(--text-primary)', background: 'var(--bg-primary)' }}>
+                  {descriptorOutput}
+                </div>
+              </div>
             )}
             {rightTab === 'json' && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>

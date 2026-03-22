@@ -1,7 +1,7 @@
 # Ladder Script Summary
 
 Ladder Script is a typed, structured transaction scripting system that replaces Bitcoin
-Script's untyped stack machine with 61 declarative function blocks (59 active, 2 deprecated)
+Script's untyped stack machine with 61 declarative function blocks (61 active, 2 deprecated)
 across 10 families: Signature, Timelock, Hash, Covenant, Recursion, Anchor, PLC, Compound,
 Governance, and Legacy. Blocks are grouped into rungs (AND logic) and ladders (OR logic),
 with all data constrained to 11 typed fields. Outputs use MLSC (Merkelized Ladder Script

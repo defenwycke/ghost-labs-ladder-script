@@ -62,7 +62,7 @@ After all inputs pass, `Verify()` checks them all in a single batch. On batch fa
 Compile-time descriptor struct in `types.h`. Contains block type metadata: type code, name,
 known/invertible/key-consuming flags, pubkey count, pointers to conditions and witness
 implicit layouts, and a `conditions_only` flag. The `LookupBlockDescriptor()` function
-provides a runtime lookup table of all 59 active block types.
+provides a runtime lookup table of all 61 active block types.
 
 ### CLTV
 Block type 0x0103 (Timelock family). Absolute timelock checking nLockTime against a

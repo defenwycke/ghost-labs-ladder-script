@@ -165,7 +165,7 @@ a:hover { text-decoration: underline; }
 
 <span class="comment">// Try rung 0 first: hot key signs, but must wait 144 blocks.</span>
 <span class="comment">// If rung 0 fails, try rung 1: any 2 of 3 recovery keys, no delay.</span></div>
-    <p>The spending conditions are stored as a 33-byte Merkle root on-chain (MLSC format). The actual condition structure is only revealed at spend time in the witness. Unrevealed rungs stay private.</p>
+    <p>Ladder Script uses Version 4 transactions (RUNG_TX). The spending conditions are stored as a 33-byte Merkle root on-chain (MLSC format). The actual condition structure is only revealed at spend time in the witness. Unrevealed rungs stay private.</p>
     <p>You can describe conditions in a compact notation:</p>
     <div class="code-block"><span class="value">ladder(or(
   and(sig(@hot_key), csv(144)),
@@ -218,7 +218,7 @@ a:hover { text-decoration: underline; }
       </a>
       <a href="patch-overview.html" class="link-item">
         <div class="link-label">Review the Patch</div>
-        <div class="link-desc">See exactly what changes in Bitcoin Core. 197 lines across 16 files.</div>
+        <div class="link-desc">See exactly what changes in Bitcoin Core. 197 lines across 18 files.</div>
       </a>
       <a href="block-docs/" class="link-item">
         <div class="link-label">Block Reference</div>

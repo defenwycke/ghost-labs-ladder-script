@@ -1,6 +1,6 @@
 # Block Library
 
-Ladder Script defines 61 block types across 10 families. 59 are active; 2 are deprecated
+Ladder Script defines 63 block types across 10 families. 61 are active; 2 are deprecated
 (HASH_PREIMAGE 0x0201, HASH160_PREIMAGE 0x0202). Deprecated blocks are rejected at
 deserialization. Each block type has a uint16_t type code encoded little-endian on the wire.
 

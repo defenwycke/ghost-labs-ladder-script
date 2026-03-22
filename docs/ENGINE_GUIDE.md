@@ -109,7 +109,7 @@ an entry to view, copy, or compare the raw JSON.
 
 ## 3. Block Palette
 
-The left sidebar organizes **61 block types** (59 active, 2 deprecated) into
+The left sidebar organizes **63 block types** (61 active, 2 deprecated) into
 **10 families**. Each family has a colour-coded dot. Groups are collapsible.
 Hovering a palette item shows a tooltip with the block description and hex
 type code.
