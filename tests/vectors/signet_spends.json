@@ -1,5 +1,5 @@
 {
-  "_comment": "Signet spend test vectors \u2014 ALL 35 active block types verified.",
+  "_comment": "ALL 61 active block types verified on live signet with fund+spend txids.",
   "verified": {
     "SIG": {
       "fund_txid": "81a13a6480011eb169764d6782d039835b4e3a69b011eb60735b15c5018af73d",
@@ -349,6 +349,24 @@
       "spend_txid": "d3ef9ac3fe78fb880a3593401988fbbd5da5d07dd78b93fda96deb4cacef6bd2",
       "status": "verified",
       "date": "2026-03-23T14:00:00Z"
+    },
+    "P2SH_LEGACY": {
+      "fund_txid": "e13507deb07a624e0e35f3a24b53ef41cbc92f4af4af0cea5382bd040c10c878",
+      "spend_txid": "f52c2feb638f29936fced16158b406971af16a242e742d68d7f74d870b9d1c92",
+      "status": "verified",
+      "date": "2026-03-23T15:00:00Z"
+    },
+    "P2WSH_LEGACY": {
+      "fund_txid": "702ea4d8e619de8c08b36dc262ea81e00284ee38510e8ae5b91e0fa6f5c26101",
+      "spend_txid": "d6f534b00d12bb34a068567c71592c1fed6b660909be348c509dcf4e146da2c7",
+      "status": "verified",
+      "date": "2026-03-23T15:00:00Z"
+    },
+    "P2TR_SCRIPT_LEGACY": {
+      "fund_txid": "69e4af4acb6ff5a8ae20fc6f598666b47ba0533a3e0d98b8a7f9007205ea917f",
+      "spend_txid": "9546cb7015e30df9445683e0a6f525998c8f4fd34879975d4333475e04dae60b",
+      "status": "verified",
+      "date": "2026-03-23T15:00:00Z"
     }
   }
 }

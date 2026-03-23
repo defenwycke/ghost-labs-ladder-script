@@ -253,7 +253,7 @@ inline size_t FieldMinSize(RungDataType type)
     case RungDataType::PUBKEY_COMMIT: return 32;
     case RungDataType::HASH256:       return 32;
     case RungDataType::HASH160:       return 20;
-    case RungDataType::PREIMAGE:      return 32;
+    case RungDataType::PREIMAGE:      return 1;  // P2SH/P2WSH inner conditions can be < 32 bytes
     case RungDataType::SCRIPT_BODY:   return 1;
     case RungDataType::SIGNATURE:     return 1;
     case RungDataType::SPEND_INDEX:   return 4;
