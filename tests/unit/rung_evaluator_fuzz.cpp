@@ -61,16 +61,19 @@ FUZZ_TARGET(rung_evaluator)
     mtx.vout[0].nValue = 50000;
 
     // Build evaluation context
+    CTransaction tx_ref(mtx);
     rung::RungEvalContext ctx;
     ctx.input_index = 0;
     ctx.input_amount = 50000;
     ctx.block_height = 1000;
-    ctx.tx = &CTransaction(mtx);
+    ctx.tx = &tx_ref;
     ctx.input_conditions = &conditions;
 
     // Run evaluation — must not crash
     if (!conditions.rungs.empty()) {
-        rung::EvalLadder(witness, conditions, DummySignatureChecker(),
-                         SigVersion::LADDER, ctx);
+        ScriptExecutionData execdata;
+        BaseSignatureChecker checker;
+        rung::EvalLadder(witness, checker,
+                         SigVersion::LADDER, execdata, ctx);
     }
 }
