@@ -27,15 +27,49 @@ Bitcoin Core developers and the broader community review:
 Fuzz testing targets are being expanded. Third-party adversarial testing encouraged
 on the live signet.
 
-### Phase 3: BIP 9 Activation
+### Phase 3: Activation — Coexistence
 
-Once sufficient review and testing is complete:
-- BIP 9 version bits signaling with a defined start time and timeout
-- All 63 block types activate simultaneously at the activation height
-- No phased rollout of individual block types — single atomic deployment
-- `RUNG_VERIFY_MLSC_ONLY` flag enforced from activation
+BIP 9 version bits signaling. At activation height:
 
-### Why Single Deployment
+- **v4 RUNG_TX transactions are valid alongside legacy transactions.** Both legacy
+  Bitcoin Script (v1/v2 transactions) and Ladder Script (v4 transactions) coexist on
+  the same chain. Nodes validate each version with its respective rules.
+- All 63 Ladder Script block types activate simultaneously. No phased block type rollout.
+- The Legacy family (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT) allows
+  wrapping existing Bitcoin output formats inside Ladder Script conditions, enabling
+  migration from legacy to Ladder Script at the wallet's pace.
+- `RUNG_VERIFY_MLSC_ONLY` flag enforced: v4 outputs must use MLSC (0xC2), not inline.
+
+**This phase is non-disruptive.** Existing wallets, transactions, and scripts continue
+to work exactly as before. Ladder Script is opt-in — only wallets that create v4
+transactions use it.
+
+### Phase 4: Migration — Legacy Wrappers
+
+Once Ladder Script adoption reaches sufficient levels:
+
+- Encourage wallets to migrate from legacy output types (P2PKH, P2WSH, etc.) to their
+  Ladder Script equivalents (P2PKH_LEGACY, P2WSH_LEGACY wrapped in v4 RUNG_TX).
+- The Legacy block family provides 1:1 equivalents for every Bitcoin output type:
+  `p2pkh(@key)`, `p2wsh(inner_hex)`, `p2tr(@key)`, etc.
+- Wallets gain access to Ladder Script features (inversion, multi-rung OR paths,
+  recursive covenants) while maintaining backward-compatible output formats.
+- No consensus change required — this is a wallet-level migration.
+
+### Phase 5: Sunset — RUNG_TX Only (Future)
+
+A future soft fork could make v4 RUNG_TX the only valid transaction format:
+
+- Legacy transaction versions (v1/v2) would be rejected in new blocks.
+- All spending must go through the Ladder Script evaluator.
+- The Legacy block family ensures no loss of functionality — every Bitcoin Script
+  pattern has a Ladder Script equivalent.
+- This eliminates the opcode-based attack surface entirely.
+
+**This phase is far future** and would require its own BIP, community consensus,
+and a long migration window. It is not part of the initial activation proposal.
+
+### Why All Block Types Activate Together
 
 Individual block type activation would create combinatorial complexity in testing
 and validation. Each block type's evaluation is independent and self-contained.
