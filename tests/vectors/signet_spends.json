@@ -180,6 +180,12 @@
       "spend_txid": "f134a5b684f14051a3d96e8bf34d1f74b4d725881c6beda67a58bd1fdcd38ae1",
       "status": "verified",
       "date": "2026-03-23T01:45:00Z"
+    },
+    "COSIGN": {
+      "fund_txid": "015677dbb652944c5cd103156f7d1671752dc79399cb58bbb8af4cba29944144",
+      "spend_txid": "8dba10e6fae10ef0527b14b4a3ac91c66f86ff82075ba3d3ab093491a89a4eab",
+      "status": "verified",
+      "date": "2026-03-23T03:00:00Z"
     }
   }
 }

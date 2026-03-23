@@ -2573,6 +2573,122 @@ static RPCHelpMan formatladder()
     };
 }
 
+static RPCHelpMan computemutation()
+{
+    return RPCHelpMan{"computemutation",
+        "Compute the expected output conditions after applying a RECURSE_MODIFIED or RECURSE_DECAY mutation.\n"
+        "Takes the input descriptor, key map, and returns the mutated conditions hex + MLSC root.\n",
+        {
+            {"descriptor", RPCArg::Type::STR, RPCArg::Optional::NO, "Input descriptor"},
+            {"keys", RPCArg::Type::STR, RPCArg::Optional::NO, "Key alias map JSON: {\"alias\": \"pubkey_hex\", ...}"},
+            {"decay", RPCArg::Type::BOOL, RPCArg::DefaultHint{"false"}, "True for RECURSE_DECAY (negate deltas)"},
+        },
+        RPCResult{RPCResult::Type::OBJ, "", "", {
+            {RPCResult::Type::STR_HEX, "conditions_hex", "Mutated conditions hex"},
+            {RPCResult::Type::STR_HEX, "mlsc_root", "Expected output MLSC root"},
+        }},
+        RPCExamples{
+            HelpExampleCli("computemutation",
+                "\"ladder(and(sig(@a), amount_lock(10, 1000000000), recurse_modified(10, 1, 0, 1)))\" "
+                "'{\"a\":\"02...\"}'")
+        },
+    [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+    {
+        std::string desc = request.params[0].get_str();
+        UniValue keys_val(UniValue::VOBJ);
+        if (request.params[1].isObject()) keys_val = request.params[1];
+        else keys_val.read(request.params[1].get_str());
+
+        bool is_decay = !request.params[2].isNull() && request.params[2].get_bool();
+
+        std::map<std::string, std::vector<uint8_t>> pubkey_map;
+        for (const auto& alias : keys_val.getKeys()) {
+            pubkey_map[alias] = ParseHex(keys_val[alias].get_str());
+        }
+
+        rung::RungConditions conditions;
+        std::vector<std::vector<std::vector<uint8_t>>> rung_pubkeys;
+        std::string error;
+        if (!rung::ParseDescriptor(desc, pubkey_map, conditions, rung_pubkeys, error)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "parse error: " + error);
+        }
+
+        // Find RECURSE_MODIFIED or RECURSE_DECAY block, extract mutation specs
+        for (auto& rung : conditions.rungs) {
+            for (auto& blk : rung.blocks) {
+                if (blk.type != RungBlockType::RECURSE_MODIFIED &&
+                    blk.type != RungBlockType::RECURSE_DECAY) continue;
+
+                // Parse mutation: numerics = [depth, block_idx, param_idx, delta]
+                std::vector<RungField*> numerics;
+                for (auto& f : blk.fields) {
+                    if (f.type == RungDataType::NUMERIC) numerics.push_back(&f);
+                }
+                if (numerics.size() < 4) {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "mutation block needs 4 NUMERIC fields");
+                }
+
+                auto read_num = [](const RungField& f) -> int64_t {
+                    int64_t val = 0;
+                    for (size_t i = 0; i < f.data.size() && i < 4; ++i)
+                        val |= static_cast<int64_t>(f.data[i]) << (8 * i);
+                    return val;
+                };
+                auto write_num = [](RungField& f, int64_t val) {
+                    f.data.clear();
+                    for (int i = 0; i < 4; ++i)
+                        f.data.push_back(static_cast<uint8_t>((val >> (8 * i)) & 0xFF));
+                };
+
+                int64_t block_idx = read_num(*numerics[1]);
+                int64_t param_idx = read_num(*numerics[2]);
+                int64_t delta = read_num(*numerics[3]);
+                if (is_decay || blk.type == RungBlockType::RECURSE_DECAY) delta = -delta;
+
+                // Apply mutation to the target block's param_idx-th condition field
+                if (block_idx < 0 || static_cast<size_t>(block_idx) >= rung.blocks.size()) {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "block_idx out of range");
+                }
+                auto& target_blk = rung.blocks[block_idx];
+                size_t cond_idx = 0;
+                bool applied = false;
+                for (auto& f : target_blk.fields) {
+                    if (!rung::IsConditionDataType(f.type)) continue;
+                    if (static_cast<int64_t>(cond_idx) == param_idx) {
+                        if (f.type != RungDataType::NUMERIC) {
+                            throw JSONRPCError(RPC_INVALID_PARAMETER, "mutation target is not NUMERIC");
+                        }
+                        write_num(f, read_num(f) + delta);
+                        applied = true;
+                        break;
+                    }
+                    ++cond_idx;
+                }
+                if (!applied) {
+                    throw JSONRPCError(RPC_INVALID_PARAMETER, "mutation param_idx not found");
+                }
+                goto done;
+            }
+        }
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "no RECURSE_MODIFIED or RECURSE_DECAY block found");
+        done:
+
+        // Compute mutated root
+        uint256 root = rung::ComputeConditionsRoot(conditions, rung_pubkeys, {});
+
+        // Serialize mutated conditions
+        rung::LadderWitness ladder;
+        ladder.rungs = conditions.rungs;
+        auto bytes = rung::SerializeLadderWitness(ladder, rung::SerializationContext::CONDITIONS);
+
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("conditions_hex", HexStr(bytes));
+        result.pushKV("mlsc_root", root.GetHex());
+        return result;
+    },
+    };
+}
+
 static RPCHelpMan signladder()
 {
     return RPCHelpMan{"signladder",
@@ -2866,6 +2982,7 @@ void RegisterRungRPCCommands(CRPCTable& t)
         {"rung", &createrungtx},
         {"rung", &signrungtx},
         {"rung", &signladder},
+        {"rung", &computemutation},
         {"rung", &computectvhash},
         {"rung", &generatepqkeypair},
         {"rung", &pqpubkeycommit},
