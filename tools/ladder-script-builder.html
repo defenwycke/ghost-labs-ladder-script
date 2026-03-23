@@ -754,7 +754,7 @@ const BLOCK_DEFS = {
   CLTV_TIME:         { category: 'timelock', phase: 1, label: 'CLTV_TIME',         fields: [{name:'timestamp', type:'NUMERIC', placeholder:'1700000000'}] },
 
   // ── HASH (0x02xx) — Phase 1 ──
-  // HASH_PREIMAGE and HASH160_PREIMAGE are deprecated (use HTLC, HASH_SIG, or HASH_GUARDED instead)
+  // Codes 0x0201 and 0x0202 are reserved (removed block types)
   TAGGED_HASH:       { category: 'hash',     phase: 1, label: 'TAGGED_HASH',       fields: [{name:'tag_hash', type:'HASH256', placeholder:'SHA256(tag)'}, {name:'expected', type:'HASH256', placeholder:'expected tagged hash'}] },
   HASH_GUARDED:      { category: 'hash',     phase: 1, label: 'HASH_GUARDED',      fields: [{name:'committed_hash', type:'HASH256', placeholder:'SHA256 committed hash'}] },
 

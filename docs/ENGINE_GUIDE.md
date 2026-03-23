@@ -118,7 +118,7 @@ type code.
 |-------------|-----------|--------|
 | SIGNATURE   | `#ff1744` | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THR, KEY_REF_SIG |
 | TIMELOCK    | `#ff6d00` | CSV, CSV_TIME, CLTV, CLTV_TIME |
-| HASH        | `#00e676` | HASH_PRE (deprecated), HASH160 (deprecated), TAGGED, GUARDED |
+| HASH        | `#00e676` | TAGGED, GUARDED |
 | COVENANT    | `#2979ff` | CTV, VAULT, AMT_LOCK |
 | RECURSION   | `#aa00ff` | REC_SAME, REC_MOD, REC_UNTIL, REC_COUNT, REC_SPLIT, REC_DECAY |
 | ANCHOR      | `#ffea00` | ANCHOR, A_CHAN, A_POOL, A_RESV, A_SEAL, A_ORACLE, DATA_RET |
@@ -126,8 +126,6 @@ type code.
 | COMPOUND    | `#ffffff` | TL_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TL_MULTI |
 | GOVERNANCE  | `#9e9e9e` | EPOCH, WT_LIMIT, IN_COUNT, OUT_COUNT, REL_VAL, ACCUM, OUT_CHK |
 | LEGACY      | `#00e5ff` | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_S |
-
-**Deprecated blocks:** HASH_PREIMAGE (0x0201) and HASH160_PREIMAGE (0x0202).
 
 An internal block type `OUTPUT_REF` (not in the palette) references named
 output coils from other rungs.

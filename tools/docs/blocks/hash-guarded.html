@@ -47,7 +47,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0204 &middot; HASH FAMILY</div>
   <h1 class="block-title">HASH_GUARDED</h1>
-  <p class="block-subtitle">Raw SHA-256 preimage verification. SATISFIED when SHA256(preimage) equals the committed hash. Non-invertible and fail-closed. Safe replacement for the deprecated HASH_PREIMAGE block.</p>
+  <p class="block-subtitle">Raw SHA-256 preimage verification. SATISFIED when SHA256(preimage) equals the committed hash. Non-invertible and fail-closed.</p>
   <span class="block-family-badge badge-hash">Hash</span>
   <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
@@ -201,7 +201,7 @@
 
   <div class="use-case">
     <div class="use-case-title">Standalone Hash Lock</div>
-    <div class="use-case-desc">Safe replacement for the deprecated HASH_PREIMAGE. Provides raw SHA-256 preimage verification without requiring a companion signature block. Non-invertible by design, closing the data-embedding vector that motivated HASH_PREIMAGE deprecation.</div>
+    <div class="use-case-desc">Standalone hash lock. Provides raw SHA-256 preimage verification without requiring a companion signature block. Non-invertible by design, preventing data embedding through failed verification + inversion.</div>
   </div>
 
   <div class="use-case">
@@ -218,7 +218,7 @@
 <!-- Anti-Spam Note -->
 <div class="doc-section">
   <div class="section-label">Anti-Spam Properties</div>
-  <p class="section-text">HASH_GUARDED is <strong>non-invertible</strong>: the inverted flag is rejected at deserialization. This prevents an attacker from creating a block with a garbage hash, providing arbitrary preimage data, and inverting the result to SATISFIED. Unlike the deprecated HASH_PREIMAGE, there is no way to embed arbitrary data through this block type.</p>
+  <p class="section-text">HASH_GUARDED is <strong>non-invertible</strong>: the inverted flag is rejected at deserialization. This prevents an attacker from creating a block with a garbage hash, providing arbitrary preimage data, and inverting the result to SATISFIED. There is no way to embed arbitrary data through this block type.</p>
 </div>
 
 <!-- Nav -->

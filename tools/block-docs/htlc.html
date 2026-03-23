@@ -46,7 +46,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TYPE 0x0702 &middot; COMPOUND FAMILY</div>
   <h1 class="block-title">HTLC</h1>
-  <p class="block-subtitle">Hash Time Locked Contract — hash preimage verification, relative timelock, and signature check combined in a single block. Replaces the HASH_PREIMAGE + CSV + SIG three-block pattern, saving 16 bytes on wire.</p>
+  <p class="block-subtitle">Hash Time Locked Contract — hash preimage verification, relative timelock, and signature check combined in a single block. Collapses a hash + CSV + SIG three-block pattern, saving 16 bytes on wire.</p>
   <span class="block-family-badge badge-compound">Compound</span>
   <span class="invertible-badge inv-no">Non-Invertible</span>
 </div>
@@ -167,7 +167,7 @@
     </div>
   </div>
 
-  <p class="section-text">Compared to separate HASH_PREIMAGE + CSV + SIG blocks: <strong style="color:var(--green-bright)">233 bytes &rarr; 217 bytes (saves 16B / 6.9%)</strong></p>
+  <p class="section-text">Compared to separate hash + CSV + SIG blocks: <strong style="color:var(--green-bright)">233 bytes &rarr; 217 bytes (saves 16B / 6.9%)</strong></p>
   <p class="section-text">Compared to equivalent Tapscript (2-leaf P2TR, claim path): <strong style="color:var(--green-bright)">265 bytes &rarr; 217 bytes (saves 48B / 18.1%)</strong></p>
 </div>
 

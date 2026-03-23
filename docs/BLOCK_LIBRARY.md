@@ -1,7 +1,7 @@
 # Block Library
 
-Ladder Script defines 61 block types across 10 families
-deserialization. Each block type has a uint16_t type code encoded little-endian on the wire.
+Ladder Script defines 61 block types across 10 families. Each block type has a
+uint16_t type code encoded little-endian on the wire.
 
 ## Legend
 

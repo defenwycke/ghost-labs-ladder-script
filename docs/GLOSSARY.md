@@ -62,7 +62,7 @@ After all inputs pass, `Verify()` checks them all in a single batch. On batch fa
 Compile-time descriptor struct in `types.h`. Contains block type metadata: type code, name,
 known/invertible/key-consuming flags, pubkey count, pointers to conditions and witness
 implicit layouts, and a `conditions_only` flag. The `LookupBlockDescriptor()` function
-provides a runtime lookup table of all 61 active block types.
+provides a runtime lookup table of all 61 block types.
 
 ### CLTV
 Block type 0x0103 (Timelock family). Absolute timelock checking nLockTime against a
@@ -150,12 +150,7 @@ UNKNOWN_BLOCK_TYPE inverted becomes SATISFIED.
 
 ### HASH_GUARDED
 Block type 0x0204 (Hash family). Raw SHA256 preimage verification. Conditions:
-HASH256(hash). Witness: PREIMAGE(preimage). Not invertible, not key-consuming. Replaces
-the deprecated HASH_PREIMAGE with a non-invertible design.
-
-### HASH_PREIMAGE
-Block type 0x0201 (Hash family). **Deprecated.** Rejected at deserialization. Use HTLC
-or HASH_SIG instead.
+HASH256(hash). Witness: PREIMAGE(preimage). Not invertible, not key-consuming.
 
 ### HASH_SIG
 Block type 0x0703 (Compound family). Hash preimage + signature combined. Key-consuming
@@ -163,10 +158,6 @@ with 1 pubkey. Conditions: HASH256(hash), SCHEME(1). Witness: PUBKEY, SIGNATURE,
 
 ### HASH160
 Data type 0x04. RIPEMD160(SHA256()) hash, exactly 20 bytes.
-
-### HASH160_PREIMAGE
-Block type 0x0202 (Hash family). **Deprecated.** Rejected at deserialization. Use HTLC
-or HASH_SIG instead.
 
 ### HASH256
 Data type 0x03. SHA-256 hash, exactly 32 bytes.

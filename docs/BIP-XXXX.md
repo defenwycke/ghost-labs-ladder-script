@@ -102,8 +102,8 @@ Inline conditions (prefix `0xC1`) are removed and always rejected.
 
 ### 4.c Block Type Families
 
-Ladder Script defines 61 block types across 10 families (61 active, 2
-deprecated). Each block type is encoded as a `uint16_t` (little-endian).
+Ladder Script defines 61 block types across 10 families. Each block type is
+encoded as a `uint16_t` (little-endian).
 
 #### Signature Family (0x0001 - 0x00FF)
 
@@ -131,8 +131,7 @@ deprecated). Each block type is encoded as a `uint16_t` (little-endian).
 | `0x0203` | TAGGED_HASH      | BIP-340 tagged hash verification                 |
 | `0x0204` | HASH_GUARDED     | Raw SHA256 preimage verification (non-invertible)|
 
-Reserved codes 0x0201 and 0x0202 are rejected at deserialization.
-them at parse time. Use HTLC, HASH_SIG, or HASH_GUARDED instead.
+Codes 0x0201 and 0x0202 are reserved (not assigned to any block type).
 
 #### Covenant Family (0x0300 - 0x03FF)
 
@@ -336,8 +335,7 @@ types. Slots marked with `0xFFFF` are unused and rejected at deserialization.
 | `0x37` | P2SH_LEGACY          | `0x3D`     | HASH_GUARDED     |
 |        |                      | `0x3E`     | OUTPUT_CHECK     |
 
-Slots `0x07`, `0x08` (formerly HASH_PREIMAGE, HASH160_PREIMAGE) and
-`0x3F` - `0x7F` are unused.
+Slots `0x07`, `0x08` (reserved) and `0x3F` - `0x7F` are unused.
 
 ### 4.g Implicit Field Layouts
 

@@ -1,7 +1,7 @@
 # Ladder Script Review Guide
 
 This guide walks code reviewers through the Ladder Script implementation. The system
-comprises 61 block types (61) across 10 families, implemented in
+comprises 61 block types across 10 families, implemented in
 22 source files under `src/rung/`.
 
 ## File-by-File Walkthrough
@@ -10,12 +10,12 @@ comprises 61 block types (61) across 10 families, implemented in
 The largest header. Defines all block types (`RungBlockType` enum), all data types
 (`RungDataType` enum), structural types (`RungCoil`, `RungField`, `RungBlock`, `Rung`,
 `Relay`, `LadderWitness`, `WitnessReference`), and metadata functions:
-- `IsKnownBlockType()` — allowlist of 61 active types; reserved codes 0x0201 and 0x0202 rejected
+- `IsKnownBlockType()` — allowlist of 61 types (codes 0x0201/0x0202 reserved, not known)
 - `IsInvertibleBlockType()` — explicit allowlist; key-consuming blocks excluded
 - `IsKeyConsumingBlockType()` — blocks whose pubkeys fold into Merkle leaves
 - `PubkeyCountForBlock()` — fixed or variable pubkey count per block type
 - `IsDataEmbeddingType()` — high-bandwidth types blocked in layout-less blocks
-- Micro-header table (128 slots, 61 active, 2 reserved slots as 0xFFFF)
+- Micro-header table (128 slots, 61 assigned, 2 reserved as 0xFFFF)
 - Implicit field layouts (per block type, per context)
 - `BlockDescriptor` table and `LookupBlockDescriptor()`
 - `VerifyImplicitLayoutPairing()` — runtime init check for layout consistency

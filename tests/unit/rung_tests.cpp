@@ -658,7 +658,7 @@ BOOST_AUTO_TEST_CASE(eval_hash_preimage_sha256_satisfied)
     CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash);
 
     RungBlock block;
-    block.type = RungBlockType::HASH_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0201;
     block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash, hash + 32)});
     block.fields.push_back({RungDataType::PREIMAGE, preimage});
 
@@ -674,7 +674,7 @@ BOOST_AUTO_TEST_CASE(eval_hash_preimage_sha256_wrong)
     std::vector<uint8_t> wrong_preimage{0x05, 0x06, 0x07, 0x08};
 
     RungBlock block;
-    block.type = RungBlockType::HASH_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0201;
     block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash, hash + 32)});
     block.fields.push_back({RungDataType::PREIMAGE, wrong_preimage});
 
@@ -688,7 +688,7 @@ BOOST_AUTO_TEST_CASE(eval_hash160_preimage_satisfied)
     CHash160().Write(preimage).Finalize(hash);
 
     RungBlock block;
-    block.type = RungBlockType::HASH160_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0202;
     block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(hash, hash + 20)});
     block.fields.push_back({RungDataType::PREIMAGE, preimage});
 
@@ -845,7 +845,7 @@ BOOST_AUTO_TEST_CASE(inversion_hash_preimage)
     CSHA256().Write(preimage.data(), preimage.size()).Finalize(hash);
 
     RungBlock block;
-    block.type = RungBlockType::HASH_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0201;
     block.fields.push_back({RungDataType::HASH256, std::vector<uint8_t>(hash, hash + 32)});
     block.fields.push_back({RungDataType::PREIMAGE, preimage});
 
@@ -3992,7 +3992,7 @@ BOOST_AUTO_TEST_CASE(eval_hash160_preimage_wrong)
     std::vector<uint8_t> wrong_preimage{0xAA, 0xBB, 0xCC, 0xDD};
 
     RungBlock block;
-    block.type = RungBlockType::HASH160_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0202;
     block.fields.push_back({RungDataType::HASH160, std::vector<uint8_t>(hash, hash + 20)});
     block.fields.push_back({RungDataType::PREIMAGE, wrong_preimage});
 
@@ -5926,7 +5926,7 @@ BOOST_AUTO_TEST_CASE(relay_eval_unsatisfied_blocks_rung)
     // Rung requires relay 0, but has a hash preimage block that would pass on its own
     Rung rung;
     RungBlock b;
-    b.type = RungBlockType::HASH_PREIMAGE;
+    b.type = RungBlockType::RESERVED_0201;
     auto preimage = std::vector<uint8_t>(32, 0xDD);
     CSHA256 hasher;
     hasher.Write(preimage.data(), preimage.size());
@@ -7304,8 +7304,8 @@ BOOST_AUTO_TEST_CASE(micro_header_lookup_all_known_types)
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::CLTV) >= 0);
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::CLTV_TIME) >= 0);
     // HASH_PREIMAGE and HASH160_PREIMAGE deprecated — slots set to 0xFFFF
-    BOOST_CHECK(MicroHeaderSlot(RungBlockType::HASH_PREIMAGE) < 0);
-    BOOST_CHECK(MicroHeaderSlot(RungBlockType::HASH160_PREIMAGE) < 0);
+    BOOST_CHECK(MicroHeaderSlot(RungBlockType::RESERVED_0201) < 0);
+    BOOST_CHECK(MicroHeaderSlot(RungBlockType::RESERVED_0202) < 0);
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::TAGGED_HASH) >= 0);
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::CTV) >= 0);
     BOOST_CHECK(MicroHeaderSlot(RungBlockType::VAULT_LOCK) >= 0);
@@ -7410,7 +7410,7 @@ BOOST_AUTO_TEST_CASE(micro_header_hash_preimage_rejected)
     LadderWitness ladder;
     Rung rung;
     RungBlock block;
-    block.type = RungBlockType::HASH_PREIMAGE;
+    block.type = RungBlockType::RESERVED_0201;
     block.fields.push_back({RungDataType::HASH256, MakeHash256()});
     block.fields.push_back({RungDataType::PREIMAGE, std::vector<uint8_t>(32, 0xEE)});
     rung.blocks.push_back(block);
@@ -10959,7 +10959,7 @@ BOOST_AUTO_TEST_CASE(block_descriptor_table_consistency)
         auto bt = static_cast<RungBlockType>(tc);
 
         // Skip deprecated types
-        if (bt == RungBlockType::HASH_PREIMAGE || bt == RungBlockType::HASH160_PREIMAGE) continue;
+        if (bt == RungBlockType::RESERVED_0201 || bt == RungBlockType::RESERVED_0202) continue;
 
         const auto* desc = rung::LookupBlockDescriptor(bt);
         BOOST_CHECK_MESSAGE(desc != nullptr, "Missing descriptor for " + BlockTypeName(bt));
