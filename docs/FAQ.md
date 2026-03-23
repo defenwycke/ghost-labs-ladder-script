@@ -45,13 +45,13 @@ The transaction version for Ladder Script transactions is **4** (`RUNG_TX_VERSIO
 
 ## Q3: What are the block type families?
 
-There are **10 families** containing **63 block types** (61 active + 2 deprecated).
+There are **10 families** containing **61 block types**.
 
 | # | Family | Range | Block types | Count |
 |---|--------|-------|-------------|-------|
 | 1 | **Signature** | `0x0001`-`0x00FF` | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG | 5 |
 | 2 | **Timelock** | `0x0100`-`0x01FF` | CSV, CSV_TIME, CLTV, CLTV_TIME | 4 |
-| 3 | **Hash** | `0x0200`-`0x02FF` | TAGGED_HASH, HASH_GUARDED, ~~HASH_PREIMAGE~~, ~~HASH160_PREIMAGE~~ | 4 (2 active, 2 deprecated) |
+| 3 | **Hash** | `0x0200`-`0x02FF` | TAGGED_HASH, HASH_GUARDED | 2 |
 | 4 | **Covenant** | `0x0300`-`0x03FF` | CTV, VAULT_LOCK, AMOUNT_LOCK | 3 |
 | 5 | **Recursion** | `0x0400`-`0x04FF` | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | 6 |
 | 6 | **Anchor/L2** | `0x0500`-`0x05FF` | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN | 7 |
@@ -59,10 +59,6 @@ There are **10 families** containing **63 block types** (61 active + 2 deprecate
 | 8 | **Compound** | `0x0700`-`0x07FF` | TIMELOCKED_SIG, HTLC, HASH_SIG, PTLC, CLTV_SIG, TIMELOCKED_MULTISIG | 6 |
 | 9 | **Governance** | `0x0800`-`0x08FF` | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK | 7 |
 | 10 | **Legacy** | `0x0900`-`0x09FF` | P2PK_LEGACY, P2PKH_LEGACY, P2SH_LEGACY, P2WPKH_LEGACY, P2WSH_LEGACY, P2TR_LEGACY, P2TR_SCRIPT_LEGACY | 7 |
-
-**Deprecated block types** (rejected at deserialization):
-- `HASH_PREIMAGE` (0x0201): replaced by HTLC, HASH_SIG, or HASH_GUARDED
-- `HASH160_PREIMAGE` (0x0202): replaced by HTLC, HASH_SIG, or HASH_GUARDED
 
 ---
 
@@ -245,9 +241,8 @@ via a 128-entry lookup table (`MICRO_HEADER_TABLE`):
 - `0x80`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, not inverted)
 - `0x81`: Escape byte, followed by `uint16_t LE` block type (3 bytes total, inverted)
 
-All 61 active block types have assigned micro-header slots (slots 0x00 through
-0x3E). Slots 0x07 and 0x08 are reserved (formerly HASH_PREIMAGE and
-HASH160_PREIMAGE).
+All 61 block types have assigned micro-header slots (slots 0x00 through
+0x3E). Slots 0x07 and 0x08 are reserved.
 
 ### Implicit field layouts
 
@@ -335,11 +330,7 @@ Ladder Script enforces multiple layers of anti-spam protection:
    - `MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`
    - `COIL_ADDRESS_HASH_SIZE = 32` (SHA256 of raw address)
 
-10. **Deprecated block rejection**: HASH_PREIMAGE and HASH160_PREIMAGE are
-    rejected at deserialization with the message "deprecated block type: use
-    HTLC or HASH_SIG".
-
-11. **Blanket HASH256 rejection**: In blocks without implicit layouts, HASH256
+10. **Blanket HASH256 rejection**: In blocks without implicit layouts, HASH256
     fields are rejected by the `IsDataEmbeddingType` check, closing the gap
     where arbitrary 32-byte data could be injected.
 
@@ -777,7 +768,7 @@ slot assignment:
 
 - Slots 0x00-0x02: Signature (SIG, MULTISIG, ADAPTOR_SIG)
 - Slots 0x03-0x06: Timelock (CSV, CSV_TIME, CLTV, CLTV_TIME)
-- Slots 0x07-0x08: Reserved (deprecated HASH_PREIMAGE, HASH160_PREIMAGE)
+- Slots 0x07-0x08: Reserved
 - Slot 0x09: TAGGED_HASH
 - Slots 0x0A-0x0C: Covenant (CTV, VAULT_LOCK, AMOUNT_LOCK)
 - Slots 0x0D-0x12: Recursion (6 types)

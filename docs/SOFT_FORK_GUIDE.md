@@ -1,7 +1,7 @@
 # Ladder Script Soft Fork Guide
 
-How Ladder Script activates as a soft fork on Bitcoin. All 63 block types (61 active, 2
-deprecated) activate together in a single deployment. Transactions use `RUNG_TX_VERSION = 4`.
+How Ladder Script activates as a soft fork on Bitcoin. All 61 block types activate
+together in a single deployment. Transactions use `RUNG_TX_VERSION = 4`.
 
 ## Phased Approach
 
@@ -111,7 +111,6 @@ transaction:
    - `MAX_PREIMAGE_FIELDS_PER_WITNESS = 2`
    - `MAX_RELAYS = 8`, `MAX_RELAY_DEPTH = 4`
    - Known block types only (`IsKnownBlockType` returns true)
-   - Deprecated blocks (HASH_PREIMAGE, HASH160_PREIMAGE) rejected
    - Non-invertible block types cannot have `inverted = true`
    - Implicit layout enforcement (field count and types must match)
    - `IsDataEmbeddingType` rejection for layout-less blocks
@@ -171,13 +170,13 @@ Valid hash types: `{0x00-0x03, 0x40-0x43, 0x81-0x83, 0xC0-0xC3}`.
 
 ## Block Types
 
-All 63 block types activate simultaneously:
+All 61 block types activate simultaneously:
 
 | Family | Types | Count |
 |--------|-------|-------|
 | Signature | SIG, MULTISIG, ADAPTOR_SIG, MUSIG_THRESHOLD, KEY_REF_SIG | 5 |
 | Timelock | CSV, CSV_TIME, CLTV, CLTV_TIME | 4 |
-| Hash | HASH_PREIMAGE (deprecated), HASH160_PREIMAGE (deprecated), TAGGED_HASH, HASH_GUARDED | 4 |
+| Hash | TAGGED_HASH, HASH_GUARDED | 2 |
 | Covenant | CTV, VAULT_LOCK, AMOUNT_LOCK | 3 |
 | Recursion | RECURSE_SAME, RECURSE_MODIFIED, RECURSE_UNTIL, RECURSE_COUNT, RECURSE_SPLIT, RECURSE_DECAY | 6 |
 | Anchor | ANCHOR, ANCHOR_CHANNEL, ANCHOR_POOL, ANCHOR_RESERVE, ANCHOR_SEAL, ANCHOR_ORACLE, DATA_RETURN | 7 |
@@ -186,7 +185,7 @@ All 63 block types activate simultaneously:
 | Governance | EPOCH_GATE, WEIGHT_LIMIT, INPUT_COUNT, OUTPUT_COUNT, RELATIVE_VALUE, ACCUMULATOR, OUTPUT_CHECK | 7 |
 | Legacy | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT | 7 |
 
-Total: 61 (61 active + 2 deprecated)
+Total: 61
 
 ## Anti-Spam Hardening
 
@@ -212,7 +211,7 @@ The soft fork includes comprehensive anti-spam measures enforced at consensus:
 | Signet verification | 61/61 | All active block types: fund + mine + spend on live signet with recorded txids |
 | Documentation accuracy | 43 | types.h consistency, engine templates, block reference pages, markdown docs |
 | Proxy unit tests | 15 | BIP32 derivation, base58, RIPEMD-160, WIF encoding |
-| Engine smoke tests | 20 | 48 templates, 63 block types, getTypeHex coverage, dead code checks |
+| Engine smoke tests | 20 | 48 templates, 61 block types, getTypeHex coverage, dead code checks |
 | TLA+ formal specs | 10 specs, 80+ properties | Evaluation semantics, composition, anti-spam, wire format, Merkle, sighash, covenants, cross-input |
 | Fuzz targets | 1 (deserializer) | `rung_deserialize_fuzz.cpp` — needs evaluator + sighash targets |
 

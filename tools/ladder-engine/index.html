@@ -2927,12 +2927,6 @@ BlockRegistry.CLTV_TIME.evaluate = (block, simState) => {
   return (simState.medianTime || 0) >= target ? 'satisfied' : 'unsatisfied';
 };
 
-BlockRegistry.HASH_PREIMAGE.evaluate = (block, simState) =>
-  block.values.preimage ? 'satisfied' : (simState.knownPreimages?.has(block.values.hash) ? 'satisfied' : 'unsatisfied');
-
-BlockRegistry.HASH160_PREIMAGE.evaluate = (block, simState) =>
-  block.values.preimage ? 'satisfied' : (simState.knownPreimages?.has(block.values.hash) ? 'satisfied' : 'unsatisfied');
-
 BlockRegistry.TAGGED_HASH.evaluate = (block, simState) =>
   simState.knownPreimages?.has(block.values.hash) ? 'satisfied' : 'unsatisfied';
 
@@ -3175,9 +3169,7 @@ BlockRegistry.CSV.testData = () => ({ blocks: '144' });
 BlockRegistry.CSV_TIME.testData = () => ({ seconds: '86400' });
 BlockRegistry.CLTV.testData = () => ({ height: '850000' });
 BlockRegistry.CLTV_TIME.testData = () => ({ timestamp: '1700000000' });
-BlockRegistry.HASH_PREIMAGE.testData = () => ({ preimage: TEST_PREIMAGE });
 BlockRegistry.HASH_GUARDED.testData = () => ({ hash: TEST_HASH256, preimage: TEST_PREIMAGE });
-BlockRegistry.HASH160_PREIMAGE.testData = () => ({ preimage: TEST_PREIMAGE });
 BlockRegistry.TAGGED_HASH.testData = () => ({ tag: TEST_HASH256, hash: TEST_HASH256_B });
 BlockRegistry.CTV.testData = () => ({ template_hash: TEST_HASH256 });
 BlockRegistry.VAULT_LOCK.testData = () => ({ recovery_key: TEST_PUBKEYS[0], hot_key: TEST_PUBKEYS[1], delay: '10' });
@@ -3265,9 +3257,7 @@ BlockRegistry.HASH_SIG.fundNeeds = () => ({ keys: [{ field: 'pubkey', multi: fal
 BlockRegistry.PTLC.fundNeeds = () => _singleKey('signing_key');
 BlockRegistry.CLTV_SIG.fundNeeds = () => _singleKey('pubkey');
 BlockRegistry.TIMELOCKED_MULTISIG.fundNeeds = () => _multiKey('pubkeys');
-BlockRegistry.HASH_PREIMAGE.fundNeeds = () => _hashNeed('preimage', 'SHA256');
 BlockRegistry.HASH_GUARDED.fundNeeds = () => _hashNeed('preimage', 'SHA256');
-BlockRegistry.HASH160_PREIMAGE.fundNeeds = () => _hashNeed('preimage', 'HASH160');
 BlockRegistry.TAGGED_HASH.fundNeeds = () => _hashNeed('hash', 'TAGGED');
 BlockRegistry.VAULT_LOCK.fundNeeds = () => ({ keys: [{ field: 'recovery_key', multi: false }, { field: 'hot_key', multi: false }], hashes: [] });
 BlockRegistry.LATCH_SET.fundNeeds = () => _singleKey('pubkey');
@@ -3364,18 +3354,6 @@ BlockRegistry.TIMELOCKED_MULTISIG.buildSigner = (block, keyLookup, preimages, op
   const privkeys = allPubkeys.map(k => { const kp = keyLookup(k); return kp ? kp.privkey : null; }).filter(Boolean);
   if (privkeys.length === 0) return null;
   return { type: 'TIMELOCKED_MULTISIG', privkeys, pubkeys: allPubkeys, threshold: parseInt(block.values.threshold) || 0, scheme: block.values.scheme || opts.scheme || 'SCHNORR' };
-};
-
-BlockRegistry.HASH_PREIMAGE.buildSigner = (block, keyLookup, preimages) => {
-  const preimage = block.values.preimage || preimages?.[block.values.hash];
-  if (!preimage) return null;
-  return { type: 'HASH_PREIMAGE', preimage };
-};
-
-BlockRegistry.HASH160_PREIMAGE.buildSigner = (block, keyLookup, preimages) => {
-  const preimage = block.values.preimage || preimages?.[block.values.hash];
-  if (!preimage) return null;
-  return { type: 'HASH160_PREIMAGE', preimage };
 };
 
 BlockRegistry.TAGGED_HASH.buildSigner = (block, keyLookup, preimages) => {
@@ -5956,7 +5934,7 @@ function getTypeHex(type) {
   const map = {
     SIG:'0001',MULTISIG:'0002',ADAPTOR_SIG:'0003',MUSIG_THRESHOLD:'0004',KEY_REF_SIG:'0005',
     CSV:'0101',CSV_TIME:'0102',CLTV:'0103',CLTV_TIME:'0104',
-    HASH_PREIMAGE:'0201',HASH160_PREIMAGE:'0202',TAGGED_HASH:'0203',HASH_GUARDED:'0204',
+    TAGGED_HASH:'0203',HASH_GUARDED:'0204',
     CTV:'0301',VAULT_LOCK:'0302',AMOUNT_LOCK:'0303',
     RECURSE_SAME:'0401',RECURSE_MODIFIED:'0402',RECURSE_UNTIL:'0403',
     RECURSE_COUNT:'0404',RECURSE_SPLIT:'0405',RECURSE_DECAY:'0406',

@@ -9,7 +9,7 @@ and Merkelized conditions (MLSC). Transactions use version 4 (`RUNG_TX_VERSION =
 | Document | Description |
 |----------|-------------|
 | [INTRODUCTION.md](INTRODUCTION.md) | What Ladder Script is, key properties, and design rationale |
-| [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) | Complete table of all 61 block types (61 active, 2 deprecated) |
+| [BLOCK_LIBRARY.md](BLOCK_LIBRARY.md) | Complete table of all 61 block types (61) |
 | [GLOSSARY.md](GLOSSARY.md) | Alphabetical glossary of every term and block type |
 | [INTEGRATION.md](INTEGRATION.md) | How to integrate Ladder Script into wallets and applications |
 | [SOFT_FORK_GUIDE.md](SOFT_FORK_GUIDE.md) | Activation mechanics, validation changes, and deployment |
@@ -21,7 +21,7 @@ and Merkelized conditions (MLSC). Transactions use version 4 (`RUNG_TX_VERSION =
 
 | File | Purpose |
 |------|---------|
-| `src/rung/types.h` | All 63 block types, 11 data types, RungCoil, implicit layouts, micro-header table, BlockDescriptor table |
+| `src/rung/types.h` | All 61 block types, 11 data types, RungCoil, implicit layouts, micro-header table, BlockDescriptor table |
 | `src/rung/types.cpp` | RungField::IsValid implementation |
 | `src/rung/evaluator.h` | EvalResult, RungEvalContext, BatchVerifier, LadderSignatureChecker |
 | `src/rung/evaluator.cpp` | All 61 block evaluators, EvalBlock dispatch, EvalRung (AND), EvalLadder (OR), VerifyRungTx |

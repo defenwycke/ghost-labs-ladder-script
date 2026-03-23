@@ -102,7 +102,7 @@ Inline conditions (prefix `0xC1`) are removed and always rejected.
 
 ### 4.c Block Type Families
 
-Ladder Script defines 63 block types across 10 families (61 active, 2
+Ladder Script defines 61 block types across 10 families (61 active, 2
 deprecated). Each block type is encoded as a `uint16_t` (little-endian).
 
 #### Signature Family (0x0001 - 0x00FF)
@@ -128,12 +128,10 @@ deprecated). Each block type is encoded as a `uint16_t` (little-endian).
 
 | Code     | Name             | Description                                     |
 |----------|------------------|-------------------------------------------------|
-| `0x0201` | HASH_PREIMAGE    | **Deprecated.** SHA-256 hash preimage reveal     |
-| `0x0202` | HASH160_PREIMAGE | **Deprecated.** HASH160 preimage reveal          |
 | `0x0203` | TAGGED_HASH      | BIP-340 tagged hash verification                 |
 | `0x0204` | HASH_GUARDED     | Raw SHA256 preimage verification (non-invertible)|
 
-HASH_PREIMAGE and HASH160_PREIMAGE are deprecated. The deserializer rejects
+Reserved codes 0x0201 and 0x0202 are rejected at deserialization.
 them at parse time. Use HTLC, HASH_SIG, or HASH_GUARDED instead.
 
 #### Covenant Family (0x0300 - 0x03FF)
@@ -195,7 +193,7 @@ signature constraint, requiring another input with a matching conditions hash.
 |----------|---------------------|--------------------------------------------|
 | `0x0701` | TIMELOCKED_SIG      | SIG + CSV combined                          |
 | `0x0702` | HTLC                | Hash + Timelock + Sig (atomic swap)         |
-| `0x0703` | HASH_SIG            | HASH_PREIMAGE + SIG combined                |
+| `0x0703` | HASH_SIG            | Hash preimage + signature combined                |
 | `0x0704` | PTLC                | ADAPTOR_SIG + CSV combined                  |
 | `0x0705` | CLTV_SIG            | SIG + CLTV combined                         |
 | `0x0706` | TIMELOCKED_MULTISIG | MULTISIG + CSV combined                     |
@@ -943,7 +941,7 @@ ladder(or(
 
 ## Activation
 
-All 63 block types (61 active, 2 deprecated) activate together as a single
+All 61 block types activate together as a single
 soft fork. On mainnet, only MLSC (0xC2) outputs are accepted. Inline
 conditions (0xC1) are removed and always rejected.
 

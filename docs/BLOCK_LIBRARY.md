@@ -1,7 +1,6 @@
 # Block Library
 
-Ladder Script defines 63 block types across 10 families. 61 are active; 2 are deprecated
-(HASH_PREIMAGE 0x0201, HASH160_PREIMAGE 0x0202). Deprecated blocks are rejected at
+Ladder Script defines 61 block types across 10 families
 deserialization. Each block type has a uint16_t type code encoded little-endian on the wire.
 
 ## Legend
@@ -37,8 +36,6 @@ deserialization. Each block type has a uint16_t type code encoded little-endian 
 
 | Code | Name | Inv | Key | PK# | Conditions | Description |
 |--------|------|-----|-----|-----|------------|-------------|
-| 0x0201 | HASH_PREIMAGE | --- | --- | --- | --- | **Deprecated.** Use HTLC or HASH_SIG. |
-| 0x0202 | HASH160_PREIMAGE | --- | --- | --- | --- | **Deprecated.** Use HTLC or HASH_SIG. |
 | 0x0203 | TAGGED_HASH | yes | no | 0 | HASH256(32), HASH256(32) | BIP-340 tagged hash verification |
 | 0x0204 | HASH_GUARDED | no | no | 0 | HASH256(32) | Raw SHA256 preimage verification |
 

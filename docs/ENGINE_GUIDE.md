@@ -109,7 +109,7 @@ an entry to view, copy, or compare the raw JSON.
 
 ## 3. Block Palette
 
-The left sidebar organizes **63 block types** (61 active, 2 deprecated) into
+The left sidebar organizes **61 block types** into
 **10 families**. Each family has a colour-coded dot. Groups are collapsible.
 Hovering a palette item shows a tooltip with the block description and hex
 type code.
@@ -128,8 +128,6 @@ type code.
 | LEGACY      | `#00e5ff` | P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_S |
 
 **Deprecated blocks:** HASH_PREIMAGE (0x0201) and HASH160_PREIMAGE (0x0202).
-Their descriptions state "DEPRECATED: Use HTLC, HASH_SIG, or HASH_GUARDED
-instead" and they are rejected at consensus.
 
 An internal block type `OUTPUT_REF` (not in the palette) references named
 output coils from other rungs.
