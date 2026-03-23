@@ -1628,6 +1628,65 @@ The verifier:
    || max(node_01, proof_hash[1]))`
 4. Compares `root` against the UTXO's `conditions_root`
 
+## Appendix C: Machine-Verified Test Vectors
+
+These vectors were generated on the live Ladder Script signet and can be
+independently verified by any node connected to the signet.
+
+### Vector 1: parseladder (SIG)
+
+```
+$ ghost-cli -signet parseladder "ladder(sig(@alice))" \
+  '{"alice":"032c4d54635a48e5542f0a06df7c3f752f505d9ab93873dcb8fb9627d7935d9bc7"}'
+
+{
+  "conditions_hex": "01010001010101000000",
+  "mlsc_root": "8aa9e71c44b2987c7d6718d9bb0a20d3abd208ae2ed89b025d90512813d8e9be",
+  "n_rungs": 1
+}
+```
+
+The `conditions_hex` byte-by-byte: `01`(1 rung) `01`(1 block) `00`(SIG micro-header)
+`01`(SCHEME=Schnorr) `01`(UNLOCK) `01`(INLINE) `01`(Schnorr) `00`(no address)
+`00`(no coil conditions) `00`(no rung destinations).
+
+### Vector 2: parseladder (vault with recovery)
+
+```
+$ ghost-cli -signet parseladder \
+  "ladder(or(and(sig(@hot), csv(144)), multisig(2, @a, @b, @c)))" \
+  '{"hot":"032c...","a":"0396...","b":"0354...","c":"023b..."}'
+
+{
+  "conditions_hex": "02020001039001800200010802010101000000",
+  "mlsc_root": "b70f60847a4382984886623cc28260c7ef8fc61fa46d77e8ec1f40549ca5c45d",
+  "n_rungs": 2
+}
+```
+
+MLSC scriptPubKey: `c25dc4a59c54401fece8776da41fc68fefc76082c23c6286489882437a84600fb7`
+
+### Vector 3: formatladder roundtrip
+
+```
+$ ghost-cli -signet formatladder "01010001010101000000"
+{ "descriptor": "ladder(sig(@?))" }
+```
+
+### Vector 4: Live signet spends (all 61 types verified)
+
+Every active block type has a fund+spend transaction pair recorded in
+`tests/vectors/signet_spends.json`. Example:
+
+```
+SIG       fund: 81a13a6480011eb1...  spend: 6e20f04c9fee3a45...
+HTLC      fund: 40094685bdf2b3db...  spend: c7d4ed9f9d61b8c3...
+VAULT_LOCK fund: de056aed337e802e... spend: d9ef426f36f99e11...
+```
+
+Verify any transaction:
+`ghost-cli -signet getrawtransaction <txid> true`
+
 ## Copyright
 
 This document is licensed under the MIT License.
