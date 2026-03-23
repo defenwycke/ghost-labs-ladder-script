@@ -341,9 +341,6 @@ via the inversion trick).
 | `0x0203` | TAGGED_HASH      | BIP-340 tagged hash verification                |
 | `0x0204` | HASH_GUARDED     | Raw SHA-256 preimage verification (non-invertible) |
 
-Codes `0x0201` and `0x0202` are reserved. They previously held
-HASH_PREIMAGE and HASH160_PREIMAGE, which were removed during the anti-spam
-audit. These codes MUST NOT be assigned to new block types.
 
 #### Covenant Family (0x0300 - 0x03FF)
 
@@ -590,7 +587,6 @@ types. Slots marked with `0xFFFF` are unused and rejected at deserialization.
 | `0x37` | P2SH_LEGACY          | `0x3D` | HASH_GUARDED         |
 |        |                      | `0x3E` | OUTPUT_CHECK         |
 
-Slots `0x07`, `0x08` (reserved for former hash block types) and `0x3F` -
 `0x7F` are unused.
 
 ### Implicit Field Layouts
@@ -1346,8 +1342,6 @@ output types in Bitcoin and does not represent a compatibility regression.
 
 - **Inline conditions (`0xC1` prefix):** Removed and always rejected. All
   outputs must use the MLSC Merkle root format (`0xC2`).
-- **Codes `0x0201` and `0x0202`:** Reserved (formerly HASH_PREIMAGE and
-  HASH160_PREIMAGE). These MUST NOT be reused.
 - **COVENANT coil type (`0x03`):** Removed. Only UNLOCK (`0x01`) and
   UNLOCK_TO (`0x02`) are valid coil types.
 - **AGGREGATE (`0x02`) and DEFERRED (`0x03`) attestation modes:** Removed.
