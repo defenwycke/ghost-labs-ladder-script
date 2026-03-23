@@ -270,6 +270,24 @@
       "spend_txid": "db97c0e0a0357801ef657a1a84e26d2ebf3495a2ad3290aafeb7a2afbc8a32e7",
       "status": "verified",
       "date": "2026-03-23T12:30:43Z"
+    },
+    "COUNTER_DOWN": {
+      "fund_txid": "e598d418b0ce0d18edcb2a682fb532a246e74a55eee67ffe2adf9c9f221faef6",
+      "spend_txid": "bd4d7904c6fd2e132d8872e6549ced84358d3755e9364105fb5a5d1a3f9fca83",
+      "status": "verified",
+      "date": "2026-03-23T12:47:04Z"
+    },
+    "LATCH_RESET": {
+      "fund_txid": "6717dba0b6061d5ead28f71910db58e23728e369cd54e777f6dbdf4e2452ac9c",
+      "spend_txid": "39f4ee05f19adc7193c88cd1b0e0358784b3b3bb6682534879aed72a15bf6c3a",
+      "status": "verified",
+      "date": "2026-03-23T12:47:14Z"
+    },
+    "ONE_SHOT": {
+      "fund_txid": "8287845087c9802734c2f2e4dabedcaf15bfa0079205978497f924ec8c3e3e4a",
+      "spend_txid": "130271ad5abf90837c573f7b544b4df7ea3e7454f60d3b59dac03b872df7add4",
+      "status": "verified",
+      "date": "2026-03-23T12:47:22Z"
     }
   }
 }
