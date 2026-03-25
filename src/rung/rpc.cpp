@@ -2206,28 +2206,26 @@ static RPCHelpMan signrungtx()
                 }
             }
 
-            // Compute proof hashes for unrevealed leaves
-            // Leaf order: [rung_leaf[0..N-1], relay_leaf[0..M-1], coil_leaf]
-            std::set<uint16_t> revealed_relay_indices;
-            for (const auto& [idx, _] : mlsc_proof.revealed_relays) {
-                revealed_relay_indices.insert(idx);
-            }
-
+            // TX_MLSC: compute proof hashes using template + value_commitment leaves.
+            // Leaf order: [rung_leaf[0..N-1]] (no separate relay/coil leaves in TX_MLSC)
+            // Each rung in the shared tree is one leaf.
             for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
-                if (r != target_rung) {
-                    std::vector<std::vector<uint8_t>> rpks;
-                    if (r < rung_pubkeys2.size()) rpks = rung_pubkeys2[r];
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRungLeaf(conditions.rungs[r], rpks));
+                if (r == target_rung) continue;
+                // Build CreationProofRung for this unrevealed rung
+                rung::CreationProofRung cp_rung;
+                for (const auto& block : conditions.rungs[r].blocks) {
+                    cp_rung.blocks.push_back({
+                        static_cast<uint16_t>(block.type),
+                        static_cast<uint8_t>(block.inverted ? 1 : 0)
+                    });
                 }
+                cp_rung.coil = conditions.coil; // Use the conditions coil
+                cp_rung.coil.output_index = 0;  // Default; caller should set properly
+                std::vector<std::vector<uint8_t>> rpks;
+                if (r < rung_pubkeys2.size()) rpks = rung_pubkeys2[r];
+                cp_rung.value_commitment = rung::ComputeValueCommitment(conditions.rungs[r], rpks);
+                mlsc_proof.proof_hashes.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
             }
-            for (uint16_t rl = 0; rl < conditions.relays.size(); ++rl) {
-                if (revealed_relay_indices.find(rl) == revealed_relay_indices.end()) {
-                    std::vector<std::vector<uint8_t>> rlpks;
-                    if (rl < relay_pubkeys2.size()) rlpks = relay_pubkeys2[rl];
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRelayLeaf(conditions.relays[rl], rlpks));
-                }
-            }
-            // Coil leaf is NOT a proof hash — it's computed from the witness coil
 
             auto proof_bytes = rung::SerializeMLSCProof(mlsc_proof);
             mtx.vin[input_idx].scriptWitness.stack.push_back(proof_bytes);
@@ -2898,23 +2896,22 @@ static RPCHelpMan signladder()
                 }
             }
 
-            // Compute leaf hashes for unrevealed rungs
+            // TX_MLSC: compute leaf hashes for unrevealed rungs using template + value_commitment
             for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
-                if (r != target_rung) {
-                    std::vector<std::vector<uint8_t>> rpks;
-                    if (r < rung_pubkeys.size()) rpks = rung_pubkeys[r];
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRungLeaf(conditions.rungs[r], rpks));
+                if (r == target_rung) continue;
+                rung::CreationProofRung cp_rung;
+                for (const auto& block : conditions.rungs[r].blocks) {
+                    cp_rung.blocks.push_back({
+                        static_cast<uint16_t>(block.type),
+                        static_cast<uint8_t>(block.inverted ? 1 : 0)
+                    });
                 }
-            }
-            // Compute leaf hashes for unrevealed relays
-            std::set<uint16_t> revealed_relay_indices;
-            for (const auto& [idx, _] : mlsc_proof.revealed_relays) {
-                revealed_relay_indices.insert(idx);
-            }
-            for (uint16_t rl = 0; rl < conditions.relays.size(); ++rl) {
-                if (revealed_relay_indices.find(rl) == revealed_relay_indices.end()) {
-                    mlsc_proof.proof_hashes.push_back(rung::ComputeRelayLeaf(conditions.relays[rl], {}));
-                }
+                cp_rung.coil = conditions.coil;
+                cp_rung.coil.output_index = 0;
+                std::vector<std::vector<uint8_t>> rpks;
+                if (r < rung_pubkeys.size()) rpks = rung_pubkeys[r];
+                cp_rung.value_commitment = rung::ComputeValueCommitment(conditions.rungs[r], rpks);
+                mlsc_proof.proof_hashes.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
             }
 
             auto proof_bytes = rung::SerializeMLSCProof(mlsc_proof);
