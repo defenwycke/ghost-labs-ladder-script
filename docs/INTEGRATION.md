@@ -6,11 +6,13 @@ modes, PQ schemes, and per-rung destinations.
 
 ## Overview
 
-Ladder Script transactions use `RUNG_TX_VERSION = 4`. Every output is an MLSC scriptPubKey:
-`0xC2 + 32-byte conditions_root` (33 bytes total). The spending witness carries the full
-conditions for one rung plus a Merkle proof for the unrevealed rungs. The node verifies the
-Merkle proof, evaluates the revealed rung, and (if signatures are batched) verifies all
-Schnorr signatures in a single batch.
+Ladder Script transactions use `RUNG_TX_VERSION = 4`. In the TX_MLSC format, each output
+is 8 bytes (value only) and the transaction carries one shared `conditions_root` with
+prefix byte `0xDF`. A creation proof in the witness is validated at block acceptance. The
+transaction serialization uses flag byte `0x02` to signal TX_MLSC format. The spending
+witness carries the full conditions for one rung plus a Merkle proof for the unrevealed
+rungs. The node verifies the Merkle proof, evaluates the revealed rung, and (if signatures
+are batched) verifies all Schnorr signatures in a single batch.
 
 ## Creating Outputs (MLSC)
 
@@ -66,7 +68,8 @@ from `conditions.h`:
 
 ### Step 3: Create the Output
 
-The scriptPubKey is `0xC2 || conditions_root` (33 bytes). Use `CreateMLSCScript(root)` from
+In TX_MLSC format, each output is 8 bytes (value only). The shared `conditions_root` is
+stored once per transaction with prefix byte `0xDF`. Use `CreateMLSCScript(root)` from
 `conditions.h`. To attach a DATA_RETURN payload: `CreateMLSCScript(root, data)` where data
 is 1 to 40 bytes.
 
@@ -102,9 +105,10 @@ use a diff witness to save space. Set `n_rungs = 0` on the wire, followed by:
 
 Diff field types are restricted to PUBKEY, SIGNATURE, PREIMAGE, SCRIPT_BODY, and SCHEME.
 
-## Signing (signrungtx)
+## Signing (signladder)
 
-Use the `signrungtx` RPC to sign a Ladder Script transaction. The RPC:
+Use the `signladder` RPC to sign a Ladder Script transaction. The RPC automatically
+looks up the funding transaction. The RPC:
 
 1. Computes `SignatureHashLadder()` using tagged hash `"LadderSighash"`.
 2. Signs with the specified scheme (Schnorr by default).
@@ -145,10 +149,11 @@ The `MAX_LADDER_WITNESS_SIZE` of 100,000 bytes accommodates PQ signatures.
 
 ## Broadcasting
 
-Use `createrungtx` to build a raw v4 transaction, `signrungtx` to sign it, then
-`sendrawtransaction` to broadcast. The mempool policy check (`IsStandardRungTx`) verifies:
+Use `createtxmlsc` to build a raw v4 transaction (replaces `createrungtx`), `signladder`
+to sign it (with funding tx auto-lookup), then `sendrawtransaction` to broadcast. The
+mempool policy check (`IsStandardRungTx`) verifies:
 - Every input has a witness that deserializes successfully
-- Every output is MLSC (0xC2)
+- The transaction uses valid TX_MLSC format (0xDF prefix)
 
 ## Descriptor Language
 
@@ -254,8 +259,8 @@ The full validation pipeline for a v4 RUNG_TX:
 | `decoderung` | Decode a ladder witness from hex |
 | `createrung` | Build conditions and compute MLSC root |
 | `validateladder` | Validate a ladder witness structure |
-| `createrungtx` | Build a raw v4 transaction |
-| `signrungtx` | Sign a v4 transaction input |
+| `createtxmlsc` | Build a raw v4 TX_MLSC transaction (replaces `createrungtx`) |
+| `signladder` | Sign a v4 transaction input with funding tx auto-lookup (replaces `signrungtx`) |
 | `computectvhash` | Compute BIP-119 CTV template hash |
 | `generatepqkeypair` | Generate a PQ keypair |
 | `pqpubkeycommit` | Compute PQ pubkey commitment |

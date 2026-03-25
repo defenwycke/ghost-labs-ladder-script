@@ -14,8 +14,10 @@ SATISFIED wins.
 
 Ladder Script is carried in two places:
 
-1. **Conditions** (locking side): stored on-chain as an MLSC output
-   (`0xC2 + 32-byte Merkle root`). The full conditions are never on-chain;
+1. **Conditions** (locking side): stored on-chain as a TX_MLSC output.
+   Each output is 8 bytes (value only); the transaction carries one shared
+   `conditions_root` with prefix byte `0xDF`. A creation proof in the witness
+   is validated at block acceptance. The full conditions are never on-chain;
    only the root hash is published. Inline conditions (`0xC1`) are removed.
 2. **Witness** (spending side): carried in the transaction witness. Contains
    signatures, preimages, and other secrets required to satisfy the conditions.
@@ -31,7 +33,7 @@ The transaction version for Ladder Script transactions is **4** (`RUNG_TX_VERSIO
 | Encoding | Stack-based opcodes | Typed function blocks with fixed field layouts |
 | Evaluation | Sequential opcode execution | Block dispatch: AND within rung, OR across rungs |
 | Data model | Untyped stack items | 11 typed data types (PUBKEY, HASH256, NUMERIC, etc.) |
-| Locking script | On-chain (scriptPubKey) | Off-chain Merkle root only (MLSC, 33 bytes) |
+| Locking script | On-chain (scriptPubKey) | Off-chain Merkle root only (TX_MLSC, 8 bytes per output + shared root) |
 | Extensibility | Soft-fork new opcodes | New block types added to micro-header table |
 | Post-quantum | Not supported | FALCON-512, FALCON-1024, Dilithium3, SPHINCS+ |
 | Wire efficiency | Variable opcode sizes | Micro-headers (1 byte) + implicit field layouts |
@@ -153,17 +155,16 @@ COUNTER_DOWN, COUNTER_UP.
 
 ---
 
-## Q7: What is MLSC?
+## Q7: What is TX_MLSC?
 
-**MLSC** (Merkelized Ladder Script Conditions) is the output format for Ladder
-Script. Every v4 output is a 33-byte scriptPubKey:
+**TX_MLSC** (Transaction-level Merkelized Ladder Script Conditions) is the output
+format for Ladder Script. In the TX_MLSC model, there is one shared Merkle tree
+per transaction (PLC model: one program, multiple output coils). Each output is
+8 bytes (value only); the transaction carries a single shared `conditions_root`
+with prefix byte `0xDF`. A creation proof in the witness section is validated at
+block acceptance.
 
-```
-0xC2 || conditions_root (32 bytes)
-```
-
-Optionally, up to 40 bytes of DATA_RETURN payload can be appended (total
-scriptPubKey size: 34 to 73 bytes).
+Each rung's coil has an `output_index` field declaring which output it governs.
 
 The `conditions_root` is a Merkle tree root computed from leaves:
 
@@ -171,10 +172,12 @@ The `conditions_root` is a Merkle tree root computed from leaves:
 Leaf order: [rung_leaf[0], ..., rung_leaf[N-1], relay_leaf[0], ..., relay_leaf[M-1], coil_leaf]
 ```
 
-Leaf hashing uses `TaggedHash("LadderLeaf", serialized_data || pubkeys)`.
+Leaf hashing uses `TaggedHash("LadderLeaf", structural_template || value_commitment)`.
 Interior nodes use `TaggedHash("LadderInternal", min(a,b) || max(a,b))` with
 sorted children (lexicographic order). The tree is padded to the next power of 2
 with `MLSC_EMPTY_LEAF = TaggedHash("LadderLeaf", "")`.
+
+The transaction serialization uses flag byte `0x02` to signal the TX_MLSC format.
 
 At spend time, the witness carries an `MLSCProof` containing:
 - `total_rungs`, `total_relays`, `rung_index`
@@ -185,10 +188,13 @@ At spend time, the witness carries an `MLSCProof` containing:
 
 The verifier (`VerifyMLSCProof`) reconstructs the full leaf array from revealed
 data plus proof hashes, builds the Merkle tree, and checks the computed root
-against the UTXO's `conditions_root`.
+against the transaction's `conditions_root`.
 
 **Privacy benefit**: only the spending rung is revealed. All other rungs remain
 hidden behind their leaf hashes.
+
+**Anti-spam surface**: 112 bytes per transaction (flat, no contiguous block).
+Zero readable attacker data in UTXOs (root is protocol-derived).
 
 ---
 
@@ -715,9 +721,9 @@ only. Using DATA in any other block type causes a deserialization error.
 **Size limits**: DATA fields are 1-40 bytes (hash 32 bytes + 8 bytes protocol
 metadata).
 
-**MLSC integration**: DATA_RETURN payload can be appended to MLSC scriptPubKeys
-after the 32-byte conditions root, producing a scriptPubKey of 34-73 bytes:
-`0xC2 + conditions_root(32) + data(1-40)`.
+**TX_MLSC integration**: DATA_RETURN payload can be appended to the shared
+conditions root, producing output data of 34-73 bytes:
+`0xDF + conditions_root(32) + data(1-40)`.
 
 **Consensus**: `ValidateRungOutputs` allows exactly one DATA_RETURN per
 transaction. The maximum data payload is 80 bytes.

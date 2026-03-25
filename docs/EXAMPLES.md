@@ -4,8 +4,10 @@ This document presents detailed, end-to-end examples of Ladder Script
 configurations. Each example shows the use case, descriptor notation (when
 applicable), block structure, evaluation logic, and approximate wire format size.
 
-All examples use `RUNG_TX_VERSION = 4` and MLSC (`0xC2`) outputs. Inline
-conditions (`0xC1`) are removed.
+All examples use `RUNG_TX_VERSION = 4` and TX_MLSC (`0xDF`) outputs. Each
+output is 8 bytes (value only) with one shared conditions_root per transaction.
+A creation proof in the witness is validated at block acceptance. Inline
+conditions (`0xC1`) and per-output MLSC (`0xC2`) are removed.
 
 ---
 
@@ -45,26 +47,15 @@ Ladder:
 7. Verifies the 64-byte Schnorr signature against the x-only pubkey and sighash.
 8. Returns SATISFIED on valid signature.
 
-### Wire format size
+### Wire format size (TX_MLSC)
 
-**Conditions (MLSC output)**: 33 bytes (`0xC2` + 32-byte Merkle root)
+**Output**: 8 bytes (value only)
 
-**MLSC proof** (witness stack[1]):
-- total_rungs(1) + total_relays(1) + rung_index(1) = 3 bytes
-- Rung blocks: n_blocks(1) + SIG micro-header(1) + SCHEME(1) = 3 bytes
-- Rung relay_refs: 0(1) = 1 byte
-- Revealed relays: 0(1) = 1 byte
-- Proof hashes: 0(1) = 1 byte (single rung, no unrevealed leaves except coil
-  leaf hash = 32 bytes + count)
-- Total proof: ~42 bytes
+**Shared conditions_root**: `0xDF` + 32-byte Merkle root (once per transaction)
 
-**Witness** (stack[0]):
-- n_rungs(1) + n_blocks(1) + SIG micro-header(1) + SCHEME(1) + PUBKEY(1+32) +
-  SIGNATURE(1+64) = ~102 bytes
-- Coil: 3 + addr_len(1) + n_conditions(1) + rung_dests(1) = 6 bytes
-- Total witness: ~108 bytes
+**Simple payment**: 647 WU / 162 vB
 
-**Total per-input overhead**: ~150 bytes (conditions + proof + witness)
+**Batch 100 outputs**: 7,867 WU / ~1,967 vB (cheapest format in existence)
 
 ---
 

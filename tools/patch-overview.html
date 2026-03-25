@@ -147,7 +147,7 @@ tr:nth-child(even) td { background: #f8f8f8; }
         <tr><td class="col-file">script/interpreter.h</td><td class="col-desc">Add SigVersion::LADDER = 4 and m_ladder_ready flag to PrecomputedTransactionData.</td><td class="col-lines">+5</td></tr>
         <tr><td class="col-file">primitives/transaction.h</td><td class="col-desc">Define RUNG_TX_VERSION = 4.</td><td class="col-lines">+4</td></tr>
         <tr><td class="col-file">script/script_error.cpp</td><td class="col-desc">Add SCRIPT_ERR_LADDER_INVALID_WITNESS and SCRIPT_ERR_LADDER_EVAL_FALSE error strings.</td><td class="col-lines">+4</td></tr>
-        <tr><td class="col-file">script/solver.cpp</td><td class="col-desc">Detect 0xC2 prefix as TxoutType::RUNG_CONDITIONS in the script solver.</td><td class="col-lines">+7</td></tr>
+        <tr><td class="col-file">script/solver.cpp</td><td class="col-desc">Detect 0xDF prefix as TxoutType::RUNG_CONDITIONS in the script solver.</td><td class="col-lines">+7</td></tr>
         <tr><td class="col-file">script/solver.h</td><td class="col-desc">Add RUNG_CONDITIONS to TxoutType enum.</td><td class="col-lines">+1</td></tr>
         <tr><td class="col-file">policy/policy.cpp</td><td class="col-desc">Route v4 transactions to rung::IsStandardRungTx. Bypass standard input/witness checks for MLSC outputs.</td><td class="col-lines">+17</td></tr>
         <tr><td class="col-file">rpc/mempool.cpp</td><td class="col-desc">Skip burn-amount check for MLSC outputs in sendrawtransaction and submitpackage.</td><td class="col-lines">+5</td></tr>
@@ -171,7 +171,7 @@ tr:nth-child(even) td { background: #f8f8f8; }
       <thead><tr><th>File</th><th style="text-align:right;">Lines</th><th>Purpose</th></tr></thead>
       <tbody>
         <tr><td class="col-file">evaluator.cpp</td><td class="col-lines">3,503</td><td class="col-desc">All 61 block evaluators, EvalBlock dispatch, EvalRung (AND), EvalLadder (OR), VerifyRungTx entry point, BatchVerifier</td></tr>
-        <tr><td class="col-file">rpc.cpp</td><td class="col-lines">2,605</td><td class="col-desc">RPC commands: createrung, createrungtx, signrungtx, decoderung, parseladder, formatladder, computectvhash, generatepqkeypair</td></tr>
+        <tr><td class="col-file">rpc.cpp</td><td class="col-lines">2,605</td><td class="col-desc">RPC commands: createrung, createtxmlsc, signladder, decoderung, parseladder, formatladder, computectvhash, generatepqkeypair</td></tr>
         <tr><td class="col-file">types.h</td><td class="col-lines">1,423</td><td class="col-desc">Block type enum (61 types), data types, RungCoil, implicit field layouts, micro-header table, BlockDescriptor table</td></tr>
         <tr><td class="col-file">serialize.cpp</td><td class="col-lines">944</td><td class="col-desc">Wire format: micro-headers, implicit fields, DeserializeLadderWitness, SerializeLadderWitness, anti-spam enforcement</td></tr>
         <tr><td class="col-file">conditions.cpp</td><td class="col-lines">657</td><td class="col-desc">MLSC Merkle tree: leaf computation, proof verification, merkle_pub_key, CreateMLSCScript</td></tr>

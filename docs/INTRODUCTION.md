@@ -19,9 +19,13 @@ belong to a known type with enforced size constraints.
 
 - **Typed fields.** 11 data types with fixed size ranges. No free-form data.
 - **AND/OR evaluation.** Blocks within a rung are AND; rungs within a ladder are OR.
-- **MLSC (Merkelized Ladder Script Conditions).** Outputs commit to a 33-byte
-  `0xC2 + SHA256 root`. Full conditions are revealed only at spend time. Inline
-  conditions (0xC1) have been removed.
+- **TX_MLSC (Transaction-level Merkelized Ladder Script Conditions).** Each output
+  is 8 bytes (value only); the transaction carries one shared `conditions_root` with
+  prefix `0xDF`. A creation proof in the witness is validated at block acceptance.
+  Leaf computation: `TaggedHash("LadderLeaf", structural_template || value_commitment)`.
+  One shared Merkle tree per transaction (PLC model: one program, multiple output coils).
+  Full conditions are revealed only at spend time. Inline conditions (0xC1) and per-output
+  MLSC (0xC2) have been removed.
 - **merkle_pub_key.** Public keys for key-consuming blocks are folded into the Merkle
   leaf hash, not stored in conditions fields. This prevents arbitrary data embedding
   through the PUBKEY_COMMIT writable surface.

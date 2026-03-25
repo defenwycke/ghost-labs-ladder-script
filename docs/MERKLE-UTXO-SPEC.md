@@ -10,42 +10,45 @@
 
 ## 1. Output Format
 
-An MLSC output is the **only** accepted output format for v4 (rung)
-transactions. Inline conditions (`0xC1`) are removed and always rejected.
+TX_MLSC is the **only** accepted output format for v4 (rung) transactions.
+Inline conditions (`0xC1`) and per-output MLSC (`0xC2`) are removed and always
+rejected.
 
-### scriptPubKey Layout
+### TX_MLSC Layout
 
-```
-0xC2 || conditions_root (32 bytes)
-```
+In the TX_MLSC model, there is one shared Merkle tree per transaction (PLC
+model: one program, multiple output coils). Each output is **8 bytes** (value
+only). The transaction carries a single shared `conditions_root` with prefix
+byte `0xDF`. A creation proof in the witness section is validated at block
+acceptance.
 
-Total: **33 bytes** (standard).
+The transaction serialization uses flag byte `0x02` to signal TX_MLSC format.
+
+Each rung's coil has an `output_index` field declaring which output it governs.
 
 With optional DATA\_RETURN payload:
 
 ```
-0xC2 || conditions_root (32 bytes) || data (1-40 bytes)
+0xDF || conditions_root (32 bytes) || data (1-40 bytes)
 ```
 
-Total: **34-73 bytes**.
-
-**Source**: `IsMLSCScript()` in `conditions.cpp` accepts `size >= 33 && size <= 73`
-and checks `scriptPubKey[0] == 0xC2` (`RUNG_MLSC_PREFIX`).
+**Source**: `IsMLSCScript()` in `conditions.cpp` checks `0xDF`
+(`RUNG_MLSC_PREFIX`).
 
 ### Constants
 
 ```cpp
-static constexpr uint8_t RUNG_MLSC_PREFIX = 0xc2;      // conditions.h:27
-static constexpr uint8_t RUNG_CONDITIONS_PREFIX = 0xc1; // conditions.h:21 (rejected — retained for test code)
+static constexpr uint8_t RUNG_MLSC_PREFIX = 0xdf;      // conditions.h (TX_MLSC prefix)
+static constexpr uint8_t RUNG_CONDITIONS_PREFIX = 0xc1; // conditions.h (rejected — retained for test code)
 ```
 
 ### Functions
 
 | Function | Signature | Purpose |
 |----------|-----------|---------|
-| `CreateMLSCScript` | `CScript CreateMLSCScript(const uint256& conditions_root)` | Build 33-byte MLSC scriptPubKey |
-| `CreateMLSCScript` | `CScript CreateMLSCScript(const uint256& conditions_root, const std::vector<uint8_t>& data)` | Build MLSC scriptPubKey with DATA\_RETURN payload |
-| `IsMLSCScript` | `bool IsMLSCScript(const CScript& scriptPubKey)` | Check prefix `0xC2` and size 33-73 |
+| `CreateMLSCScript` | `CScript CreateMLSCScript(const uint256& conditions_root)` | Build TX_MLSC shared conditions_root |
+| `CreateMLSCScript` | `CScript CreateMLSCScript(const uint256& conditions_root, const std::vector<uint8_t>& data)` | Build TX_MLSC with DATA\_RETURN payload |
+| `IsMLSCScript` | `bool IsMLSCScript(const CScript& scriptPubKey)` | Check prefix `0xDF` |
 | `IsLadderScript` | `bool IsLadderScript(const CScript& scriptPubKey)` | Alias for `IsMLSCScript` |
 | `GetMLSCRoot` | `bool GetMLSCRoot(const CScript& scriptPubKey, uint256& root_out)` | Extract 32-byte root (bytes 1-32) |
 | `GetMLSCData` | `std::vector<uint8_t> GetMLSCData(const CScript& scriptPubKey)` | Extract DATA\_RETURN payload (bytes 33+) |
@@ -88,11 +91,15 @@ Two tag domains are defined with pre-computed hashers:
 
 ### Leaf Computation
 
-**Rung leaf**: `ComputeRungLeaf(rung, pubkeys)`
+**Rung leaf**: `ComputeRungLeaf(rung, value_commitment)`
 
 ```
-TaggedHash("LadderLeaf", SerializeRungBlocks(rung, CONDITIONS) || pk[0] || pk[1] || ... || pk[N])
+TaggedHash("LadderLeaf", structural_template || value_commitment)
 ```
+
+The structural template encodes the rung's condition blocks. The value commitment
+binds the output value to the leaf. This replaces the previous
+`TaggedHash("LadderLeaf", serialized_blocks || pubkeys)` format.
 
 **Relay leaf**: `ComputeRelayLeaf(relay, pubkeys)`
 
@@ -377,10 +384,10 @@ The complete MLSC verification path in `VerifyRungTx` (`evaluator.cpp:3309+`):
 
 ### Step 1: Validate Outputs
 
-All transaction outputs must be valid MLSC format (`0xC2`). Non-Ladder
-outputs (OP\_RETURN, P2TR, P2WPKH, inline `0xC1`) are rejected in v4
-transactions. At most one DATA\_RETURN output is allowed (must have zero
-value).
+All transaction outputs must use valid TX_MLSC format (`0xDF`). Non-Ladder
+outputs (OP\_RETURN, P2TR, P2WPKH, inline `0xC1`, legacy per-output) are rejected
+in v4 transactions. At most one DATA\_RETURN output is allowed (must have zero
+value). A creation proof in the witness is validated at block acceptance.
 
 ### Step 2: Enforce Witness Stack Size
 
@@ -517,11 +524,11 @@ for each:
 
 ## 10. DATA\_RETURN in MLSC Outputs
 
-DATA\_RETURN payloads are encoded directly in the scriptPubKey, appended after
-the 32-byte conditions root:
+DATA\_RETURN payloads are encoded directly in the shared conditions section,
+appended after the 32-byte conditions root:
 
 ```
-0xC2 || root (32 bytes) || data (1-40 bytes)
+0xDF || root (32 bytes) || data (1-40 bytes)
 ```
 
 Consensus rules (`ValidateRungOutputs` in `evaluator.cpp`):
@@ -543,9 +550,12 @@ the payload at 40 bytes at consensus level.
 
 ### O(1) Output Size
 
-Every MLSC output is exactly 33 bytes (or 34-73 with DATA\_RETURN) regardless
-of the number of spending paths, blocks, or fields. This is a constant-size
-commitment that does not leak the complexity of the spending conditions.
+Every TX_MLSC output is exactly 8 bytes (value only) regardless of the number
+of spending paths, blocks, or fields. The shared conditions_root is stored once
+per transaction. This is a constant-size commitment that does not leak the
+complexity of the spending conditions. Anti-spam surface: 112 bytes per
+transaction (flat, no contiguous block). Zero readable attacker data in UTXOs
+(root is protocol-derived).
 
 ### Hidden Spending Paths
 
@@ -594,7 +604,7 @@ deserialization. Blocks without implicit layouts reject data-embedding types
 
 | Constant | Value | Location | Description |
 |----------|-------|----------|-------------|
-| `RUNG_MLSC_PREFIX` | `0xC2` | `conditions.h:27` | MLSC scriptPubKey prefix byte |
+| `RUNG_MLSC_PREFIX` | `0xDF` | `conditions.h` | TX_MLSC prefix byte |
 | `RUNG_CONDITIONS_PREFIX` | `0xC1` | `conditions.h:21` | Removed inline prefix (always rejected) |
 | `MAX_RUNGS` | 16 | `serialize.h:23` | Maximum rungs per ladder |
 | `MAX_BLOCKS_PER_RUNG` | 8 | `serialize.h:25` | Maximum blocks per rung |

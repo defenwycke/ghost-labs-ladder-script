@@ -441,7 +441,8 @@ nav {
           <div class="field"><span class="field-label">conditions:</span><span class="field-value">blocks &rarr; leaf hashes</span></div>
           <div class="field"><span class="field-label">pubkeys:</span><span class="field-value">folded into leaf (merkle_pub_key)</span></div>
           <div class="field"><span class="field-label">tree:</span><span class="field-value orange">leaves &rarr; Merkle root</span></div>
-          <div class="field"><span class="field-label">output:</span><span class="field-value orange">0xC2 || root (33 bytes)</span></div>
+          <div class="field"><span class="field-label">output:</span><span class="field-value orange">8 bytes (value only) per output</span></div>
+          <div class="field"><span class="field-label">conditions_root:</span><span class="field-value orange">0xDF || root (33 bytes, one per tx)</span></div>
         </div>
       </div>
       <div class="flow-arrow"></div>
@@ -716,7 +717,7 @@ nav {
         </div>
         <div class="covenant-row">
           <div class="covenant-step pending">4</div>
-          <div class="covenant-desc"><strong>Compare.</strong> Assert that the recomputed root equals the spending transaction's output <code>scriptPubKey</code> root (<code>0xC2 || root</code>).</div>
+          <div class="covenant-desc"><strong>Compare.</strong> Assert that the recomputed root equals the spending transaction's <code>conditions_root</code> (<code>0xDF || root</code>).</div>
         </div>
       </div>
 

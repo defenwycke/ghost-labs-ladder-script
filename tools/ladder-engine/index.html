@@ -2753,7 +2753,7 @@ const BLOCK_RULES = {
   ANCHOR_RESERVE: 'Reserve anchor: N-of-M guardian set. Requires N <= M.',
   ANCHOR_SEAL: 'Seal anchor: permanently binds UTXO to a data commitment.',
   ANCHOR_ORACLE: 'Oracle anchor: requires oracle pubkey and quorum count.',
-  DATA_RETURN: 'On-chain data (max 40 bytes) appended to MLSC output (0xC2 + root + data). Visible at fund time. Replaces OP_RETURN at 4 WU/byte. Max 1 per tx, zero-value.',
+  DATA_RETURN: 'On-chain data (max 40 bytes) appended to MLSC output (0xDF + root + data). Visible at fund time. Replaces OP_RETURN at 4 WU/byte. Max 1 per tx, zero-value.',
   HYSTERESIS_FEE: 'Satisfied when tx fee rate falls within [low, high] sat/vB.',
   HYSTERESIS_VALUE: 'Satisfied when output amount falls within [low, high] sats.',
   TIMER_CONTINUOUS: 'Satisfied when accumulated >= target blocks.',

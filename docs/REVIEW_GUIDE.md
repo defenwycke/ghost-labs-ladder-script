@@ -30,7 +30,7 @@ Core evaluation engine. Key review points:
 - `EvalRung()`: AND logic; all blocks must be SATISFIED; checks relay_refs against cached relay results
 - `EvalLadder()`: OR logic; evaluates relays first via `EvalRelays()`, then tries rungs; `satisfied_rung_out` reports which rung passed
 - `VerifyRungTx()`: top-level entry point; deserializes witness, verifies MLSC proof, evaluates ladder, runs batch verification, validates all outputs via `ValidateRungOutputs()`
-- `ValidateRungOutputs()`: consensus rule that every output must be MLSC (0xC2); rejects raw OP_RETURN and legacy scriptPubKey types
+- `ValidateRungOutputs()`: consensus rule that every output must be TX_MLSC (0xDF); rejects raw OP_RETURN, legacy scriptPubKey types, and old per-output MLSC (0xC2). Validates creation proof in witness at block acceptance.
 - `BatchVerifier`: collects Schnorr entries during evaluation; `Verify()` batch-checks all at once
 - `LadderSignatureChecker`: wraps `BaseSignatureChecker`; dispatches to `SignatureHashLadder` for `SigVersion::LADDER`
 - `ApplyInversion()`: ERROR unchanged; UNKNOWN inverted becomes SATISFIED
@@ -63,7 +63,7 @@ layout when layout exists). DATA type restricted to DATA_RETURN. ACCUMULATOR whi
 from IsDataEmbeddingType check.
 
 ### conditions.h / conditions.cpp
-MLSC system. MLSC prefix 0xC2. Inline conditions 0xC1 removed (stubs return false).
+TX_MLSC system. TX_MLSC prefix 0xDF (replaces per-output 0xC2). Inline conditions 0xC1 removed (stubs return false). Creation proof validated at block acceptance. Leaf computation uses `TaggedHash("LadderLeaf", structural_template || value_commitment)`. Each rung's coil has `output_index` declaring which output it governs.
 - `IsConditionDataType()`: HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA allowed; PUBKEY_COMMIT removed
 - Merkle tree: sorted interior hashing, `MLSC_EMPTY_LEAF` padding
 - Leaf order: rungs, then relays, then coil
@@ -88,7 +88,8 @@ validation, then checks all outputs are MLSC. Classification functions: `IsBaseB
 Post-quantum signature verification for FALCON-512, FALCON-1024, Dilithium3, SPHINCS+.
 
 ### rpc.cpp
-12 RPC commands: decoderung, createrung, validateladder, createrungtx, signrungtx,
+12 RPC commands: decoderung, createrung, validateladder, createtxmlsc (replaces
+createrungtx), signladder (replaces signrungtx, with funding tx auto-lookup),
 computectvhash, generatepqkeypair, pqpubkeycommit, extractadaptorsecret,
 verifyadaptorpresig, parseladder, formatladder.
 
@@ -111,7 +112,7 @@ whitelist (CTV, TAGGED_HASH, ACCUMULATOR, COSIGN, OUTPUT_CHECK).
 
 ## TLA+ Formal Specifications
 
-10 specs in `spec/` with 80+ checked properties:
+10 specs in `spec/` with 80+ checked properties (6.14M states verified, zero errors):
 
 | Spec | Focus |
 |------|-------|

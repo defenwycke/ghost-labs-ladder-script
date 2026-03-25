@@ -86,10 +86,16 @@ Block type 0x0641 (PLC family). Comparator for amount vs thresholds. Conditions:
 NUMERIC(operator), NUMERIC(value_b), NUMERIC(value_c). Invertible.
 
 ### Conditions
-See RungConditions. The locking side of a v4 output. Stored as an MLSC root (0xC2 + 32
-bytes). Contains rungs (with blocks), a coil, and optionally relays. Only condition data
-types are allowed: HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA. Never PUBKEY,
-SIGNATURE, PREIMAGE, or SCRIPT_BODY.
+See RungConditions. The locking side of a v4 output. In TX_MLSC format, conditions are
+stored as a shared conditions_root per transaction (0xDF prefix); each output is 8 bytes
+(value only). Contains rungs (with blocks), a coil, and optionally relays. Only condition
+data types are allowed: HASH256, HASH160, NUMERIC, SCHEME, SPEND_INDEX, DATA. Never
+PUBKEY, SIGNATURE, PREIMAGE, or SCRIPT_BODY.
+
+### Creation Proof
+A witness section validated at block acceptance in the TX_MLSC format. The creation proof
+binds the shared conditions_root to the transaction's outputs, proving that the structural
+template and value commitments are correctly constructed.
 
 ### COSIGN
 Block type 0x0681 (PLC family). Cross-input co-spend constraint. Requires another input
@@ -184,7 +190,7 @@ via `GetImplicitLayout()`.
 
 ### Inline Conditions
 The 0xC1 prefix format for embedding conditions directly in scriptPubKey. **Removed.**
-`IsRungConditionsScript()` always returns false. All outputs must use MLSC (0xC2).
+`IsRungConditionsScript()` always returns false. All outputs must use TX_MLSC (0xDF).
 
 ### INPUT_COUNT
 Block type 0x0803 (Governance family). Input count bounds on the spending transaction.
@@ -243,11 +249,15 @@ deprecated slots 0x07/0x08 set to 0xFFFF). Escape bytes: 0x80 = full header (not
 0x81 = full header (inverted). Defined in `types.h`.
 
 ### MLSC
-Merkelized Ladder Script Conditions. The only accepted output format: `0xC2 + 32-byte
-conditions_root`. Leaf order: `[rung_leaf[0], ..., rung_leaf[N-1], relay_leaf[0], ...,
-relay_leaf[M-1], coil_leaf]`. At spend time, the witness provides an MLSC proof revealing
-one rung plus Merkle siblings. Defined in `conditions.h`. Key functions: `IsMLSCScript()`,
-`GetMLSCRoot()`, `CreateMLSCScript()`, `VerifyMLSCProof()`.
+Merkelized Ladder Script Conditions. The per-output format prior to TX_MLSC. Originally
+`0xDF + 32-byte conditions_root` (33 bytes per output). Superseded by TX_MLSC which
+uses a shared conditions_root per transaction with 0xDF prefix and 8 bytes per output.
+See TX_MLSC.
+
+### output_index
+A field on each rung's coil in the TX_MLSC format declaring which transaction output
+that rung governs. Enables the shared-tree model where one Merkle tree covers multiple
+outputs.
 
 ### MLSCProof
 Struct in `conditions.h`. Carried in witness `stack[1]` when spending an MLSC output.
@@ -430,8 +440,21 @@ FALCON1024 (0x11), DILITHIUM3 (0x12), SPHINCS_SHA (0x13). Schemes 0x10+ are post
 
 ### RUNG_TX_VERSION
 Transaction version 4. All Ladder Script transactions use this version. Defined as a
-consensus constant. Outputs must be MLSC (0xC2 + 32-byte root). Witnesses are deserialized
-via `DeserializeLadderWitness()`. Verification entry point: `VerifyRungTx()`.
+consensus constant. Outputs use TX_MLSC format (0xDF prefix, 8 bytes per output, shared
+conditions_root per transaction). Flag byte 0x02 signals TX_MLSC serialization. Witnesses
+are deserialized via `DeserializeLadderWitness()`. Verification entry point: `VerifyRungTx()`.
+
+### TX_MLSC
+Transaction-level Merkelized Ladder Script Conditions. The current output format replacing
+per-output MLSC. One shared Merkle tree per transaction (PLC model: one program, multiple
+output coils). Each output is 8 bytes (value only); the transaction carries a single shared
+`conditions_root` with prefix byte `0xDF`. A creation proof witness section is validated at
+block acceptance. Leaf computation uses `TaggedHash("LadderLeaf", structural_template ||
+value_commitment)`. Each rung's coil has an `output_index` field declaring which output it
+governs. Anti-spam surface: 112 bytes per transaction (flat). Simple payment: 647 WU /
+162 vB. Batch 100: 7,867 WU / ~1,967 vB. Key functions: `IsMLSCScript()`, `GetMLSCRoot()`,
+`CreateMLSCScript()`, `VerifyMLSCProof()`. Leaf order: `[rung_leaf[0], ..., rung_leaf[N-1],
+relay_leaf[0], ..., relay_leaf[M-1], coil_leaf]`.
 
 ### SCHEME
 Data type 0x09. Signature scheme selector, exactly 1 byte. Values defined by RungScheme.
@@ -492,6 +515,12 @@ NUMERIC(remaining). Invertible.
 ### TxAggregateContext
 Reserved. AGGREGATE attestation is not implemented in the current release. The attestation
 byte is reserved for future extension via soft fork.
+
+### value_commitment
+A component of the TX_MLSC leaf hash. In the new leaf computation, each leaf is
+`TaggedHash("LadderLeaf", structural_template || value_commitment)`, replacing the
+previous `TaggedHash("LadderLeaf", serialized_blocks || pubkeys)`. The value commitment
+binds the output value to the Merkle tree.
 
 ### VAULT_LOCK
 Block type 0x0302 (Covenant family). Vault timelock covenant with hot/cold key pairs.

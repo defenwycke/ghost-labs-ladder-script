@@ -21,7 +21,7 @@ The signet mines every 10 minutes with real wall-clock timestamps.
 Bitcoin Core developers and the broader community review:
 - The 197-line integration patch to existing Bitcoin Core code
 - The 11,318-line self-contained `src/rung/` library
-- The 10 TLA+ formal specifications (80+ properties, 3.3M model-checked states)
+- The 10 TLA+ formal specifications (80+ properties, 6.14M model-checked states)
 - The anti-spam hardening and evaluation semantics
 
 Fuzz testing targets are being expanded. Third-party adversarial testing encouraged
@@ -38,7 +38,7 @@ BIP 9 version bits signaling. At activation height:
 - The Legacy family (P2PK, P2PKH, P2SH, P2WPKH, P2WSH, P2TR, P2TR_SCRIPT) allows
   wrapping existing Bitcoin output formats inside Ladder Script conditions, enabling
   migration from legacy to Ladder Script at the wallet's pace.
-- `RUNG_VERIFY_MLSC_ONLY` flag enforced: v4 outputs must use MLSC (0xC2), not inline.
+- `RUNG_VERIFY_MLSC_ONLY` flag enforced: v4 outputs must use TX_MLSC (0xDF), not inline or per-output MLSC.
 
 **This phase is non-disruptive.** Existing wallets, transactions, and scripts continue
 to work exactly as before. Ladder Script is opt-in — only wallets that create v4
@@ -84,16 +84,24 @@ enforce the full Ladder Script validation rules.
 
 ## Output Format
 
-All v4 transaction outputs must use MLSC (Merkelized Ladder Script Conditions):
+All v4 transaction outputs must use TX_MLSC (Transaction-level Merkelized Ladder Script
+Conditions):
 
 ```
-0xC2 + conditions_root (32 bytes) = 33-byte scriptPubKey
+Each output: 8 bytes (value only)
+Shared per transaction: 0xDF + conditions_root (32 bytes)
+Flag byte 0x02 signals TX_MLSC serialization format
 ```
 
-Inline conditions (0xC1) have been removed. `ValidateRungOutputs()` in `evaluator.cpp`
-enforces this as a consensus rule: every output of a v4 transaction must be a valid MLSC
-output or a DATA_RETURN block (exactly one per transaction, max 40 bytes). Raw OP_RETURN
-and legacy scriptPubKey types are rejected.
+A creation proof in the witness section is validated at block acceptance. Each rung's
+coil has an `output_index` field declaring which output it governs. One shared Merkle
+tree per transaction (PLC model: one program, multiple output coils).
+
+Inline conditions (0xC1) and per-output MLSC (0xC2) have been removed.
+`ValidateRungOutputs()` in `evaluator.cpp` enforces this as a consensus rule: every
+output of a v4 transaction must be a valid TX_MLSC output or a DATA_RETURN block (exactly
+one per transaction, max 40 bytes). Raw OP_RETURN and legacy scriptPubKey types are
+rejected.
 
 ## Consensus Validation Changes
 
@@ -133,7 +141,8 @@ transaction:
 ### Script Flags
 
 `RUNG_VERIFY_MLSC_ONLY` (bit 28) is set for mainnet. When active, inline conditions (0xC1)
-are always rejected. This flag is checked in `ValidateRungOutputs()`.
+and per-output MLSC (0xC2) are always rejected; only TX_MLSC (0xDF) is accepted. This
+flag is checked in `ValidateRungOutputs()`.
 
 ### Integration Points
 
@@ -213,7 +222,7 @@ The soft fork includes comprehensive anti-spam measures enforced at consensus:
 | Documentation accuracy | 43 | types.h consistency, engine templates, block reference pages, markdown docs |
 | Proxy unit tests | 15 | BIP32 derivation, base58, RIPEMD-160, WIF encoding |
 | Engine smoke tests | 20 | 48 templates, 61 block types, getTypeHex coverage, dead code checks |
-| TLA+ formal specs | 10 specs, 80+ properties | Evaluation semantics, composition, anti-spam, wire format, Merkle, sighash, covenants, cross-input |
+| TLA+ formal specs | 10 specs, 80+ properties, 6.14M states | Evaluation semantics, composition, anti-spam, wire format, Merkle, sighash, covenants, cross-input |
 | Fuzz targets | 1 (deserializer) | `rung_deserialize_fuzz.cpp` — needs evaluator + sighash targets |
 
 The 10 TLA+ specifications are:

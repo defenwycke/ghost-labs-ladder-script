@@ -166,9 +166,10 @@ tr:nth-child(even) td { background: #fafafa; }
   <!-- GRAMMAR -->
   <div class="section">
     <div class="section-head">Grammar</div>
-    <div class="code-block"><span class="cm">// A ladder wraps one or more rungs</span>
-<span class="fn">ladder</span>(<span class="cm">rung</span>)                    <span class="cm">// single rung</span>
-<span class="fn">ladder</span>(<span class="fn">or</span>(<span class="cm">rung</span>, <span class="cm">rung</span>, ...))      <span class="cm">// multiple rungs (OR logic)</span>
+    <div class="code-block"><span class="cm">// A ladder wraps one or more outputs in a shared condition tree (PLC model)</span>
+<span class="fn">ladder</span>(<span class="fn">output</span>(<span class="num">0</span>, <span class="cm">rung</span>))                         <span class="cm">// single output, single rung</span>
+<span class="fn">ladder</span>(<span class="fn">output</span>(<span class="num">0</span>, <span class="fn">or</span>(<span class="cm">rung</span>, <span class="cm">rung</span>, ...)))          <span class="cm">// single output, multiple rungs (OR logic)</span>
+<span class="fn">ladder</span>(<span class="fn">output</span>(<span class="num">0</span>, ...), <span class="fn">output</span>(<span class="num">1</span>, ...))         <span class="cm">// multiple outputs in one tx</span>
 
 <span class="cm">// A rung is a single block or multiple blocks combined with AND</span>
 <span class="fn">sig</span>(<span class="alias">@alice</span>)                       <span class="cm">// single block = single rung</span>
@@ -179,6 +180,10 @@ tr:nth-child(even) td { background: #fafafa; }
 
 <span class="cm">// Keys are referenced by alias with @</span>
 <span class="alias">@alice</span>                            <span class="cm">// resolved from a key map at parse time</span></div>
+
+    <div class="note">
+      The <code>output()</code> wrapper is new in TX_MLSC. It maps each output index to its conditions within the shared condition tree. One <code>conditions_root</code> per transaction defines the entire tree. This replaces the old model where each output carried its own <code>0xC2 + root</code>.
+    </div>
   </div>
 
   <!-- BLOCK TYPES -->
@@ -506,7 +511,7 @@ $ ghost-cli -signet getaddressinfo tb1q... | jq .pubkey
 
 <span class="cm"># Create an unsigned tx with a vault condition:</span>
 <span class="cm"># hot key + 144-block delay, OR 2-of-3 multisig recovery</span>
-$ ghost-cli -signet createrungtx \
+$ ghost-cli -signet createtxmlsc \
   '[{"txid":"&lt;utxo&gt;","vout":0}]' \
   '[{"amount":0.001,"conditions":[{
     "blocks":[
@@ -527,7 +532,7 @@ $ ghost-cli -signet signladder \
   <span class="num">"04000000..."</span> \
   <span class="fn">"ladder(and(sig(@hot), csv(144)))"</span> \
   <span class="alias">'{"hot":"cVt4o7B..."}'</span> \
-  '[{"amount":0.001,"scriptPubKey":"c2..."}]'
+  '[{"amount":0.001,"scriptPubKey":"df..."}]'
 
 <span class="cm">→ {"hex":"04000000...signed...","complete":true}</span></div>
     </div>
@@ -541,7 +546,7 @@ $ ghost-cli -signet signladder \
     </div>
 
     <div class="note">
-      <strong>That's it.</strong> Three commands: <code>createrungtx</code> builds the transaction, <code>signladder</code> signs it using a descriptor string, <code>sendrawtransaction</code> broadcasts it. The descriptor handles all serialization, Merkle commitment, and witness construction internally. No manual field ordering, no JSON block specs. Works for all 61 block types.
+      <strong>That's it.</strong> Three commands: <code>createtxmlsc</code> builds the transaction, <code>signladder</code> signs it using a descriptor string, <code>sendrawtransaction</code> broadcasts it. The descriptor handles all serialization, Merkle commitment, creation proof, and witness construction internally. No manual field ordering, no JSON block specs. Works for all 61 block types.
     </div>
   </div>
 

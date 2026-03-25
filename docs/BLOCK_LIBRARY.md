@@ -130,8 +130,10 @@ uint16_t type code encoded little-endian on the wire.
   (0x81 escape header). Key-consuming blocks are never invertible to prevent garbage-pubkey
   data embedding. The invertible set is an explicit allowlist; new block types default to
   non-invertible (fail-closed).
-- **Key-consuming** blocks have their pubkeys folded into the MLSC Merkle leaf via
+- **Key-consuming** blocks have their pubkeys folded into the TX_MLSC Merkle leaf via
   `merkle_pub_key`. Pubkeys appear in the witness but not in the conditions fields.
+  In the TX_MLSC format, each output is 8 bytes (value only) with one shared
+  conditions_root (0xDF prefix) per transaction.
 - **PK#** = `var` means the pubkey count is determined at runtime by counting PUBKEY fields
   (MULTISIG, TIMELOCKED_MULTISIG). `0` for key-consuming blocks like P2PKH_LEGACY means the
   pubkey is in the witness but hashed to HASH160 in conditions (not intercepted to Merkle leaf).

@@ -598,11 +598,11 @@ const S = [
 </div>
 `},
 
-{act:1,t:"OUTPUT CREATION",s:"0xC2 ‖ root → 33 bytes on-chain",h:`
-<div class="desc"><code>CreateMLSCScript(root)</code> — push prefix byte 0xC2 (RUNG_MLSC_PREFIX), append 32-byte root.</div>
+{act:1,t:"OUTPUT CREATION",s:"0xDF ‖ root → 33 bytes on-chain",h:`
+<div class="desc"><code>CreateMLSCScript(root)</code> — push prefix byte 0xDF (RUNG_MLSC_PREFIX), append 32-byte root.</div>
 <div class="out">
 <div class="pre">scriptPubKey</div>
-<div class="val">0xC2 ‖ conditions_root</div>
+<div class="val">0xDF ‖ conditions_root</div>
 <div class="sz">33 bytes: prefix (1) + Merkle root (32)</div>
 <div class="msg">
 This is <strong>everything</strong> on-chain at creation.<br>
@@ -624,7 +624,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 <div class="where-box" style="border-color:rgba(0,212,255,.2)">
   <div class="wt">Blockchain (in block)</div>
   <div class="wv" style="color:var(--nblue)">33 bytes</div>
-  <div class="ws">0xC2 + root in the transaction output</div>
+  <div class="ws">0xDF + root in the transaction output</div>
   <div class="ws" style="margin-top:.3rem;color:#555">No conditions, no pubkeys, no scripts visible</div>
 </div>
 </div>
@@ -697,11 +697,11 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 </div>
 `},
 
-{act:2,t:"MLSC DETECTION",s:"0xC2 prefix · extract root",h:`
+{act:2,t:"MLSC DETECTION",s:"0xDF prefix · extract root",h:`
 <div class="stg">
 <div class="stg-h"><div class="stg-n" style="background:rgba(0,255,136,.1);color:var(--ngreen)">4</div><div class="stg-t">IsMLSCScript + GetMLSCRoot</div></div>
 <div class="chk ok"><span class="ic">✓</span> scriptPubKey.size() = 33, within [33, 65]</div>
-<div class="chk ok"><span class="ic">✓</span> scriptPubKey[0] = 0xC2 (RUNG_MLSC_PREFIX)</div>
+<div class="chk ok"><span class="ic">✓</span> scriptPubKey[0] = 0xDF (RUNG_MLSC_PREFIX)</div>
 <div class="chk ok"><span class="ic">✓</span> Extract bytes 1-32 → conditions_root (the expected Merkle root)</div>
 <div class="chk ok"><span class="ic">✓</span> witness.stack.size() ≥ 2 (MLSC requires 2 elements)</div>
 </div>
@@ -797,7 +797,7 @@ all inside SHA-256 leaf digests. <strong>Irrecoverable.</strong>
 <div class="where-grid">
 <div class="where-box" style="border-color:rgba(0,255,136,.2)">
   <div class="wt">At creation</div>
-  <div class="wv" style="color:var(--ngreen);font-size:.75rem">0xC2 ‖ root</div>
+  <div class="wv" style="color:var(--ngreen);font-size:.75rem">0xDF ‖ root</div>
   <div class="ws">33 bytes. Zero information about conditions.</div>
 </div>
 <div class="where-box" style="border-color:rgba(255,136,0,.2)">
