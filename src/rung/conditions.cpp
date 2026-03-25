@@ -709,10 +709,20 @@ uint256 ComputeValueCommitment(const Rung& rung,
 {
     CSHA256 hasher;
 
-    // Hash all field values from all blocks in layout order
+    // Hash all field values from all blocks in layout order.
+    // NUMERIC fields are normalized to 4-byte LE to ensure consistent
+    // value_commitment regardless of how the field was originally encoded
+    // (1-byte hex vs 4-byte descriptor parser output).
     for (const auto& block : rung.blocks) {
         for (const auto& field : block.fields) {
-            hasher.Write(field.data.data(), field.data.size());
+            if (field.type == RungDataType::NUMERIC && field.data.size() < 4) {
+                // Normalize to 4-byte LE
+                uint8_t padded[4] = {0, 0, 0, 0};
+                memcpy(padded, field.data.data(), field.data.size());
+                hasher.Write(padded, 4);
+            } else {
+                hasher.Write(field.data.data(), field.data.size());
+            }
         }
     }
 

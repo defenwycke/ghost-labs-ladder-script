@@ -466,6 +466,11 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
             ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
             ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
 
+            // TX_MLSC: read output_index (which output this rung governs)
+            uint8_t output_index_byte;
+            ss >> output_index_byte;
+            ladder_out.coil.output_index = output_index_byte;
+
             // Read coil address hash (0 = no address, 32 = SHA256 of raw address)
             uint64_t addr_len = ReadCompactSize(ss);
             if (addr_len != 0 && addr_len != 32) {
@@ -561,6 +566,11 @@ bool DeserializeLadderWitness(const std::vector<uint8_t>& witness_bytes,
         ladder_out.coil.coil_type = static_cast<RungCoilType>(coil_type_byte);
         ladder_out.coil.attestation = static_cast<RungAttestationMode>(attestation_byte);
         ladder_out.coil.scheme = static_cast<RungScheme>(scheme_byte);
+
+        // TX_MLSC: read output_index
+        uint8_t output_index_byte2;
+        ss >> output_index_byte2;
+        ladder_out.coil.output_index = output_index_byte2;
 
         // Read coil address hash (0 = no address, 32 = SHA256 of raw address)
         uint64_t addr_len = ReadCompactSize(ss);
@@ -757,6 +767,7 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
         ss << static_cast<uint8_t>(ladder.coil.coil_type);
         ss << static_cast<uint8_t>(ladder.coil.attestation);
         ss << static_cast<uint8_t>(ladder.coil.scheme);
+        ss << ladder.coil.output_index; // TX_MLSC: which output this rung governs
         WriteCompactSize(ss, ladder.coil.address_hash.size());
         if (!ladder.coil.address_hash.empty()) {
             ss.write(MakeByteSpan(ladder.coil.address_hash));
@@ -789,6 +800,7 @@ std::vector<uint8_t> SerializeLadderWitness(const LadderWitness& ladder,
     ss << static_cast<uint8_t>(ladder.coil.coil_type);
     ss << static_cast<uint8_t>(ladder.coil.attestation);
     ss << static_cast<uint8_t>(ladder.coil.scheme);
+    ss << ladder.coil.output_index; // TX_MLSC: which output this rung governs
 
     // Write coil address
     WriteCompactSize(ss, ladder.coil.address_hash.size());

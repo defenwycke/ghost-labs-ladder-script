@@ -2880,6 +2880,34 @@ static RPCHelpMan signladder()
         ladder.rungs.push_back(std::move(wit_rung));
         ladder.coil = conditions.coil;
 
+        // TX_MLSC: look up the funding tx's creation proof early to get the
+        // correct coil.output_index before serializing the witness.
+        if (is_mlsc) {
+            const auto& prevout = mtx.vin[input_idx].prevout;
+            auto& node_early = EnsureAnyNodeContext(request.context);
+            uint256 hashBlock_early;
+            const CTransactionRef funding_tx_early = node::GetTransaction(
+                nullptr, node_early.mempool.get(), prevout.hash,
+                hashBlock_early, node_early.chainman->m_blockman);
+            if (funding_tx_early && !funding_tx_early->creation_proof.empty()) {
+                rung::CreationProof fp;
+                std::string cpe;
+                if (rung::DeserializeCreationProof(funding_tx_early->creation_proof, fp, cpe)) {
+                    std::vector<std::vector<uint8_t>> tpks;
+                    if (target_rung < rung_pubkeys.size()) tpks = rung_pubkeys[target_rung];
+                    uint256 ovc = rung::ComputeValueCommitment(conditions.rungs[target_rung], tpks);
+                    uint32_t sv = prevout.n;
+                    for (const auto& fpr : fp.rungs) {
+                        if (fpr.value_commitment == ovc && fpr.coil.output_index == sv) {
+                            ladder.coil.output_index = fpr.coil.output_index;
+                            conditions.coil.output_index = fpr.coil.output_index;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // 8. Serialize witness
         auto witness_bytes = rung::SerializeLadderWitness(ladder);
         mtx.vin[input_idx].scriptWitness.stack.clear();
@@ -2932,30 +2960,34 @@ static RPCHelpMan signladder()
                             all_leaves.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
                         }
 
-                        // Find which rung in the funding proof matches our target rung
-                        // by computing our leaf and comparing
-                        rung::CreationProofRung our_cp_rung;
-                        for (const auto& block : conditions.rungs[target_rung].blocks) {
-                            our_cp_rung.blocks.push_back({
-                                static_cast<uint16_t>(block.type),
-                                static_cast<uint8_t>(block.inverted ? 1 : 0)
-                            });
-                        }
-                        our_cp_rung.coil = conditions.coil;
+                        // Match our rung to the funding proof by value_commitment.
+                        // The value_commitment = SHA256(field_values || pubkeys) is
+                        // independent of coil.output_index, so it matches regardless
+                        // of which output the rung governs.
                         std::vector<std::vector<uint8_t>> target_pks;
                         if (target_rung < rung_pubkeys.size()) target_pks = rung_pubkeys[target_rung];
-                        our_cp_rung.value_commitment = rung::ComputeValueCommitment(
+                        uint256 our_vc = rung::ComputeValueCommitment(
                             conditions.rungs[target_rung], target_pks);
-                        uint256 our_leaf = rung::ComputeTxMLSCLeaf(our_cp_rung);
 
-                        // Find our leaf in the funding tree
+                        // Find the rung in the funding proof that:
+                        // 1. Has matching value_commitment
+                        // 2. Has coil.output_index matching the output we're spending
+                        uint32_t spent_vout = mtx.vin[input_idx].prevout.n;
                         int found_idx = -1;
-                        for (size_t i = 0; i < all_leaves.size(); ++i) {
-                            if (all_leaves[i] == our_leaf) {
+                        LogPrintf("TX_MLSC signladder: looking for vc=%s vout=%u in %zu funding rungs\n",
+                                  our_vc.GetHex(), spent_vout, funding_proof.rungs.size());
+                        for (size_t i = 0; i < funding_proof.rungs.size(); ++i) {
+                            LogPrintf("  rung %zu: vc=%s output_index=%u blocks=%zu\n",
+                                      i, funding_proof.rungs[i].value_commitment.GetHex(),
+                                      funding_proof.rungs[i].coil.output_index,
+                                      funding_proof.rungs[i].blocks.size());
+                            if (funding_proof.rungs[i].value_commitment == our_vc &&
+                                funding_proof.rungs[i].coil.output_index == spent_vout) {
                                 found_idx = static_cast<int>(i);
                                 break;
                             }
                         }
+                        LogPrintf("  found_idx=%d\n", found_idx);
 
                         if (found_idx >= 0) {
                             mlsc_proof.total_rungs = static_cast<uint16_t>(all_leaves.size());
@@ -2967,6 +2999,10 @@ static RPCHelpMan signladder()
                                     mlsc_proof.proof_hashes.push_back(all_leaves[i]);
                                 }
                             }
+                            // Set the coil's output_index from the funding proof
+                            // (the descriptor defaults to 0 but the funding proof has the real value)
+                            conditions.coil.output_index = funding_proof.rungs[found_idx].coil.output_index;
+                            ladder.coil.output_index = conditions.coil.output_index;
                             used_funding_proof = true;
                         }
                     }
@@ -3147,12 +3183,13 @@ static RPCHelpMan createtxmlsc()
                 std::to_string(outputs_arr.size()));
         }
 
-        // Parse blocks
+        // Parse blocks as CONDITIONS (no witness fields like PUBKEY/SIGNATURE).
+        // This matches what the spending descriptor produces at spend time.
         const UniValue& blocks_arr = rung_obj["blocks"].get_array();
         rung::Rung rung;
         std::vector<std::vector<uint8_t>> rung_pks;
         for (size_t b = 0; b < blocks_arr.size(); ++b) {
-            rung.blocks.push_back(ParseBlockSpec(blocks_arr[b], /*conditions_only=*/false, &rung_pks));
+            rung.blocks.push_back(ParseBlockSpec(blocks_arr[b], /*conditions_only=*/true, &rung_pks));
         }
 
         // TX_MLSC: pubkeys for merkle_pub_key binding (folded into value_commitment).
