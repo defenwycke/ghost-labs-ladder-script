@@ -6302,7 +6302,7 @@ function CoilPropertiesPanel({ rungId }) {
               <select
                 className="prop-select"
                 value={rung.output.attestation || 'INLINE'}
-                title="INLINE = signatures in witness data. AGGREGATE = block-level aggregate. DEFERRED = template hash only"
+                title="INLINE = signatures in witness data. AGGREGATE and DEFERRED are reserved for future extension."
                 onChange={(e) => onChange(rung.id, 'attestation', e.target.value)}
               >
                 {ATTESTATION_TYPES.map(at => (

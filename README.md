@@ -105,7 +105,6 @@ proxy/                 FastAPI signet proxy for live testing
 | `src/rung/sighash.cpp` | Tagged sighash computation |
 | `src/rung/pq_verify.cpp` | Post-quantum signature verification (liboqs) |
 | `src/rung/adaptor.cpp` | Adaptor signature support |
-| `src/rung/aggregate.cpp` | Block-level signature aggregation |
 | `src/rung/descriptor.cpp` | Descriptor language: `parseladder` / `formatladder` RPCs |
 | `src/rung/rpc.cpp` | 14 RPC commands: `signladder`, `signrungtx`, `createrungtx`, `parseladder`, `formatladder`, etc. |
 | `src/rung/policy.cpp` | Mempool policy enforcement |

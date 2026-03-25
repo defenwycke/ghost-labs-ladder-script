@@ -387,8 +387,8 @@ relay_refs. All blocks must return SATISFIED for the rung to pass. Evaluated by
 `EvalRung()` in `evaluator.h`. Maximum 8 blocks per rung (`MAX_BLOCKS_PER_RUNG`).
 
 ### RungAttestationMode
-Enum in `types.h`. Three modes: INLINE (signatures inline in witness), AGGREGATE
-(block-level aggregate signature), DEFERRED (template hash, not yet supported, fail-closed).
+Enum in `types.h`. INLINE (signatures inline in witness) is the only active mode.
+AGGREGATE and DEFERRED are reserved for future extension (rejected at deserialization).
 
 ### RungBlock
 Struct in `types.h`. A function block within a rung. Contains a `RungBlockType`, a vector
@@ -396,7 +396,7 @@ of `RungField` typed fields, and an `inverted` flag.
 
 ### RungCoil
 Struct in `types.h`. Coil metadata attached to each output. Fields: `coil_type` (UNLOCK,
-UNLOCK_TO, COVENANT), `attestation` (INLINE, AGGREGATE, DEFERRED), `scheme` (SCHNORR,
+UNLOCK_TO, COVENANT), `attestation` (INLINE only; AGGREGATE/DEFERRED reserved), `scheme` (SCHNORR,
 ECDSA, FALCON512, FALCON1024, DILITHIUM3, SPHINCS_SHA), `address_hash` (SHA256 of raw
 address, 0 or 32 bytes), `conditions` (reserved, must be empty), `rung_destinations`
 (per-rung destination overrides as pairs of rung_index + address_hash).
@@ -490,10 +490,8 @@ Block type 0x0612 (PLC family). Off-delay timer (hold after trigger). Conditions
 NUMERIC(remaining). Invertible.
 
 ### TxAggregateContext
-Struct in `aggregate.h`. Per-transaction aggregate context for AGGREGATE attestation mode.
-Collects sighashes and pubkeys from all AGGREGATE-mode inputs in a transaction. After all
-inputs pass evaluation, a single aggregate signature is verified over the batch. Referenced
-via `RungEvalContext::aggregate_ctx`.
+Reserved. AGGREGATE attestation is not implemented in the current release. The attestation
+byte is reserved for future extension via soft fork.
 
 ### VAULT_LOCK
 Block type 0x0302 (Covenant family). Vault timelock covenant with hot/cold key pairs.

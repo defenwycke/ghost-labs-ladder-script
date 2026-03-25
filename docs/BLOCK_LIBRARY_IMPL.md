@@ -121,10 +121,10 @@ Signature using a key resolved from a relay block. Enables multiple rungs to sha
 |---|---|---|---|
 | `SCHNORR` | `0x01` | 64 bytes | BIP-340. Primary scheme. Batch-verifiable. Use by default. |
 | `ECDSA` | `0x02` | ~73 bytes | Legacy compatibility only. DER-encoded. Not batch-verifiable. |
-| `FALCON512` | `0x10` | 666 bytes | NIST PQC standard. Post-quantum secure. AGGREGATE mode reduces tx cost to ~80 vB. |
+| `FALCON512` | `0x10` | 666 bytes | NIST PQC standard. Post-quantum secure. |
 | `FALCON1024` | `0x11` | 1280 bytes | Post-quantum. Higher security level. 256-bit post-quantum security. |
 | `DILITHIUM3` | `0x12` | 3293 bytes | NIST PQC standard. Better batch verification properties than FALCON. |
-| `SPHINCS_SHA` | `0x13` | 49,216 bytes | Post-quantum. Hash-based. Most conservative PQ assumption. Very large sigs — AGGREGATE essential. |
+| `SPHINCS_SHA` | `0x13` | 49,216 bytes | Post-quantum. Hash-based. Most conservative PQ assumption. |
 
 ---
 
@@ -685,10 +685,10 @@ The coil declares what happens when all contacts on a rung are satisfied. It is 
 | Mode | Enum | Witness Size | Proof Location |
 |---|---|---|---|
 | `INLINE` | `0x01` | Full sig (64B Schnorr / 666B FALCON512) | In transaction witness |
-| `AGGREGATE` | `0x02` | 36 bytes (4B spend_index + 32B pubkey_commit) | Block-level aggregate proof (~3.5KB amortised) |
-| `DEFERRED` | `0x03` | 32 bytes (template hash only) | Prior committed state |
+| `AGGREGATE` | `0x02` | Reserved for future extension | Rejected at deserialization |
+| `DEFERRED` | `0x03` | Reserved for future extension | Rejected at deserialization |
 
-**The key insight:** Coil declares claim type. Protocol validates claim. Transaction carries minimum necessary data. `AGGREGATE` mode is what enables post-quantum signatures at classical transaction sizes — a FALCON512 signature in `AGGREGATE` mode produces an ~80 vB transaction, identical to a classical Schnorr transaction today.
+Only INLINE attestation is active. AGGREGATE and DEFERRED bytes are reserved for future soft fork extensions.
 
 ---
 

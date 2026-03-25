@@ -348,7 +348,7 @@ Every Ladder Script output carries a **coil** with three metadata bytes:
 | Field | Type | Values |
 |-------|------|--------|
 | `coil_type` | `RungCoilType` | `UNLOCK (0x01)`: standard spend; `UNLOCK_TO (0x02)`: send to specific destination; `COVENANT (0x03)`: constrains spending transaction |
-| `attestation` | `RungAttestationMode` | `INLINE (0x01)`: signatures inline in witness; `AGGREGATE (0x02)`: block-level aggregate signature; `DEFERRED (0x03)`: template hash (not yet supported, fail-closed) |
+| `attestation` | `RungAttestationMode` | `INLINE (0x01)`: signatures inline in witness. `AGGREGATE (0x02)` and `DEFERRED (0x03)` are reserved for future extension (rejected at deserialization). |
 | `scheme` | `RungScheme` | `SCHNORR (0x01)`, `ECDSA (0x02)`, `FALCON512 (0x10)`, `FALCON1024 (0x11)`, `DILITHIUM3 (0x12)`, `SPHINCS_SHA (0x13)` |
 
 The coil also carries:

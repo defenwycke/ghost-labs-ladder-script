@@ -33,8 +33,6 @@ and Merkelized conditions (MLSC). Transactions use version 4 (`RUNG_TX_VERSION =
 | `src/rung/conditions.cpp` | MLSC proof verification, Merkle tree construction, template reference resolution |
 | `src/rung/descriptor.h` | ParseDescriptor, FormatDescriptor |
 | `src/rung/descriptor.cpp` | Descriptor language parser and formatter |
-| `src/rung/aggregate.h` | TxAggregateContext, AggregateProof |
-| `src/rung/aggregate.cpp` | Aggregate and deferred attestation verification |
 | `src/rung/policy.h` | IsBaseBlockType, IsCovenantBlockType, IsStatefulBlockType, IsStandardRungTx |
 | `src/rung/policy.cpp` | Mempool policy checks |
 | `src/rung/adaptor.h/cpp` | Adaptor signature utilities |

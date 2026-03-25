@@ -79,10 +79,6 @@ Human-readable descriptor language. Grammar: `ladder(or(...))` with blocks as lo
 functions. Supports `!block` for inversion. Scheme names: schnorr, ecdsa, falcon512,
 falcon1024, dilithium3, sphincs_sha.
 
-### aggregate.h / aggregate.cpp
-AGGREGATE attestation: block-level aggregate proof. DEFERRED attestation: fail-closed
-(always returns false).
-
 ### policy.h / policy.cpp
 Mempool policy. `IsStandardRungTx()` delegates to the consensus deserializer for structural
 validation, then checks all outputs are MLSC. Classification functions: `IsBaseBlockType()`,
