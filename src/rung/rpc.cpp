@@ -2929,6 +2929,198 @@ static RPCHelpMan signladder()
     };
 }
 
+// ============================================================================
+// TX_MLSC: Create a transaction with shared condition tree
+// ============================================================================
+
+static RPCHelpMan createtxmlsc()
+{
+    return RPCHelpMan{
+        "createtxmlsc",
+        "Create an unsigned v4 TX_MLSC transaction with a shared condition tree.\n"
+        "One conditions_root for the entire transaction. Outputs are value-only.\n"
+        "Each rung's coil specifies which output it governs (output_index).\n",
+        {
+            {"inputs", RPCArg::Type::ARR, RPCArg::Optional::NO, "Transaction inputs",
+                {
+                    {"input", RPCArg::Type::OBJ, RPCArg::Optional::NO, "An input",
+                        {
+                            {"txid", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The transaction id"},
+                            {"vout", RPCArg::Type::NUM, RPCArg::Optional::NO, "The output index"},
+                            {"sequence", RPCArg::Type::NUM, RPCArg::Optional::OMITTED, "nSequence value"},
+                        },
+                    },
+                },
+            },
+            {"outputs", RPCArg::Type::ARR, RPCArg::Optional::NO, "Output values (satoshi amounts)",
+                {
+                    {"amount", RPCArg::Type::AMOUNT, RPCArg::Optional::NO, "Amount in BTC for this output"},
+                },
+            },
+            {"rungs", RPCArg::Type::ARR, RPCArg::Optional::NO, "Rung definitions for the shared tree",
+                {
+                    {"rung", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A rung in the shared tree",
+                        {
+                            {"output_index", RPCArg::Type::NUM, RPCArg::Optional::NO, "Which output this rung governs (0-based)"},
+                            {"blocks", RPCArg::Type::ARR, RPCArg::Optional::NO, "Block specs",
+                                {
+                                    {"block", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A block",
+                                        {
+                                            {"type", RPCArg::Type::STR, RPCArg::Optional::NO, "Block type"},
+                                            {"inverted", RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "Invert evaluation"},
+                                            {"fields", RPCArg::Type::ARR, RPCArg::Optional::NO, "Fields",
+                                                {
+                                                    {"field", RPCArg::Type::OBJ, RPCArg::Optional::NO, "A field",
+                                                        {
+                                                            {"type", RPCArg::Type::STR, RPCArg::Optional::NO, "Data type"},
+                                                            {"hex", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "Field data hex"},
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            {"coil", RPCArg::Type::OBJ, RPCArg::Optional::OMITTED, "Coil metadata",
+                                {
+                                    {"type", RPCArg::Type::STR, RPCArg::Optional::OMITTED, "UNLOCK or UNLOCK_TO"},
+                                    {"attestation", RPCArg::Type::STR, RPCArg::Optional::OMITTED, "INLINE"},
+                                    {"scheme", RPCArg::Type::STR, RPCArg::Optional::OMITTED, "SCHNORR or ECDSA"},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            {"locktime", RPCArg::Type::NUM, RPCArg::Optional::OMITTED, "Transaction nLockTime (default 0)"},
+        },
+        RPCResult{RPCResult::Type::OBJ, "", "", {
+            {RPCResult::Type::STR_HEX, "hex", "The unsigned TX_MLSC transaction hex"},
+            {RPCResult::Type::STR_HEX, "conditions_root", "The shared conditions root"},
+            {RPCResult::Type::NUM, "n_rungs", "Total rungs in the shared tree"},
+            {RPCResult::Type::NUM, "creation_proof_size", "Creation proof size in bytes"},
+        }},
+        RPCExamples{
+            HelpExampleCli("createtxmlsc",
+                "'[{\"txid\":\"...\",\"vout\":0}]' "
+                "'[0.001, 0.002]' "
+                "'[{\"output_index\":0,\"blocks\":[{\"type\":\"SIG\",\"fields\":[{\"type\":\"SCHEME\",\"hex\":\"01\"}]}]},"
+                "{\"output_index\":1,\"blocks\":[{\"type\":\"SIG\",\"fields\":[{\"type\":\"SCHEME\",\"hex\":\"01\"}]}]}]'")
+        },
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    const UniValue& inputs_arr = request.params[0].get_array();
+    const UniValue& outputs_arr = request.params[1].get_array();
+    const UniValue& rungs_arr = request.params[2].get_array();
+
+    CMutableTransaction mtx;
+    mtx.version = CTransaction::RUNG_TX_VERSION;
+
+    if (!request.params[3].isNull()) {
+        mtx.nLockTime = request.params[3].getInt<uint32_t>();
+    }
+
+    // Parse inputs
+    for (size_t i = 0; i < inputs_arr.size(); ++i) {
+        const UniValue& inp = inputs_arr[i];
+        CTxIn txin;
+        auto hash = uint256::FromHex(inp["txid"].get_str());
+        if (!hash) throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid txid");
+        txin.prevout.hash = Txid::FromUint256(*hash);
+        txin.prevout.n = inp["vout"].getInt<uint32_t>();
+        if (inp.exists("sequence")) {
+            txin.nSequence = inp["sequence"].getInt<uint32_t>();
+        } else {
+            txin.nSequence = CTxIn::MAX_SEQUENCE_NONFINAL;
+        }
+        mtx.vin.push_back(txin);
+    }
+
+    // Parse output values
+    for (size_t i = 0; i < outputs_arr.size(); ++i) {
+        CTxOut txout;
+        txout.nValue = AmountFromValue(outputs_arr[i]);
+        // scriptPubKey will be set by the serializer (inflation from conditions_root)
+        mtx.vout.push_back(txout);
+    }
+
+    // Parse rungs and build creation proof
+    rung::CreationProof proof;
+    std::vector<rung::Rung> all_rungs;
+    std::vector<std::vector<std::vector<uint8_t>>> all_rung_pubkeys;
+
+    for (size_t r = 0; r < rungs_arr.size(); ++r) {
+        const UniValue& rung_obj = rungs_arr[r];
+        uint8_t output_index = rung_obj["output_index"].getInt<int>();
+
+        if (output_index >= outputs_arr.size()) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER,
+                "Rung " + std::to_string(r) + ": output_index " +
+                std::to_string(output_index) + " >= n_outputs " +
+                std::to_string(outputs_arr.size()));
+        }
+
+        // Parse blocks
+        const UniValue& blocks_arr = rung_obj["blocks"].get_array();
+        rung::Rung rung;
+        std::vector<std::vector<uint8_t>> rung_pks;
+        for (size_t b = 0; b < blocks_arr.size(); ++b) {
+            rung.blocks.push_back(ParseBlockSpec(blocks_arr[b], /*conditions_only=*/false, &rung_pks));
+        }
+        all_rungs.push_back(rung);
+        all_rung_pubkeys.push_back(rung_pks);
+
+        // Build creation proof rung
+        rung::CreationProofRung cp_rung;
+        for (const auto& block : rung.blocks) {
+            cp_rung.blocks.push_back({
+                static_cast<uint16_t>(block.type),
+                static_cast<uint8_t>(block.inverted ? 1 : 0)
+            });
+        }
+
+        // Coil
+        cp_rung.coil.output_index = output_index;
+        if (rung_obj.exists("coil")) {
+            const UniValue& coil_obj = rung_obj["coil"];
+            if (coil_obj.exists("type")) {
+                std::string ct = coil_obj["type"].get_str();
+                if (ct == "UNLOCK_TO") cp_rung.coil.coil_type = rung::RungCoilType::UNLOCK_TO;
+                else if (ct == "COVENANT") cp_rung.coil.coil_type = rung::RungCoilType::COVENANT;
+            }
+        }
+
+        // Compute value_commitment = SHA256(field_values || pubkeys)
+        cp_rung.value_commitment = rung::ComputeValueCommitment(rung, rung_pks);
+
+        proof.rungs.push_back(std::move(cp_rung));
+    }
+
+    // Compute conditions_root from creation proof
+    mtx.conditions_root = rung::ComputeTxMLSCRoot(proof);
+
+    // Serialize creation proof
+    mtx.creation_proof = rung::SerializeCreationProof(proof);
+
+    // Inflate outputs with shared scriptPubKey (for UTXO compatibility)
+    CScript mlsc_spk;
+    mlsc_spk.push_back(0xC2);
+    mlsc_spk.insert(mlsc_spk.end(), mtx.conditions_root.begin(), mtx.conditions_root.end());
+    for (auto& out : mtx.vout) {
+        out.scriptPubKey = mlsc_spk;
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("hex", EncodeHexTx(CTransaction(mtx)));
+    result.pushKV("conditions_root", mtx.conditions_root.GetHex());
+    result.pushKV("n_rungs", (int)proof.rungs.size());
+    result.pushKV("creation_proof_size", (int)mtx.creation_proof.size());
+    return result;
+},
+    };
+}
+
 void RegisterRungRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
@@ -2936,6 +3128,7 @@ void RegisterRungRPCCommands(CRPCTable& t)
         {"rung", &createrung},
         {"rung", &validateladder},
         {"rung", &createrungtx},
+        {"rung", &createtxmlsc},
         {"rung", &signrungtx},
         {"rung", &signladder},
         {"rung", &computemutation},
