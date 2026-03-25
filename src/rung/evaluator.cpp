@@ -3364,13 +3364,15 @@ bool VerifyRungTx(const CTransaction& tx,
         return false;
     }
 
-    // Consensus: validate outputs.
-    // TX_MLSC: validate creation proof (structural templates + root match).
-    // Legacy per-output MLSC: validate scriptPubKey format.
-    if (!tx.conditions_root.IsNull() && !tx.creation_proof.empty()) {
-        // TX_MLSC path: validate creation proof
+    // Consensus: validate creation proof (structural templates + root match).
+    {
         CreationProof proof;
         std::string cp_error;
+        if (tx.creation_proof.empty()) {
+            LogPrintf("TX_MLSC: missing creation proof\n");
+            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
+            return false;
+        }
         if (!DeserializeCreationProof(tx.creation_proof, proof, cp_error)) {
             LogPrintf("TX_MLSC creation proof deserialization failed: %s\n", cp_error);
             if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
@@ -3386,12 +3388,14 @@ bool VerifyRungTx(const CTransaction& tx,
             if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
             return false;
         }
-    } else {
-        // Legacy per-output MLSC path
-        std::string output_error;
-        if (!ValidateRungOutputs(tx, flags, output_error)) {
-            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
-            return false;
+        // Dust threshold: every spendable output must carry minimum value
+        for (size_t i = 0; i < tx.vout.size(); ++i) {
+            if (tx.vout[i].nValue > 0 && tx.vout[i].nValue < MIN_RUNG_OUTPUT_VALUE) {
+                LogPrintf("TX_MLSC output %zu: value %lld below minimum %lld\n",
+                          i, (long long)tx.vout[i].nValue, (long long)MIN_RUNG_OUTPUT_VALUE);
+                if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
+                return false;
+            }
         }
     }
 
@@ -3493,24 +3497,55 @@ bool VerifyRungTx(const CTransaction& tx,
             mutation_target_pks.push_back({});
         }
 
-        // Verify Merkle proof using revealed conditions + coil + pubkeys from witness
+        // Verify Merkle proof: TX_MLSC leaf = TaggedHash(template || value_commitment)
         std::string verify_error;
-        if (!VerifyMLSCProof(mlsc_proof, witness_ladder.coil, conditions_root, rung_pks, relay_pks, verify_error, &verified_leaves_data, mutation_target_pks)) {
-            LogPrintf("MLSC proof failed: %s\n", verify_error);
+
+        // Build CreationProofRung from the revealed rung + witness data
+        CreationProofRung cp_rung;
+        for (const auto& block : mlsc_proof.revealed_rung.blocks) {
+            cp_rung.blocks.push_back({
+                static_cast<uint16_t>(block.type),
+                static_cast<uint8_t>(block.inverted ? 1 : 0)
+            });
+        }
+        cp_rung.coil = witness_ladder.coil;
+        cp_rung.value_commitment = ComputeValueCommitment(
+            mlsc_proof.revealed_rung, rung_pks);
+
+        // Compute leaf and verify against conditions_root
+        uint256 my_leaf = ComputeTxMLSCLeaf(cp_rung);
+
+        size_t total_leaves = mlsc_proof.total_rungs;
+        std::vector<uint256> leaves(total_leaves);
+        leaves[mlsc_proof.rung_index] = my_leaf;
+
+        // Fill unrevealed leaves from proof_hashes
+        size_t ph_idx = 0;
+        for (size_t i = 0; i < total_leaves; ++i) {
+            if (i == mlsc_proof.rung_index) continue;
+            if (ph_idx >= mlsc_proof.proof_hashes.size()) {
+                LogPrintf("MLSC proof failed: not enough proof hashes\n");
+                if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
+                return false;
+            }
+            leaves[i] = mlsc_proof.proof_hashes[ph_idx++];
+        }
+
+        uint256 computed_root = BuildMerkleTree(std::move(leaves));
+        if (computed_root != conditions_root) {
+            LogPrintf("MLSC root mismatch: computed %s != expected %s\n",
+                      computed_root.GetHex(), conditions_root.GetHex());
             if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
             return false;
         }
 
-        // TX_MLSC: verify the revealed rung's coil.output_index matches the output being spent.
-        // The coil.output_index is committed in the Merkle leaf — forging it breaks the proof.
-        if (!tx.conditions_root.IsNull()) {
-            uint32_t spent_vout = tx.vin[nIn].prevout.n;
-            if (witness_ladder.coil.output_index != spent_vout) {
-                LogPrintf("TX_MLSC coil.output_index %u != spent vout %u\n",
-                          witness_ladder.coil.output_index, spent_vout);
-                if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
-                return false;
-            }
+        // Verify coil.output_index matches the output being spent
+        uint32_t spent_vout = tx.vin[nIn].prevout.n;
+        if (witness_ladder.coil.output_index != spent_vout) {
+            LogPrintf("coil.output_index %u != spent vout %u\n",
+                      witness_ladder.coil.output_index, spent_vout);
+            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
+            return false;
         }
 
         // Build RungConditions from MLSC proof (1 rung + relays + coil)
