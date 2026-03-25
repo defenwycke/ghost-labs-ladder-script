@@ -1535,4 +1535,147 @@ std::string FormatDescriptor(const RungConditions& conditions,
     return result;
 }
 
+// ============================================================================
+// TX_MLSC descriptors
+// ============================================================================
+
+bool ParseTxMLSCDescriptor(const std::string& desc,
+                            const std::map<std::string, std::vector<uint8_t>>& keys,
+                            TxMLSCDescriptor& out,
+                            std::string& error)
+{
+    ParseContext ctx{desc, keys, 0, {}};
+
+    SkipWhitespace(ctx);
+    if (!Match(ctx, "ladder")) {
+        error = "descriptor must start with 'ladder('";
+        return false;
+    }
+    if (!Expect(ctx, '(')) { error = ctx.error; return false; }
+
+    // Parse output() wrappers
+    bool first = true;
+    while (true) {
+        SkipWhitespace(ctx);
+        if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == ')') {
+            ++ctx.pos;
+            break;
+        }
+        if (!first) {
+            if (!Expect(ctx, ',')) { error = ctx.error; return false; }
+            SkipWhitespace(ctx);
+        }
+        first = false;
+
+        if (!Match(ctx, "output")) {
+            error = "expected 'output(' at position " + std::to_string(ctx.pos);
+            return false;
+        }
+        if (!Expect(ctx, '(')) { error = ctx.error; return false; }
+
+        // Parse output index
+        SkipWhitespace(ctx);
+        size_t idx_start = ctx.pos;
+        while (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] >= '0' && ctx.desc[ctx.pos] <= '9') {
+            ++ctx.pos;
+        }
+        if (ctx.pos == idx_start) {
+            error = "expected output index at position " + std::to_string(ctx.pos);
+            return false;
+        }
+        size_t output_index = std::stoul(ctx.desc.substr(idx_start, ctx.pos - idx_start));
+
+        if (!Expect(ctx, ',')) { error = ctx.error; return false; }
+
+        // Ensure outputs vector is large enough
+        while (out.outputs.size() <= output_index) {
+            out.outputs.push_back({});
+        }
+
+        // Parse rungs for this output: or(rung1, rung2, ...) or single rung
+        SkipWhitespace(ctx);
+        if (Match(ctx, "or")) {
+            if (!Expect(ctx, '(')) { error = ctx.error; return false; }
+            // Multiple rungs
+            bool first_rung = true;
+            while (true) {
+                SkipWhitespace(ctx);
+                if (ctx.pos < ctx.desc.size() && ctx.desc[ctx.pos] == ')') {
+                    ++ctx.pos;
+                    break;
+                }
+                if (!first_rung) {
+                    if (!Expect(ctx, ',')) { error = ctx.error; return false; }
+                }
+                first_rung = false;
+                Rung rung;
+                std::vector<std::vector<uint8_t>> rung_pks;
+                if (!ParseRung(ctx, rung, rung_pks)) { error = ctx.error; return false; }
+                out.outputs[output_index].rungs.push_back(std::move(rung));
+                out.outputs[output_index].rung_pubkeys.push_back(std::move(rung_pks));
+            }
+        } else {
+            // Single rung
+            Rung rung;
+            std::vector<std::vector<uint8_t>> rung_pks;
+            if (!ParseRung(ctx, rung, rung_pks)) { error = ctx.error; return false; }
+            out.outputs[output_index].rungs.push_back(std::move(rung));
+            out.outputs[output_index].rung_pubkeys.push_back(std::move(rung_pks));
+        }
+
+        if (!Expect(ctx, ')')) { error = ctx.error; return false; } // close output()
+    }
+
+    SkipWhitespace(ctx);
+    if (ctx.pos != ctx.desc.size()) {
+        error = "unexpected trailing characters at position " + std::to_string(ctx.pos);
+        return false;
+    }
+
+    // Validate: every output has at least one rung
+    for (size_t i = 0; i < out.outputs.size(); ++i) {
+        if (out.outputs[i].rungs.empty()) {
+            error = "output " + std::to_string(i) + " has no rungs";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+std::string FormatTxMLSCDescriptor(const CreationProof& proof)
+{
+    // Group rungs by output_index
+    std::map<uint8_t, std::vector<size_t>> output_rungs;
+    for (size_t i = 0; i < proof.rungs.size(); ++i) {
+        output_rungs[proof.rungs[i].coil.output_index].push_back(i);
+    }
+
+    std::string result = "ladder(";
+    bool first_output = true;
+    for (const auto& [idx, rung_indices] : output_rungs) {
+        if (!first_output) result += ", ";
+        first_output = false;
+        result += "output(" + std::to_string(idx) + ", ";
+        if (rung_indices.size() > 1) result += "or(";
+        for (size_t r = 0; r < rung_indices.size(); ++r) {
+            if (r > 0) result += ", ";
+            const auto& cp_rung = proof.rungs[rung_indices[r]];
+            // Format blocks as type names
+            if (cp_rung.blocks.size() > 1) result += "and(";
+            for (size_t b = 0; b < cp_rung.blocks.size(); ++b) {
+                if (b > 0) result += ", ";
+                auto bt = static_cast<RungBlockType>(cp_rung.blocks[b].first);
+                if (cp_rung.blocks[b].second) result += "!";
+                result += BlockTypeName(bt);
+            }
+            if (cp_rung.blocks.size() > 1) result += ")";
+        }
+        if (rung_indices.size() > 1) result += ")";
+        result += ")";
+    }
+    result += ")";
+    return result;
+}
+
 } // namespace rung

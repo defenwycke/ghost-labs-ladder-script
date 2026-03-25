@@ -101,6 +101,42 @@ std::string FormatDescriptor(const RungConditions& conditions,
                              const std::vector<std::vector<std::vector<uint8_t>>>& pubkeys = {},
                              const std::map<std::string, std::string>& aliases = {});
 
+// ============================================================================
+// TX_MLSC descriptors: multi-output shared tree
+// ============================================================================
+
+/** Parsed TX_MLSC descriptor — one entry per output. */
+struct TxMLSCDescriptor {
+    struct OutputDesc {
+        std::vector<Rung> rungs;
+        std::vector<std::vector<std::vector<uint8_t>>> rung_pubkeys;
+    };
+    std::vector<OutputDesc> outputs;
+};
+
+/** Parse a TX_MLSC descriptor into a multi-output condition set.
+ *
+ *  Grammar:
+ *    ladder(output(0, or(rung1, rung2)), output(1, or(rung3)))
+ *
+ *  Each output() wrapper specifies the output_index and its rungs.
+ *  Rungs within an output are OR (first passing wins).
+ *  Blocks within a rung are AND (all must pass).
+ *
+ *  @param[in]  desc     Descriptor string
+ *  @param[in]  keys     Map of alias → pubkey bytes
+ *  @param[out] out      Parsed multi-output descriptor
+ *  @param[out] error    Error message on failure
+ *  @return true on success */
+bool ParseTxMLSCDescriptor(const std::string& desc,
+                            const std::map<std::string, std::vector<uint8_t>>& keys,
+                            TxMLSCDescriptor& out,
+                            std::string& error);
+
+/** Format a TX_MLSC descriptor from a creation proof and rung data.
+ *  @return descriptor string */
+std::string FormatTxMLSCDescriptor(const CreationProof& proof);
+
 } // namespace rung
 
 #endif // BITCOIN_RUNG_DESCRIPTOR_H
