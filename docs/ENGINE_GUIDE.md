@@ -298,7 +298,7 @@ Configured in the output inspector under "Wire Format":
 | Attestation  | Meaning |
 |--------------|---------|
 | `INLINE`     | Signatures in witness data |
-| `AGGREGATE`  | Block-level aggregate |
+| `AGGREGATE`  | Reserved — not implemented |
 | `DEFERRED`   | Template hash only |
 
 ### Signature schemes

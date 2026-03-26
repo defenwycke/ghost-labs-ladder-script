@@ -67,7 +67,7 @@
 <div class="block-title-section">
   <div class="block-type-code">TRANSACTION EXAMPLE &middot; COMPACT SIG</div>
   <h1 class="block-title">DUAL SIG (COMPACT)</h1>
-  <p class="block-subtitle">Two independent compact-encoded SIG rungs. Hot key for daily spending, cold key for recovery. Both rungs use COMPACT_SIG wire format &amp;mdash; no block arrays needed. Common wallet pattern with minimal on-chain overhead.</p>
+  <p class="block-subtitle">Two independent SIG rungs. Hot key for daily spending, cold key for recovery. Both rungs use SIG wire format &amp;mdash; no block arrays needed. Common wallet pattern with minimal on-chain overhead.</p>
   <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
     <span class="scheme-badge" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">SIG</span>
     <span class="scheme-badge" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.25);">SCHNORR &middot; SCHEME</span>
@@ -79,14 +79,14 @@
 <!-- Rung Diagram -->
 <div class="doc-section">
   <div class="section-label">Rung Structure</div>
-  <p class="section-text" style="margin-bottom: 8px;">Two compact SIG rungs on separate outputs: HOT (daily spending key) and COLD (recovery key). Each uses COMPACT_SIG encoding.</p>
+  <p class="section-text" style="margin-bottom: 8px;">Two SIG rungs on separate outputs: HOT (daily spending key) and COLD (recovery key). Each uses SIG encoding.</p>
   <p class="section-text" style="font-size: 12px; color: #666; margin-bottom: 12px;">Each row is a <strong style="color: #aaa;">rung</strong> (spending path). Rungs are <strong style="color: #aaa;">OR</strong> &mdash; satisfy any one rung to spend. Blocks within a rung are joined by <span style="color: #444; font-weight: 600;">+</span> meaning <strong style="color: #aaa;">AND</strong> &mdash; all must pass.</p>
 
   <div class="rung-diagram">
     <div class="rung-row">
       <div class="rung-label-box" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">HOT</div>
       <div class="rung-blocks">
-        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">COMPACT_SIG</div>
+        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
         <div class="rung-output">HOT_SPEND</div>
       </div>
@@ -94,7 +94,7 @@
     <div class="rung-row">
       <div class="rung-label-box" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">COLD</div>
       <div class="rung-blocks">
-        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">COMPACT_SIG</div>
+        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
         <div class="rung-output">COLD_SPEND</div>
       </div>
@@ -109,7 +109,7 @@
     <div class="output-row">
       <div class="output-label-box" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">VOUT 0<div class="output-amount">10,000 sats</div></div>
       <div class="output-blocks">
-        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">COMPACT_SIG</div>
+        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
         <div class="rung-output">HOT_SPEND</div>
       </div>
@@ -117,7 +117,7 @@
     <div class="output-row">
       <div class="output-label-box" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">VOUT 1<div class="output-amount">10,000 sats</div></div>
       <div class="output-blocks">
-        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">COMPACT_SIG</div>
+        <div class="rung-block" style="background: rgba(255, 23, 68, 0.08); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.2);">SIG</div>
         <div class="rung-arrow">&rarr;</div>
         <div class="rung-output">COLD_SPEND</div>
       </div>
@@ -242,7 +242,7 @@
   <div class="eval-box">
     <div class="eval-step">
       <div class="eval-step-num">1.</div>
-      <div class="eval-step-text">Two outputs, each with a single COMPACT_SIG rung. The hot key output is for daily spending; the cold key output is for recovery.</div>
+      <div class="eval-step-text">Two outputs, each with a single SIG rung. The hot key output is for daily spending; the cold key output is for recovery.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">2.</div>
@@ -250,7 +250,7 @@
     </div>
     <div class="eval-step">
       <div class="eval-step-num">3.</div>
-      <div class="eval-step-text">COMPACT_SIG encoding on both rungs keeps the funding transaction minimal. Each output adds ~34 bytes of conditions overhead.</div>
+      <div class="eval-step-text">SIG encoding on both rungs keeps the funding transaction minimal. Each output adds ~34 bytes of conditions overhead.</div>
     </div>
     <div class="eval-step">
       <div class="eval-step-num">4.</div>
