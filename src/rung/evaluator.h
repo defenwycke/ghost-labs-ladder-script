@@ -239,15 +239,10 @@ uint256 ComputeCTVHash(const CTransaction& tx, uint32_t input_index);
 /** Rung verification flags (use high bits to avoid collision with SCRIPT_VERIFY_* flags). */
 static constexpr unsigned int RUNG_VERIFY_MLSC_ONLY = (1U << 28); //!< Reject 0xC1 inline conditions (mainnet)
 
-/** Consensus: validate all outputs of a v4 RUNG_TX transaction.
- *  Every output must be a valid Ladder Script output:
- *    - 0xC2 + 32-byte MLSC root
- *    - 0xC1 + valid rung conditions (only if RUNG_VERIFY_MLSC_ONLY not set)
- *    - DATA_RETURN block (exactly one per transaction, max 80 bytes)
- *  No raw OP_RETURN, no legacy scriptPubKey types.
- *  Returns false with error on any invalid output. */
-/** @deprecated Legacy per-output MLSC validation. TX_MLSC uses ValidateCreationProof.
- *  Retained for recursive covenant evaluators pending migration. */
+/** @deprecated Legacy per-output MLSC output validation.
+ *  TX_MLSC uses ValidateCreationProof instead (creation proof in witness).
+ *  Retained for recursive covenant evaluators (RECURSE_SAME, RECURSE_MODIFIED,
+ *  RECURSE_DECAY) which verify output conditions match expected roots. */
 bool ValidateRungOutputs(const CTransaction& tx, unsigned int flags, std::string& error);
 
 /** Top-level verification entry point for v4 RUNG_TX transactions.
