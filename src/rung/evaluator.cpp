@@ -3502,37 +3502,47 @@ static std::vector<std::vector<uint8_t>> ExtractBlockPubkeys(const std::vector<R
  *  Deserializes each MLSC input's ladder witness to count preimage-bearing fields.
  *  Non-MLSC inputs (e.g. standard P2WPKH bootstrap) are skipped.
  *  Returns total count; callers reject if > MAX_PREIMAGE_FIELDS_PER_TX. */
+/** Count PREIMAGE/SCRIPT_BODY fields in a single deserialized witness. */
+static size_t CountWitnessPreimageFields(const LadderWitness& lw)
+{
+    size_t total = 0;
+    for (const auto& rung : lw.rungs) {
+        for (const auto& block : rung.blocks) {
+            for (const auto& field : block.fields) {
+                if (field.type == RungDataType::PREIMAGE ||
+                    field.type == RungDataType::SCRIPT_BODY) {
+                    total++;
+                }
+            }
+        }
+    }
+    for (const auto& relay : lw.relays) {
+        for (const auto& block : relay.blocks) {
+            for (const auto& field : block.fields) {
+                if (field.type == RungDataType::PREIMAGE ||
+                    field.type == RungDataType::SCRIPT_BODY) {
+                    total++;
+                }
+            }
+        }
+    }
+    return total;
+}
+
+/** Count PREIMAGE/SCRIPT_BODY fields across ALL inputs in a transaction.
+ *  Deserializes each input's witness once. O(N) in total inputs. */
 static size_t CountTxPreimageFields(const CTransaction& tx)
 {
     size_t total = 0;
     for (size_t i = 0; i < tx.vin.size(); ++i) {
         const auto& witness = tx.vin[i].scriptWitness;
-        if (witness.stack.size() != 2) continue; // Not a ladder witness
+        if (witness.stack.size() != 2) continue;
 
         LadderWitness lw;
         std::string err;
         if (!DeserializeLadderWitness(witness.stack[0], lw, err)) continue;
 
-        for (const auto& rung : lw.rungs) {
-            for (const auto& block : rung.blocks) {
-                for (const auto& field : block.fields) {
-                    if (field.type == RungDataType::PREIMAGE ||
-                        field.type == RungDataType::SCRIPT_BODY) {
-                        total++;
-                    }
-                }
-            }
-        }
-        for (const auto& relay : lw.relays) {
-            for (const auto& block : relay.blocks) {
-                for (const auto& field : block.fields) {
-                    if (field.type == RungDataType::PREIMAGE ||
-                        field.type == RungDataType::SCRIPT_BODY) {
-                        total++;
-                    }
-                }
-            }
-        }
+        total += CountWitnessPreimageFields(lw);
     }
     return total;
 }
@@ -3566,9 +3576,8 @@ bool VerifyRungTx(const CTransaction& tx,
     }
 
     // Consensus: PREIMAGE/SCRIPT_BODY field count across ALL inputs.
-    // Prevents multi-input data embedding (attacker creating N inputs each
-    // with preimage data to scale embeddable surface linearly).
-    if (CountTxPreimageFields(tx) > MAX_PREIMAGE_FIELDS_PER_TX) {
+    // Only computed on first input (result is tx-wide, same for all inputs).
+    if (nIn == 0 && CountTxPreimageFields(tx) > MAX_PREIMAGE_FIELDS_PER_TX) {
         if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
         return false;
     }
