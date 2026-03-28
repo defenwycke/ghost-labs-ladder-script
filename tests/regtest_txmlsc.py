@@ -154,13 +154,8 @@ test("conditions_root is protocol-derived (not user-supplied)",
      r["result"]["conditions_root"] != "0" * 64,
      r["result"]["conditions_root"])
 
-# ============================================================================
-print("\n=== ADVERSARIAL TEST 2: Missing creation proof ===")
-# A v4 tx without creation_proof should be rejected
-# ============================================================================
-# We can't easily craft this through the RPC (it always adds creation proof).
-# Tested at unit test level (tx_mlsc_validate_creation_proof_empty).
-test("Missing creation proof tested at unit level", True, "ValidateCreationProof rejects empty proof")
+# Creation proof adversarial test removed — creation proofs no longer in the wire format.
+# Conditions root is an opaque commitment validated at spend time.
 
 # ============================================================================
 print("\n=== ADVERSARIAL TEST 3: Wrong output_index at spend time ===")

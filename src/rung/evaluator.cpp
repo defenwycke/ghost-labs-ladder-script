@@ -3549,28 +3549,8 @@ bool VerifyRungTx(const CTransaction& tx,
         return false;
     }
 
-    // Consensus: validate creation proof (structural templates + root match).
-    // Creation proof is optional — when absent, the conditions_root is unverified
-    // (user-supplied). Spend-time Merkle proof still validates each output's conditions.
-    if (!tx.creation_proof.empty()) {
-        CreationProof proof;
-        std::string cp_error;
-        if (!DeserializeCreationProof(tx.creation_proof, proof, cp_error)) {
-            LogPrintf("TX_MLSC creation proof deserialization failed: %s\n", cp_error);
-            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
-            return false;
-        }
-        // Count non-DATA_RETURN outputs (DATA_RETURN has nValue == 0)
-        size_t n_spendable = 0;
-        for (const auto& out : tx.vout) {
-            if (out.nValue > 0) n_spendable++;
-        }
-        if (!ValidateCreationProof(proof, tx.conditions_root, n_spendable, cp_error)) {
-            LogPrintf("TX_MLSC creation proof validation failed: %s\n", cp_error);
-            if (serror) *serror = SCRIPT_ERR_UNKNOWN_ERROR;
-            return false;
-        }
-    }
+    // No creation proof validation — conditions_root is an opaque commitment.
+    // Validation happens at spend time via Merkle proof against the revealed rung.
 
     // Dust threshold: every spendable output must carry minimum value (unconditional)
     for (size_t i = 0; i < tx.vout.size(); ++i) {

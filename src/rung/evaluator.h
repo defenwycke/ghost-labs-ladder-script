@@ -249,7 +249,7 @@ uint256 ComputeCTVHash(const CTransaction& tx, uint32_t input_index);
 static constexpr unsigned int RUNG_VERIFY_MLSC_ONLY = (1U << 28); //!< Reject 0xC1 inline conditions (mainnet)
 
 /** @deprecated Legacy per-output MLSC output validation.
- *  TX_MLSC uses ValidateCreationProof instead (creation proof in witness).
+ *  TX_MLSC validates conditions at spend time via Merkle proof (no creation proof).
  *  Retained for recursive covenant evaluators (RECURSE_SAME, RECURSE_MODIFIED,
  *  RECURSE_DECAY) which verify output conditions match expected roots. */
 bool ValidateRungOutputs(const CTransaction& tx, unsigned int flags, std::string& error);

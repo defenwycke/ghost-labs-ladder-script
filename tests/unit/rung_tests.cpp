@@ -11505,147 +11505,33 @@ BOOST_AUTO_TEST_CASE(tx_mlsc_leaf_block_type_matters)
     BOOST_CHECK(leaf_sig != leaf_csv);
 }
 
-// 4. Root computation from creation proof
+// 4. Root computation from rung leaves
 BOOST_AUTO_TEST_CASE(tx_mlsc_root_computation)
 {
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 1));
+    std::vector<CreationProofRung> rungs;
+    rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
+    rungs.push_back(MakeCreationRung(RungBlockType::SIG, 1));
 
-    uint256 root = ComputeTxMLSCRoot(proof);
+    uint256 root = ComputeTxMLSCRoot(rungs);
     BOOST_CHECK(!root.IsNull());
 
-    // Same proof → same root
-    uint256 root2 = ComputeTxMLSCRoot(proof);
+    // Same rungs → same root
+    uint256 root2 = ComputeTxMLSCRoot(rungs);
     BOOST_CHECK_EQUAL(root, root2);
 }
 
 // 5. Single rung: root == leaf (degenerate tree)
 BOOST_AUTO_TEST_CASE(tx_mlsc_single_rung_root_equals_leaf)
 {
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
+    std::vector<CreationProofRung> rungs;
+    rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
 
-    uint256 root = ComputeTxMLSCRoot(proof);
-    uint256 leaf = ComputeTxMLSCLeaf(proof.rungs[0]);
+    uint256 root = ComputeTxMLSCRoot(rungs);
+    uint256 leaf = ComputeTxMLSCLeaf(rungs[0]);
     BOOST_CHECK_EQUAL(root, leaf);
 }
 
-// 6. Creation proof serialization round-trip
-BOOST_AUTO_TEST_CASE(tx_mlsc_creation_proof_serde)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::MULTISIG, 0));
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 1));
-
-    auto bytes = SerializeCreationProof(proof);
-    BOOST_CHECK(!bytes.empty());
-
-    CreationProof proof2;
-    std::string error;
-    BOOST_CHECK(DeserializeCreationProof(bytes, proof2, error));
-    BOOST_CHECK_EQUAL(proof.rungs.size(), proof2.rungs.size());
-
-    // Roots must match after round-trip
-    BOOST_CHECK_EQUAL(ComputeTxMLSCRoot(proof), ComputeTxMLSCRoot(proof2));
-}
-
-// 7. Creation proof validation accepts valid proof
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_valid)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 1));
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(ValidateCreationProof(proof, root, 2, error));
-}
-
-// 8. Creation proof validation rejects root mismatch
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_root_mismatch)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-
-    uint256 wrong_root;
-    wrong_root.SetNull();
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, wrong_root, 1, error));
-    BOOST_CHECK(error.find("root mismatch") != std::string::npos);
-}
-
-// 9. Creation proof validation rejects unknown block type
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_unknown_type)
-{
-    CreationProof proof;
-    CreationProofRung rung;
-    rung.blocks.push_back({0xFFFF, 0}); // unknown type
-    rung.coil.output_index = 0;
-    CSHA256().Finalize(rung.value_commitment.data());
-    proof.rungs.push_back(rung);
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, root, 1, error));
-    BOOST_CHECK(error.find("unknown block type") != std::string::npos);
-}
-
-// 10. Creation proof validation rejects invalid inversion
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_bad_inversion)
-{
-    CreationProof proof;
-    CreationProofRung rung;
-    // SIG is NOT invertible — inverted=1 should fail
-    rung.blocks.push_back({static_cast<uint16_t>(RungBlockType::SIG), 1});
-    rung.coil.output_index = 0;
-    CSHA256().Finalize(rung.value_commitment.data());
-    proof.rungs.push_back(rung);
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, root, 1, error));
-    BOOST_CHECK(error.find("non-invertible") != std::string::npos);
-}
-
-// 11. Creation proof validation rejects output_index out of range
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_output_out_of_range)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 5)); // only 2 outputs
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, root, 2, error));
-    BOOST_CHECK(error.find("output_index") != std::string::npos);
-}
-
-// 12. Creation proof validation rejects output with no rung
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_uncovered_output)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-    // Output 1 has no rung assigned
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, root, 2, error));
-    BOOST_CHECK(error.find("no rung assigned") != std::string::npos);
-}
-
-// 13. Creation proof rejects empty proof
-BOOST_AUTO_TEST_CASE(tx_mlsc_validate_creation_proof_empty)
-{
-    CreationProof proof; // no rungs
-    uint256 root;
-    root.SetNull();
-    std::string error;
-    BOOST_CHECK(!ValidateCreationProof(proof, root, 1, error));
-    BOOST_CHECK(error.find("no rungs") != std::string::npos);
-}
-
-// 14. Value commitment is deterministic
+// 6. Value commitment is deterministic
 BOOST_AUTO_TEST_CASE(tx_mlsc_value_commitment_deterministic)
 {
     Rung rung;
@@ -11697,33 +11583,7 @@ BOOST_AUTO_TEST_CASE(tx_mlsc_structural_template_serde)
     BOOST_CHECK_EQUAL(tmpl.size(), 9u);
 }
 
-// 17. Deserialization rejects trailing bytes
-BOOST_AUTO_TEST_CASE(tx_mlsc_creation_proof_rejects_trailing)
-{
-    CreationProof proof;
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::SIG, 0));
-    auto bytes = SerializeCreationProof(proof);
-    bytes.push_back(0xFF); // trailing garbage
-
-    CreationProof proof2;
-    std::string error;
-    BOOST_CHECK(!DeserializeCreationProof(bytes, proof2, error));
-    BOOST_CHECK(error.find("trailing") != std::string::npos);
-}
-
-// 18. Invertible block type accepted when inverted
-BOOST_AUTO_TEST_CASE(tx_mlsc_invertible_block_accepted)
-{
-    CreationProof proof;
-    // CSV IS invertible
-    proof.rungs.push_back(MakeCreationRung(RungBlockType::CSV, 0, /*inverted=*/true));
-
-    uint256 root = ComputeTxMLSCRoot(proof);
-    std::string error;
-    BOOST_CHECK(ValidateCreationProof(proof, root, 1, error));
-}
-
-// 19. TX_MLSC descriptor parse round-trip
+// 9. TX_MLSC descriptor parse round-trip
 BOOST_AUTO_TEST_CASE(tx_mlsc_descriptor_parse)
 {
     std::string desc = "ladder(output(0, sig(@alice)), output(1, sig(@bob)))";

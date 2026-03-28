@@ -1643,12 +1643,12 @@ bool ParseTxMLSCDescriptor(const std::string& desc,
     return true;
 }
 
-std::string FormatTxMLSCDescriptor(const CreationProof& proof)
+std::string FormatTxMLSCDescriptor(const std::vector<CreationProofRung>& rungs)
 {
     // Group rungs by output_index
     std::map<uint8_t, std::vector<size_t>> output_rungs;
-    for (size_t i = 0; i < proof.rungs.size(); ++i) {
-        output_rungs[proof.rungs[i].coil.output_index].push_back(i);
+    for (size_t i = 0; i < rungs.size(); ++i) {
+        output_rungs[rungs[i].coil.output_index].push_back(i);
     }
 
     std::string result = "ladder(";
@@ -1660,7 +1660,7 @@ std::string FormatTxMLSCDescriptor(const CreationProof& proof)
         if (rung_indices.size() > 1) result += "or(";
         for (size_t r = 0; r < rung_indices.size(); ++r) {
             if (r > 0) result += ", ";
-            const auto& cp_rung = proof.rungs[rung_indices[r]];
+            const auto& cp_rung = rungs[rung_indices[r]];
             // Format blocks as type names
             if (cp_rung.blocks.size() > 1) result += "and(";
             for (size_t b = 0; b < cp_rung.blocks.size(); ++b) {

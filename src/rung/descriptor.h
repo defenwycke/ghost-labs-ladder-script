@@ -133,9 +133,9 @@ bool ParseTxMLSCDescriptor(const std::string& desc,
                             TxMLSCDescriptor& out,
                             std::string& error);
 
-/** Format a TX_MLSC descriptor from a creation proof and rung data.
+/** Format a TX_MLSC descriptor from rung data.
  *  @return descriptor string */
-std::string FormatTxMLSCDescriptor(const CreationProof& proof);
+std::string FormatTxMLSCDescriptor(const std::vector<CreationProofRung>& rungs);
 
 } // namespace rung
 

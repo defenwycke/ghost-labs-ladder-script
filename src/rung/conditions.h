@@ -254,46 +254,24 @@ struct CreationProofRung {
     uint256 value_commitment;                           //!< SHA256(field_values || pubkeys)
 };
 
-/** TX_MLSC creation proof — one per transaction, carried in the witness.
- *  Proves the conditions_root was derived from validated, typed structure.
- *  Validated at block acceptance; prunable afterward (witness data). */
-struct CreationProof {
-    std::vector<CreationProofRung> rungs;
-};
-
 /** Serialize a structural template (block types + inverted flags + coil) for leaf hashing.
- *  This is the public half of the rung leaf — validated at creation time. */
+ *  Used at spend time to reconstruct rung leaves from witness data. */
 std::vector<uint8_t> SerializeStructuralTemplate(const CreationProofRung& rung);
 
-/** Compute a TX_MLSC leaf from a creation proof rung.
- *  leaf = TaggedHash("LadderLeaf", structural_template || value_commitment) */
+/** Compute a TX_MLSC leaf from a rung's structural template + value commitment.
+ *  leaf = TaggedHash("LadderLeaf", structural_template || value_commitment)
+ *  Used at both creation (by RPC) and spend time (by evaluator). */
 uint256 ComputeTxMLSCLeaf(const CreationProofRung& rung);
 
-/** Compute the TX_MLSC conditions root from a creation proof.
- *  Builds a Merkle tree from all rung leaves using sorted interior nodes. */
-uint256 ComputeTxMLSCRoot(const CreationProof& proof);
+/** Compute the TX_MLSC conditions root from a set of rung leaves.
+ *  Builds a Merkle tree using sorted interior nodes. */
+uint256 ComputeTxMLSCRoot(const std::vector<CreationProofRung>& rungs);
 
 /** Compute a value_commitment for a rung: SHA256(field_values || pubkeys).
- *  Used by RPC commands when building creation proofs from full conditions. */
+ *  Used by RPC commands when building conditions and by the evaluator
+ *  when verifying spend-time Merkle proofs. */
 uint256 ComputeValueCommitment(const Rung& rung,
                                 const std::vector<std::vector<uint8_t>>& pubkeys);
-
-/** Deserialize a creation proof from witness bytes. */
-bool DeserializeCreationProof(const std::vector<uint8_t>& data,
-                               CreationProof& proof,
-                               std::string& error);
-
-/** Serialize a creation proof to witness bytes. */
-std::vector<uint8_t> SerializeCreationProof(const CreationProof& proof);
-
-/** Validate a creation proof against a conditions_root and output count.
- *  Checks: known block types, valid inversion, valid coils, output_index < n_outputs,
- *  every output has at least one rung, computed root matches expected root.
- *  @return true if all checks pass. */
-bool ValidateCreationProof(const CreationProof& proof,
-                            const uint256& expected_root,
-                            size_t n_outputs,
-                            std::string& error);
 
 } // namespace rung
 

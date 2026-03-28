@@ -2141,7 +2141,7 @@ static RPCHelpMan signrungtx()
                         });
                     }
                     cp_rung.coil = conditions.coil;
-                    cp_rung.coil.output_index = 0;
+                    cp_rung.coil.output_index = mtx.vin[input_idx].prevout.n;
                     std::vector<std::vector<uint8_t>> rpks;
                     if (r < rung_pubkeys2.size()) rpks = rung_pubkeys2[r];
                     cp_rung.value_commitment = rung::ComputeValueCommitment(conditions.rungs[r], rpks);
@@ -2883,32 +2883,10 @@ static RPCHelpMan signladder()
         ladder.rungs.push_back(std::move(wit_rung));
         ladder.coil = conditions.coil;
 
-        // TX_MLSC: look up the funding tx's creation proof early to get the
-        // correct coil.output_index before serializing the witness.
+        // TX_MLSC: output_index comes from the spent prevout
         if (is_mlsc) {
-            const auto& prevout = mtx.vin[input_idx].prevout;
-            auto& node_early = EnsureAnyNodeContext(request.context);
-            uint256 hashBlock_early;
-            const CTransactionRef funding_tx_early = node::GetTransaction(
-                nullptr, node_early.mempool.get(), prevout.hash,
-                hashBlock_early, node_early.chainman->m_blockman);
-            if (funding_tx_early && !funding_tx_early->creation_proof.empty()) {
-                rung::CreationProof fp;
-                std::string cpe;
-                if (rung::DeserializeCreationProof(funding_tx_early->creation_proof, fp, cpe)) {
-                    std::vector<std::vector<uint8_t>> tpks;
-                    if (target_rung < rung_pubkeys.size()) tpks = rung_pubkeys[target_rung];
-                    uint256 ovc = rung::ComputeValueCommitment(conditions.rungs[target_rung], tpks);
-                    uint32_t sv = prevout.n;
-                    for (const auto& fpr : fp.rungs) {
-                        if (fpr.value_commitment == ovc && fpr.coil.output_index == sv) {
-                            ladder.coil.output_index = fpr.coil.output_index;
-                            conditions.coil.output_index = fpr.coil.output_index;
-                            break;
-                        }
-                    }
-                }
-            }
+            ladder.coil.output_index = mtx.vin[input_idx].prevout.n;
+            conditions.coil.output_index = mtx.vin[input_idx].prevout.n;
         }
 
         // 8. Serialize witness
@@ -2948,121 +2926,39 @@ static RPCHelpMan signladder()
             rung::MLSCProof mlsc_proof;
             mlsc_proof.rung_index = static_cast<uint16_t>(target_rung);
             mlsc_proof.revealed_rung = conditions.rungs[target_rung];
+            mlsc_proof.total_rungs = static_cast<uint16_t>(conditions.rungs.size());
+            mlsc_proof.total_relays = static_cast<uint16_t>(conditions.relays.size());
 
-            // TX_MLSC: the funding tx's creation proof defines the full shared tree.
-            // If the spending tx carries a creation_proof from the funding tx (via
-            // the "creation_proof" field on the spending input), use it to rebuild the
-            // tree and extract sibling hashes. Otherwise fall back to the descriptor's
-            // conditions for proof hash computation.
-            //
-            // The spending tx itself has creation_proof for its OWN outputs. The
-            // funding tx's creation proof must be looked up from the funding tx.
-            // For now: if the descriptor has more rungs than just the target, compute
-            // siblings from the descriptor. Otherwise: check if the spending tx has
-            // funding_creation_proof data passed via the spent_outputs parameter.
-
-            // Check if the funding tx's creation proof was deserialized into the mtx
-            // (happens when the tx was created by createtxmlsc which sets conditions_root).
-            // Look up the funding tx's creation proof from the prevout.
-            bool used_funding_proof = false;
-
-            // Try to read the funding transaction's creation proof from the block database
-            // via the node's RPC interface (getrawtransaction).
-            {
-                const auto& prevout = mtx.vin[input_idx].prevout;
-                // Use the node context to look up the funding tx
-                auto& node = EnsureAnyNodeContext(request.context);
-                uint256 hashBlock;
-                const CTransactionRef funding_tx = node::GetTransaction(
-                    /* block_index */ nullptr,
-                    /* mempool */ node.mempool.get(),
-                    prevout.hash,
-                    hashBlock,
-                    node.chainman->m_blockman);
-
-                if (funding_tx && !funding_tx->creation_proof.empty()) {
-                    rung::CreationProof funding_proof;
-                    std::string cp_error;
-                    if (rung::DeserializeCreationProof(funding_tx->creation_proof, funding_proof, cp_error)) {
-                        // Rebuild all leaves from the funding tx's creation proof
-                        std::vector<uint256> all_leaves;
-                        for (const auto& cp_rung : funding_proof.rungs) {
-                            all_leaves.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
-                        }
-
-                        // Match our rung to the funding proof by value_commitment.
-                        // The value_commitment = SHA256(field_values || pubkeys) is
-                        // independent of coil.output_index, so it matches regardless
-                        // of which output the rung governs.
-                        std::vector<std::vector<uint8_t>> target_pks;
-                        if (target_rung < rung_pubkeys.size()) target_pks = rung_pubkeys[target_rung];
-                        uint256 our_vc = rung::ComputeValueCommitment(
-                            conditions.rungs[target_rung], target_pks);
-
-                        // Find the rung in the funding proof that:
-                        // 1. Has matching value_commitment
-                        // 2. Has coil.output_index matching the output we're spending
-                        uint32_t spent_vout = mtx.vin[input_idx].prevout.n;
-                        int found_idx = -1;
-                        for (size_t i = 0; i < funding_proof.rungs.size(); ++i) {
-                            if (funding_proof.rungs[i].value_commitment == our_vc &&
-                                funding_proof.rungs[i].coil.output_index == spent_vout) {
-                                found_idx = static_cast<int>(i);
-                                break;
-                            }
-                        }
-
-                        if (found_idx >= 0) {
-                            mlsc_proof.total_rungs = static_cast<uint16_t>(all_leaves.size());
-                            mlsc_proof.total_relays = 0;
-                            mlsc_proof.rung_index = static_cast<uint16_t>(found_idx);
-                            // Build O(log N) Merkle path instead of O(N) full leaves
-                            mlsc_proof.proof_mode = rung::MLSCProofMode::MERKLE_PATH;
-                            mlsc_proof.proof_hashes = rung::BuildMerklePath(all_leaves, found_idx);
-                            // Set the coil's output_index from the funding proof
-                            // (the descriptor defaults to 0 but the funding proof has the real value)
-                            conditions.coil.output_index = funding_proof.rungs[found_idx].coil.output_index;
-                            ladder.coil.output_index = conditions.coil.output_index;
-                            used_funding_proof = true;
-                        }
-                    }
+            // Reveal relays referenced by target rung
+            for (uint16_t ref : conditions.rungs[target_rung].relay_refs) {
+                if (ref < conditions.relays.size()) {
+                    mlsc_proof.revealed_relays.push_back({ref, conditions.relays[ref]});
                 }
             }
 
-            if (!used_funding_proof) {
-                // Fallback: use the descriptor's conditions (works for single-rung trees)
-                mlsc_proof.total_rungs = static_cast<uint16_t>(conditions.rungs.size());
-                mlsc_proof.total_relays = static_cast<uint16_t>(conditions.relays.size());
-
-                // Reveal relays referenced by target rung
-                for (uint16_t ref : conditions.rungs[target_rung].relay_refs) {
-                    if (ref < conditions.relays.size()) {
-                        mlsc_proof.revealed_relays.push_back({ref, conditions.relays[ref]});
-                    }
+            // Build all rung leaves from the descriptor for Merkle path computation.
+            // Each rung's coil.output_index must match what was used at creation time.
+            uint32_t spent_vout = mtx.vin[input_idx].prevout.n;
+            std::vector<uint256> all_leaves;
+            for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
+                rung::CreationProofRung cp_rung;
+                for (const auto& block : conditions.rungs[r].blocks) {
+                    cp_rung.blocks.push_back({
+                        static_cast<uint16_t>(block.type),
+                        static_cast<uint8_t>(block.inverted ? 1 : 0)
+                    });
                 }
-
-                // Build all leaves for Merkle path computation
-                std::vector<uint256> all_leaves;
-                for (uint16_t r = 0; r < conditions.rungs.size(); ++r) {
-                    rung::CreationProofRung cp_rung;
-                    for (const auto& block : conditions.rungs[r].blocks) {
-                        cp_rung.blocks.push_back({
-                            static_cast<uint16_t>(block.type),
-                            static_cast<uint8_t>(block.inverted ? 1 : 0)
-                        });
-                    }
-                    cp_rung.coil = conditions.coil;
-                    cp_rung.coil.output_index = 0;
-                    std::vector<std::vector<uint8_t>> rpks;
-                    if (r < rung_pubkeys.size()) rpks = rung_pubkeys[r];
-                    cp_rung.value_commitment = rung::ComputeValueCommitment(conditions.rungs[r], rpks);
-                    all_leaves.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
-                }
-
-                // Build O(log N) Merkle path
-                mlsc_proof.proof_mode = rung::MLSCProofMode::MERKLE_PATH;
-                mlsc_proof.proof_hashes = rung::BuildMerklePath(all_leaves, target_rung);
+                cp_rung.coil = conditions.coil;
+                cp_rung.coil.output_index = spent_vout;
+                std::vector<std::vector<uint8_t>> rpks;
+                if (r < rung_pubkeys.size()) rpks = rung_pubkeys[r];
+                cp_rung.value_commitment = rung::ComputeValueCommitment(conditions.rungs[r], rpks);
+                all_leaves.push_back(rung::ComputeTxMLSCLeaf(cp_rung));
             }
+
+            // Build O(log N) Merkle path
+            mlsc_proof.proof_mode = rung::MLSCProofMode::MERKLE_PATH;
+            mlsc_proof.proof_hashes = rung::BuildMerklePath(all_leaves, target_rung);
 
             auto proof_bytes = rung::SerializeMLSCProof(mlsc_proof);
             mtx.vin[input_idx].scriptWitness.stack.push_back(proof_bytes);
@@ -3142,14 +3038,12 @@ static RPCHelpMan createtxmlsc()
             },
             {"locktime", RPCArg::Type::NUM, RPCArg::Optional::OMITTED, "Transaction nLockTime (default 0)"},
             {"internal_pubkey", RPCArg::Type::STR_HEX, RPCArg::Optional::OMITTED, "32-byte x-only internal pubkey for key-path spending. When provided, conditions_root is tweaked."},
-            {"no_creation_proof", RPCArg::Type::BOOL, RPCArg::Optional::OMITTED, "If true, omit creation proof (default: false)"},
         },
         RPCResult{RPCResult::Type::OBJ, "", "", {
             {RPCResult::Type::STR_HEX, "hex", "The unsigned TX_MLSC transaction hex"},
             {RPCResult::Type::STR_HEX, "conditions_root", "The shared conditions root (tweaked if internal_pubkey provided)"},
             {RPCResult::Type::STR_HEX, "merkle_root", "The raw Merkle root (before tweaking)"},
             {RPCResult::Type::NUM, "n_rungs", "Total rungs in the shared tree"},
-            {RPCResult::Type::NUM, "creation_proof_size", "Creation proof size in bytes"},
         }},
         RPCExamples{
             HelpExampleCli("createtxmlsc",
@@ -3195,8 +3089,8 @@ static RPCHelpMan createtxmlsc()
         mtx.vout.push_back(txout);
     }
 
-    // Parse rungs and build creation proof
-    rung::CreationProof proof;
+    // Parse rungs and compute conditions root
+    std::vector<rung::CreationProofRung> cp_rungs;
     std::vector<rung::Rung> all_rungs;
     std::vector<std::vector<std::vector<uint8_t>>> all_rung_pubkeys;
 
@@ -3255,11 +3149,11 @@ static RPCHelpMan createtxmlsc()
         // Compute value_commitment = SHA256(field_values || pubkeys)
         cp_rung.value_commitment = rung::ComputeValueCommitment(rung, rung_pks);
 
-        proof.rungs.push_back(std::move(cp_rung));
+        cp_rungs.push_back(std::move(cp_rung));
     }
 
-    // Compute raw Merkle root from creation proof
-    uint256 merkle_root = rung::ComputeTxMLSCRoot(proof);
+    // Compute raw Merkle root from rung leaves
+    uint256 merkle_root = rung::ComputeTxMLSCRoot(cp_rungs);
 
     // Apply key-path tweak if internal_pubkey is provided
     bool has_internal_pubkey = !request.params[4].isNull() && !request.params[4].get_str().empty();
@@ -3278,11 +3172,7 @@ static RPCHelpMan createtxmlsc()
         mtx.conditions_root = merkle_root;
     }
 
-    // Serialize creation proof (unless no_creation_proof is set)
-    bool skip_proof = !request.params[5].isNull() && request.params[5].get_bool();
-    if (!skip_proof) {
-        mtx.creation_proof = rung::SerializeCreationProof(proof);
-    }
+    // No creation proof — conditions_root is an opaque commitment
 
     // Inflate outputs with shared scriptPubKey (for UTXO compatibility)
     CScript mlsc_spk;
@@ -3296,8 +3186,7 @@ static RPCHelpMan createtxmlsc()
     result.pushKV("hex", EncodeHexTx(CTransaction(mtx)));
     result.pushKV("conditions_root", mtx.conditions_root.GetHex());
     result.pushKV("merkle_root", merkle_root.GetHex());
-    result.pushKV("n_rungs", (int)proof.rungs.size());
-    result.pushKV("creation_proof_size", (int)mtx.creation_proof.size());
+    result.pushKV("n_rungs", (int)cp_rungs.size());
     return result;
 },
     };
