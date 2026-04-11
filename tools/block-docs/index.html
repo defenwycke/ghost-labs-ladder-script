@@ -249,6 +249,16 @@ a:hover { text-decoration: underline; }
     </div>
   </div>
 
+  <!-- -- QABIO -- -->
+  <div class="family">
+    <h2 class="family-title" style="color:#9b59b6;">QABIO Family &mdash; 0x0A00</h2>
+    <p class="family-intro">Quantum Atomic Batch Input/Output. N independent parties batch their rung_tx UTXOs under a single FALCON-512 coordinator signature. Two blocks &mdash; one primes a UTXO into a specific upcoming batch via covenant, the other consumes the primed UTXO inside the coordinator-signed batch tx. Post-quantum by default, consensus-enforced atomicity, no escrow or pre-registration.</p>
+    <div class="block-grid">
+      <a href="qabi-prime.html" class="block-card"><div class="block-code">0x0A01</div><div class="block-name">QABI_PRIME</div><div class="block-desc">Priming state transition: reveal next auth-chain preimage, covenant-mutate committed_root / depth / expiry. Participant-authorised only &mdash; no coordinator signature needed.</div></a>
+      <a href="qabi-spend.html" class="block-card"><div class="block-code">0x0A02</div><div class="block-name">QABI_SPEND</div><div class="block-desc">Batch spend: verifies primed state, expiry window, spend preimage, and a single tx-level FALCON-512 aggregated signature that authorises the whole batch atomically.</div></a>
+    </div>
+  </div>
+
   <!-- -- COMPACT -- -->
   <div class="family">
   </div>

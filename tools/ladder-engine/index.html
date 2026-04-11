@@ -1733,6 +1733,7 @@ body {
 .example-tag.rec { border-color: #8e44ad66; color: #8e44ad; }
 .example-tag.plc { border-color: #c0392b66; color: #c0392b; }
 .example-tag.legacy { border-color: #c2185b66; color: #c2185b; }
+.example-tag.qabi { border-color: #9b59b666; color: #9b59b6; }
 
 /* Fullscreen mode */
 .app.fullscreen .main-content {
@@ -2696,6 +2697,25 @@ const BLOCK_FAMILIES = [
       ]},
     ]
   },
+  {
+    name: 'QABIO', color: '#9b59b6',
+    blocks: [
+      { type: 'QABI_PRIME', label: 'QABI_PRIME', desc: 'QABIO priming state transition --reveal auth preimage, mutate committed batch root (covenant)', fields: [
+        { name: 'new_committed_root', dataType: 'HASH256', label: 'New Committed Root', placeholder: '32-byte Merkle root of the batch being primed for (witness-only)' },
+        { name: 'prime_depth', dataType: 'NUMERIC', label: 'Prime Depth', placeholder: 'uint32 LE --depth in auth chain (must exceed current committed_depth)' },
+        { name: 'new_committed_expiry', dataType: 'NUMERIC', label: 'New Committed Expiry', placeholder: 'uint32 LE --max block height the QABI_SPEND may fire at' },
+        { name: 'prime_preimage', dataType: 'PREIMAGE', label: 'Prime Preimage', placeholder: '32-byte preimage such that SHA256^prime_depth(preimage) == committed auth_tip' }
+      ]},
+      { type: 'QABI_SPEND', label: 'QABI_SPEND', desc: 'QABIO batch spend --verifies primed state, FALCON-512 coordinator signature (SIGHASH_QABO), full output-set match', fields: [
+        { name: 'auth_tip', dataType: 'HASH256', label: 'Auth Tip', placeholder: '32-byte H^N(auth_seed) committed at creation time (conditions)' },
+        { name: 'committed_root', dataType: 'HASH256', label: 'Committed Root', placeholder: '32-byte primed batch root (0 if unprimed; conditions)' },
+        { name: 'committed_depth', dataType: 'NUMERIC', label: 'Committed Depth', placeholder: 'uint32 LE --depth of last consumed preimage (conditions)' },
+        { name: 'committed_expiry', dataType: 'NUMERIC', label: 'Committed Expiry', placeholder: 'uint32 LE --max block height the spend may fire at (conditions)' },
+        { name: 'owner_id', dataType: 'PUBKEY_COMMIT', label: 'Owner ID', placeholder: '32-byte SHA256(owner Rung 0 FALCON pubkey) (conditions)' },
+        { name: 'spend_preimage', dataType: 'PREIMAGE', label: 'Spend Preimage', placeholder: '32-byte preimage at depth committed_depth+1 (witness-only)' }
+      ]},
+    ]
+  },
 ];
 
 // Internal block type for referencing output coils from other rungs
@@ -2779,6 +2799,8 @@ const BLOCK_RULES = {
   P2WSH_LEGACY: 'Legacy P2WSH wrapped. SHA256 of inner conditions must match. SCRIPT_BODY carries serialised Ladder Script conditions (up to 32 bytes). Same pattern as P2SH but with SHA256 hash.',
   P2TR_LEGACY: 'Legacy P2TR key-path wrapped. Same evaluation as SIG --key-path Taproot spend with typed fields. Closes key-path data surfaces.',
   P2TR_SCRIPT_LEGACY: 'Legacy P2TR script-path wrapped. HASH256 is Merkle root of script tree, internal key folded into Merkle leaf. Revealed leaf (SCRIPT_BODY) must be valid Ladder Script conditions (up to 32 bytes). Closes the primary inscription/data-embedding vector.',
+  QABI_PRIME: 'QABIO priming state transition. Reveals the next auth chain preimage, bumps committed_depth, and mutates the QABI_SPEND rung\'s committed_root + committed_expiry via a covenant check (tx.vout[0] must be an MLSC UTXO whose conditions_root equals the re-computed primed tree). Participant-authorised: only the auth_seed holder can produce a valid preimage. No coordinator signature required at priming time.',
+  QABI_SPEND: 'QABIO batch spend. Consensus-enforced N-party atomic batch: each primed input reveals its preimage at committed_depth+1, verifies against committed auth_tip, then a single FALCON-512 coordinator signature (SIGHASH_QABO, 666 B) authorises the whole tx. Output set must bit-exact match the QABIBlock outputs list (tx-level hashOutputs). Tx-level aggregated_sig is shared across all inputs \u2014 one FALCON verify per tx, not per input.',
 };
 
 // Realistic test data for every block type --deterministic fake keys/hashes
@@ -8034,6 +8056,116 @@ const EXAMPLES = [
       { address: FAKE.addr1, amount: 15000 },
     ],
     inputMap: [[0]], outputMap: [0],
+  },
+  {
+    title: 'QABIO UTXO --FRESH (unprimed)',
+    desc: 'A brand-new QABIO-enabled UTXO with the standard 3-rung deployment shape. Not yet primed for any specific batch. Three spend paths: the SIG escape rung (participant sweeps unilaterally with their own key), the QABI_PRIME rung (participant opts the UTXO into a specific upcoming coordinator batch), and the QABI_SPEND rung (coordinator-driven batch spend, only valid after priming).\n\nESCAPE: Participant spends with their own key, no coordinator involvement.\nPRIME:   Participant reveals auth-chain preimage to commit into a batch.\nSPEND:   Coordinator finalises the batch (only after a QABI_PRIME has set committed_root).',
+    tags: [['SIG', 'sig'], ['QABI_PRIME', 'qabi'], ['QABI_SPEND', 'qabi']],
+    rungs: [
+      { label: 'ESCAPE', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'PARTICIPANT_SWEEP', type: 'standard' } },
+      { label: 'PRIME', blocks: [
+        { type: 'QABI_PRIME', values: {
+            new_committed_root: FAKE.hash1,
+            prime_depth: '10',
+            new_committed_expiry: '500',
+            prime_preimage: FAKE.hash2,
+        } },
+      ], output: { name: 'PRIMED_UTXO', type: 'standard' } },
+      { label: 'SPEND', blocks: [
+        { type: 'QABI_SPEND', values: {
+            auth_tip: FAKE.hash3,
+            committed_root: '0000000000000000000000000000000000000000000000000000000000000000',
+            committed_depth: '0',
+            committed_expiry: '0',
+            owner_id: FAKE.hash4,
+            spend_preimage: FAKE.preimage1,
+        } },
+      ], output: { name: 'BATCH_PAYOUT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid1, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 49990 },
+      { address: FAKE.addr2, amount: 49980 },
+      { address: FAKE.addr3, amount: 49970 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+  {
+    title: 'QABIO UTXO --PRIMED',
+    desc: 'The same QABIO UTXO after a QABI_PRIME has fired. committed_root now points at a specific coordinator batch, committed_depth is 10, committed_expiry is 500. The QABI_SPEND rung is now valid for that batch --the coordinator can finalise it by signing once with FALCON-512 over the whole batch tx. The SIG escape rung is STILL valid: if the coordinator bails, the participant can sweep via the SIG rung using their own key. The QABI_PRIME rung can still fire again to re-prime at a deeper auth depth if the current batch misses its window.\n\nESCAPE: Unchanged --still works if the coordinator disappears.\nRE_PRIME: Participant can prime again at a deeper auth depth, committing to a different batch.\nSPEND:   Coordinator finalises --single FALCON-512 sig authorises the whole N-party tx.',
+    tags: [['SIG', 'sig'], ['QABI_PRIME', 'qabi'], ['QABI_SPEND', 'qabi']],
+    rungs: [
+      { label: 'ESCAPE', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'PARTICIPANT_SWEEP', type: 'standard' } },
+      { label: 'RE_PRIME', blocks: [
+        { type: 'QABI_PRIME', values: {
+            new_committed_root: FAKE.hash4,
+            prime_depth: '20',
+            new_committed_expiry: '1000',
+            prime_preimage: FAKE.hash2,
+        } },
+      ], output: { name: 'RE_PRIMED', type: 'standard' } },
+      { label: 'SPEND', blocks: [
+        { type: 'QABI_SPEND', values: {
+            auth_tip: FAKE.hash3,
+            committed_root: FAKE.hash1,
+            committed_depth: '10',
+            committed_expiry: '500',
+            owner_id: FAKE.hash4,
+            spend_preimage: FAKE.preimage1,
+        } },
+      ], output: { name: 'BATCH_PAYOUT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid2, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr4, amount: 49970 },
+      { address: FAKE.addr5, amount: 49960 },
+      { address: FAKE.addr6, amount: 49950 },
+    ],
+    inputMap: [[0], [0], [0]], outputMap: [0, 1, 2],
+  },
+  {
+    title: 'QABIO COORDINATOR BAILS --ESCAPE',
+    desc: 'The safety-test shape: a minimal 1-rung MLSC UTXO a participant sweeps into via the SIG escape rung after the coordinator has disappeared mid-batch. This is the destination of the escape path from the PRIMED example above --the participant produces a Schnorr signature under their own key, the primed UTXO is consumed, and the funds land in a fresh MLSC(SIG-only) UTXO they control unilaterally.\n\nSIG_ONLY: Single-key Schnorr signature. Spendable any time. No coordinator, no preimage, no batch state --just a normal one-of-one key-controlled UTXO that happens to live in the MLSC envelope.',
+    tags: [['SIG', 'sig']],
+    rungs: [
+      { label: 'SIG_ONLY', blocks: [
+        { type: 'SIG', values: { pubkey: FAKE.pk1 } },
+      ], output: { name: 'RECOVERED', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid3, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 49950 },
+    ],
+    inputMap: [[0]], outputMap: [0],
+  },
+  {
+    title: 'QABIO BATCH PAYOUT --COORDINATOR VIEW',
+    desc: 'The tx a coordinator constructs when finalising an N-party batch. Single QABI_SPEND rung authorises the whole tx; the FALCON-512 aggregated_sig (666 bytes, tx-level) is verified once per tx and shared across every primed input. In practice each primed input has its own QABI_SPEND witness revealing its own spend_preimage, but the ladder structure is the same --N copies of this rung, one per input, all consuming the same tx-level signature.\n\nSPEND: All 9 QABI_SPEND consensus checks run per-input, but the expensive FALCON verify is cached across inputs (~865 us/input at N=1000).',
+    tags: [['QABI_SPEND', 'qabi']],
+    rungs: [
+      { label: 'SPEND', blocks: [
+        { type: 'QABI_SPEND', values: {
+            auth_tip: FAKE.hash3,
+            committed_root: FAKE.hash1,
+            committed_depth: '10',
+            committed_expiry: '500',
+            owner_id: FAKE.hash4,
+            spend_preimage: FAKE.preimage1,
+        } },
+      ], output: { name: 'BATCH_OUT', type: 'standard' } },
+    ],
+    txInputs: [{ txid: FAKE.txid4, vout: 0 }],
+    txOutputs: [
+      { address: FAKE.addr1, amount: 12500 },
+      { address: FAKE.addr2, amount: 12500 },
+      { address: FAKE.addr3, amount: 12500 },
+      { address: FAKE.addr4, amount: 12400 },
+    ],
+    inputMap: [[0]], outputMap: [0, 1, 2, 3],
   },
 ];
 
