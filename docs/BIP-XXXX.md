@@ -44,6 +44,15 @@ TX_MLSC transactions commit to a single shared Merkle root of conditions
 declares which output it governs via `output_index`. Ladder Script
 transactions use version 4 (`nVersion = 4`).
 
+Ladder Script is the base layer for a class of typed-condition
+extensions. QABIO (Quantum Atomic Batch I/O), specified separately in
+BIP-YYYY, is the first such extension; it reserves the `0x0A00` block
+family for N-party post-quantum batch I/O. Additional extensions may
+register further families above `0x0A00` through their own BIPs. This
+BIP specifies only the base Ladder Script layer, its 61 block types in
+families `0x0001`–`0x09FF`, and the wire format, sighash, evaluation
+semantics, and consensus limits that all extensions build on.
+
 ## Motivation
 
 ### Bitcoin's Spending Conditions Are Too Limited
@@ -458,6 +467,17 @@ re-keying.
 | `0x0905` | P2WSH_LEGACY       | Wrapped P2WSH (hash256 + inner script)       |
 | `0x0906` | P2TR_LEGACY        | Wrapped P2TR key-path                        |
 | `0x0907` | P2TR_SCRIPT_LEGACY | Wrapped P2TR script-path                     |
+
+#### Reserved Family Ranges
+
+Family codes `0x0A00` and above are reserved for future extensions
+specified as separate BIPs. The QABIO extension (BIP-YYYY) reserves
+family `0x0A00` – `0x0AFF` for the QABI block types (`QABI_PRIME`
+at `0x0A01` and `QABI_SPEND` at `0x0A02`); implementations that
+activate Ladder Script without QABIO should treat these codes as
+unknown block types and return UNSATISFIED on evaluation (the
+standard forward-compatibility behaviour for unrecognised Ladder
+Script types).
 
 ### Wire Format
 
