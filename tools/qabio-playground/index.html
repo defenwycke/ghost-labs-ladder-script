@@ -1474,7 +1474,7 @@ function StagePanel({ apiCall }) {
     });
     if (!batchRes) { log('Batch build failed', 'err'); return; }
     storeJson('batch_build', 'Batch createtxmlsc resp', batchRes);
-    dispatch({ type: 'BATCH_UPDATE', patch: { unsignedHex: batchRes.hex, vin: batchInputs.length, vout: batchOutputs.length, totalBytes: batchRes.hex.length / 2 } });
+    dispatch({ type: 'BATCH_UPDATE', patch: { unsignedHex: batchRes.hex, vin: batchInputs.length, vout: finalBatchAmounts.length, totalBytes: batchRes.hex.length / 2 } });
     log('Batch: ' + (batchRes.hex.length / 2) + ' bytes, vin=' + batchInputs.length, 'ok');
 
     // ── 7a. Add per-input QABI_SPEND witness via signrungtx ──
