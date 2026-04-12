@@ -1253,24 +1253,11 @@ protect against:
 ## Acknowledgements
 
 QABIO was developed as part of the Ladder Script project. The
-consensus evaluator, wire format, and BuildWitnessBlock handlers
-were validated end-to-end on the ladder-script signet during the
-QABIO Playground development cycle, which surfaced three consensus
-bugs that are now fixed in the reference implementation:
-
-- `QABI_SPEND_WITNESS` implicit layout was originally 6 fields
-  (full block), causing `MergeConditionsAndWitness` to double-count
-  conditions fields and produce an 11-field merged block. Fixed
-  by specifying 1 field (PREIMAGE only) in the witness layout.
-- `BuildWitnessBlock` had no QABI_SPEND case, so the default
-  handler produced malformed witnesses. Fixed by adding a dedicated
-  case that derives the spend preimage from `auth_seed` +
-  `chain_length`.
-- `MAX_PREIMAGE_FIELDS_PER_TX = 2` anti-spam limit blocked 3+
-  participant batches. Fixed by exempting QABI_SPEND blocks from
-  the per-tx preimage count (they are already bounded by the
-  qabi_block entry count and consensus-validated against the auth
-  chain).
+consensus evaluator, wire format, and witness-construction handlers
+were validated end-to-end against the reference implementation on
+the ladder-script signet, exercising the full priming, batch-spend,
+and escape lifecycle with N-party coordinators signing live FALCON-512
+aggregate signatures.
 
 Thanks to the Bitcoin developer mailing list for feedback on the
 base Ladder Script design, which shaped the decision to separate
