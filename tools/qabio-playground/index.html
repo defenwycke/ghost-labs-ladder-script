@@ -1444,13 +1444,55 @@ function StagePanel({ apiCall }) {
     dispatch({ type: 'BATCH_UPDATE', patch: { unsignedHex: batchRes.hex, vin: batchInputs.length, vout: batchOutputs.length, totalBytes: batchRes.hex.length / 2 } });
     log('Batch: ' + (batchRes.hex.length / 2) + ' bytes, vin=' + batchInputs.length, 'ok');
 
-    // ── 7. Sign batch with FALCON-512 ──
-    log('Step 7/8: Signing batch with FALCON-512…');
-    const shRes = await apiCall('/api/ladder/qabi/sighash', { hex:batchRes.hex });
+    // ── 7a. Add per-input QABI_SPEND witness via signrungtx ──
+    // qabi_signqabo only stamps the FALCON aggregate sig — each input
+    // still needs an MLSC witness targeting rung 2 (QABI_SPEND) with
+    // the spend_preimage. Derive the preimage at committed_depth+1 via
+    // qabi_authchain, then call signrungtx per input to build the
+    // Merkle proof + witness.
+    log('Step 7/9: Building per-input QABI_SPEND witnesses…');
+    let witnessHex = batchRes.hex;
+    for (let i = 0; i < activeParts.length; i++) {
+      const p = activeParts[i];
+      const spendDepth = state.primeDepth + 1;
+      const chainRes = await apiCall('/api/ladder/qabi/authchain', {
+        auth_seed: p.authSeed, chain_length: state.chainLength, depth: spendDepth,
+      });
+      if (!chainRes) { log(p.label + ': spend preimage derivation failed', 'err'); return; }
+      const spendPreimage = reverseHex(chainRes.preimage);
+      storeJson('spend_preimage_' + p.id, p.label + ' spend preimage', { depth: spendDepth, preimage: spendPreimage });
+
+      const authTipWire = reverseHex(p.authTip);
+      const signersSpec = [{
+        input: i,
+        rung: 2,
+        blocks: [{ type: 'QABI_SPEND', preimage: spendPreimage }],
+        conditions: buildQabiConditionsForSign({
+          authTipHex: authTipWire,
+          committedRootHex: qabiRootWire,
+          committedDepth: state.primeDepth,
+          committedExpiry: expiryHeight,
+          ownerIdHex: p.ownerId,
+          sigPkCompressedHex: p.pubkey,
+        }),
+      }];
+      const spentOutputs = [{ amount: (p.primedAmtSats / 1e8).toFixed(8), scriptPubKey: p.primedSpk }];
+      const signRes = await apiCall('/api/ladder/sign', {
+        hex: witnessHex, signers: signersSpec, spent_outputs: spentOutputs,
+      });
+      if (!signRes || !signRes.hex) { log(p.label + ': QABI_SPEND witness failed', 'err'); return; }
+      storeJson('batch_witness_' + p.id, p.label + ' QABI_SPEND witness resp', signRes);
+      witnessHex = signRes.hex;
+      log(p.label + ': QABI_SPEND witness added', 'ok');
+    }
+
+    // ── 7b. SIGHASH_QABO + FALCON-512 aggregate sig ──
+    log('Step 8/9: Signing batch with FALCON-512…');
+    const shRes = await apiCall('/api/ladder/qabi/sighash', { hex: witnessHex });
     if (!shRes) { log('sighash failed', 'err'); return; }
     storeJson('sighash', 'SIGHASH_QABO', shRes);
     const t0 = performance.now();
-    const sigRes = await apiCall('/api/ladder/qabi/signqabo', { hex:batchRes.hex, privkey: coordKp.privkey });
+    const sigRes = await apiCall('/api/ladder/qabi/signqabo', { hex: witnessHex, privkey: coordKp.privkey });
     const signMs = performance.now() - t0;
     if (!sigRes) { log('signqabo failed', 'err'); return; }
     storeJson('signqabo', 'qabi_signqabo resp', sigRes);
@@ -1458,8 +1500,8 @@ function StagePanel({ apiCall }) {
     dispatch({ type: 'COORD_UPDATE', patch: { signMs } });
     log('Signed in ' + signMs.toFixed(1) + ' ms, sig=' + FALCON512_SIG_SIZE + ' bytes', 'ok');
 
-    // ── 8. Broadcast ──
-    log('Step 8/8: Broadcasting batch tx…');
+    // ── 9. Broadcast ──
+    log('Step 9/9: Broadcasting batch tx…');
     const t1 = performance.now();
     const bcRes = await apiCall('/api/ladder/broadcast', { hex: sigRes.hex });
     const verifyMs = performance.now() - t1;
