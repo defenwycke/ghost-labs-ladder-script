@@ -1288,20 +1288,218 @@ function StagePanel({ apiCall }) {
     }
   };
 
-  // ── One-click happy path: runs every step sequentially ──
+  // ── One-click happy path: self-contained flow that threads local data
+  //    between steps instead of reading stale React closure state. ──
   const handleRunHappyPath = async () => {
     log('Running full happy-path flow…', 'info');
-    await handleGenerateCoordinator();
-    await handleGenerateWallets();
-    await handleFundAll();
-    await handleBuildQabiBlock();
-    await handlePrimeAll();
-    await handleBuildBatch();
-    await handleSignBatch();
-    await handleBroadcastBatch();
-    if (state.participants.some(p => p.failOnDemand)) {
-      await handleEscapeSweep();
+    dispatch({ type: 'CLEAR_ERROR' });
+
+    // ── 1. Coordinator keypair ──
+    log('Step 1/8: Generating coordinator FALCON-512 keypair…');
+    const coordKp = await apiCall('/api/ladder/pq/keypair', { scheme: 'FALCON512' });
+    if (!coordKp) { log('Coordinator keygen failed', 'err'); return; }
+    const batchId = randHex(32);
+    const height = state.currentBlockHeight || 200;
+    const expiryHeight = height + DEFAULT_EXPIRY_BLOCKS_AHEAD;
+    dispatch({ type: 'COORD_UPDATE', patch: { pubkey: coordKp.pubkey, privkey: coordKp.privkey, batchId, expiryHeight } });
+    storeJson('coord_keypair', 'Coordinator keypair (FALCON-512)', { pubkey: coordKp.pubkey, pubkey_size: FALCON512_PUBKEY_SIZE });
+    log('Coordinator ready: pubkey ' + shortHex(coordKp.pubkey, 16) + ', expiry h#' + expiryHeight, 'ok');
+
+    // ── 2. Participant wallets + auth chains ──
+    log('Step 2/8: Generating ' + state.n + ' participant wallets…');
+    const parts = [];
+    for (let i = 0; i < state.n; i++) {
+      let kp;
+      try {
+        const r = await fetch(window.LadderAPI.SIGNET_API + '/api/ladder/wallet/keypair');
+        kp = await r.json();
+        if (!r.ok) throw new Error(kp.detail || 'keypair failed');
+      } catch (e) { log('Wallet keygen failed for P' + i, 'err'); return; }
+
+      const authSeed = randHex(32);
+      const chainRes = await apiCall('/api/ladder/qabi/authchain', { auth_seed: authSeed, chain_length: state.chainLength });
+      if (!chainRes) { log('Auth chain failed for P' + i, 'err'); return; }
+      const ownerId = await sha256Hex(kp.pubkey);
+      const contribution = 50000 + i * 5000;
+
+      parts.push({ id: i, label: 'P' + i, pubkey: kp.pubkey, privkey_wif: kp.privkey, address: kp.address, authSeed, authTip: chainRes.auth_tip, ownerId, contribution, failOnDemand: state.participants[i]?.failOnDemand || false });
+      dispatch({ type: 'PART_UPDATE', id: i, patch: {
+        walletKey: { privkey_wif: kp.privkey, pubkey: kp.pubkey, address: kp.address },
+        authSeed, authTip: chainRes.auth_tip, ownerId, contributionSats: contribution, status: 'pending',
+      }});
+      log('P' + i + ': wallet=' + shortHex(kp.pubkey, 14), 'ok');
     }
+
+    // ── 3. Batch-fund all participants ──
+    log('Step 3/8: Batch-funding ' + parts.length + ' participants…');
+    const addresses = parts.map(p => p.address);
+    const fundRes = await apiCall('/api/ladder/playground/fund-batch', { addresses, amount_btc: 0.001 });
+    if (!fundRes) { log('Batch funding failed', 'err'); return; }
+    storeJson('fund_batch', 'playground/fund-batch response', fundRes);
+    parts.forEach((p, i) => {
+      const out = fundRes.outputs[i];
+      p.fundingTxid = fundRes.txid;
+      p.fundingVout = out.vout;
+      p.fundingAmtSats = Math.round((out.amount_btc || 0.001) * 1e8);
+      dispatch({ type: 'PART_UPDATE', id: p.id, patch: {
+        fundingUtxo: { txid: fundRes.txid, vout: out.vout, amount_sats: p.fundingAmtSats },
+        contributionSats: p.contribution, status: 'funded',
+      }});
+    });
+    log('Funded via ' + shortHex(fundRes.txid, 14), 'ok');
+
+    // ── 4. Build QABI block ──
+    log('Step 4/8: Building QABI block…');
+    const entries = parts.map((p, i) => ({
+      participant_id: p.ownerId, contribution: (p.contribution / 1e8).toFixed(8), destination_index: i,
+    }));
+    const qOutputs = parts.map(p => ({
+      amount: ((p.contribution - 100) / 1e8).toFixed(8), script_pubkey: '0014' + p.ownerId.slice(0, 40),
+    }));
+    const blockRes = await apiCall('/api/ladder/qabi/buildblock', {
+      coordinator_pubkey: coordKp.pubkey, prime_expiry_height: expiryHeight, batch_id: batchId, entries, outputs: qOutputs,
+    });
+    if (!blockRes) { log('buildblock failed', 'err'); return; }
+    storeJson('qabi_block', 'QABI block (raw)', blockRes);
+    const qabiBlockHex = blockRes.qabi_block;
+    const qabiRoot = blockRes.qabi_root;
+    const qabiRootWire = reverseHex(qabiRoot);
+    dispatch({ type: 'COORD_UPDATE', patch: { qabiBlockHex, qabiRoot } });
+    log('QABI block: ' + (qabiBlockHex.length / 2) + ' bytes, root=' + shortHex(qabiRoot, 14), 'ok');
+
+    // ── 5. Prime every participant UTXO ──
+    log('Step 5/8: Priming ' + parts.length + ' participant UTXOs…');
+    for (const p of parts) {
+      const authTipWire = reverseHex(p.authTip);
+      // 5a. Create unprimed UTXO
+      const unprimedConds = buildQabiConditionsForCreate({
+        authTipHex: authTipWire, committedRootHex: '00'.repeat(32), committedDepth: 0, committedExpiry: 0, ownerIdHex: p.ownerId, sigPkCompressedHex: p.pubkey,
+      });
+      const unprimedRes = await apiCall('/api/ladder/createtxmlsc', {
+        inputs: [{ txid: p.fundingTxid, vout: p.fundingVout }], outputs: [p.contribution / 1e8], rungs: unprimedConds,
+      });
+      if (!unprimedRes) { log(p.label + ': create unprimed failed', 'err'); return; }
+      storeJson('unprimed_' + p.id, p.label + ' unprimed resp', unprimedRes);
+
+      const signedUn = await apiCall('/api/ladder/sign', { hex: unprimedRes.hex });
+      if (!signedUn || !signedUn.hex) { log(p.label + ': sign unprimed failed', 'err'); return; }
+      const bcastUn = await apiCall('/api/ladder/broadcast', { hex: signedUn.hex });
+      if (!bcastUn) { log(p.label + ': broadcast unprimed failed', 'err'); return; }
+      await apiCall('/api/ladder/mine', { blocks: 1 });
+      p.unprimedTxid = bcastUn.txid;
+      p.unprimedSpk = unprimedRes.scriptPubKey;
+      log(p.label + ': unprimed mined ' + shortHex(bcastUn.txid, 14), 'ok');
+
+      // 5b. Create primed template
+      const primedConds = buildQabiConditionsForCreate({
+        authTipHex: authTipWire, committedRootHex: qabiRootWire, committedDepth: state.primeDepth, committedExpiry: expiryHeight, ownerIdHex: p.ownerId, sigPkCompressedHex: p.pubkey,
+      });
+      const primeAmt = (p.contribution - 500) / 1e8;
+      const primeRes = await apiCall('/api/ladder/createtxmlsc', {
+        inputs: [{ txid: p.unprimedTxid, vout: 0 }], outputs: [primeAmt], rungs: primedConds,
+      });
+      if (!primeRes) { log(p.label + ': prime template failed', 'err'); return; }
+      storeJson('prime_' + p.id, p.label + ' prime resp', primeRes);
+
+      // 5c. signrungtx with QABI_PRIME
+      const signersSpec = [{ input: 0, rung: 1, blocks: [{
+        type: 'QABI_PRIME', new_committed_root: qabiRootWire, prime_depth: state.primeDepth,
+        new_committed_expiry: expiryHeight, auth_seed: p.authSeed, chain_length: state.chainLength,
+      }], conditions: buildQabiConditionsForSign({
+        authTipHex: authTipWire, committedRootHex: '00'.repeat(32), committedDepth: 0, committedExpiry: 0, ownerIdHex: p.ownerId, sigPkCompressedHex: p.pubkey,
+      }) }];
+      const spentOutputs = [{ amount: (p.contribution / 1e8).toFixed(8), scriptPubKey: p.unprimedSpk }];
+      const signPrime = await apiCall('/api/ladder/sign', { hex: primeRes.hex, signers: signersSpec, spent_outputs: spentOutputs });
+      if (!signPrime || !signPrime.hex) { log(p.label + ': signrungtx prime failed', 'err'); return; }
+      const bcastPrime = await apiCall('/api/ladder/broadcast', { hex: signPrime.hex });
+      if (!bcastPrime) { log(p.label + ': broadcast prime failed', 'err'); return; }
+      await apiCall('/api/ladder/mine', { blocks: 1 });
+
+      p.primedTxid = bcastPrime.txid;
+      p.primedSpk = primeRes.scriptPubKey;
+      p.primedAmtSats = p.contribution - 500;
+      dispatch({ type: 'PART_UPDATE', id: p.id, patch: {
+        unprimedUtxo: { txid: p.unprimedTxid, vout: 0, amount_sats: p.contribution, spk: p.unprimedSpk },
+        primedUtxo: { txid: bcastPrime.txid, vout: 0, amount_sats: p.primedAmtSats, spk: primeRes.scriptPubKey, conditions_root: primeRes.conditions_root, committed_root: qabiRootWire, committed_depth: state.primeDepth, committed_expiry: expiryHeight },
+        primeTxid: bcastPrime.txid, primeTxHex: signPrime.hex, primeTxFeeSats: 500, status: 'primed',
+      }});
+      log(p.label + ': primed ' + shortHex(bcastPrime.txid, 14), 'ok');
+    }
+    dispatch({ type: 'SET_PHASE', phase: 'primed' });
+
+    // ── 6. Build batch tx ──
+    const activeParts = parts.filter(p => !p.failOnDemand && p.primedTxid);
+    if (activeParts.length === 0) { log('No active participants — skipping batch', 'info'); return; }
+    log('Step 6/8: Building batch tx for ' + activeParts.length + ' participants…');
+    const batchInputs = activeParts.map(p => ({ txid: p.primedTxid, vout: 0 }));
+    const batchOutputs = activeParts.map(p => (p.primedAmtSats - 500) / 1e8);
+    const batchRungs = activeParts.map((p, i) => ({
+      output_index: i, blocks: [{ type: 'SIG', fields: [{ type: 'SCHEME', hex: '01' }] }], pubkeys: [p.pubkey],
+    }));
+    const batchRes = await apiCall('/api/ladder/createtxmlsc', {
+      inputs: batchInputs, outputs: batchOutputs, rungs: batchRungs, locktime: 0, internal_pubkey: '', qabi_block: qabiBlockHex,
+    });
+    if (!batchRes) { log('Batch build failed', 'err'); return; }
+    storeJson('batch_build', 'Batch createtxmlsc resp', batchRes);
+    dispatch({ type: 'BATCH_UPDATE', patch: { unsignedHex: batchRes.hex, vin: batchInputs.length, vout: batchOutputs.length, totalBytes: batchRes.hex.length / 2 } });
+    log('Batch: ' + (batchRes.hex.length / 2) + ' bytes, vin=' + batchInputs.length, 'ok');
+
+    // ── 7. Sign batch with FALCON-512 ──
+    log('Step 7/8: Signing batch with FALCON-512…');
+    const shRes = await apiCall('/api/ladder/qabi/sighash', { hex_tx: batchRes.hex });
+    if (!shRes) { log('sighash failed', 'err'); return; }
+    storeJson('sighash', 'SIGHASH_QABO', shRes);
+    const t0 = performance.now();
+    const sigRes = await apiCall('/api/ladder/qabi/signqabo', { hex_tx: batchRes.hex, privkey: coordKp.privkey });
+    const signMs = performance.now() - t0;
+    if (!sigRes) { log('signqabo failed', 'err'); return; }
+    storeJson('signqabo', 'qabi_signqabo resp', sigRes);
+    dispatch({ type: 'BATCH_UPDATE', patch: { signedHex: sigRes.hex, sighash: shRes.sighash, totalBytes: sigRes.hex.length / 2 } });
+    dispatch({ type: 'COORD_UPDATE', patch: { signMs } });
+    log('Signed in ' + signMs.toFixed(1) + ' ms, sig=' + FALCON512_SIG_SIZE + ' bytes', 'ok');
+
+    // ── 8. Broadcast ──
+    log('Step 8/8: Broadcasting batch tx…');
+    const t1 = performance.now();
+    const bcRes = await apiCall('/api/ladder/broadcast', { hex: sigRes.hex });
+    const verifyMs = performance.now() - t1;
+    if (!bcRes) { log('Broadcast failed', 'err'); return; }
+    storeJson('batch_broadcast', 'broadcast resp', bcRes);
+    await apiCall('/api/ladder/mine', { blocks: 1 });
+    dispatch({ type: 'BATCH_UPDATE', patch: { txid: bcRes.txid, vbytes: null } });
+    dispatch({ type: 'COORD_UPDATE', patch: { verifyMs } });
+    activeParts.forEach(p => dispatch({ type: 'PART_UPDATE', id: p.id, patch: { status: 'confirmed' } }));
+    dispatch({ type: 'SET_PHASE', phase: 'broadcast' });
+    log('Batch broadcast: ' + bcRes.txid, 'ok');
+
+    // ── Escape sweep for failed participants ──
+    const failedParts = parts.filter(p => p.failOnDemand && p.primedTxid);
+    if (failedParts.length > 0) {
+      log('Sweeping ' + failedParts.length + ' failed participants…');
+      for (const p of failedParts) {
+        const authTipWire = reverseHex(p.authTip);
+        const sweepAmt = (p.primedAmtSats - 500) / 1e8;
+        const sweepConds = buildSigOnlyConditionsForCreate(p.pubkey);
+        const sweepRes = await apiCall('/api/ladder/createtxmlsc', {
+          inputs: [{ txid: p.primedTxid, vout: 0 }], outputs: [sweepAmt], rungs: sweepConds,
+        });
+        if (!sweepRes) { log(p.label + ': escape create failed', 'err'); continue; }
+        const sweepSigners = [{ input: 0, rung: 0, blocks: [{ type: 'SIG', privkey: p.privkey_wif }],
+          conditions: buildQabiConditionsForSign({
+            authTipHex: authTipWire, committedRootHex: qabiRootWire, committedDepth: state.primeDepth, committedExpiry: expiryHeight, ownerIdHex: p.ownerId, sigPkCompressedHex: p.pubkey,
+          }),
+        }];
+        const sweepSpent = [{ amount: (p.primedAmtSats / 1e8).toFixed(8), scriptPubKey: p.primedSpk }];
+        const sweepSigned = await apiCall('/api/ladder/sign', { hex: sweepRes.hex, signers: sweepSigners, spent_outputs: sweepSpent });
+        if (!sweepSigned || !sweepSigned.hex) { log(p.label + ': escape sign failed', 'err'); continue; }
+        const sweepBcast = await apiCall('/api/ladder/broadcast', { hex: sweepSigned.hex });
+        if (!sweepBcast) { log(p.label + ': escape broadcast failed', 'err'); continue; }
+        await apiCall('/api/ladder/mine', { blocks: 1 });
+        dispatch({ type: 'PART_UPDATE', id: p.id, patch: { escapeTxid: sweepBcast.txid, status: 'swept' } });
+        log(p.label + ': swept ' + shortHex(sweepBcast.txid, 14), 'ok');
+      }
+    }
+
     log('Full flow complete.', 'ok');
   };
 
