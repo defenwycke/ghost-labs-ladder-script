@@ -1349,12 +1349,43 @@ function StagePanel({ apiCall }) {
     log('Funded via ' + shortHex(fundRes.txid, 14), 'ok');
 
     // ── 4. Build QABI block ──
-    log('Step 4/8: Building QABI block…');
+    // The qabi_block's outputs must have the EXACT amounts + scriptPubKeys
+    // that the batch tx will produce. Since createtxmlsc wraps every output
+    // in an MLSC envelope (df + conditions_root), we first build a template
+    // batch tx to extract the real MLSC scriptPubKeys, then use those when
+    // calling qabi_buildblock.
+    log('Step 4/9: Building QABI block…');
+
+    // Determine final batch output amounts (same formula used in step 6).
+    const batchAmounts = parts.map(p => (p.contribution - 1000) / 1e8);
+    const batchRungs = parts.map((p, i) => ({
+      output_index: i, blocks: [{ type: 'SIG', fields: [{ type: 'SCHEME', hex: '01' }] }], pubkeys: [p.pubkey],
+    }));
+
+    // Template tx (no qabi_block) — just to get the output scriptPubKeys.
+    // Use dummy inputs since we don't have primed UTXOs yet; createtxmlsc
+    // only needs inputs to build the tx structure, not to validate them.
+    const templateInputs = parts.map((p, i) => ({ txid: '00'.repeat(32), vout: i }));
+    const templateRes = await apiCall('/api/ladder/createtxmlsc', {
+      inputs: templateInputs, outputs: batchAmounts, rungs: batchRungs,
+    });
+    if (!templateRes) { log('Template batch tx failed', 'err'); return; }
+    storeJson('batch_template', 'Batch template (for output SPKs)', templateRes);
+
+    // Decode to get per-output scriptPubKeys.
+    const decoded = await apiCall('/api/ladder/decode-tx', { hex: templateRes.hex });
+    if (!decoded) { log('Decode template failed', 'err'); return; }
+    storeJson('batch_template_decoded', 'Batch template decoded', decoded);
+    const outputSpks = (decoded.vout || []).map(v => v.scriptPubKey?.hex || '');
+    if (outputSpks.length !== parts.length) {
+      log('Output count mismatch: expected ' + parts.length + ', got ' + outputSpks.length, 'err'); return;
+    }
+
     const entries = parts.map((p, i) => ({
       participant_id: p.ownerId, contribution: (p.contribution / 1e8).toFixed(8), destination_index: i,
     }));
-    const qOutputs = parts.map(p => ({
-      amount: ((p.contribution - 100) / 1e8).toFixed(8), script_pubkey: '0014' + p.ownerId.slice(0, 40),
+    const qOutputs = parts.map((p, i) => ({
+      amount: batchAmounts[i].toFixed(8), script_pubkey: outputSpks[i],
     }));
     const blockRes = await apiCall('/api/ladder/qabi/buildblock', {
       coordinator_pubkey: coordKp.pubkey, prime_expiry_height: expiryHeight, batch_id: batchId, entries, outputs: qOutputs,
@@ -1430,14 +1461,16 @@ function StagePanel({ apiCall }) {
     // ── 6. Build batch tx ──
     const activeParts = parts.filter(p => !p.failOnDemand && p.primedTxid);
     if (activeParts.length === 0) { log('No active participants — skipping batch', 'info'); return; }
-    log('Step 6/8: Building batch tx for ' + activeParts.length + ' participants…');
+    log('Step 6/9: Building batch tx for ' + activeParts.length + ' participants…');
     const batchInputs = activeParts.map(p => ({ txid: p.primedTxid, vout: 0 }));
-    const batchOutputs = activeParts.map(p => (p.primedAmtSats - 500) / 1e8);
-    const batchRungs = activeParts.map((p, i) => ({
+    // Amounts + rungs must match EXACTLY what the template produced for
+    // qabi_buildblock, otherwise hashOutputs won't match.
+    const finalBatchRungs = activeParts.map((p, i) => ({
       output_index: i, blocks: [{ type: 'SIG', fields: [{ type: 'SCHEME', hex: '01' }] }], pubkeys: [p.pubkey],
     }));
+    const finalBatchAmounts = activeParts.map(p => (p.contribution - 1000) / 1e8);
     const batchRes = await apiCall('/api/ladder/createtxmlsc', {
-      inputs: batchInputs, outputs: batchOutputs, rungs: batchRungs, locktime: 0, internal_pubkey: '', qabi_block: qabiBlockHex,
+      inputs: batchInputs, outputs: finalBatchAmounts, rungs: finalBatchRungs, locktime: 0, internal_pubkey: '', qabi_block: qabiBlockHex,
     });
     if (!batchRes) { log('Batch build failed', 'err'); return; }
     storeJson('batch_build', 'Batch createtxmlsc resp', batchRes);
