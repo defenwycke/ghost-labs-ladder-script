@@ -1476,9 +1476,13 @@ function StagePanel({ apiCall }) {
           sigPkCompressedHex: p.pubkey,
         }),
       }];
-      const spentOutputs = [{ amount: (p.primedAmtSats / 1e8).toFixed(8), scriptPubKey: p.primedSpk }];
+      // signrungtx requires spent_outputs for ALL inputs, not just the one
+      // being signed — it needs them for sighash precomputation.
+      const allSpentOutputs = activeParts.map(ap => ({
+        amount: (ap.primedAmtSats / 1e8).toFixed(8), scriptPubKey: ap.primedSpk,
+      }));
       const signRes = await apiCall('/api/ladder/sign', {
-        hex: witnessHex, signers: signersSpec, spent_outputs: spentOutputs,
+        hex: witnessHex, signers: signersSpec, spent_outputs: allSpentOutputs,
       });
       if (!signRes || !signRes.hex) { log(p.label + ': QABI_SPEND witness failed', 'err'); return; }
       storeJson('batch_witness_' + p.id, p.label + ' QABI_SPEND witness resp', signRes);
