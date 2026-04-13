@@ -876,6 +876,23 @@ function ParticipantsPanel({ apiCall }) {
 
 function PartCard({ p }) {
   const dispatch = useContext(DispatchCtx);
+  const [copiedField, setCopiedField] = useState(null);
+  const copy = (field, value) => {
+    if (!value) return;
+    try {
+      navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1200);
+    } catch (e) { /* ignore */ }
+  };
+  const copyBtn = (field, value) => value ? (
+    <span onClick={(e) => { e.stopPropagation(); copy(field, value); }}
+          style={{ cursor: 'pointer', color: copiedField === field ? 'var(--green)' : 'var(--text-dim)', marginLeft: 4, fontSize: 9 }}
+          title={'Copy ' + field}>
+      {copiedField === field ? '✓' : '⧉'}
+    </span>
+  ) : null;
+
   return (
     <div className={'part-card' + (p.failOnDemand ? ' failing' : '')}>
       <div className="part-card-head">
@@ -888,15 +905,15 @@ function PartCard({ p }) {
       </div>
       <div className="part-card-row">
         <span>wallet</span>
-        <span className="val">{p.walletKey ? shortHex(p.walletKey.pubkey, 14) : '—'}</span>
+        <span className="val">{p.walletKey ? shortHex(p.walletKey.pubkey, 14) : '—'}{copyBtn('pubkey', p.walletKey?.pubkey)}</span>
       </div>
       <div className="part-card-row">
         <span>prime</span>
-        <span className="val">{p.primedUtxo ? shortHex(p.primedUtxo.txid, 14) : '—'}</span>
+        <span className="val">{p.primedUtxo ? shortHex(p.primedUtxo.txid, 14) : '—'}{copyBtn('prime_txid', p.primedUtxo?.txid)}</span>
       </div>
       <div className="part-card-row">
         <span>escape</span>
-        <span className="val">{p.escapeTxid ? shortHex(p.escapeTxid, 14) : '—'}</span>
+        <span className="val">{p.escapeTxid ? shortHex(p.escapeTxid, 14) : '—'}{copyBtn('escape_txid', p.escapeTxid)}</span>
       </div>
       <label className="part-card-fail">
         <input type="checkbox" checked={p.failOnDemand}
@@ -1533,8 +1550,16 @@ function StagePanel({ apiCall }) {
     dispatch({ type: 'SET_PHASE', phase: 'primed' });
 
     // ── 6. Build batch tx ──
+    // When every participant is flagged failing (e.g. the Coordinator
+    // Bails scenario), skip the batch spend entirely and fall through
+    // to the escape sweep section at the bottom of this function.
     const activeParts = parts.filter(p => !p.failOnDemand && p.primedTxid);
-    if (activeParts.length === 0) { log('No active participants — skipping batch', 'info'); return; }
+    const runBatch = activeParts.length > 0;
+    if (!runBatch) {
+      addModalStep('All participants flagged as failing — skipping batch, escaping…', 'active');
+      log('All participants failing — running escape sweep only', 'info');
+    }
+    if (runBatch) {
     addModalStep('Building batch tx with qabi_block (' + activeParts.length + ' inputs)…', 'active');
     log('Step 6/9: Building batch tx for ' + activeParts.length + ' participants…');
     const batchInputs = activeParts.map(p => ({ txid: p.primedTxid, vout: 0 }));
@@ -1623,8 +1648,11 @@ function StagePanel({ apiCall }) {
     activeParts.forEach(p => dispatch({ type: 'PART_UPDATE', id: p.id, patch: { status: 'confirmed' } }));
     dispatch({ type: 'SET_PHASE', phase: 'broadcast' });
     log('Batch broadcast: ' + bcRes.txid, 'ok');
+    } // end if (runBatch)
 
     // ── Escape sweep for failed participants ──
+    // Runs whether the batch ran (some participants failed), didn't run
+    // (coordinator bails — everyone escapes), or anything in between.
     const failedParts = parts.filter(p => p.failOnDemand && p.primedTxid);
     if (failedParts.length > 0) {
       log('Sweeping ' + failedParts.length + ' failed participants…');
@@ -1940,19 +1968,55 @@ function LogPanel() {
 function JsonInspector() {
   const state = useContext(StateCtx);
   const [openKey, setOpenKey] = useState(null);
+  const [copiedKey, setCopiedKey] = useState(null);
   const entries = Object.entries(state.lastJsons || {});
   if (entries.length === 0) return null;
 
+  const copyOne = (e, key, json) => {
+    e.stopPropagation();
+    try {
+      navigator.clipboard.writeText(JSON.stringify(json, null, 2));
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    } catch (err) { /* ignore */ }
+  };
+
+  const downloadAll = () => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      phase: state.phase,
+      participants: state.n,
+      entries: Object.fromEntries(entries.map(([k, v]) => [k, { title: v.title, json: v.json, ts: v.ts }])),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'qabio-playground-' + new Date().toISOString().slice(0,19).replace(/[T:]/g,'-') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={{ marginTop: 16 }}>
-      <div className="pg-section-title">
-        <span className="pg-section-num">J</span>JSON Inspector ({entries.length})
+      <div className="pg-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span><span className="pg-section-num">J</span>JSON Inspector ({entries.length})</span>
+        <button className="pg-btn" onClick={downloadAll} style={{ fontSize: 9 }}>Download all</button>
       </div>
       {entries.map(([key, item]) => (
         <div key={key} className="json-panel">
           <div className="json-panel-head" onClick={() => setOpenKey(openKey === key ? null : key)}>
             <span className="json-panel-title">{item.title || key}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{openKey === key ? '▼' : '▶'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button className="pg-btn"
+                      style={{ fontSize: 9, padding: '2px 6px' }}
+                      onClick={e => copyOne(e, key, item.json)}>
+                {copiedKey === key ? '✓ copied' : 'copy'}
+              </button>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{openKey === key ? '▼' : '▶'}</span>
+            </span>
           </div>
           {openKey === key && (
             <div className="json-panel-body">
