@@ -94,7 +94,10 @@ deploy_web() {
     echo "=== Sync labs tree to $WEB_HOST:$WEB_ROOT ==="
     confirm "Rsync labs tree to $WEB_HOST:$WEB_ROOT?" || return 0
 
-    ssh "$WEB_HOST" "sudo mkdir -p $WEB_ROOT && sudo chown -R $USER:$USER $WEB_ROOT"
+    # Note: \$USER is escaped so it evaluates on the remote side, not
+    # locally — the remote user is whatever the SSH alias resolves to
+    # (e.g. `ghost` on ghost-labs), not the local user.
+    ssh "$WEB_HOST" "sudo mkdir -p $WEB_ROOT && sudo chown -R \$USER:\$USER $WEB_ROOT"
 
     echo "--- Landing page and tools ---"
     rsync -avz --delete \
