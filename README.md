@@ -2,7 +2,7 @@
 
 A typed transaction format for Bitcoin, derived from industrial PLC ladder logic.
 
-**[Full overview, examples, and live demo](https://ladder-script.com/ladder-script.html)** | **[Try the Engine](https://ladder-script.com/ladder-engine.html)** | **[BIP Draft](docs/BIP-XXXX.md)**
+**[Full overview, examples, and live demo](https://ladder-script.org/ladder-script.html)** | **[Try the Engine](https://ladder-script.org/ladder-engine.html)** | **[BIP Draft](docs/BIP-XXXX.md)**
 
 ```
   RUNG 0: ──[ SIG: Alice ]──[ CSV: 144 ]──────────────( UNLOCK )──
@@ -51,7 +51,7 @@ Transaction version 4 (`RUNG_TX`). Soft fork activation —non-upgraded nodes se
 
 ## Try it
 
-The [Ladder Engine](https://ladder-script.com/ladder-engine.html) is a browser-based visual builder. Load an example from the preset library, switch to SIMULATE, step through evaluation. The RPC tab shows the wire-format JSON. The SIGNET tab lets you fund, sign, and broadcast transactions on the live signet.
+The [Ladder Engine](https://ladder-script.org/ladder-engine.html) is a browser-based visual builder. Load an example from the preset library, switch to SIMULATE, step through evaluation. The RPC tab shows the wire-format JSON. The SIGNET tab lets you fund, sign, and broadcast transactions on the live signet.
 
 ## Tests
 
@@ -111,9 +111,9 @@ proxy/                 FastAPI signet proxy for live testing
 
 ## Links
 
-- [Ladder Engine (hosted)](https://ladder-script.com/ladder-engine.html) —build and broadcast on signet
-- [Block Reference (hosted)](https://ladder-script.com/block-docs/) —visual docs for all block types
-- [Ladder Script Overview](https://ladder-script.com/ladder-script.html) —how it works, use cases, diagrams
+- [Ladder Engine (hosted)](https://ladder-script.org/ladder-engine.html) —build and broadcast on signet
+- [Block Reference (hosted)](https://ladder-script.org/block-docs/) —visual docs for all block types
+- [Ladder Script Overview](https://ladder-script.org/ladder-script.html) —how it works, use cases, diagrams
 
 ## License
 

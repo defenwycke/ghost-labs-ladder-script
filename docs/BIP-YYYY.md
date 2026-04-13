@@ -38,7 +38,7 @@ Suggested review order:
 5. **Security Considerations** (10 min) — coordinator trust
    surface, pre-image revelation timing, and the eight attack paths
    QABIO does *not* eliminate.
-6. **Try it** — live signet: `ladder-script.com/qabio-playground.html`
+6. **Try it** — live signet: `ladder-script.org/qabio-playground.html`
    builds a full N-party batch end-to-end without writing any code.
 
 ## Abstract
@@ -1041,7 +1041,7 @@ Test coverage:
   exercising the full mined priming lifecycle, the SIG escape
   after priming, and reorg survival on a regtest node.
 - **Live-signet end-to-end tests** via the QABIO Playground at
-  `ladder-script.com/qabio-playground.html`. The playground
+  `ladder-script.org/qabio-playground.html`. The playground
   constructs and broadcasts full N-party QABIO transactions on
   the ladder-script signet via the `/api/ladder/qabi/*` JSON
   endpoints.

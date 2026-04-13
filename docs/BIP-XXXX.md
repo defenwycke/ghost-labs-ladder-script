@@ -26,7 +26,7 @@ This BIP specifies a large system (61 block types). For efficient review:
    protocol. The byte-level examples in Appendix B let you verify by hand.
 5. **Check Anti-Spam Properties** (5 min) — the key innovation that makes
    this practical.
-6. **Try it** — live signet: `ladder-script.com/ladder-engine.html`
+6. **Try it** — live signet: `ladder-script.org/ladder-engine.html`
 
 ## Abstract
 
@@ -788,7 +788,7 @@ p2pkh(@pk)                                            # Legacy
 
 The complete grammar covering all 61 block types is documented at
 `src/rung/descriptor.h` and at
-[ladder-script.com/descriptor-notation.html](https://ladder-script.com/descriptor-notation.html).
+[ladder-script.org/descriptor-notation.html](https://ladder-script.org/descriptor-notation.html).
 
 #### Scheme Names
 
