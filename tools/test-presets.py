@@ -95,13 +95,16 @@ API = "http://localhost:8801"
 
 def api(endpoint, body=None, silent=False, retries=5):
     url = API + endpoint
+    # Mining on signet takes ~15s/block (grind), so /mine needs long timeouts.
+    # CSV spends that mine 50+ blocks can take 12+ minutes.
+    mine_timeout = 900 if "/mine" in endpoint else 120
     for attempt in range(retries):
         if body is not None:
             req = Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
         else:
             req = Request(url)
         try:
-            with urlopen(req, timeout=60) as resp:
+            with urlopen(req, timeout=mine_timeout) as resp:
                 return json.loads(resp.read())
         except HTTPError as e:
             detail = ""
