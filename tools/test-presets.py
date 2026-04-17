@@ -2690,7 +2690,7 @@ def main():
         for r in passed:
             print(f"  + {r['title']}")
             print(f"    fund: {r['txid'][:16]}...")
-            print(f"    spend: {r['spend_txid'][:16]}...")
+            print(f"    spend: {r.get('spend_txid', r.get('txid', '?'))[:16]}...")
 
     if dry_runs:
         print("\nDry Run (fund + sign OK, broadcast skipped):")
