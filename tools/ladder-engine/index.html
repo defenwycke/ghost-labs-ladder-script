@@ -2498,26 +2498,29 @@ const BLOCK_FAMILIES = [
     name: 'ANCHOR', color: '#ffea00',
     blocks: [
       { type: 'ANCHOR', label: 'ANCHOR', desc: 'Generic protocol anchor tag', fields: [
-        { name: 'data', dataType: 'HASH256', label: 'Data', placeholder: '32-byte hex' }
+        { name: 'anchor_id', dataType: 'NUMERIC', label: 'Anchor ID', placeholder: '42' }
       ]},
       { type: 'ANCHOR_CHANNEL', label: 'A_CHAN', desc: 'Lightning channel anchor binding', fields: [
         { name: 'local_key', dataType: 'PUBKEY', label: 'Local Key', placeholder: '02abc...' },
-        { name: 'remote_key', dataType: 'PUBKEY', label: 'Remote Key', placeholder: '03def...' }
+        { name: 'remote_key', dataType: 'PUBKEY', label: 'Remote Key', placeholder: '03def...' },
+        { name: 'commitment_number', dataType: 'NUMERIC', label: 'Commitment #', placeholder: '1' }
       ]},
       { type: 'ANCHOR_POOL', label: 'A_POOL', desc: 'Pool / VTXO tree anchor', fields: [
-        { name: 'pool_id', dataType: 'HASH256', label: 'Pool ID', placeholder: '32-byte hex' }
+        { name: 'pool_id', dataType: 'PREIMAGE', label: 'Pool ID', placeholder: '32-byte hex (node hashes)' },
+        { name: 'participant_count', dataType: 'NUMERIC', label: 'Participants', placeholder: '5' }
       ]},
       { type: 'ANCHOR_RESERVE', label: 'A_RESV', desc: 'N-of-M guardian reserve anchor', fields: [
         { name: 'threshold_n', dataType: 'NUMERIC', label: 'N', placeholder: '3' },
         { name: 'threshold_m', dataType: 'NUMERIC', label: 'M', placeholder: '5' },
-        { name: 'guardian_hash', dataType: 'HASH256', label: 'Guardian Set Hash', placeholder: '32-byte hex' }
+        { name: 'guardian_hash', dataType: 'PREIMAGE', label: 'Guardian Set', placeholder: '32-byte hex (node hashes)' }
       ]},
       { type: 'ANCHOR_SEAL', label: 'A_SEAL', desc: 'Permanent data commitment seal', fields: [
-        { name: 'asset_id', dataType: 'HASH256', label: 'Asset ID', placeholder: '32-byte hex' },
-        { name: 'state_hash', dataType: 'HASH256', label: 'State Hash', placeholder: '32-byte hex' }
+        { name: 'asset_id', dataType: 'PREIMAGE', label: 'Asset ID', placeholder: '32-byte hex (node hashes)' },
+        { name: 'state_hash', dataType: 'PREIMAGE', label: 'State Hash', placeholder: '32-byte hex (node hashes)' }
       ]},
       { type: 'ANCHOR_ORACLE', label: 'A_ORACLE', desc: 'Oracle attestation anchor', fields: [
-        { name: 'oracle_pk', dataType: 'PUBKEY', label: 'Oracle Key', placeholder: '02abc...' }
+        { name: 'oracle_pk', dataType: 'PUBKEY', label: 'Oracle Key', placeholder: '02abc...' },
+        { name: 'outcome_count', dataType: 'NUMERIC', label: 'Outcomes', placeholder: '2' }
       ]},
       { type: 'DATA_RETURN', label: 'DATA_RET', desc: 'On-chain data (max 40 bytes) appended to MLSC output, replaces OP_RETURN', fields: [
         { name: 'data', dataType: 'DATA', label: 'Data', placeholder: 'hex data (max 40 bytes)' }
@@ -2575,7 +2578,7 @@ const BLOCK_FAMILIES = [
       ]},
       { type: 'ONE_SHOT', label: 'ONE_SHOT', desc: 'Single-use activation --fires once then locks', fields: [
         { name: 'state', dataType: 'NUMERIC', label: 'State', placeholder: '0' },
-        { name: 'commitment', dataType: 'HASH256', label: 'Commitment', placeholder: '32-byte hex' }
+        { name: 'commitment', dataType: 'PREIMAGE', label: 'Commitment', placeholder: '32-byte hex (node hashes)' }
       ]},
       { type: 'RATE_LIMIT', label: 'RATE_LIM', desc: 'Rate limiter --max spend per window', fields: [
         { name: 'max_per_block', dataType: 'NUMERIC', label: 'Max/Block', placeholder: '50000' },
@@ -2736,12 +2739,12 @@ const DATA_TYPE_SIZES = {
   PUBKEY_COMMIT: { min: 32, max: 32, note: 'Reserved. No longer used in conditions or witness (merkle_pub_key).' },
   HASH256: { min: 32, max: 32, note: 'SHA-256 digest' },
   HASH160: { min: 20, max: 20, note: 'RIPEMD160(SHA256()) digest' },
-  PREIMAGE: { min: 32, max: 32, note: 'Hash preimage (witness only)' },
+  PREIMAGE: { min: 1, max: 32, note: 'Hash preimage (1-32 bytes, witness only)' },
   SCRIPT_BODY: { min: 1, max: 80, note: 'Serialised inner conditions for P2SH/P2WSH/P2TR_SCRIPT (witness only)' },
   SIGNATURE: { min: 1, max: 50000, note: 'Schnorr 64-65B, ECDSA 8-72B, PQ up to ~49216B' },
   DATA: { min: 1, max: 40, note: 'Raw data for DATA_RETURN. Appended to MLSC scriptPubKey (0x0B)' },
   SPEND_INDEX: { min: 4, max: 4, note: 'uint32 LE index reference' },
-  NUMERIC: { min: 1, max: 4, note: 'Unsigned 32-bit integer, little-endian' },
+  NUMERIC: { min: 1, max: 8, note: 'Unsigned 64-bit integer, little-endian' },
   SCHEME: { min: 1, max: 1, note: 'Signature scheme selector byte' },
   TEXT: { min: 0, max: 255, note: 'Text label (engine-internal only)' },
 };
@@ -3202,12 +3205,12 @@ BlockRegistry.RECURSE_UNTIL.testData = () => ({ target_height: '860000' });
 BlockRegistry.RECURSE_COUNT.testData = () => ({ remaining: '10' });
 BlockRegistry.RECURSE_SPLIT.testData = () => ({ max_splits: '3', min_sats: '10000' });
 BlockRegistry.RECURSE_DECAY.testData = () => ({ max_depth: '10', block_idx: '0', param_idx: '0', decay_per_step: '1' });
-BlockRegistry.ANCHOR.testData = () => ({ data: TEST_HASH256 });
-BlockRegistry.ANCHOR_CHANNEL.testData = () => ({ local_key: TEST_PUBKEYS[0], remote_key: TEST_PUBKEYS[1] });
-BlockRegistry.ANCHOR_POOL.testData = () => ({ pool_id: TEST_HASH256 });
+BlockRegistry.ANCHOR.testData = () => ({ anchor_id: '42' });
+BlockRegistry.ANCHOR_CHANNEL.testData = () => ({ local_key: TEST_PUBKEYS[0], remote_key: TEST_PUBKEYS[1], commitment_number: '1' });
+BlockRegistry.ANCHOR_POOL.testData = () => ({ pool_id: TEST_HASH256, participant_count: '5' });
 BlockRegistry.ANCHOR_RESERVE.testData = () => ({ threshold_n: '3', threshold_m: '5', guardian_hash: TEST_HASH256 });
 BlockRegistry.ANCHOR_SEAL.testData = () => ({ asset_id: TEST_HASH256, state_hash: TEST_HASH256_B });
-BlockRegistry.ANCHOR_ORACLE.testData = () => ({ oracle_pk: TEST_PUBKEYS[2] });
+BlockRegistry.ANCHOR_ORACLE.testData = () => ({ oracle_pk: TEST_PUBKEYS[2], outcome_count: '2' });
 BlockRegistry.HYSTERESIS_FEE.testData = () => ({ high_sat_vb: '100', low_sat_vb: '5' });
 BlockRegistry.HYSTERESIS_VALUE.testData = () => ({ high_sats: '100000', low_sats: '5000' });
 BlockRegistry.TIMER_CONTINUOUS.testData = () => ({ accumulated: '0', target: '144' });
@@ -7195,12 +7198,12 @@ const EXAMPLES = [
     rungs: [
       { label: 'RELEASE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle } },
+        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle, outcome_count: '2' } },
         { type: 'COSIGN', values: { conditions_hash: FAKE.hash3 } },
       ], output: { name: 'TO_SELLER', type: 'standard' } },
       { label: 'DISPUTE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk2 } },
-        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle } },
+        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle, outcome_count: '2' } },
         { type: 'COSIGN', values: { conditions_hash: FAKE.hash4 } },
       ], output: { name: 'TO_BUYER', type: 'standard' } },
       { label: 'SETTLE', blocks: [
@@ -7251,7 +7254,7 @@ const EXAMPLES = [
     rungs: [
       { label: 'MILE', blocks: [
         { type: 'SEQUENCER', values: { current: '0', total: '5' } },
-        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle } },
+        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle, outcome_count: '2' } },
         { type: 'SIG', values: { pubkey: FAKE.pk2 } },
         { type: 'AMOUNT_LOCK', values: { min: '100000', max: '200000' } },
         { type: 'RECURSE_MODIFIED', values: { max_depth: '10', block_idx: '0', param_idx: '0', delta: '1' } },
@@ -7716,11 +7719,11 @@ const EXAMPLES = [
     rungs: [
       { label: 'COOP', blocks: [
         { type: 'MUSIG_THRESHOLD', values: { agg_pubkey: FAKE.pk1, threshold: '2', group_size: '2' } },
-        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk1, remote_key: FAKE.pk2 } },
+        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk1, remote_key: FAKE.pk2, commitment_number: '1' } },
       ], output: { name: 'COOP_CLOSE', type: 'standard' } },
       { label: 'UPDATE', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk2 } },
-        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk2, remote_key: FAKE.pk3 } },
+        { type: 'ANCHOR_CHANNEL', values: { local_key: FAKE.pk2, remote_key: FAKE.pk3, commitment_number: '2' } },
         { type: 'RECURSE_UNTIL', values: { target_height: '950000' } },
       ], output: { name: 'STATE_UPDATE', type: 'standard' } },
       { label: 'EXPIRE', blocks: [
@@ -7984,7 +7987,7 @@ const EXAMPLES = [
     rungs: [
       { label: 'TAG', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'ANCHOR', values: { data: FAKE.hash1 } },
+        { type: 'ANCHOR', values: { anchor_id: '42' } },
       ], output: { name: 'TAGGED', type: 'standard' } },
     ],
     txInputs: [{ txid: FAKE.txid1, vout: 0 }],
@@ -8000,7 +8003,7 @@ const EXAMPLES = [
     rungs: [
       { label: 'POOL', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'ANCHOR_POOL', values: { pool_id: FAKE.hash1 } },
+        { type: 'ANCHOR_POOL', values: { pool_id: FAKE.hash1, participant_count: '5' } },
       ], output: { name: 'VTXO_ROOT', type: 'standard' } },
     ],
     txInputs: [{ txid: FAKE.txid1, vout: 0 }],
@@ -8048,7 +8051,7 @@ const EXAMPLES = [
     rungs: [
       { label: 'ATTEST', blocks: [
         { type: 'SIG', values: { pubkey: FAKE.pk1 } },
-        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle } },
+        { type: 'ANCHOR_ORACLE', values: { oracle_pk: FAKE.oracle, outcome_count: '2' } },
       ], output: { name: 'ORACLE_BOUND', type: 'standard' } },
     ],
     txInputs: [{ txid: FAKE.txid1, vout: 0 }],
