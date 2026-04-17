@@ -2601,8 +2601,10 @@ const BLOCK_FAMILIES = [
       { type: 'HTLC', label: 'HTLC', desc: 'Hash + Timelock + Sig --Lightning HTLC / atomic swap', fields: [
         { name: 'preimage', dataType: 'PREIMAGE', label: 'Payment Preimage', placeholder: 'Hex secret --node computes payment hash' },
         { name: 'hash', dataType: 'HASH256', label: 'Payment Hash (read-only)', placeholder: 'Auto-computed by node from preimage', computed: true },
-        { name: 'pubkey', dataType: 'PUBKEY', label: 'Public Key', placeholder: '02abcdef...' },
-        { name: 'blocks', dataType: 'NUMERIC', label: 'Timeout (blocks)', placeholder: '144' }
+        { name: 'pubkey', dataType: 'PUBKEY', label: 'Claimer Key', placeholder: '02abcdef...' },
+        { name: 'pubkey2', dataType: 'PUBKEY', label: 'Refunder Key', placeholder: '03abcdef...' },
+        { name: 'blocks', dataType: 'NUMERIC', label: 'Timeout (blocks)', placeholder: '144' },
+        { name: 'scheme', dataType: 'SCHEME', label: 'Scheme', placeholder: 'SCHNORR', optional: true }
       ]},
       { type: 'HASH_SIG', label: 'HASH_SIG', desc: 'Hash preimage + Signature --atomic swap claim', fields: [
         { name: 'preimage', dataType: 'PREIMAGE', label: 'Preimage (secret)', placeholder: 'Hex data --node computes SHA256 hash' },
@@ -2704,10 +2706,10 @@ const BLOCK_FAMILIES = [
     name: 'QABIO', color: '#9b59b6',
     blocks: [
       { type: 'QABI_PRIME', label: 'QABI_PRIME', desc: 'QABIO priming state transition --reveal auth preimage, mutate committed batch root (covenant)', fields: [
-        { name: 'new_committed_root', dataType: 'HASH256', label: 'New Committed Root', placeholder: '32-byte Merkle root of the batch being primed for (witness-only)' },
-        { name: 'prime_depth', dataType: 'NUMERIC', label: 'Prime Depth', placeholder: 'uint32 LE --depth in auth chain (must exceed current committed_depth)' },
-        { name: 'new_committed_expiry', dataType: 'NUMERIC', label: 'New Committed Expiry', placeholder: 'uint32 LE --max block height the QABI_SPEND may fire at' },
-        { name: 'prime_preimage', dataType: 'PREIMAGE', label: 'Prime Preimage', placeholder: '32-byte preimage such that SHA256^prime_depth(preimage) == committed auth_tip' }
+        { name: 'new_committed_root', dataType: 'HASH256', label: 'New Committed Root', placeholder: '32-byte Merkle root of the batch being primed for', witnessOnly: true },
+        { name: 'prime_depth', dataType: 'NUMERIC', label: 'Prime Depth', placeholder: 'uint32 LE --depth in auth chain (must exceed current committed_depth)', witnessOnly: true },
+        { name: 'new_committed_expiry', dataType: 'NUMERIC', label: 'New Committed Expiry', placeholder: 'uint32 LE --max block height the QABI_SPEND may fire at', witnessOnly: true },
+        { name: 'prime_preimage', dataType: 'PREIMAGE', label: 'Prime Preimage', placeholder: '32-byte preimage such that SHA256^prime_depth(preimage) == committed auth_tip', witnessOnly: true }
       ]},
       { type: 'QABI_SPEND', label: 'QABI_SPEND', desc: 'QABIO batch spend --verifies primed state, FALCON-512 coordinator signature (SIGHASH_QABO), full output-set match', fields: [
         { name: 'auth_tip', dataType: 'HASH256', label: 'Auth Tip', placeholder: '32-byte H^N(auth_seed) committed at creation time (conditions)' },
@@ -2715,7 +2717,7 @@ const BLOCK_FAMILIES = [
         { name: 'committed_depth', dataType: 'NUMERIC', label: 'Committed Depth', placeholder: 'uint32 LE --depth of last consumed preimage (conditions)' },
         { name: 'committed_expiry', dataType: 'NUMERIC', label: 'Committed Expiry', placeholder: 'uint32 LE --max block height the spend may fire at (conditions)' },
         { name: 'owner_id', dataType: 'PUBKEY_COMMIT', label: 'Owner ID', placeholder: '32-byte SHA256(owner Rung 0 FALCON pubkey) (conditions)' },
-        { name: 'spend_preimage', dataType: 'PREIMAGE', label: 'Spend Preimage', placeholder: '32-byte preimage at depth committed_depth+1 (witness-only)' }
+        { name: 'spend_preimage', dataType: 'PREIMAGE', label: 'Spend Preimage', placeholder: '32-byte preimage at depth committed_depth+1', witnessOnly: true }
       ]},
     ]
   },
@@ -2736,7 +2738,7 @@ function getBlockDef(type) { return ALL_BLOCK_DEFS[type] || { type, label: type,
 
 const DATA_TYPE_SIZES = {
   PUBKEY: { min: 1, max: 2048, note: 'Witness-only. 32B x-only, 33B compressed, or PQ up to 1793B. Folded into Merkle leaf.' },
-  PUBKEY_COMMIT: { min: 32, max: 32, note: 'Reserved. No longer used in conditions or witness (merkle_pub_key).' },
+  PUBKEY_COMMIT: { min: 32, max: 32, note: '32-byte pubkey commitment (used by QABI_SPEND owner_id)' },
   HASH256: { min: 32, max: 32, note: 'SHA-256 digest' },
   HASH160: { min: 20, max: 20, note: 'RIPEMD160(SHA256()) digest' },
   PREIMAGE: { min: 1, max: 32, note: 'Hash preimage (1-32 bytes, witness only)' },
@@ -4035,7 +4037,13 @@ function exportBlockFields(block) {
       fields.push({ type: 'PREIMAGE', hex: val });
     } else if (f.dataType === 'SCRIPT_BODY') {
       fields.push({ type: 'SCRIPT_BODY', hex: val });
-    } else if (f.dataType === 'SCHEME' && val) {
+    } else if (f.dataType === 'DATA') {
+      fields.push({ type: 'DATA', hex: val });
+    } else if (f.dataType === 'PUBKEY_COMMIT') {
+      fields.push({ type: 'PUBKEY_COMMIT', hex: val });
+    } else if (f.dataType === 'SCHEME') {
+      // Always emit SCHEME (node requires it in conditions for blocks
+      // whose implicit layout includes SCHEME). Default to SCHNORR.
       const schemeMap = { SCHNORR: '01', ECDSA: '02', FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
       fields.push({ type: 'SCHEME', hex: schemeMap[val] || '01' });
     }
@@ -4243,7 +4251,7 @@ function exportCreateTxMLSC(rungs, txOutputs, txInputs, locktime) {
           if (!val) return;
           if (f.dataType === 'NUMERIC') {
             fields.push({ type: 'NUMERIC', hex: toNumericHex(val) });
-          } else if (f.dataType === 'SCHEME' && val) {
+          } else if (f.dataType === 'SCHEME') {
             const schemeMap = { SCHNORR: '01', ECDSA: '02', FALCON512: '10', FALCON1024: '11', DILITHIUM3: '12', SPHINCS_SHA: '13' };
             fields.push({ type: 'SCHEME', hex: schemeMap[val] || '01' });
           } else if (f.dataType === 'HASH256') {
@@ -4254,6 +4262,10 @@ function exportCreateTxMLSC(rungs, txOutputs, txInputs, locktime) {
             fields.push({ type: 'PREIMAGE', hex: val });
           } else if (f.dataType === 'SCRIPT_BODY') {
             fields.push({ type: 'SCRIPT_BODY', hex: val });
+          } else if (f.dataType === 'DATA') {
+            fields.push({ type: 'DATA', hex: val });
+          } else if (f.dataType === 'PUBKEY_COMMIT') {
+            fields.push({ type: 'PUBKEY_COMMIT', hex: val });
           }
         });
         const out = { type: b.type, fields };
