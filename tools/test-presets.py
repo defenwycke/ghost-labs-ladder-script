@@ -776,13 +776,12 @@ PRESETS = [
         "title": "BLOCK-HEIGHT TIMELOCK + COMPARE",
         "rungs": [
             {"label": "SPEND", "blocks": [
-                {"type": "CLTV", "values": {"height": "900000"}},
+                {"type": "CLTV", "values": {"height": "50"}},
                 {"type": "SIG", "values": {"pubkey": FAKE["pk1"]}},
-                {"type": "COMPARE", "values": {"operator": "3", "value_b": "10000"}},
+                {"type": "COMPARE", "values": {"operator": "3", "value_b": "10000", "value_c": "0"}},
             ]},
         ],
         "outputs": [{"amount": 15000}],
-        "dry_run_spend": "CLTV height 900000 unreachable — broadcast would fail but fund + sign shown",
     },
     {
         "title": "COUNTER-UP SUBSCRIPTION",
@@ -887,19 +886,18 @@ PRESETS = [
         "title": "CLTV_SIG VESTING SCHEDULE",
         "rungs": [
             {"label": "Q1", "blocks": [
-                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "860000"}},
+                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "30"}},
                 {"type": "AMOUNT_LOCK", "values": {"min": "250000", "max": "250000"}},
             ]},
             {"label": "Q2", "blocks": [
-                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "873000"}},
+                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "40"}},
                 {"type": "AMOUNT_LOCK", "values": {"min": "250000", "max": "250000"}},
             ]},
             {"label": "FULL", "blocks": [
-                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "900000"}},
+                {"type": "CLTV_SIG", "values": {"pubkey": FAKE["pk1"], "height": "50"}},
             ]},
         ],
         "outputs": [{"amount": 2500}, {"amount": 2500}, {"amount": 10000}],
-        "dry_run_spend": "CLTV heights 860000+ unreachable — broadcast would fail but fund + sign shown",
     },
     {
         "title": "TIMELOCKED_MULTISIG VAULT RECOVERY",
@@ -979,7 +977,7 @@ PRESETS = [
         "title": "CLTV_TIME CALENDAR LOCK",
         "rungs": [
             {"label": "UNLOCK", "blocks": [
-                {"type": "CLTV_TIME", "values": {"timestamp": "1798761600"}},
+                {"type": "CLTV_TIME", "values": {"timestamp": "1"}},
                 {"type": "HASH_SIG", "values": {"hash": FAKE["hash1"], "pubkey": FAKE["pk1"]}},
             ]},
             {"label": "CANCEL", "blocks": [
@@ -988,7 +986,6 @@ PRESETS = [
             ]},
         ],
         "outputs": [{"amount": 30000}, {"amount": 29800}],
-        "dry_run_spend": "CLTV_TIME Jan 2027 unreachable — broadcast would fail but fund + sign shown",
     },
     {
         "title": "TIMER WATCHDOG",
@@ -1106,12 +1103,11 @@ PRESETS = [
                 {"type": "P2WPKH_LEGACY", "values": {"pubkey": FAKE["pk1"]}},
             ]},
             {"label": "COLD", "blocks": [
-                {"type": "CLTV", "values": {"height": "900000"}},
+                {"type": "CLTV", "values": {"height": "50"}},
                 {"type": "SIG", "values": {"pubkey": FAKE["pk3"]}},
             ]},
         ],
         "outputs": [{"amount": 10000}, {"amount": 9800}],
-        "dry_run_spend": "CLTV height 900000 unreachable — broadcast would fail but fund + sign shown",
     },
     {
         "title": "LEGACY P2WSH MULTISIG",
@@ -1249,20 +1245,7 @@ PRESETS = [
     },
     {
         "title": "QABIO BATCH PAYOUT --COORDINATOR VIEW",
-        "spend_rung": 0,
-        "rungs": [
-            {"label": "SPEND", "blocks": [
-                {"type": "QABI_SPEND", "values": {
-                    "auth_tip": FAKE["hash3"],
-                    "committed_root": FAKE["hash1"],
-                    "committed_depth": "10",
-                    "committed_expiry": "500",
-                    "owner_id": FAKE["hash4"],
-                }},
-            ]},
-        ],
-        "outputs": [{"amount": 50000}],
-        "skip_reason": "QABI_SPEND rung requires QABO coordinator signing (verified via standalone QABIO test)",
+        "qabio_batch": True,
     },
 ]
 
@@ -2425,6 +2408,91 @@ def spend_preset(record, spend_rung_idx=0, verbose=True, dry_run=False):
 
 
 # ═══════════════════════════════════════════════════════════════
+# QABIO BATCH PAYOUT — standalone end-to-end flow
+# ═══════════════════════════════════════════════════════════════
+
+def run_qabio_batch(verbose=True):
+    log = lambda msg: print(f"  {msg}") if verbose else None
+
+    coord = api("/api/ladder/pq/keypair", {"scheme": "FALCON512"})
+    log(f"Coordinator: {len(coord['pubkey'])//2}B FALCON-512")
+
+    participants = []
+    for i in range(3):
+        ac = api("/api/ladder/qabi/authchain", {
+            "auth_seed": f"{'%02x' % i}" * 32, "chain_length": 10, "depth": 0,
+        })
+        participants.append({"participant_id": ac["auth_tip"], "chain": ac})
+
+    utxos = api("/api/ladder/wallet/utxos")
+    big = [u for u in utxos if u.get("amount", 0) > 0.1]
+    if len(big) < 3:
+        api("/api/ladder/mine", {"blocks": 5})
+        utxos = api("/api/ladder/wallet/utxos")
+        big = [u for u in utxos if u.get("amount", 0) > 0.1]
+
+    keys, fund_txids = [], []
+    for i in range(3):
+        kp = api("/api/ladder/wallet/keypair")
+        keys.append(kp)
+        out = {"amount": 0.001,
+               "conditions": [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": kp["pubkey"]}]}]}]}
+        res = api("/api/ladder/create", {"inputs": [{"txid": big[i]["txid"], "vout": big[i]["vout"]}], "outputs": [out]})
+        signed = api("/api/ladder/sign", {"hex": res["hex"]})
+        bc = api("/api/ladder/broadcast", {"hex": signed["hex"]})
+        fund_txids.append(bc["txid"])
+    api("/api/ladder/mine", {"blocks": 1})
+    log(f"Funded 3 UTXOs")
+
+    spent_outputs = []
+    for txid in fund_txids:
+        tx = api(f"/api/ladder/tx/{txid}")
+        spent_outputs.append({"amount": 0.001, "scriptPubKey": tx["vout"][0]["scriptPubKey"]["hex"]})
+
+    dest_key = api("/api/ladder/wallet/keypair")
+    dest_rung = {"output_index": 0, "blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": dest_key["pubkey"]}]}]}
+    dummy = api("/api/ladder/createtxmlsc", {"inputs": [{"txid": "0"*64, "vout": 0}], "outputs": [0.001], "rungs": [dest_rung]})
+    outputs_root = dummy["conditions_root"]
+
+    total, entries = 0, []
+    for i in range(3):
+        contrib = 99500
+        entries.append({"participant_id": participants[i]["participant_id"],
+                        "contribution": contrib / 1e8, "destination_index": 0})
+        total += contrib
+
+    height = api("/api/ladder/status")["blocks"]
+    qabi = api("/api/ladder/qabi/buildblock", {
+        "coordinator_pubkey": coord["pubkey"], "prime_expiry_height": height + 100,
+        "batch_id": "cc" * 32, "entries": entries,
+        "outputs_conditions_root": outputs_root, "output_values": [total / 1e8],
+    })
+    log(f"QABI block: {len(qabi['qabi_block'])//2} bytes")
+
+    batch_tx = api("/api/ladder/createtxmlsc", {
+        "inputs": [{"txid": t, "vout": 0} for t in fund_txids],
+        "outputs": [total / 1e8], "rungs": [dest_rung], "qabi_block": qabi["qabi_block"],
+    })
+
+    hex_tx = batch_tx["hex"]
+    for i in range(3):
+        input_cond = [{"blocks": [{"type": "SIG", "fields": [{"type": "PUBKEY", "hex": keys[i]["pubkey"]}]}]}]
+        sign_res = api("/api/ladder/sign", {
+            "hex": hex_tx,
+            "signers": [{"input": i, "privkey": keys[i]["privkey"], "conditions": input_cond}],
+            "spent_outputs": spent_outputs,
+        })
+        hex_tx = sign_res["hex"]
+
+    qabo = api("/api/ladder/qabi/signqabo", {"hex": hex_tx, "privkey": coord["privkey"]})
+    log(f"QABO signed: {len(qabo['hex'])//2} bytes")
+
+    bc2 = api("/api/ladder/broadcast", {"hex": qabo["hex"]})
+    api("/api/ladder/mine", {"blocks": 1})
+    return {"txid": bc2["txid"]}
+
+
+# ═══════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════
 
@@ -2499,6 +2567,16 @@ def main():
             time.sleep(2)
 
         try:
+            # QABIO BATCH PAYOUT — standalone flow (coordinator creates + signs)
+            if preset.get("qabio_batch"):
+                print("  --- QABIO BATCH (fund 3 + batch + QABO sign) ---")
+                spend_result = run_qabio_batch(verbose=True)
+                results.append({"title": title, "status": "PASS", "txid": spend_result["txid"],
+                                "spend_decoded": spend_result.get("spend_decoded")})
+                print(f"  Batch TXID: {spend_result['txid'][:16]}...")
+                print(f"  Confirmed")
+                continue
+
             # Fund
             print("  --- FUND ---")
             fund_result = fund_preset(preset)
