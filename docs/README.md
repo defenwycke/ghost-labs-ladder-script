@@ -49,4 +49,4 @@ and Merkelized conditions (MLSC). Transactions use version 4 (`RUNG_TX_VERSION =
 
 ## Repository
 
-Source: [github.com/defenwycke/ladder-script-labs](https://github.com/defenwycke/ladder-script-labs)
+Source: [github.com/defenwycke/bitcoin-ladder-script](https://github.com/defenwycke/bitcoin-ladder-script) (project + tools) and [github.com/defenwycke/bitcoin-core-ladder-script](https://github.com/defenwycke/bitcoin-core-ladder-script) (consensus fork)
